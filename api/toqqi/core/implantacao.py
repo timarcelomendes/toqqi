@@ -6,6 +6,7 @@
    para existir um jeito de entrar antes de o envio de e-mails estar configurado.
 """
 import logging
+import re
 
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -49,11 +50,20 @@ def garantir_papel_app() -> None:
         dono.dispose()
 
 
+def _mascarar(email: str) -> str:
+    """Não escreve o e-mail inteiro no log: fu***@dominio.com."""
+    nome, _, dominio = email.partition("@")
+    return f"{nome[:2]}***@{dominio}"
+
+
 def garantir_admin_inicial() -> None:
     cfg = config()
     email = cfg.ADMIN_INICIAL_EMAIL.strip().lower()
     if not email or not cfg.ADMIN_INICIAL_SENHA:
         log.warning("Admin inicial: ADMIN_INICIAL_EMAIL ou ADMIN_INICIAL_SENHA vazio; nenhuma conta criada.")
+        return
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        log.error("Admin inicial: ADMIN_INICIAL_EMAIL não é um e-mail válido; nenhuma conta criada.")
         return
     from toqqi.core.auditoria import registrar
     from toqqi.core.permissoes import semear_padrao
@@ -63,7 +73,7 @@ def garantir_admin_inicial() -> None:
 
     with modo_sistema() as s:
         if s.scalar(select(Usuario.id).where(Usuario.email == email)):
-            log.info("Admin inicial: %s já existe; nada a fazer.", email)
+            log.info("Admin inicial: %s já existe; nada a fazer.", _mascarar(email))
             return
         faltas = problemas_senha(cfg.ADMIN_INICIAL_SENHA)
         if faltas:
@@ -80,4 +90,4 @@ def garantir_admin_inicial() -> None:
         semear_conta(s, conta.id)
         registrar(s, "conta_criada_plataforma", "info", {"por": "implantacao", "admin_email": email},
                   conta_id=conta.id)
-    log.info("Conta inicial criada para %s.", email)
+    log.info("Conta inicial criada para %s.", _mascarar(email))
