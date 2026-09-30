@@ -24,3 +24,10 @@ Os testes rodam no GitHub a cada envio (`.github/workflows/testes.yml`).
 ## Etapas
 1. **Fundação** (esta): contas, acesso, perfis e permissões, sessões, auditoria, plataforma.
 2. Cadastros e pesquisas · 3. Envios · 4. Respostas e análise · 5. Conta e extras · 6. Troca.
+
+## Publicação (Render)
+Dois serviços apontando para este mesmo repositório:
+- **API** (Web Service): pasta raiz `api/`; em *Build Filters*, incluir só `api/**`.
+- **Site** (Static Site): pasta raiz `web/`; em *Build Filters*, incluir só `web/**`.
+
+Assim, um commit que só mexe no backend republica só a API, e vice-versa. Os testes no GitHub seguem a mesma regra.
