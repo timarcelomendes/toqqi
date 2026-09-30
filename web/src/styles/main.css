@@ -1,0 +1,149 @@
+@import 'tailwindcss';
+
+/* Modo escuro controlado pela classe .dark no <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Paleta fixa da marca e tokens semânticos (que mudam no modo escuro) */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --color-coral-50: #fff4f1;
+  --color-coral-100: #ffe5dd;
+  --color-coral-200: #ffc9b8;
+  --color-coral-300: #ffa68d;
+  --color-coral-400: #ff7c5c;
+  --color-coral-500: #ff5a36;
+  --color-coral-600: #d63a18;
+  --color-coral-700: #b02f13;
+  --color-coral-800: #8c2814;
+  --color-coral-900: #6e2415;
+
+  --radius-cartao: 1rem;
+  --shadow-cartao: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px rgb(15 23 42 / 0.06);
+
+  --animate-surgir: surgir 160ms ease-out;
+  --animate-deslizar: deslizar 200ms ease-out;
+}
+
+@keyframes surgir {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes deslizar {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+
+@theme inline {
+  --color-fundo: var(--t-fundo);
+  --color-superficie: var(--t-superficie);
+  --color-superficie-2: var(--t-superficie-2);
+  --color-borda: var(--t-borda);
+  --color-borda-forte: var(--t-borda-forte);
+  --color-texto: var(--t-texto);
+  --color-texto-suave: var(--t-texto-suave);
+  --color-texto-fraco: var(--t-texto-fraco);
+  --color-marca: var(--t-marca);
+  --color-marca-forte: var(--t-marca-forte);
+  --color-marca-hover: var(--t-marca-hover);
+  --color-marca-texto: var(--t-marca-texto);
+  --color-marca-suave: var(--t-marca-suave);
+  --color-foco: var(--t-foco);
+  --color-sucesso: var(--t-sucesso);
+  --color-sucesso-suave: var(--t-sucesso-suave);
+  --color-atencao: var(--t-atencao);
+  --color-atencao-suave: var(--t-atencao-suave);
+  --color-erro: var(--t-erro);
+  --color-erro-suave: var(--t-erro-suave);
+  --color-info: var(--t-info);
+  --color-info-suave: var(--t-info-suave);
+}
+
+:root {
+  --t-fundo: #f8fafc;
+  --t-superficie: #ffffff;
+  --t-superficie-2: #f1f5f9;
+  --t-borda: #e2e8f0;
+  --t-borda-forte: #cbd5e1;
+  --t-texto: #0f172a;
+  --t-texto-suave: #475569;
+  --t-texto-fraco: #64748b;
+  --t-marca: #ff5a36;
+  --t-marca-forte: #d63a18; /* fundo de botão: contraste AA com branco */
+  --t-marca-hover: #b02f13;
+  --t-marca-texto: #b02f13; /* texto/link sobre branco */
+  --t-marca-suave: #fff4f1;
+  --t-foco: #ff7c5c;
+  --t-sucesso: #047857;
+  --t-sucesso-suave: #ecfdf5;
+  --t-atencao: #b45309;
+  --t-atencao-suave: #fffbeb;
+  --t-erro: #b91c1c;
+  --t-erro-suave: #fef2f2;
+  --t-info: #1d4ed8;
+  --t-info-suave: #eff6ff;
+  color-scheme: light;
+}
+
+.dark {
+  --t-fundo: #0b1120;
+  --t-superficie: #111827;
+  --t-superficie-2: #1e293b;
+  --t-borda: #1f2a3c;
+  --t-borda-forte: #334155;
+  --t-texto: #f1f5f9;
+  --t-texto-suave: #cbd5e1;
+  --t-texto-fraco: #94a3b8;
+  --t-marca: #ff7c5c;
+  --t-marca-forte: #d63a18;
+  --t-marca-hover: #e84a26;
+  --t-marca-texto: #ffa68d;
+  --t-marca-suave: #2a1712;
+  --t-foco: #ffa68d;
+  --t-sucesso: #6ee7b7;
+  --t-sucesso-suave: #06281f;
+  --t-atencao: #fcd34d;
+  --t-atencao-suave: #2b1e05;
+  --t-erro: #fca5a5;
+  --t-erro-suave: #2d0f0f;
+  --t-info: #93c5fd;
+  --t-info-suave: #0c1d3d;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-fundo text-texto font-sans antialiased;
+    min-height: 100dvh;
+  }
+  :focus-visible {
+    outline: 2px solid var(--t-foco);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-coral-200);
+    color: #0f172a;
+  }
+}
+
+@layer components {
+  .cartao {
+    @apply bg-superficie border border-borda rounded-cartao shadow-cartao;
+  }
+  .link {
+    @apply text-marca-texto font-semibold underline-offset-4 hover:underline rounded-sm;
+  }
+  .titulo-pagina {
+    @apply text-2xl font-bold tracking-tight text-texto sm:text-[1.75rem];
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

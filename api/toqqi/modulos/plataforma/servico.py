@@ -1,0 +1,95 @@
+"""Operações da equipe Toqqi (superadmin) sobre as contas.
+
+Usa modo sistema de propósito: aqui a pessoa age sobre contas que não são a dela.
+"""
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
+
+from toqqi.core.auditoria import registrar
+from toqqi.core.db import modo_sistema
+from toqqi.core.deps import Contexto
+from toqqi.core.errors import AppError, nao_encontrado
+from toqqi.core.permissoes import semear_padrao
+from toqqi.core.security import gerar_hash
+from toqqi.modelos import Conta, Usuario
+from toqqi.modulos.acesso.servico import DIAS_TESTE
+
+
+def _conta_json(c: Conta, usuarios: int) -> dict:
+    return {
+        "id": c.id, "nome": c.nome, "plano": c.plano, "situacao": c.situacao,
+        "teste_ate": c.teste_ate, "usuarios": usuarios, "criada_em": c.criada_em,
+    }
+
+
+def _contar_usuarios(s, conta_id: int) -> int:
+    return s.scalar(select(func.count()).select_from(Usuario).where(Usuario.conta_id == conta_id))
+
+
+def listar() -> list[dict]:
+    contagem = (
+        select(Usuario.conta_id, func.count().label("n")).group_by(Usuario.conta_id).subquery()
+    )
+    with modo_sistema() as s:
+        linhas = s.execute(
+            select(Conta, func.coalesce(contagem.c.n, 0))
+            .outerjoin(contagem, contagem.c.conta_id == Conta.id)
+            .order_by(Conta.criada_em.desc(), Conta.id.desc())
+        ).all()
+    return [_conta_json(c, n) for c, n in linhas]
+
+
+def criar_conta(ctx: Contexto, dados) -> dict:
+    senha_hash = gerar_hash(dados.admin_senha)
+    try:
+        with modo_sistema() as s:
+            teste_ate = datetime.now(timezone.utc) + timedelta(days=DIAS_TESTE) if dados.situacao == "teste" else None
+            conta = Conta(nome=dados.empresa, situacao=dados.situacao, teste_ate=teste_ate)
+            s.add(conta)
+            s.flush()
+            u = Usuario(conta_id=conta.id, nome=dados.admin_nome, email=dados.admin_email, senha_hash=senha_hash,
+                        perfil="admin", situacao="ativo", email_confirmado=True)
+            s.add(u)
+            s.flush()
+            semear_padrao(s, conta.id)
+            registrar(s, "conta_criada_plataforma", "info",
+                      {"por": ctx.email, "situacao": dados.situacao, "admin_email": u.email}, conta_id=conta.id)
+            s.refresh(conta)
+            return _conta_json(conta, 1)
+    except IntegrityError:
+        msg = "Este e-mail já está em uso no Toqqi."
+        raise AppError(409, "email_em_uso", msg, {"admin_email": msg})
+
+
+def _conta_travada(s, conta_id: int) -> Conta:
+    c = s.get(Conta, conta_id, with_for_update=True)
+    if c is None:
+        raise nao_encontrado("Conta não encontrada.")
+    return c
+
+
+def estender_teste(ctx: Contexto, conta_id: int, dias: int) -> dict:
+    with modo_sistema() as s:
+        c = _conta_travada(s, conta_id)
+        agora = s.scalar(select(func.now()))
+        anterior = c.teste_ate
+        base = max(agora, anterior) if anterior else agora
+        c.teste_ate = base + timedelta(days=dias)
+        c.situacao = "teste"
+        registrar(s, "teste_estendido", "info",
+                  {"por": ctx.email, "dias": dias, "teste_ate_anterior": anterior.isoformat() if anterior else None,
+                   "teste_ate_novo": c.teste_ate.isoformat()}, conta_id=c.id)
+        s.flush()
+        return _conta_json(c, _contar_usuarios(s, c.id))
+
+
+def cortesia(ctx: Contexto, conta_id: int) -> dict:
+    with modo_sistema() as s:
+        c = _conta_travada(s, conta_id)
+        anterior = c.situacao
+        c.situacao = "cortesia"
+        registrar(s, "cortesia", "info", {"por": ctx.email, "situacao_anterior": anterior}, conta_id=c.id)
+        s.flush()
+        return _conta_json(c, _contar_usuarios(s, c.id))
