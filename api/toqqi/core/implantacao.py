@@ -53,6 +53,7 @@ def garantir_admin_inicial() -> None:
     cfg = config()
     email = cfg.ADMIN_INICIAL_EMAIL.strip().lower()
     if not email or not cfg.ADMIN_INICIAL_SENHA:
+        log.warning("Admin inicial: ADMIN_INICIAL_EMAIL ou ADMIN_INICIAL_SENHA vazio; nenhuma conta criada.")
         return
     from toqqi.core.auditoria import registrar
     from toqqi.core.permissoes import semear_padrao
@@ -62,6 +63,7 @@ def garantir_admin_inicial() -> None:
 
     with modo_sistema() as s:
         if s.scalar(select(Usuario.id).where(Usuario.email == email)):
+            log.info("Admin inicial: %s já existe; nada a fazer.", email)
             return
         faltas = problemas_senha(cfg.ADMIN_INICIAL_SENHA)
         if faltas:

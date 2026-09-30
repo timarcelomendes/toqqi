@@ -26,6 +26,12 @@ from toqqi.modulos.publico.rotas import router as publico
 
 PREFIXO = "/api/v1"
 log = logging.getLogger("toqqi")
+if not log.handlers:  # mensagens da aplicação (inclusive INFO) aparecem no log do Render
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("%(levelname)s:     toqqi - %(message)s"))
+    log.addHandler(_h)
+    log.setLevel(logging.INFO)
+    log.propagate = False
 
 
 @asynccontextmanager
