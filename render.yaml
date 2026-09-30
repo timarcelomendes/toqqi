@@ -5,6 +5,7 @@
 databases:
   - name: toqqi-db
     databaseName: toqqi
+    user: toqqi
     region: oregon
     plan: free            # o plano gratuito expira em 30 dias e só pode haver 1 por conta; depois: basic-256mb
     postgresMajorVersion: "16"
