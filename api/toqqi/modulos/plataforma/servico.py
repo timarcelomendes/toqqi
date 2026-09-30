@@ -15,6 +15,7 @@ from toqqi.core.permissoes import semear_padrao
 from toqqi.core.security import gerar_hash
 from toqqi.modelos import Conta, Usuario
 from toqqi.modulos.acesso.servico import DIAS_TESTE
+from toqqi.modulos.formularios.semear import semear_conta
 
 
 def _conta_json(c: Conta, usuarios: int) -> dict:
@@ -54,6 +55,7 @@ def criar_conta(ctx: Contexto, dados) -> dict:
             s.add(u)
             s.flush()
             semear_padrao(s, conta.id)
+            semear_conta(s, conta.id)
             registrar(s, "conta_criada_plataforma", "info",
                       {"por": ctx.email, "situacao": dados.situacao, "admin_email": u.email}, conta_id=conta.id)
             s.refresh(conta)

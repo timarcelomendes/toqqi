@@ -1,0 +1,27 @@
+/* CSS da página pública: só as classes usadas pela pesquisa (não varre o app inteiro). */
+@import 'tailwindcss' source(none);
+@source '../pesquisa';
+@source '.';
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    color-scheme: light;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    min-height: 100dvh;
+  }
+  html.embed body {
+    @apply bg-white;
+    min-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

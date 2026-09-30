@@ -60,3 +60,44 @@ def dominio_do_email(email: str) -> str:
 Email = Annotated[str, AfterValidator(_validar_email)]
 SenhaForte = Annotated[str, AfterValidator(_validar_senha)]
 Texto = Annotated[str, BeforeValidator(_texto_limpo)]
+
+
+def _validar_telefone(v):
+    from toqqi.core.texto import normalizar_telefone
+
+    if v is None or (isinstance(v, str) and not v.strip()):
+        return None
+    try:
+        return normalizar_telefone(str(v))
+    except ValueError as e:
+        raise PydanticCustomError("toqqi_telefone", str(e))
+
+
+def _validar_documento(v):
+    from toqqi.core.texto import normalizar_documento
+
+    if v is None:
+        return None
+    try:
+        return normalizar_documento(str(v))
+    except ValueError as e:
+        raise PydanticCustomError("toqqi_documento", str(e))
+
+
+def _email_opcional(v):
+    if v is None or (isinstance(v, str) and not v.strip()):
+        return None
+    return _validar_email(v)
+
+
+def _vazio_para_none(v):
+    if isinstance(v, str):
+        v = v.strip()
+        return v or None
+    return v
+
+
+Telefone = Annotated[str | None, BeforeValidator(_validar_telefone)]
+Documento = Annotated[str | None, BeforeValidator(_validar_documento)]
+EmailOpcional = Annotated[str | None, BeforeValidator(_email_opcional)]
+TextoOpcional = Annotated[str | None, BeforeValidator(_vazio_para_none)]

@@ -1,6 +1,7 @@
 """Equipe: permissões, proteção do último admin e de si mesmo, bloqueio."""
-from toqqi.core.permissoes import PADRAO, SOMENTE_ADMIN, TODAS
 from util import conta_pronta, entrar, membro
+
+from toqqi.core.permissoes import PADRAO, SOMENTE_ADMIN, TODAS
 
 API = "/api/v1"
 

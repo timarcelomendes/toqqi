@@ -1,8 +1,8 @@
 """Formato de erro e limite de tentativas."""
 import pytest
+from util import SENHA
 
 from toqqi.core.rate_limit import limiter
-from util import SENHA
 
 API = "/api/v1"
 

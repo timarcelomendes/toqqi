@@ -61,7 +61,9 @@ async function lerCorpo(resposta: Response): Promise<unknown> {
 export async function requisitar<T>(caminho: string, opcoes: OpcoesRequisicao = {}): Promise<T> {
   const { metodo = 'GET', corpo, query, autenticar = true, semTratamentoGlobal = false, sinal } = opcoes
   const cabecalhos: Record<string, string> = { Accept: 'application/json' }
-  if (corpo !== undefined) cabecalhos['Content-Type'] = 'application/json'
+  const multipart = typeof FormData !== 'undefined' && corpo instanceof FormData
+  // Com FormData o navegador define o Content-Type (com o boundary).
+  if (corpo !== undefined && !multipart) cabecalhos['Content-Type'] = 'application/json'
   const token = autenticar ? ganchos.obterToken() : null
   if (token) cabecalhos.Authorization = `Bearer ${token}`
 
@@ -70,7 +72,7 @@ export async function requisitar<T>(caminho: string, opcoes: OpcoesRequisicao = 
     resposta = await fetch(montarUrl(caminho, query), {
       method: metodo,
       headers: cabecalhos,
-      body: corpo !== undefined ? JSON.stringify(corpo) : undefined,
+      body: corpo === undefined ? undefined : multipart ? (corpo as FormData) : JSON.stringify(corpo),
       signal: sinal,
     })
   } catch (e) {
@@ -80,14 +82,69 @@ export async function requisitar<T>(caminho: string, opcoes: OpcoesRequisicao = 
 
   const dados = await lerCorpo(resposta)
   if (resposta.ok) return dados as T
+  throw tratarErro(resposta.status, dados, !!token, semTratamentoGlobal)
+}
 
-  const erro = lerErroApi(resposta.status, dados)
+function tratarErro(status: number, dados: unknown, comToken: boolean, semTratamentoGlobal: boolean): ApiError {
+  const erro = lerErroApi(status, dados)
   if (!semTratamentoGlobal) {
     // Só tratamos 401 como "sessão caiu" quando havia sessão (ex.: senha errada no login também é 401).
-    if (erro.status === 401 && erro.codigo === 'sessao_invalida' && token) ganchos.aoSessaoInvalida(erro)
+    if (erro.status === 401 && erro.codigo === 'sessao_invalida' && comToken) ganchos.aoSessaoInvalida(erro)
     else if (erro.status === 403 && erro.codigo === 'sem_permissao') ganchos.aoSemPermissao(erro)
   }
-  throw erro
+  return erro
+}
+
+/** Nome do arquivo no cabeçalho Content-Disposition (filename* ou filename). */
+export function nomeDoArquivo(disposicao: string | null, padrao: string): string {
+  if (!disposicao) return padrao
+  const estrela = disposicao.match(/filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i)
+  if (estrela) {
+    try {
+      return decodeURIComponent(estrela[1]!.trim().replace(/^"|"$/g, ''))
+    } catch {
+      /* cai no filename simples */
+    }
+  }
+  const simples = disposicao.match(/filename\s*=\s*"?([^";]+)"?/i)
+  return simples ? simples[1]!.trim() : padrao
+}
+
+/**
+ * Baixa um arquivo da API (CSV, modelo...) com o token no cabeçalho: busca como blob
+ * e dispara o download no navegador. Erros viram ApiError como nas outras chamadas.
+ */
+export async function baixarArquivo(
+  caminho: string,
+  nomePadrao: string,
+  query?: OpcoesRequisicao['query'],
+): Promise<void> {
+  const token = ganchos.obterToken()
+  let resposta: Response
+  try {
+    resposta = await fetch(montarUrl(caminho, query), {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+  } catch {
+    throw erroDeConexao()
+  }
+  if (!resposta.ok) throw tratarErro(resposta.status, await lerCorpo(resposta), !!token, false)
+  const blob = await resposta.blob()
+  const nome = nomeDoArquivo(resposta.headers.get('Content-Disposition'), nomePadrao)
+  salvarBlob(blob, nome)
+}
+
+/** Dispara o download de um blob já pronto. */
+export function salvarBlob(blob: Blob, nome: string): void {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nome
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 export const api = {

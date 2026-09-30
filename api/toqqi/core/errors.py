@@ -4,6 +4,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import DBAPIError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from toqqi.core.requisicao import request_id
@@ -84,12 +85,32 @@ def registrar_handlers(app: FastAPI) -> None:
         codigo, msg = mapa.get(exc.status_code, ("erro_http", "Não foi possível concluir o pedido."))
         return resposta_erro(exc.status_code, codigo, msg, headers=getattr(exc, "headers", None))
 
+    @app.exception_handler(DBAPIError)
+    async def _banco(_: Request, exc: DBAPIError):
+        erro = erro_do_banco(exc)
+        if erro is not None:
+            return resposta_erro(erro.status, erro.codigo, erro.mensagem, erro.campos)
+        log.exception("Erro de banco (request_id=%s)", request_id.get())
+        return resposta_erro(
+            500, "erro_interno", "Algo deu errado do nosso lado. Tente de novo em instantes."
+        )
+
     @app.exception_handler(Exception)
     async def _inesperado(_: Request, exc: Exception):
         log.exception("Erro inesperado (request_id=%s)", request_id.get())
         return resposta_erro(
             500, "erro_interno", "Algo deu errado do nosso lado. Tente de novo em instantes."
         )
+
+
+def erro_do_banco(exc: DBAPIError) -> AppError | None:
+    """Erros de regra levantados pelo próprio banco (gatilhos) viram AppError."""
+    orig = getattr(exc, "orig", None)
+    if getattr(orig, "sqlstate", None) == "TQ402":
+        diag = getattr(orig, "diag", None)
+        msg = getattr(diag, "message_primary", None) or "Você atingiu o limite de contatos ativos do seu plano."
+        return AppError(402, "limite_do_plano", msg)
+    return None
 
 
 def nao_encontrado(mensagem: str = "Não encontramos o que você procurou.") -> AppError:

@@ -14,6 +14,7 @@ from toqqi.modelos import PerfilPermissao, Usuario
 from toqqi.modulos.acesso import emails
 from toqqi.modulos.acesso.servico import criar_token, revogar_sessoes
 
+
 def erro_email_em_uso() -> AppError:
     msg = "Este e-mail já está em uso no Toqqi."
     return AppError(409, "email_em_uso", msg, {"email": msg})

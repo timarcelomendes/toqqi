@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useSessaoStore } from '@/stores/sessao'
 import Marca from '@/components/app/Marca.vue'
 import { filtrarNavegacao, navegacaoAdministracao, navegacaoPrincipal, type ItemNavegacao } from './navegacao'
 
 defineEmits<{ navegou: [] }>()
 const sessao = useSessaoStore()
+const rota = useRoute()
+/** Ativo também nas páginas de dentro (ex.: /contatos/123 marca Contatos). */
+function ativoNa(i: ItemNavegacao, isActive: boolean) {
+  return isActive || rota.path.startsWith(`${i.para}/`)
+}
 
 const principal = computed(() => filtrarNavegacao(navegacaoPrincipal, sessao.pode, sessao.superadmin))
 const administracao = computed(() => filtrarNavegacao(navegacaoAdministracao, sessao.pode, sessao.superadmin))
@@ -30,7 +36,7 @@ function chave(i: ItemNavegacao) {
       <ul class="flex flex-col gap-0.5">
         <li v-for="item in principal" :key="chave(item)">
           <RouterLink v-slot="{ href, navigate, isActive }" :to="item.para" custom>
-            <a :href="href" :class="classes(isActive)" :aria-current="isActive ? 'page' : undefined" @click="(e) => { navigate(e); $emit('navegou') }">
+            <a :href="href" :class="classes(ativoNa(item, isActive))" :aria-current="ativoNa(item, isActive) ? 'page' : undefined" @click="(e) => { navigate(e); $emit('navegou') }">
               <component :is="item.icone" class="size-5 shrink-0" aria-hidden="true" />
               <span class="flex-1">{{ item.rotulo }}</span>
               <span v-if="item.emBreve" class="rounded-full bg-superficie-2 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-texto-fraco group-hover:bg-borda">em breve</span>
@@ -43,7 +49,7 @@ function chave(i: ItemNavegacao) {
         <ul class="flex flex-col gap-0.5">
           <li v-for="item in administracao" :key="chave(item)">
             <RouterLink v-slot="{ href, navigate, isActive }" :to="item.para" custom>
-              <a :href="href" :class="classes(isActive)" :aria-current="isActive ? 'page' : undefined" @click="(e) => { navigate(e); $emit('navegou') }">
+              <a :href="href" :class="classes(ativoNa(item, isActive))" :aria-current="ativoNa(item, isActive) ? 'page' : undefined" @click="(e) => { navigate(e); $emit('navegou') }">
                 <component :is="item.icone" class="size-5 shrink-0" aria-hidden="true" />
                 <span class="flex-1">{{ item.rotulo }}</span>
               </a>

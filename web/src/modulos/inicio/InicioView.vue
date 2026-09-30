@@ -17,8 +17,18 @@ const saudacao = computed(() => {
 const passos = computed(() => [
   { titulo: 'Criar sua conta', descricao: 'Pronto! Você já está dentro do Toqqi.', feito: true },
   { titulo: 'Chamar sua equipe', descricao: 'Convide quem vai acompanhar os clientes com você.', feito: false, para: sessao.pode('equipe.gerenciar') ? '/equipe' : undefined },
-  { titulo: 'Cadastrar seus clientes', descricao: 'Importe sua lista de contatos de uma planilha.', feito: false, emBreve: true },
-  { titulo: 'Montar sua primeira pesquisa', descricao: 'Escolha entre NPS e CSAT com modelos prontos.', feito: false, emBreve: true },
+  {
+    titulo: 'Cadastrar seus clientes',
+    descricao: 'Importe sua lista de contatos de uma planilha.',
+    feito: false,
+    para: sessao.pode('importacao.usar') ? '/contatos/importar' : sessao.pode('contatos.ver') ? '/contatos' : undefined,
+  },
+  {
+    titulo: 'Montar sua primeira pesquisa',
+    descricao: 'Escolha entre NPS e CSAT com modelos prontos.',
+    feito: false,
+    para: sessao.pode('formularios.ver') ? '/formularios' : undefined,
+  },
   { titulo: 'Enviar e ver as respostas chegando', descricao: 'Por e-mail ou WhatsApp, do jeito que seu cliente prefere.', feito: false, emBreve: true },
 ])
 const feitos = computed(() => passos.value.filter((p) => p.feito).length)
@@ -58,7 +68,7 @@ const feitos = computed(() => passos.value.filter((p) => p.feito).length)
         <Sparkles class="size-7" aria-hidden="true" />
         <h2 class="mt-3 text-lg font-bold">Vem muita coisa por aí</h2>
         <p class="mt-1.5 text-sm leading-relaxed text-white/90">
-          Esta é a base do Toqqi: acesso, equipe e segurança. Nas próximas etapas chegam contatos, envios de pesquisa,
+          Contatos e formulários já estão aqui. Nas próximas etapas chegam os envios automáticos de pesquisa,
           respostas, planos de ação e relatórios, tudo aparecendo aqui no menu.
         </p>
       </section>

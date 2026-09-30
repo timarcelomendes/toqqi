@@ -49,8 +49,9 @@ def modo_sistema() -> Iterator[Session]:
 
 def migrar() -> None:
     """Aplica as migrações pendentes (alembic upgrade head) com a conexão de migração."""
-    from alembic import command
     from alembic.config import Config as AlembicConfig
+
+    from alembic import command
 
     cfg = AlembicConfig(str(RAIZ_API / "alembic.ini"))
     cfg.set_main_option("script_location", str(RAIZ_API / "alembic"))

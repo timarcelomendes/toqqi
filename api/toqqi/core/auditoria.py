@@ -23,6 +23,14 @@ ROTULOS = {
     "conta_criada_plataforma": "Conta criada pela equipe Toqqi",
     "teste_estendido": "Período de teste estendido",
     "cortesia": "Conta marcada como cortesia",
+    "cadastro_excluido": "Item de cadastro excluído",
+    "responsavel_excluido": "Responsável excluído",
+    "empresa_excluida": "Empresa excluída",
+    "contato_excluido": "Contato excluído",
+    "importacao": "Planilha de contatos importada",
+    "formulario_excluido": "Formulário excluído",
+    "formulario_arquivado": "Formulário arquivado",
+    "formulario_padrao": "Formulário padrão alterado",
 }
 
 

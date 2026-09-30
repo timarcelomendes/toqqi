@@ -26,9 +26,9 @@ export interface ItemNavegacao {
 
 export const navegacaoPrincipal: ItemNavegacao[] = [
   { rotulo: 'Início', para: '/inicio', icone: Home },
-  { rotulo: 'Contatos', para: '/contatos', icone: UsersRound, permissao: 'contatos.ver', emBreve: true },
+  { rotulo: 'Contatos', para: '/contatos', icone: UsersRound, permissao: 'contatos.ver' },
   { rotulo: 'Envios', para: '/envios', icone: Send, permissao: 'envios.ver', emBreve: true },
-  { rotulo: 'Formulários', para: '/formularios', icone: FileText, permissao: 'formularios.ver', emBreve: true },
+  { rotulo: 'Formulários', para: '/formularios', icone: FileText, permissao: 'formularios.ver' },
   { rotulo: 'Respostas', para: '/respostas', icone: MessageSquareText, permissao: 'respostas.ver', emBreve: true },
   { rotulo: 'Planos de ação', para: '/planos-de-acao', icone: ClipboardList, permissao: 'acoes.ver', emBreve: true },
   { rotulo: 'Relatórios', para: '/relatorios', icone: BarChart3, permissao: 'relatorios.ver', emBreve: true },

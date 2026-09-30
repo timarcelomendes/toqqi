@@ -25,6 +25,7 @@ from toqqi.core.security import (
 from toqqi.core.validacao import DOMINIOS_GRATUITOS, dominio_do_email
 from toqqi.modelos import Conta, DominioLiberado, PerfilPermissao, Sessao, TokenUsoUnico, Usuario
 from toqqi.modulos.acesso import emails
+from toqqi.modulos.formularios.semear import semear_conta
 
 TERMOS_VERSAO = "2026-10"
 DIAS_TESTE = 14
@@ -99,6 +100,7 @@ def cadastrar(dados, ip: str | None) -> str:
                 s.add(u)
                 s.flush()
                 semear_padrao(s, conta.id)
+                semear_conta(s, conta.id)
                 token = criar_token(s, u.id, conta.id, "confirmar_email")
                 registrar(s, "cadastro_conta", "sucesso", {"empresa": conta.nome, "email": u.email},
                           usuario_id=u.id, conta_id=conta.id)

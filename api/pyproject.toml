@@ -1,7 +1,7 @@
 [project]
 name = "toqqi-api"
 version = "1.0.0"
-description = "API do Toqqi (NPS/CSAT para pequenas empresas B2B) - etapa 1"
+description = "API do Toqqi (NPS/CSAT para pequenas empresas B2B) - etapas 1 e 2"
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]

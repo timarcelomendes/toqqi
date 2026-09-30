@@ -1,8 +1,9 @@
 """Ambiente Alembic: usa MIGRATION_DATABASE_URL (dono das tabelas) ou DATABASE_URL."""
 import os
 
-from alembic import context
 from sqlalchemy import create_engine, pool
+
+from alembic import context
 
 
 def _url() -> str:

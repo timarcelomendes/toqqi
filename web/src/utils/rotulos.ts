@@ -1,4 +1,4 @@
-import type { Gravidade, Perfil, SituacaoUsuario } from '@/api/tipos'
+import type { CanalResposta, Gravidade, Perfil, SituacaoContato, SituacaoUsuario, TipoFormulario } from '@/api/tipos'
 
 export type Tom = 'neutro' | 'marca' | 'sucesso' | 'atencao' | 'erro' | 'info'
 
@@ -45,4 +45,58 @@ export function iniciais(nome: string | null | undefined): string {
   const primeira = partes[0]!.charAt(0)
   const ultima = partes.length > 1 ? partes[partes.length - 1]!.charAt(0) : ''
   return (primeira + ultima).toUpperCase()
+}
+
+export const SITUACOES_CONTATO: Record<SituacaoContato, { rotulo: string; tom: Tom }> = {
+  na_fila: { rotulo: 'Na fila de envio', tom: 'info' },
+  aguardando: { rotulo: 'Aguardando resposta', tom: 'atencao' },
+  respondeu: { rotulo: 'Respondeu', tom: 'sucesso' },
+  nao_saiu: { rotulo: 'Envio falhou', tom: 'erro' },
+  saiu_da_lista: { rotulo: 'Saiu da lista', tom: 'neutro' },
+  inativo: { rotulo: 'Inativo', tom: 'neutro' },
+  nunca_enviado: { rotulo: 'Nunca recebeu', tom: 'neutro' },
+}
+
+export function situacaoContato(v: string | null | undefined): { rotulo: string; tom: Tom } {
+  return (v && SITUACOES_CONTATO[v as SituacaoContato]) || { rotulo: v || '—', tom: 'neutro' }
+}
+
+/** Cor de uma nota no estilo NPS: 0–6 vermelho, 7–8 amarelo, 9–10 verde. */
+export function tomNotaNps(nota: number | null | undefined): Tom {
+  if (typeof nota !== 'number') return 'neutro'
+  return nota <= 6 ? 'erro' : nota <= 8 ? 'atencao' : 'sucesso'
+}
+
+/** Cor pelo grupo da resposta (quando a API manda o grupo). */
+export function tomGrupo(grupo: string | null | undefined, nota?: number | null, tipo?: 'nps' | 'csat' | null): Tom {
+  if (grupo === 'promotor' || grupo === 'satisfeito') return 'sucesso'
+  if (grupo === 'neutro') return 'atencao'
+  if (grupo === 'detrator' || grupo === 'insatisfeito') return 'erro'
+  if (tipo === 'csat' && typeof nota === 'number') return nota <= 2 ? 'erro' : nota === 3 ? 'atencao' : 'sucesso'
+  return tomNotaNps(nota)
+}
+
+export const GRUPOS_NOTA: Record<string, string> = {
+  promotor: 'Promotor',
+  neutro: 'Neutro',
+  detrator: 'Detrator',
+  satisfeito: 'Satisfeito',
+  insatisfeito: 'Insatisfeito',
+}
+
+export const CANAIS: Record<CanalResposta, string> = {
+  email: 'E-mail',
+  whatsapp: 'WhatsApp',
+  link: 'Link',
+  qr: 'QR Code',
+  widget: 'Widget no site',
+  api: 'Integração',
+  importacao: 'Importação',
+  manual: 'Manual',
+}
+
+export const TIPOS_FORMULARIO: Record<TipoFormulario, { rotulo: string; tom: Tom }> = {
+  nps: { rotulo: 'NPS', tom: 'marca' },
+  csat: { rotulo: 'CSAT', tom: 'info' },
+  personalizado: { rotulo: 'Personalizado', tom: 'neutro' },
 }

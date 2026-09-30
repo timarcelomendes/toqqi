@@ -1,13 +1,46 @@
 /// <reference types="vitest/config" />
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, type Connect, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 
+const raiz = (caminho: string) => fileURLToPath(new URL(caminho, import.meta.url))
+
+/**
+ * Páginas públicas (/r/:token e /f/:codigo) são servidas por responder.html, uma entrada
+ * separada e leve. Em produção, configure o mesmo no servidor (veja o README).
+ */
+function paginasPublicas(): Plugin {
+  const reescrever: Connect.NextHandleFunction = (req, _res, next) => {
+    if (req.url && /^\/(r|f)\/[^/]/.test(req.url)) {
+      const i = req.url.indexOf('?')
+      req.url = '/responder.html' + (i >= 0 ? req.url.slice(i) : '')
+    }
+    next()
+  }
+  return {
+    name: 'toqqi-paginas-publicas',
+    configureServer(server) {
+      server.middlewares.use(reescrever)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(reescrever)
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [vue(), tailwindcss()],
+  plugins: [paginasPublicas(), vue(), tailwindcss()],
   resolve: {
-    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    alias: { '@': raiz('./src') },
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        app: raiz('./index.html'),
+        responder: raiz('./responder.html'),
+      },
+    },
   },
   test: {
     environment: 'jsdom',

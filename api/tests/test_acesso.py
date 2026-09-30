@@ -1,8 +1,9 @@
 """Cadastro, confirmação, entrada, redefinição de senha e sessões."""
 from datetime import datetime, timedelta, timezone
 
-from toqqi.core.email import caixa_memoria
 from util import SENHA, auth, cadastrar, conta_pronta, entrar, sql, token_do_email
+
+from toqqi.core.email import caixa_memoria
 
 API = "/api/v1"
 

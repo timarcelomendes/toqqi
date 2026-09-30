@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, lerErroApi, MENSAGEM_MUITAS_TENTATIVAS } from '@/api/erros'
-import { configurarCliente, requisitar } from '@/api/cliente'
+import { configurarCliente, nomeDoArquivo, requisitar } from '@/api/cliente'
 
 describe('lerErroApi', () => {
   it('lê código, mensagem e campos do formato da API', () => {
@@ -101,5 +101,28 @@ describe('requisitar', () => {
     configurarCliente({ obterToken: () => null, aoSessaoInvalida, aoSemPermissao })
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))))
     await expect(requisitar('/eu')).rejects.toMatchObject({ status: 0, codigo: 'sem_conexao' })
+  })
+})
+
+describe('etapa 2: upload e download', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('FormData vai sem Content-Type (o navegador põe o boundary)', async () => {
+    configurarCliente({ obterToken: () => 'abc' })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ id: 1 }), { status: 201 })))
+    const corpo = new FormData()
+    corpo.append('arquivo', new Blob(['a;b']), 'x.csv')
+    await requisitar('/importacao/analisar', { metodo: 'POST', corpo })
+    const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0]!
+    const headers = (init as RequestInit).headers as Record<string, string>
+    expect(headers['Content-Type']).toBeUndefined()
+    expect(headers.Authorization).toBe('Bearer abc')
+    expect((init as RequestInit).body).toBe(corpo)
+  })
+
+  it('lê o nome do arquivo do Content-Disposition', () => {
+    expect(nomeDoArquivo('attachment; filename="respostas.csv"', 'x')).toBe('respostas.csv')
+    expect(nomeDoArquivo("attachment; filename*=UTF-8''pesquisa%20p%C3%B3s.csv", 'x')).toBe('pesquisa pós.csv')
+    expect(nomeDoArquivo(null, 'padrao.csv')).toBe('padrao.csv')
   })
 })

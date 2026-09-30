@@ -1,4 +1,4 @@
-"""Aplicação FastAPI do Toqqi (etapa 1: acesso, equipe, sessões, auditoria)."""
+"""Aplicação FastAPI do Toqqi (etapas 1 e 2: acesso, equipe, cadastros, formulários, páginas públicas)."""
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -14,9 +14,15 @@ from toqqi.core.rate_limit import ao_exceder, limiter
 from toqqi.core.requisicao import ip_cliente, request_id
 from toqqi.modulos.acesso.rotas import router as acesso
 from toqqi.modulos.auditoria.rotas import router as auditoria
+from toqqi.modulos.cadastros.rotas import router as cadastros
 from toqqi.modulos.conta.rotas import router as conta
+from toqqi.modulos.contatos.rotas import router as contatos
+from toqqi.modulos.empresas.rotas import router as empresas
 from toqqi.modulos.equipe.rotas import router as equipe
+from toqqi.modulos.formularios.rotas import router as formularios
+from toqqi.modulos.importacao.rotas import router as importacao
 from toqqi.modulos.plataforma.rotas import router as plataforma
+from toqqi.modulos.publico.rotas import router as publico
 
 PREFIXO = "/api/v1"
 log = logging.getLogger("toqqi")
@@ -61,7 +67,8 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID"],
     )
 
-    for r in (acesso, equipe, conta, auditoria, plataforma):
+    for r in (acesso, equipe, conta, auditoria, plataforma, cadastros, empresas, contatos, importacao,
+              formularios, publico):
         app.include_router(r, prefix=PREFIXO)
 
     @app.get(f"{PREFIXO}/saude", tags=["infra"])

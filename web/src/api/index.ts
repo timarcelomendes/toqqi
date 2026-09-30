@@ -18,7 +18,8 @@ import type {
 
 export * from './tipos'
 export { ApiError, mensagemDoErro } from './erros'
-export { API_URL, configurarCliente } from './cliente'
+export { API_URL, baixarArquivo, configurarCliente, salvarBlob } from './cliente'
+export * from './etapa2'
 
 const publico = { autenticar: false } as const
 

@@ -1,7 +1,10 @@
-# Toqqi API · etapa 1 (acesso, equipe, sessões, auditoria)
+# Toqqi API · etapas 1 e 2
 
 FastAPI + SQLAlchemy 2 (psycopg 3) + Alembic + PostgreSQL 16.
-Contrato implementado: `../docs/api-etapa-1.md` (base `/api/v1`).
+Contratos implementados (base `/api/v1`):
+- `../docs/api-etapa-1.md`: acesso, equipe, sessões, auditoria;
+- `../docs/api-etapa-2.md`: cadastros auxiliares, responsáveis, empresas, contatos, importação de planilha,
+  formulários (modelos, resultados, CSV) e páginas públicas de pesquisa.
 
 ## Isolamento entre contas (RLS)
 O isolamento é garantido pelo próprio PostgreSQL:
@@ -16,7 +19,14 @@ O isolamento é garantido pelo próprio PostgreSQL:
 
 No código: `with em_conta(conta_id) as s:` para o trabalho normal (a conta vem da sessão do usuário) e
 `with modo_sistema() as s:` apenas onde não existe conta conhecida: busca do e-mail no login, busca de
-tokens de e-mail, cadastro, pedido de acesso, checagem de domínio de outra conta e área da plataforma.
+tokens de e-mail, cadastro, pedido de acesso, checagem de domínio de outra conta, área da plataforma e,
+nas páginas públicas de pesquisa, só a busca da conta pelo hash do token do convite ou pelo código público
+do formulário (todo o resto da página pública roda em `em_conta`). A limpeza das análises de importação
+vencidas também roda em modo sistema.
+
+Referências entre tabelas da conta (contato → empresa, empresa → grupo, resposta → formulário...) usam
+chave estrangeira composta `(id, conta_id)`: como a checagem de FK do PostgreSQL ignora o RLS, isso impede
+apontar para uma linha de outra conta mesmo conhecendo o id.
 
 ## Preparar o banco (uma vez)
 ```bash
@@ -55,6 +65,9 @@ para que o IP real do cliente seja usado no limite de tentativas, nas sessões e
 | `SUPERADMIN_EMAILS` | E-mails com acesso à área `/plataforma`, separados por vírgula |
 | `RATE_LIMIT_ENABLED` | `0` desliga o limite de tentativas (usado nos testes) |
 
+A etapa 2 não criou variáveis novas. `FRONTEND_URL` também é a base dos links de convite (`/r/{token}`)
+e `JWT_SECRET` entra no sal diário do hash de IP das respostas públicas.
+
 ## Testes
 ```bash
 pip install -r requirements-dev.txt
@@ -64,6 +77,27 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
 (`TEST_OWNER_DATABASE_URL`, padrão `toqqi:toqqi`) e a aplicação conecta como `toqqi_app`
 (`TEST_DATABASE_URL`), então o RLS é exercitado de verdade. E-mails vão para a caixa em memória.
 
+## Etapa 2: pontos de atenção
+- **Limite de contatos ativos** (essencial 300, profissional 1500, empresa/cortesia ilimitado; em teste vale o
+  plano): a API confere antes (importação) e o banco garante com o gatilho `contatos_limite_plano`
+  (`BEFORE INSERT OR UPDATE OF ativo`, trava consultiva por conta). O gatilho levanta SQLSTATE `TQ402`, que a
+  aplicação converte em 402 `limite_do_plano`. Editar um contato que já estava ativo não conta.
+- **Convites**: o token só aparece no link; o banco guarda o sha256 (`convites.token_hash`). A etapa 3 cria
+  convites com `toqqi.modulos.respostas.convites.criar_convite(sessao, formulario_id, contato_id=..., canal=...)`.
+- **Resposta registrada**: toda resposta nova passa por `toqqi.modulos.respostas.eventos.ao_registrar_resposta`
+  (lista `GANCHOS`, vazia por enquanto), na mesma transação da gravação.
+- **Respostas públicas repetidas**: `ip_hash = sha256(JWT_SECRET | dia UTC | ip)` (o IP não é guardado). A mesma
+  resposta do mesmo IP em 10 minutos recebe a mesma resposta 201, sem gravar de novo.
+- **Limites por IP nas páginas públicas**: abrir 30/min, responder convite 10/min, responder link 5/min.
+- **Webhook do Teams**: ao salvar, só `https://` sem IP/nome interno; ao testar, o nome é resolvido, todos os IPs
+  precisam ser públicos e a conexão é feita direto no IP conferido (Host/SNI com o nome), timeout 10 s, sem
+  seguir redirecionamento (`toqqi/core/rede.py`).
+- **Importação**: .csv (`;` `,` ou tab; UTF-8 com/sem BOM, senão cp1252/latin-1), .xlsx (openpyxl) e .xls (xlrd),
+  até 5 MB e 20.000 linhas. A análise fica em `importacoes` por 1 hora; importar é tudo ou nada e apaga a análise.
+- Contas novas (cadastro e plataforma) recebem os perfis Decisor/Influenciador e os formulários
+  "Pesquisa NPS" (padrão NPS) e "Satisfação pós-entrega" (padrão CSAT); a migração 0002 faz o mesmo nas contas
+  que já existiam.
+
 ## Estrutura
 ```
 toqqi/
@@ -71,13 +105,22 @@ toqqi/
   modelos.py              modelos ORM
   apresentacao.py         formato JSON de Usuario e Conta
   core/                   config, db (em_conta / modo_sistema), security (argon2id, JWT, tokens),
-                          errors, validacao, email, rate_limit, auditoria, permissoes, deps (requer)
+                          errors, validacao, email, rate_limit, auditoria, permissoes, deps (requer),
+                          texto (telefone, CNPJ/CPF, valores, datas), planos, paginacao, filtros, rede
   modulos/acesso/         cadastro, entrar, sair, confirmar, reenviar, esqueci, redefinir, pedir-acesso, /eu
   modulos/equipe/         usuários da conta e matriz de permissões
   modulos/conta/          segurança: duração da sessão e domínios liberados
   modulos/auditoria/      registro de atividades
   modulos/plataforma/     área do superadmin
-alembic/versions/0001_inicial.py   esquema completo + RLS + GRANTs
+  modulos/cadastros/      grupos, segmentos, perfis, cargos e responsáveis (teste do Teams)
+  modulos/empresas/       empresas (clientes da conta)
+  modulos/contatos/       contatos e link de pesquisa manual
+  modulos/importacao/     leitura de planilhas, nomes equivalentes, conferir e importar
+  modulos/formularios/    modelos prontos, validação das perguntas, padrões, resultados, CSV
+  modulos/respostas/      convites, validação/gravação de respostas, variáveis, "resposta registrada"
+  modulos/publico/        páginas públicas (convite e link público)
+alembic/versions/0001_inicial.py   esquema da etapa 1 + RLS + GRANTs
+alembic/versions/0002_cadastros_formularios.py   tabelas da etapa 2 + RLS + limite do plano + dados iniciais
 tests/                             pytest
 ```
 

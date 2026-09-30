@@ -2,7 +2,6 @@
 import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
-
 from util import conta_pronta, membro
 
 API = "/api/v1"
