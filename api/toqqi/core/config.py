@@ -24,6 +24,33 @@ class Config(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:5173"
     AUTO_MIGRATE: bool = True
     RATE_LIMIT_ENABLED: bool = True
+    # Papel restrito da aplicação. Com APP_DB_PASSWORD definido, a API cria/atualiza esse papel
+    # na subida (usando a conexão de migração) e passa a se conectar com ele. Ideal para o Render,
+    # onde só existe a URL do dono do banco.
+    APP_DB_ROLE: str = "toqqi_app"
+    APP_DB_PASSWORD: str = ""
+    # Primeiro acesso da plataforma: cria a conta "Toqqi" com este admin, se ainda não existir.
+    ADMIN_INICIAL_EMAIL: str = ""
+    ADMIN_INICIAL_SENHA: str = ""
+    ADMIN_INICIAL_NOME: str = "Administrador"
+    ADMIN_INICIAL_EMPRESA: str = "Toqqi"
+
+    @field_validator("DATABASE_URL", "MIGRATION_DATABASE_URL")
+    @classmethod
+    def _driver_psycopg(cls, v: str) -> str:
+        # O Render entrega postgres://...; o SQLAlchemy precisa de postgresql+psycopg://
+        for prefixo in ("postgres://", "postgresql://"):
+            if v.startswith(prefixo):
+                return "postgresql+psycopg://" + v[len(prefixo):]
+        return v
+
+    @field_validator("APP_DB_ROLE")
+    @classmethod
+    def _papel_valido(cls, v: str) -> str:
+        import re
+        if not re.fullmatch(r"[a-z_][a-z0-9_]{0,40}", v):
+            raise ValueError("APP_DB_ROLE inválido")
+        return v
 
     @field_validator("JWT_SECRET")
     @classmethod
@@ -43,6 +70,15 @@ class Config(BaseSettings):
     @property
     def url_migracao(self) -> str:
         return self.MIGRATION_DATABASE_URL or self.DATABASE_URL
+
+    @property
+    def url_app(self) -> str:
+        """URL da aplicação: com APP_DB_PASSWORD, a mesma base conectando como o papel restrito."""
+        if not self.APP_DB_PASSWORD:
+            return self.DATABASE_URL
+        from sqlalchemy.engine import make_url
+        return make_url(self.url_migracao).set(
+            username=self.APP_DB_ROLE, password=self.APP_DB_PASSWORD).render_as_string(hide_password=False)
 
 
 @lru_cache

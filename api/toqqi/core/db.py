@@ -21,9 +21,20 @@ from toqqi.core.config import config
 RAIZ_API = Path(__file__).resolve().parents[2]
 
 
+_url_app_forcada: str | None = None
+
+
+def usar_url_app(url: str) -> None:
+    """Chamado pela implantação quando o papel restrito não pôde ser criado (volta para o dono)."""
+    global _url_app_forcada
+    _url_app_forcada = url
+    engine.cache_clear()
+    _fabrica.cache_clear()
+
+
 @lru_cache
 def engine() -> Engine:
-    return create_engine(config().DATABASE_URL, pool_pre_ping=True, future=True)
+    return create_engine(_url_app_forcada or config().url_app, pool_pre_ping=True, future=True)
 
 
 @lru_cache

@@ -1,0 +1,77 @@
+# Blueprint do Render: cria banco, API e site de uma vez (Dashboard > New > Blueprint > este repositório).
+# Se o Render der outro endereço aos serviços (nome já usado), ajuste FRONTEND_URL, ALLOWED_ORIGINS,
+# API_PUBLIC_URL e VITE_API_URL e publique de novo.
+
+databases:
+  - name: toqqi-db
+    databaseName: toqqi
+    region: oregon
+    plan: free            # o plano gratuito expira em 30 dias e só pode haver 1 por conta; depois: basic-256mb
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: toqqi-api
+    runtime: python
+    region: oregon
+    plan: free            # dorme após 15 min sem uso; os envios automáticos (etapa 3) vão precisar do plano pago
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn toqqi.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
+    healthCheckPath: /api/v1/auth/regras-senha
+    buildFilter:
+      paths: ["api/**"]
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DATABASE_URL           # conexão do dono do banco (migrações)
+        fromDatabase:
+          name: toqqi-db
+          property: connectionString
+      - key: APP_DB_PASSWORD        # a API cria o papel restrito toqqi_app com esta senha
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://toqqi-web.onrender.com
+      - key: ALLOWED_ORIGINS
+        value: https://toqqi-web.onrender.com
+      - key: API_PUBLIC_URL
+        value: https://toqqi-api.onrender.com
+      - key: EMAIL_PROVIDER         # "console" até configurar o ZeptoMail (etapa 3)
+        value: console
+      - key: SUPERADMIN_EMAILS
+        sync: false                 # o Render pergunta na criação
+      - key: ADMIN_INICIAL_EMAIL
+        sync: false
+      - key: ADMIN_INICIAL_SENHA
+        sync: false
+
+  - type: web
+    name: toqqi-web
+    runtime: static
+    rootDir: web
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    buildFilter:
+      paths: ["web/**"]
+    envVars:
+      - key: VITE_API_URL
+        value: https://toqqi-api.onrender.com/api/v1
+    routes:
+      - type: rewrite
+        source: /r/*
+        destination: /responder.html
+      - type: rewrite
+        source: /f/*
+        destination: /responder.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin

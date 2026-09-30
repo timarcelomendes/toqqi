@@ -26,6 +26,10 @@ Os testes rodam no GitHub a cada envio (`.github/workflows/testes.yml`).
 2. Cadastros e pesquisas · 3. Envios · 4. Respostas e análise · 5. Conta e extras · 6. Troca.
 
 ## Publicação (Render)
+O arquivo `render.yaml` cria tudo de uma vez: no Render, **New > Blueprint** e escolha este repositório.
+Na criação, o Render pede `SUPERADMIN_EMAILS`, `ADMIN_INICIAL_EMAIL` e `ADMIN_INICIAL_SENHA` (seu acesso inicial).
+A API cria sozinha o papel restrito do banco e aplica as migrações a cada subida.
+
 Dois serviços apontando para este mesmo repositório:
 - **API** (Web Service): pasta raiz `api/`; em *Build Filters*, incluir só `api/**`.
 - **Site** (Static Site): pasta raiz `web/`; em *Build Filters*, incluir só `web/**`.

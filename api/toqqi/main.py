@@ -30,9 +30,12 @@ log = logging.getLogger("toqqi")
 
 @asynccontextmanager
 async def _ciclo(app: FastAPI):
+    from toqqi.core.implantacao import garantir_admin_inicial, garantir_papel_app
+    garantir_papel_app()          # antes das migrações: os GRANTs precisam do papel existindo
     if config().AUTO_MIGRATE:
         log.info("Aplicando migrações (AUTO_MIGRATE=1)...")
         migrar()
+    garantir_admin_inicial()
     yield
 
 
