@@ -77,3 +77,47 @@ def app_engine():
     eng.dispose()
 
 
+
+
+@pytest.fixture(autouse=True)
+def sem_rede(monkeypatch):
+    """Nada sai para a rede: a Graph API e os webhooks de saída só respondem pelos dublês dos testes."""
+    import httpx
+
+    from toqqi.core import rede
+    from toqqi.modulos.whatsapp import graph
+
+    def recusar(*_a, **_k):
+        raise httpx.ConnectError("rede bloqueada nos testes")
+
+    monkeypatch.setattr(graph, "transporte", httpx.MockTransport(recusar))
+    monkeypatch.setattr(rede, "enviar_post", recusar)
+
+
+@pytest.fixture
+def meta(monkeypatch):
+    """Graph API falsa (WhatsApp) + segredos do app da Meta configurados."""
+    import httpx
+    from util import APP_SECRET, VERIFY_TOKEN, MetaFalsa
+
+    from toqqi.core.config import config
+    from toqqi.modulos.whatsapp import graph
+
+    m = MetaFalsa()
+    monkeypatch.setattr(graph, "transporte", httpx.MockTransport(m))
+    monkeypatch.setattr(config(), "WHATSAPP_APP_SECRET", APP_SECRET)
+    monkeypatch.setattr(config(), "WHATSAPP_VERIFY_TOKEN", VERIFY_TOKEN)
+    return m
+
+
+@pytest.fixture
+def destino(monkeypatch):
+    """Endereço de webhook falso: o nome resolve para um IP público e o POST fica registrado."""
+    from util import DestinoFalso
+
+    from toqqi.core import rede
+
+    d = DestinoFalso()
+    monkeypatch.setattr(rede, "resolver", lambda host: ["52.96.1.10"])
+    monkeypatch.setattr(rede, "enviar_post", d)
+    return d

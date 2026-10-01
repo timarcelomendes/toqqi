@@ -1,28 +1,29 @@
 """Situação de cada contato na fila de envios, calculada no banco (serve à fila, aos filtros e a Contatos).
 
 Prioridade: inativo → saiu_da_lista → nao_saiu → enviando → aguardando → respondeu → na_fila →
-aguardando_intervalo. "Último convite" = convite mais novo do contato por e-mail ou WhatsApp.
+aguardando_intervalo. "Último convite" = convite mais novo do contato por e-mail ou WhatsApp. Lembrete só
+para convite que saiu de fato (o WhatsApp "link pronto" fica `aberto_no_whatsapp` e não recebe lembrete).
 """
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
-from sqlalchemy import Date, String, and_, case, cast, exists, func, or_, select, true
+from sqlalchemy import Date, String, and_, case, cast, func, or_, select, true
 from sqlalchemy.sql import Select
 
 from toqqi.core.relogio import FUSO, FUSO_NOME
 from toqqi.core.texto import so_digitos
-from toqqi.modelos import ConfigEnvios, Contato, Convite, Descadastro, Empresa, Envio, Grupo, Responsavel, Resposta
+from toqqi.modelos import ConfigEnvios, Contato, Convite, Empresa, Envio, Grupo, Responsavel, Resposta
 from toqqi.modulos.empresas.servico import ref
 from toqqi.modulos.envios.configuracao import prazo_aguardando
+from toqqi.modulos.envios.descadastro import descadastrado
+
+# envio que saiu de fato (e-mail enviado; WhatsApp enviado, entregue ou lido)
+SAIU = ("enviado", "entregue", "lido")
 
 
 def data_local(coluna):
     """Data (em São Paulo) de uma coluna timestamptz."""
     return cast(func.timezone(FUSO_NOME, coluna), Date)
-
-
-def descadastrado(email_coluna):
-    return exists().where(Descadastro.email == email_coluna)
 
 
 def dia_do_lembrete(cfg: ConfigEnvios, enviados):
@@ -48,7 +49,7 @@ class Estado:
 
 
 def estado(cfg: ConfigEnvios, hoje: date) -> Estado:
-    uc = (select(Convite.id, Convite.criado_em, Convite.respondido_em, Convite.lembretes_enviados, Convite.canal,
+    uc = (select(Convite.id, Convite.criado_em, Convite.respondido_em, Convite.lembretes_enviados,
                  Convite.ultimo_lembrete_em)
           .where(Convite.contato_id == Contato.id, Convite.canal.in_(("email", "whatsapp")))
           .order_by(Convite.criado_em.desc(), Convite.id.desc()).limit(1)
@@ -59,7 +60,7 @@ def estado(cfg: ConfigEnvios, hoje: date) -> Estado:
     ultima_resposta = (select(func.max(Resposta.criada_em)).where(Resposta.contato_id == Contato.id)
                        .correlate(Contato).scalar_subquery())
     data_convite = data_local(uc.c.criado_em)
-    saiu = or_(descadastrado(Contato.email), Contato.recebe_pesquisas.is_(False))
+    saiu = or_(descadastrado(Contato.email, Contato.telefone), Contato.recebe_pesquisas.is_(False))
     respondeu_ultimo = or_(uc.c.respondido_em.is_not(None),
                            and_(ultima_resposta.is_not(None),
                                 or_(uc.c.id.is_(None), ultima_resposta >= uc.c.criado_em)))
@@ -80,7 +81,7 @@ def estado(cfg: ConfigEnvios, hoje: date) -> Estado:
         proximo_lembrete = cast(None, Date)
     else:
         proximo_lembrete = case(
-            (and_(aguardando, uc.c.canal == "email", ue.c.situacao == "enviado", dia.is_not(None)),
+            (and_(aguardando, ue.c.situacao.in_(SAIU), dia.is_not(None)),
              func.greatest(data_convite + dia, hoje)),
             else_=None,
         )

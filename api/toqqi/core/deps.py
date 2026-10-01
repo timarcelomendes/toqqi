@@ -98,6 +98,12 @@ def requer(*permissoes: str):
     return _dep
 
 
+def requer_admin(ctx: Contexto = Depends(contexto_atual)) -> Contexto:
+    if ctx.perfil != "admin":
+        raise AppError(403, "sem_permissao", "Só o administrador da conta pode fazer isso.")
+    return ctx
+
+
 def requer_superadmin(ctx: Contexto = Depends(contexto_atual)) -> Contexto:
     if not ctx.superadmin:
         raise AppError(403, "sem_permissao", "Esta área é exclusiva da equipe Toqqi.")

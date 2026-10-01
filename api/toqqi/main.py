@@ -1,4 +1,5 @@
-"""Aplicação FastAPI do Toqqi (etapas 1 a 3a: acesso, equipe, cadastros, formulários, páginas públicas, envios)."""
+"""Aplicação FastAPI do Toqqi (etapas 1 a 3b: acesso, equipe, cadastros, formulários, páginas públicas, envios,
+integrações e WhatsApp automático)."""
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -23,8 +24,12 @@ from toqqi.modulos.envios.rotas import router_interno as interno
 from toqqi.modulos.equipe.rotas import router as equipe
 from toqqi.modulos.formularios.rotas import router as formularios
 from toqqi.modulos.importacao.rotas import router as importacao
+from toqqi.modulos.integracoes.rotas import router as integracoes
+from toqqi.modulos.integracoes.rotas import router_chave as integracao
 from toqqi.modulos.plataforma.rotas import router as plataforma
 from toqqi.modulos.publico.rotas import router as publico
+from toqqi.modulos.whatsapp.rotas import router as whatsapp
+from toqqi.modulos.whatsapp.rotas import router_publico as whatsapp_publico
 
 PREFIXO = "/api/v1"
 log = logging.getLogger("toqqi")
@@ -74,12 +79,12 @@ def create_app() -> FastAPI:
         allow_origins=config().origens,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Api-Key"],
         expose_headers=["X-Request-ID"],
     )
 
     for r in (acesso, equipe, conta, auditoria, plataforma, cadastros, empresas, contatos, importacao,
-              formularios, publico, envios, interno):
+              formularios, publico, envios, interno, integracoes, whatsapp, integracao, whatsapp_publico):
         app.include_router(r, prefix=PREFIXO)
 
     @app.get(f"{PREFIXO}/saude", tags=["infra"])

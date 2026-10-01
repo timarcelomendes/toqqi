@@ -45,6 +45,12 @@ services:
         value: producao
       - key: TAREFAS_TOKEN          # usado pelo agendador (GitHub Actions) para rodar robô e lembretes
         generateValue: true
+      - key: SEGREDOS_KEY           # cifra os tokens do WhatsApp guardados no banco
+        generateValue: true
+      - key: WHATSAPP_VERIFY_TOKEN  # código de verificação do webhook, colado no painel da Meta
+        generateValue: true
+      - key: WHATSAPP_APP_SECRET    # chave secreta do app da Meta (preencher quando o app existir)
+        sync: false
       - key: SUPERADMIN_EMAILS
         sync: false                 # o Render pergunta na criação
       - key: ADMIN_INICIAL_EMAIL

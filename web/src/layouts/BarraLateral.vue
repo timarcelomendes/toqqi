@@ -14,7 +14,7 @@ function ativoNa(i: ItemNavegacao, isActive: boolean) {
 }
 
 const principal = computed(() => filtrarNavegacao(navegacaoPrincipal, sessao.pode, sessao.superadmin))
-const administracao = computed(() => filtrarNavegacao(navegacaoAdministracao, sessao.pode, sessao.superadmin))
+const administracao = computed(() => filtrarNavegacao(navegacaoAdministracao, sessao.pode, sessao.superadmin, sessao.admin))
 
 function classes(ativo: boolean) {
   return [

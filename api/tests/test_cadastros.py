@@ -104,7 +104,7 @@ def test_testar_teams(client, admin, monkeypatch):
     chamadas = []
     monkeypatch.setattr(rede, "resolver", lambda host: ["52.96.1.10"])
 
-    def post_ok(url, ip, host, corpo):
+    def post_ok(url, ip, host, corpo, cabecalhos=None):
         chamadas.append((url, ip, host, corpo))
         return httpx.Response(200, text="1")
 

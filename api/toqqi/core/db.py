@@ -8,12 +8,12 @@ Toda transação da aplicação define, com set_config(..., true) (vale só na t
 
 Sem nenhum dos dois, o papel da aplicação não enxerga nenhuma linha.
 """
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
 
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from toqqi.core.config import config
@@ -56,6 +56,16 @@ def modo_sistema() -> Iterator[Session]:
     with _fabrica()() as s, s.begin():
         s.execute(text("select set_config('app.sistema', 'on', true)"))
         yield s
+
+
+def travar(s: Session, chave: str) -> None:
+    """Trava pelo texto `chave` até o fim da transação (serializa operações concorrentes da mesma chave)."""
+    s.execute(text("select pg_advisory_xact_lock(hashtextextended(:k, 0))"), {"k": chave})
+
+
+def apos_commit(s: Session, fn: Callable[[], None]) -> None:
+    """Roda `fn` depois que a transação de `s` for confirmada (não roda se ela for desfeita)."""
+    event.listen(s, "after_commit", lambda _s: fn(), once=True)
 
 
 def migrar() -> None:

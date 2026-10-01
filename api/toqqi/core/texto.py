@@ -33,6 +33,15 @@ def normalizar_telefone(v: str) -> str:
     return d
 
 
+# Celular brasileiro sem o nono dígito (como o WhatsApp às vezes informa): 55 + DDD + 8 dígitos de 6 a 9.
+RE_CELULAR_SEM_NOVE = r"^(55[0-9]{2})([6-9][0-9]{7})$"
+
+
+def telefone_canonico(t: str) -> str:
+    """Só dígitos; celular brasileiro de 12 dígitos ganha o nono dígito ("551187654321" → "5511987654321")."""
+    return re.sub(RE_CELULAR_SEM_NOVE, r"\g<1>9\g<2>", so_digitos(t))
+
+
 def _cpf_valido(d: str) -> bool:
     if len(d) != 11 or d == d[0] * 11:
         return False

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bell, Bot, MoreHorizontal, Settings } from 'lucide-vue-next'
-import { enviosApi, mensagemDoErro, type PreCondicoes, type ResultadoTarefa } from '@/api'
+import { Bell, Bot, MessageCircle, MoreHorizontal, Settings } from 'lucide-vue-next'
+import { enviosApi, mensagemDoErro, whatsappAutomaticoApi, type PreCondicoes, type ResultadoTarefa, type WhatsappIntegracao } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
 import { useSessaoStore } from '@/stores/sessao'
@@ -16,6 +16,7 @@ import AbaDescadastros from './AbaDescadastros.vue'
 import AbaFila from './AbaFila.vue'
 import AbaHistorico from './AbaHistorico.vue'
 import AvisoPreCondicoes from './AvisoPreCondicoes.vue'
+import { estadoFranquia } from '@/modulos/integracoes/logica'
 
 type Aba = 'contatos' | 'historico' | 'descadastros'
 const abas: { valor: Aba; rotulo: string }[] = [
@@ -44,6 +45,18 @@ const fila = ref<InstanceType<typeof AbaFila> | null>(null)
 const historico = ref<InstanceType<typeof AbaHistorico> | null>(null)
 const ocupado = ref<'lembretes' | 'robo' | null>(null)
 const admin = computed(() => sessao.usuario?.perfil === 'admin')
+
+const whatsapp = ref<WhatsappIntegracao | null>(null)
+const franquia = computed(() => (whatsapp.value?.conectado ? estadoFranquia(whatsapp.value.franquia) : null))
+const corFranquia = { ok: 'text-sucesso', atencao: 'text-atencao', esgotada: 'text-erro' } as const
+
+async function carregarWhatsapp() {
+  try {
+    whatsapp.value = await whatsappAutomaticoApi.obter()
+  } catch {
+    /* sem o WhatsApp automático, a tela segue igual */
+  }
+}
 
 async function carregarPreCondicoes() {
   try {
@@ -122,7 +135,10 @@ async function rodarRobo() {
   }
 }
 
-onMounted(carregarPreCondicoes)
+onMounted(() => {
+  carregarPreCondicoes()
+  carregarWhatsapp()
+})
 </script>
 
 <template>
@@ -140,6 +156,14 @@ onMounted(carregarPreCondicoes)
       </MenuSuspenso>
     </template>
   </CabecalhoPagina>
+
+  <p v-if="whatsapp && franquia" class="-mt-3 mb-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-texto-suave sm:-mt-5">
+    <MessageCircle class="size-4 text-emerald-700" aria-hidden="true" />
+    <span>
+      WhatsApp automático: <strong class="tabular-nums" :class="corFranquia[franquia.nivel]">{{ franquia.usadas }} de {{ franquia.limite }}</strong> no mês<template v-if="!whatsapp.ativo"> (desligado)</template><template v-else-if="franquia.nivel === 'esgotada'">{{ whatsapp.franquia.excedente_ativo ? ' (franquia acabou: mensagens extras liberadas)' : ' (franquia acabou: indo por e-mail)' }}</template>
+    </span>
+    <RouterLink v-if="admin" to="/integracoes?aba=whatsapp" class="link">Ver detalhes</RouterLink>
+  </p>
 
   <AvisoPreCondicoes v-if="preCondicoes && !preCondicoes.pronto" :dados="preCondicoes" class="mb-6" />
 

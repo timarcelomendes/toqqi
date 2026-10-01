@@ -1,5 +1,6 @@
 """Utilitários dos testes."""
 import itertools
+import json
 import re
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -222,3 +223,116 @@ def fixar_relogio(monkeypatch, momento: datetime) -> None:
 
 def data_iso(d: date | datetime) -> str:
     return (d.date() if isinstance(d, datetime) else d).isoformat()
+
+
+# ---- etapa 3b ---------------------------------------------------------------
+
+APP_SECRET = "segredo-do-app-da-meta"
+VERIFY_TOKEN = "token-de-verificacao"
+PNID = "1234567890"
+WABA = "9876543210"
+TOKEN_META = "EAAGtokenpermanente" + "x" * 40
+
+
+def gerar_chave(client, h: dict) -> str:
+    r = client.post(f"{API}/integracoes/chave", headers=h)
+    assert r.status_code == 201, r.text
+    return r.json()["chave"]
+
+
+def evento(client, chave: str, rota: str = "pesquisas", **corpo):
+    return client.post(f"{API}/integracao/{rota}", headers={"X-Api-Key": chave}, json=corpo)
+
+
+def modelo_meta(**extra) -> dict:
+    """Modelo (template) aprovado como a Graph API devolve."""
+    return {
+        "name": "pesquisa_toqqi", "language": "pt_BR", "status": "APPROVED", "category": "UTILITY", "id": "1",
+        "components": [
+            {"type": "BODY", "text": "Olá, {{1}}! A {{2}} quer saber como foi {{3}}. Leva 1 minuto."},
+            {"type": "BUTTONS", "buttons": [{"type": "QUICK_REPLY", "text": "Não quero receber"},
+                                            {"type": "URL", "text": "Responder", "url": "http://app.teste/r/{{1}}"}]},
+        ],
+        **extra,
+    }
+
+
+class MetaFalsa:
+    """Dublê da Graph API (usado com httpx.MockTransport)."""
+
+    def __init__(self):
+        self.pedidos = []
+        self.mensagens = []          # corpos dos POST /{phone_number_id}/messages
+        self.modelos = [modelo_meta()]
+        self.erro_envio = None       # (status, {"code": ..., "message": ...})
+        self.erro_numero = None
+        self._n = 0
+
+    def __call__(self, request):
+        import httpx
+
+        self.pedidos.append(request)
+        partes = request.url.path.strip("/").split("/")[1:]
+        if request.method == "POST" and partes[-1] == "messages":
+            self.mensagens.append(json.loads(request.content))
+            if self.erro_envio:
+                status, erro = self.erro_envio
+                return httpx.Response(status, json={"error": erro})
+            self._n += 1
+            return httpx.Response(200, json={"messages": [{"id": f"wamid.{self._n}"}]})
+        if partes[-1] == "message_templates":
+            return httpx.Response(200, json={"data": self.modelos})
+        if self.erro_numero:
+            status, erro = self.erro_numero
+            return httpx.Response(status, json={"error": erro})
+        return httpx.Response(200, json={"display_phone_number": "+55 11 4000-1234",
+                                         "verified_name": "Alfa Distribuidora", "id": partes[0]})
+
+
+def conectar_whatsapp(client, h: dict, pnid: str = PNID, **extra):
+    corpo = {"phone_number_id": pnid, "waba_id": WABA, "token": TOKEN_META, "modelo_nome": "pesquisa_toqqi",
+             "modelo_idioma": "pt_BR", **extra}
+    return client.put(f"{API}/integracoes/whatsapp", headers=h, json=corpo)
+
+
+def aviso_meta(client, corpo: dict, segredo: str = APP_SECRET):
+    """POST assinado no webhook público da Meta."""
+    import hashlib
+    import hmac
+
+    bruto = json.dumps(corpo).encode()
+    assinatura = "sha256=" + hmac.new(segredo.encode(), bruto, hashlib.sha256).hexdigest()
+    return client.post(f"{API}/publico/whatsapp/webhook", content=bruto,
+                       headers={"Content-Type": "application/json", "X-Hub-Signature-256": assinatura})
+
+
+def _mudanca(pnid: str, valor: dict) -> dict:
+    return {"object": "whatsapp_business_account", "entry": [{"id": WABA, "changes": [{"field": "messages", "value": {
+        "messaging_product": "whatsapp", "metadata": {"display_phone_number": "551140001234", "phone_number_id": pnid},
+        **valor}}]}]}
+
+
+def aviso_status(wamid: str, status: str, codigo: int | None = None, pnid: str = PNID) -> dict:
+    st = {"id": wamid, "status": status, "timestamp": "1700000000", "recipient_id": "5511987654321"}
+    if codigo:
+        st["errors"] = [{"code": codigo, "title": "erro"}]
+    return _mudanca(pnid, {"statuses": [st]})
+
+
+def aviso_mensagem(de: str, texto: str, pnid: str = PNID) -> dict:
+    return _mudanca(pnid, {"contacts": [{"wa_id": de, "profile": {"name": "Cliente"}}], "messages": [
+        {"from": de, "id": "wamid.entrada", "timestamp": "1700000000", "type": "text", "text": {"body": texto}}]})
+
+
+class DestinoFalso:
+    """Substitui core.rede.enviar_post: registra cada POST e responde com `status`."""
+
+    def __init__(self, status: int = 200):
+        self.status = status
+        self.recebidos = []
+
+    def __call__(self, url, ip, host, corpo, cabecalhos=None):
+        import httpx
+
+        self.recebidos.append({"url": url, "ip": ip, "host": host, "corpo": corpo, "cabecalhos": cabecalhos or {}})
+        return httpx.Response(self.status, text="ok")

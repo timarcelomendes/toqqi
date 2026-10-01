@@ -11,6 +11,8 @@ export const INTERVALO_ATUALIZACAO_MS = 3000
 export const SITUACOES_ENVIO: Record<SituacaoEnvio, { rotulo: string; tom: Tom }> = {
   pendente: { rotulo: 'Enviando...', tom: 'marca' },
   enviado: { rotulo: 'Enviado', tom: 'sucesso' },
+  entregue: { rotulo: 'Entregue', tom: 'sucesso' },
+  lido: { rotulo: 'Lido', tom: 'marca' },
   erro: { rotulo: 'Não saiu', tom: 'erro' },
   aberto_no_whatsapp: { rotulo: 'Aberto no WhatsApp', tom: 'info' },
 }
@@ -37,6 +39,7 @@ export const ORIGENS_DESCADASTRO: Record<string, string> = {
   link: 'Pelo link do e-mail',
   um_clique: 'Pelo botão do programa de e-mail',
   manual: 'Registrado pela equipe',
+  whatsapp: 'Pediu pelo WhatsApp (SAIR)',
 }
 
 export function rotuloDe<T extends string>(mapa: Record<T, string>, v: string | null | undefined): string {

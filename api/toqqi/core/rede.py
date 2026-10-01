@@ -1,4 +1,4 @@
-"""Chamadas HTTP de saída para endereços informados pelo cliente (ex.: webhook do Teams).
+"""Chamadas HTTP de saída para endereços informados pelo cliente (webhook do Teams, webhooks de saída).
 
 Proteção contra SSRF: só https, o nome precisa resolver apenas para IPs públicos e a conexão é feita
 direto no IP conferido (o nome vai no Host e no SNI), sem seguir redirecionamentos.
@@ -59,16 +59,18 @@ def resolver(host: str) -> list[str]:
     return sorted({i[4][0] for i in infos})
 
 
-def enviar_post(url: str, ip: str, host: str, corpo: dict) -> httpx.Response:
-    """POST direto no IP conferido (trocável nos testes)."""
+def enviar_post(url: str, ip: str, host: str, corpo: dict | bytes, cabecalhos: dict | None = None) -> httpx.Response:
+    """POST direto no IP conferido (trocável nos testes). `corpo` em bytes vai como está (JSON já serializado)."""
     partes = urlsplit(url)
     ip_url = f"[{ip}]" if ":" in ip else ip
     alvo = urlunsplit((partes.scheme, ip_url, partes.path or "/", partes.query, ""))
+    extras = {"content": corpo, "headers": {"Content-Type": "application/json", **(cabecalhos or {}), "Host": host}} \
+        if isinstance(corpo, bytes) else {"json": corpo, "headers": {"Host": host}}
     with httpx.Client(timeout=10, follow_redirects=False) as c:
-        return c.post(alvo, json=corpo, headers={"Host": host}, extensions={"sni_hostname": host})
+        return c.post(alvo, extensions={"sni_hostname": host}, **extras)
 
 
-def post_json_seguro(url: str, corpo: dict) -> httpx.Response:
+def post_json_seguro(url: str, corpo: dict | bytes, cabecalhos: dict | None = None) -> httpx.Response:
     """Levanta EnderecoProibido se o destino não for público; httpx.HTTPError em falha de rede."""
     conferir_url_https(url)
     host = urlsplit(url).hostname.lower().rstrip(".")
@@ -78,4 +80,4 @@ def post_json_seguro(url: str, corpo: dict) -> httpx.Response:
         raise EnderecoProibido("Não foi possível encontrar este endereço.")
     if not ips or not all(ip_publico(ip) for ip in ips):
         raise EnderecoProibido("O endereço precisa ser público.")
-    return enviar_post(url, ips[0], host, corpo)
+    return enviar_post(url, ips[0], host, corpo, cabecalhos)

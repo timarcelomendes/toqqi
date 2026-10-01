@@ -27,8 +27,15 @@ from toqqi.modulos.envios.configuracao import (
 from toqqi.modulos.envios.descadastro import esta_descadastrado
 from toqqi.modulos.envios.esquemas import FiltrosFila
 from toqqi.modulos.envios.fila import consulta_fila, contato_envio_json, descadastrado, filtrar, ordem
-from toqqi.modulos.envios.processamento import criar_convite_email, marcar_convite_enviado, novo_envio
+from toqqi.modulos.envios.processamento import (
+    criar_convite,
+    marcar_convite_enviado,
+    novo_envio,
+    ordem_canais,
+    whatsapp_da_config,
+)
 from toqqi.modulos.respostas.convites import link_do_convite, novo_convite
+from toqqi.modulos.whatsapp import franquia
 
 Pares = list[tuple[int, int]]
 MAX_IGNORADOS = 500
@@ -58,6 +65,8 @@ def _validar(s, v: dict) -> None:
         campos["dias_lembretes"] = "Os prazos precisam ser crescentes, como 3, 7 e 15."
     if "{link}" not in v["texto_whatsapp"]:
         campos["texto_whatsapp"] = "Inclua {link} no texto: é ali que entra o link da pesquisa."
+    if v["canal"] != "email" and franquia.conectada(s) is None:
+        campos["canal"] = "Conecte o WhatsApp em Integrações antes de escolher este canal."
     f = s.get(Formulario, v["formulario_id"]) if v["formulario_id"] else None
     if f is None or not f.ativo or f.arquivado:
         campos["formulario_id"] = "Escolha um formulário ativo da conta."
@@ -127,7 +136,7 @@ def resumo(ctx: Contexto) -> dict:
             ativos(q.c.proximo_lembrete == hoje).label("lembretes_hoje"),
         ).select_from(q)).one()
         enviados = s.scalar(select(func.count()).select_from(Envio).where(
-            Envio.situacao.in_(("enviado", "aberto_no_whatsapp")),
+            Envio.situacao.in_(("enviado", "entregue", "lido", "aberto_no_whatsapp")),
             func.coalesce(Envio.enviado_em, Envio.criado_em) >= relogio.agora() - timedelta(days=30)))
     return {**linha._asdict(), "enviados_30d": enviados}
 
@@ -142,12 +151,12 @@ def listar_contatos(ctx: Contexto, filtros: FiltrosFila, pg: Pagina) -> dict:
     return pg.resultado([contato_envio_json(x) for x in linhas], total)
 
 
-def _motivo(linha, cfg, hoje, ignorar_descanso: bool) -> str | None:
+def _motivo(linha, cfg, hoje, ignorar_descanso: bool, wa) -> str | None:
     if not linha.ativo:
         return "Contato inativo"
     if linha.saiu:
         return "Saiu da lista"
-    if not linha.email:
+    if not linha.email and not (wa is not None and linha.telefone):
         return "Sem e-mail"
     if linha.situacao == "enviando":
         return "Já está sendo enviado"
@@ -173,14 +182,17 @@ def disparar(ctx: Contexto, dados) -> tuple[dict, Pares]:
             if f.situacao is None:
                 f = f.model_copy(update={"situacao": "na_fila"})
             linhas = s.execute(select(q).where(*filtrar(q, f, hoje)).order_by(*ordem(q))).all()
+        wa = whatsapp_da_config(s, cfg)
         envios: Pares = []
         ignorados = []
         for linha in linhas:
-            motivo = _motivo(linha, cfg, hoje, dados.ignorar_descanso)
-            if motivo:
-                ignorados.append({"contato_id": linha.id, "nome": linha.nome, "motivo": motivo})
+            motivo = _motivo(linha, cfg, hoje, dados.ignorar_descanso, wa)
+            e = None if motivo else criar_convite(s, cfg, s.get(Contato, linha.id), "manual", ordem_canais(cfg),
+                                                  wa, usuario_id=ctx.usuario_id)
+            if e is None:
+                ignorados.append({"contato_id": linha.id, "nome": linha.nome,
+                                  "motivo": motivo or "Sem e-mail e a franquia de WhatsApp do mês acabou"})
                 continue
-            e = criar_convite_email(s, cfg, s.get(Contato, linha.id), "manual", ctx.usuario_id)
             envios.append((ctx.conta_id, e.id))
         if envios:
             registrar(s, "envio_manual", "info", {"quantidade": len(envios), "ignorados": len(ignorados)},
@@ -189,7 +201,7 @@ def disparar(ctx: Contexto, dados) -> tuple[dict, Pares]:
 
 
 def _pode_receber(s, c: Contato) -> bool:
-    return c.ativo and c.recebe_pesquisas and bool(c.email) and not esta_descadastrado(s, c.email)
+    return c.ativo and c.recebe_pesquisas and bool(c.email) and not esta_descadastrado(s, c.email, c.telefone)
 
 
 def tentar_de_novo(ctx: Contexto, envio_id: int) -> tuple[dict, Pares]:
@@ -228,7 +240,7 @@ def historico(ctx: Contexto, f, pg: Pagina) -> dict:
     mais_novo = exists().where(novo.contato_id == Envio.contato_id, novo.tipo == Envio.tipo, novo.id > Envio.id)
     pode = and_(Envio.situacao == "erro", Envio.canal == "email", Contato.id.is_not(None),
                 Contato.ativo.is_(True), Contato.recebe_pesquisas.is_(True), Contato.email.is_not(None),
-                not_(descadastrado(Contato.email)), not_(mais_novo))
+                not_(descadastrado(Contato.email, Contato.telefone)), not_(mais_novo))
     base = (select(Envio, Contato.nome, Usuario.nome, pode)
             .outerjoin(Contato, Contato.id == Envio.contato_id)
             .outerjoin(Usuario, Usuario.id == Envio.usuario_id))
@@ -264,7 +276,7 @@ def whatsapp(ctx: Contexto, contato_id: int, dados) -> dict:
             raise AppError(422, "dados_invalidos", msg, {"telefone": msg})
         if not c.ativo:
             raise AppError(409, "contato_inativo", "Este contato está inativo.")
-        if not c.recebe_pesquisas or esta_descadastrado(s, c.email):
+        if not c.recebe_pesquisas or esta_descadastrado(s, c.email, c.telefone):
             raise AppError(409, "saiu_da_lista", "Este contato saiu da lista e não recebe mais pesquisas.")
         if dados.formulario_id is None and formulario_ok(s, cfg):
             f = s.get(Formulario, cfg.formulario_id)

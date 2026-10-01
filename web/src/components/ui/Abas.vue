@@ -33,7 +33,7 @@ defineExpose({ idAba, idPainel })
 
 <template>
   <div>
-    <div role="tablist" :aria-label="rotulo" class="flex gap-1 border-b border-borda" @keydown="aoTeclar">
+    <div role="tablist" :aria-label="rotulo" class="flex gap-1 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-borda)]" @keydown="aoTeclar">
       <button
         v-for="a in abas"
         :id="idAba(a.valor)"
@@ -44,7 +44,7 @@ defineExpose({ idAba, idPainel })
         :aria-selected="modelo === a.valor"
         :aria-controls="idPainel(a.valor)"
         :tabindex="modelo === a.valor ? 0 : -1"
-        class="-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors"
+        class="shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors"
         :class="modelo === a.valor ? 'border-marca text-texto' : 'border-transparent text-texto-fraco hover:text-texto'"
         @click="modelo = a.valor"
       >

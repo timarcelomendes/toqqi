@@ -56,6 +56,7 @@ def novo_convite(
     contexto: dict | None = None,
     empresa_id: int | None = None,
     criado_em: datetime | None = None,
+    evento: str | None = None,
 ) -> tuple[Convite, str]:
     """Cria o convite na conta da transação e devolve (convite, token)."""
     assert canal in CANAIS_CONVITE
@@ -72,7 +73,7 @@ def novo_convite(
     extras = {"criado_em": criado_em} if criado_em else {}
     convite = Convite(token_hash=h, token_semente=semente, formulario_id=formulario_id, contato_id=contato_id,
                       empresa_id=empresa_id, canal=canal, assunto=(assunto or None), referencia=(referencia or None),
-                      contexto=limpar_contexto(contexto), **extras)
+                      contexto=limpar_contexto(contexto), evento=(evento or None), **extras)
     s.add(convite)
     s.flush()
     return convite, token

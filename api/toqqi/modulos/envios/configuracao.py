@@ -30,6 +30,7 @@ PADROES = {
                       "Sua opinião ajuda a {empresa} a melhorar. Leva menos de um minuto.",
     "texto_whatsapp": "Olá, {nome}! Aqui é da {empresa}. Pode responder uma pesquisa rápida? Leva 1 minuto: {link}",
     "agradecimento_ativo": True,
+    "canal": "email",
     "agradecimento": {
         "promotor": "Olá, {nome}! Muito obrigado pela sua nota {nota}. Ficamos felizes em saber que você "
                     "confia na {empresa}.",

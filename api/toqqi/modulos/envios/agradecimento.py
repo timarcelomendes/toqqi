@@ -40,7 +40,8 @@ def ao_registrar_resposta(s: Session, r: Resposta) -> None:
     hoje = relogio.hoje()
     if contato.proximo_envio is None or contato.proximo_envio <= hoje:
         contato.proximo_envio = hoje + timedelta(days=cfg.intervalo_dias)
-    if not (cfg.agradecimento_ativo and r.grupo and contato.email) or esta_descadastrado(s, contato.email):
+    if not (cfg.agradecimento_ativo and r.grupo and contato.email) or esta_descadastrado(s, contato.email,
+                                                                                         contato.telefone):
         return
     if not pronto(s, cfg):
         return

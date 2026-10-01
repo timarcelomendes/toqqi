@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Search, UserX } from 'lucide-vue-next'
+import { MessageCircle, Search, UserX } from 'lucide-vue-next'
 import { enviosApi, mensagemDoErro, type Descadastro } from '@/api'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarDataHora } from '@/utils/datas'
+import { exibirTelefone } from '@/utils/formatos'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Campo from '@/components/ui/Campo.vue'
@@ -24,7 +25,7 @@ const busca = ref('')
 const modalAberto = ref(false)
 
 const colunas: Coluna[] = [
-  { chave: 'email', rotulo: 'E-mail' },
+  { chave: 'email', rotulo: 'E-mail ou telefone' },
   { chave: 'motivo', rotulo: 'Motivo', classe: 'hidden md:table-cell' },
   { chave: 'origem', rotulo: 'Como saiu', classe: 'hidden lg:table-cell' },
   { chave: 'criado_em', rotulo: 'Quando', classe: 'hidden sm:table-cell' },
@@ -68,8 +69,8 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex flex-col gap-4">
     <Alerta tom="info" titulo="Quem sai da lista não recebe mais nenhuma pesquisa da sua empresa">
-      Nem por e-mail, nem pelo WhatsApp, mesmo que o contato seja importado de novo. Só a própria pessoa pode voltar a receber,
-      pelo link "Não quero mais receber pesquisas" de um e-mail que recebeu.
+      Nem por e-mail, nem pelo WhatsApp, mesmo que o contato seja importado de novo. Quem responde SAIR no WhatsApp automático também
+      entra nesta lista. Só a própria pessoa pode voltar a receber, pelo link "Não quero mais receber pesquisas" de um e-mail que recebeu.
     </Alerta>
 
     <div class="cartao">
@@ -85,10 +86,16 @@ onBeforeUnmount(() => {
       <Alerta v-if="erro" tom="erro" class="m-4">
         {{ erro }} <button type="button" class="link ml-1" @click="carregar">Tentar de novo</button>
       </Alerta>
-      <Tabela v-else :colunas="colunas" :linhas="linhas" :chave="(d) => `${d.email}-${d.criado_em}`" :carregando="carregando" legenda="Pessoas que saíram da lista">
+      <Tabela v-else :colunas="colunas" :linhas="linhas" :chave="(d) => `${d.email ?? ''}-${d.telefone ?? ''}-${d.criado_em}`" :carregando="carregando" legenda="Pessoas que saíram da lista">
         <template #cel-email="{ linha: d }">
           <div class="min-w-0">
-            <p class="break-all font-semibold text-texto">{{ d.email }}</p>
+            <p v-if="d.email" class="break-all font-semibold text-texto">{{ d.email }}</p>
+            <p v-if="d.telefone" class="flex items-center gap-1.5" :class="d.email ? 'text-sm text-texto-suave' : 'font-semibold text-texto'">
+              <MessageCircle class="size-3.5 shrink-0 text-emerald-700" aria-hidden="true" />
+              <span class="sr-only">Telefone: </span>{{ exibirTelefone(d.telefone) || d.telefone }}
+            </p>
+            <p v-if="!d.email && !d.telefone" class="font-semibold text-texto">—</p>
+            <p class="text-xs text-texto-fraco lg:hidden">{{ rotuloDe(ORIGENS_DESCADASTRO, d.origem) }}</p>
             <RouterLink v-if="d.contato" :to="`/contatos/${d.contato.id}`" class="text-sm text-texto-suave hover:underline">{{ d.contato.nome }}</RouterLink>
             <p v-if="d.motivo" class="mt-0.5 text-xs text-texto-fraco md:hidden">"{{ d.motivo }}"</p>
             <p class="text-xs text-texto-fraco sm:hidden">{{ formatarDataHora(d.criado_em) }}</p>

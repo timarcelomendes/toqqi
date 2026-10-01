@@ -206,6 +206,7 @@ class Convite(Base):
     lembretes_enviados: Mapped[int] = mapped_column(SmallInteger, server_default="0")
     ultimo_lembrete_em: Mapped[datetime | None] = mapped_column(TZ)
     token_semente: Mapped[str | None] = mapped_column(Text)
+    evento: Mapped[str | None] = mapped_column(Text)
 
 
 class Resposta(Base):
@@ -266,6 +267,7 @@ class ConfigEnvios(Base):
     texto_whatsapp: Mapped[str] = mapped_column(Text)
     agradecimento_ativo: Mapped[bool] = mapped_column(Boolean, server_default="true")
     agradecimento: Mapped[dict] = mapped_column(JSONB)
+    canal: Mapped[str] = mapped_column(Text, server_default="email")
     robo_rodou_em: Mapped[datetime | None] = mapped_column(TZ)
     lembretes_rodou_em: Mapped[date | None] = mapped_column(Date)
     atualizado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
@@ -289,14 +291,96 @@ class Envio(Base):
     criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
     tentativa_em: Mapped[datetime | None] = mapped_column(TZ)
     enviado_em: Mapped[datetime | None] = mapped_column(TZ)
+    wamid: Mapped[str | None] = mapped_column(Text)
+    cobranca: Mapped[str | None] = mapped_column(Text)
 
 
 class Descadastro(Base):
     __tablename__ = "descadastros"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
-    email: Mapped[str] = mapped_column(CITEXT)
+    email: Mapped[str | None] = mapped_column(CITEXT)
+    telefone: Mapped[str | None] = mapped_column(Text)
     motivo: Mapped[str | None] = mapped_column(Text)
     origem: Mapped[str] = mapped_column(Text)
     usuario_id: Mapped[int | None] = mapped_column(BigInteger)
     criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+# ---- etapa 3b: integrações e WhatsApp automático ------------------------------
+
+class IntegracaoChave(Base):
+    __tablename__ = "integracao_chaves"
+    conta_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, server_default=CONTA_ATUAL)
+    hash: Mapped[str] = mapped_column(Text)
+    prefixo: Mapped[str] = mapped_column(Text)
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger)
+    criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    ultimo_uso: Mapped[datetime | None] = mapped_column(TZ)
+
+
+class Webhook(Base):
+    __tablename__ = "webhooks"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    url: Mapped[str] = mapped_column(Text)
+    eventos: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    ativo: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    segredo_cifrado: Mapped[str] = mapped_column(Text)
+    segredo_prefixo: Mapped[str] = mapped_column(Text)
+    falhas_seguidas: Mapped[int] = mapped_column(Integer, server_default="0")
+    ultima_entrega_em: Mapped[datetime | None] = mapped_column(TZ)
+    ultimo_status_http: Mapped[int | None] = mapped_column(Integer)
+    ultima_ok: Mapped[bool | None] = mapped_column(Boolean)
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+class WebhookEntrega(Base):
+    __tablename__ = "webhook_entregas"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True,
+                                          server_default=text("gen_random_uuid()"))
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    webhook_id: Mapped[int] = mapped_column(BigInteger)
+    evento: Mapped[str] = mapped_column(Text)
+    corpo: Mapped[dict] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(Text, server_default="pendente")
+    tentativas: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    proxima_tentativa: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    status_http: Mapped[int | None] = mapped_column(Integer)
+    erro: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+class WhatsappConta(Base):
+    __tablename__ = "whatsapp_contas"
+    conta_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, server_default=CONTA_ATUAL)
+    phone_number_id: Mapped[str] = mapped_column(Text)
+    waba_id: Mapped[str] = mapped_column(Text)
+    token_cifrado: Mapped[str] = mapped_column(Text)
+    modelo_nome: Mapped[str] = mapped_column(Text)
+    modelo_idioma: Mapped[str] = mapped_column(Text)
+    modelo_botao: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    ativo: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    excedente_ativo: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    ultimo_erro: Mapped[str | None] = mapped_column(Text)
+    numero_exibicao: Mapped[str | None] = mapped_column(Text)
+    nome_verificado: Mapped[str | None] = mapped_column(Text)
+    conectado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+class WhatsappUso(Base):
+    __tablename__ = "whatsapp_uso"
+    conta_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, server_default=CONTA_ATUAL)
+    mes: Mapped[str] = mapped_column(Text, primary_key=True)
+    usadas: Mapped[int] = mapped_column(Integer, server_default="0")
+    excedentes: Mapped[int] = mapped_column(Integer, server_default="0")
+    avisou_80: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    avisou_100: Mapped[bool] = mapped_column(Boolean, server_default="false")
+
+
+class EventoIdempotencia(Base):
+    __tablename__ = "eventos_idempotencia"
+    conta_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, server_default=CONTA_ATUAL)
+    id_evento: Mapped[str] = mapped_column(Text, primary_key=True)
+    resposta: Mapped[dict] = mapped_column(JSONB)
+    expira: Mapped[datetime] = mapped_column(TZ)

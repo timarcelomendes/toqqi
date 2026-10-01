@@ -45,6 +45,8 @@ export const useSessaoStore = defineStore('sessao', () => {
 
   const logado = computed(() => !!token.value && !!usuario.value)
   const superadmin = computed(() => !!usuario.value?.superadmin)
+  /** Perfil administrador da conta (algumas telas e ações são só dele). */
+  const admin = computed(() => usuario.value?.perfil === 'admin')
 
   function pode(permissao: Permissao): boolean {
     return permissoes.value.includes(permissao)
@@ -154,6 +156,7 @@ export const useSessaoStore = defineStore('sessao', () => {
     avisoEntrar,
     logado,
     superadmin,
+    admin,
     pode,
     definirSessao,
     limpar,

@@ -12,6 +12,8 @@ declare module 'vue-router' {
     logado?: boolean
     permissao?: Permissao
     superadmin?: boolean
+    /** Só para o perfil administrador da conta. */
+    admin?: boolean
   }
 }
 
@@ -58,6 +60,7 @@ const rotas: RouteRecordRaw[] = [
       },
       { path: 'configuracoes/seguranca', name: 'seguranca', component: () => import('@/modulos/configuracoes/SegurancaView.vue'), meta: { titulo: 'Segurança', permissao: 'configuracoes.gerenciar' } },
       { path: 'configuracoes/envios', name: 'config-envios', component: () => import('@/modulos/configuracoes/ConfigEnviosView.vue'), meta: { titulo: 'Configurações de envio', permissao: 'envios.ver' } },
+      { path: 'integracoes', name: 'integracoes', component: () => import('@/modulos/integracoes/IntegracoesView.vue'), meta: { titulo: 'Integrações', admin: true } },
       { path: 'auditoria', name: 'auditoria', component: () => import('@/modulos/auditoria/AuditoriaView.vue'), meta: { titulo: 'Auditoria', permissao: 'auditoria.ver' } },
       { path: 'plataforma', name: 'plataforma', component: () => import('@/modulos/plataforma/PlataformaView.vue'), meta: { titulo: 'Plataforma', superadmin: true } },
     ],
@@ -81,6 +84,10 @@ router.beforeEach(async (to) => {
   if (to.meta.visitante && sessao.logado) return { name: 'inicio' }
   if (to.meta.superadmin && !sessao.superadmin) {
     avisar.atencao('Esta área é só para a equipe da plataforma Toqqi.')
+    return { name: 'inicio' }
+  }
+  if (to.meta.admin && !sessao.admin) {
+    avisar.atencao('Só um administrador da sua empresa pode abrir essa página.')
     return { name: 'inicio' }
   }
   if (to.meta.permissao && !sessao.pode(to.meta.permissao)) {

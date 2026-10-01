@@ -1,4 +1,4 @@
-"""Tarefas periódicas de envio: `python -m toqqi.tarefas [robo|lembretes|pendentes|tudo]` (padrão: tudo).
+"""Tarefas periódicas: `python -m toqqi.tarefas [robo|lembretes|pendentes|webhooks|tudo]` (padrão: tudo).
 
 Também disponíveis em POST /api/v1/interno/tarefas (cabeçalho X-Tarefas-Token). Um agendador externo
 chama a cada hora; cada tarefa decide por conta se é hora de agir.
@@ -7,8 +7,9 @@ import json
 import sys
 
 from toqqi.modulos.envios import automacao
+from toqqi.modulos.integracoes import webhooks
 
-TAREFAS = ("robo", "lembretes", "pendentes", "tudo")
+TAREFAS = ("robo", "lembretes", "pendentes", "webhooks", "tudo")
 
 
 def executar(qual: str = "tudo") -> dict:
@@ -21,6 +22,8 @@ def executar(qual: str = "tudo") -> dict:
         resultado["robo"] = automacao.robo()
     if qual in ("lembretes", "tudo"):
         resultado["lembretes"] = automacao.lembretes()
+    if qual in ("webhooks", "tudo"):
+        resultado["webhooks"] = webhooks.entregar_devidas()
     return resultado
 
 

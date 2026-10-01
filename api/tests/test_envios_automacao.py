@@ -313,4 +313,5 @@ def test_rota_interna_de_tarefas(client, monkeypatch):
     r = client.post(url, headers={"X-Tarefas-Token": "segredo-das-tarefas"})
     assert r.status_code == 200
     assert r.json() == {"pendentes": 0, "robo": {"contas": 0, "agendados": 0, "ignorados": 0},
-                        "lembretes": {"contas": 0, "enviados": 0, "ignorados": 0}}
+                        "lembretes": {"contas": 0, "enviados": 0, "ignorados": 0},
+                        "webhooks": {"entregues": 0, "falharam": 0}}

@@ -1,4 +1,4 @@
-# Toqqi API · etapas 1, 2 e 3a
+# Toqqi API · etapas 1, 2, 3a e 3b
 
 FastAPI + SQLAlchemy 2 (psycopg 3) + Alembic + PostgreSQL 16.
 Contratos implementados (base `/api/v1`):
@@ -68,6 +68,10 @@ para que o IP real do cliente seja usado no limite de tentativas, nas sessões e
 | `RATE_LIMIT_ENABLED` | `0` desliga o limite de tentativas (usado nos testes) |
 | `AMBIENTE` | `desenvolvimento` (padrão) ou `producao`; em produção o provedor `console` não conta como configurado |
 | `TAREFAS_TOKEN` | Segredo do cabeçalho `X-Tarefas-Token` de `POST /api/v1/interno/tarefas` (vazio = rota desligada, 404) |
+| `SEGREDOS_KEY` | Cifra (Fernet, chave = sha256) o token do WhatsApp e os segredos dos webhooks. Obrigatória em produção; fora dela, vazia usa o `JWT_SECRET` |
+| `WHATSAPP_GRAPH_VERSION` | Versão da Graph API da Meta (padrão `v23.0`); `WHATSAPP_GRAPH_URL` muda o endereço base |
+| `WHATSAPP_VERIFY_TOKEN` | Token de verificação do webhook da Meta (`GET /api/v1/publico/whatsapp/webhook`) |
+| `WHATSAPP_APP_SECRET` | App Secret do app da Meta: confere `X-Hub-Signature-256` dos avisos |
 
 A etapa 2 não criou variáveis novas. `FRONTEND_URL` também é a base dos links de convite (`/r/{token}`)
 e `JWT_SECRET` entra no sal diário do hash de IP das respostas públicas.
@@ -103,7 +107,7 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
   que já existiam.
 
 ## Etapa 3a: envios
-- **Tarefas periódicas**: `python -m toqqi.tarefas [robo|lembretes|pendentes|tudo]` ou
+- **Tarefas periódicas**: `python -m toqqi.tarefas [robo|lembretes|pendentes|webhooks|tudo]` ou
   `POST /api/v1/interno/tarefas` com `X-Tarefas-Token` (comparação em tempo constante). Um agendador externo
   chama a cada hora; cada conta decide se é hora (janela, dias úteis, 6 h entre rodadas do robô, lembretes uma vez
   por dia a partir das 10:00). A lista de contas sai do modo sistema (só ids); o trabalho de cada conta roda em
@@ -122,6 +126,25 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
 - **Relógio**: as regras usam `toqqi.core.relogio.agora()` (São Paulo); os testes trocam essa função.
 - **Exclusão de conta** (plataforma): apaga os dados em ordem, em modo sistema, e grava auditoria global
   (`auditoria.conta_id` nulo, visível só em modo sistema).
+
+## Etapa 3b: integrações e WhatsApp automático
+- **Chave da conta** (`modulos/integracoes/chave.py`): só o sha256 no banco; a conta sai do hash em modo sistema e
+  o resto roda em `em_conta`. Limite de 120 chamadas/min por chave (slowapi, chaveado pelo hash).
+- **Disparo por evento** (`modulos/integracoes/pesquisas.py`): uma transação por evento; `id_evento` trava
+  (`pg_advisory_xact_lock`) e guarda a resposta por 24 h em `eventos_idempotencia`.
+- **Canal**: `ConfigEnvios.canal` define a ordem (`processamento.ordem_canais`). O WhatsApp reserva a franquia ao
+  criar o envio, com a linha do mês (`whatsapp_uso`) travada; se a mensagem não sai (na hora ou pelo aviso
+  `failed` da Meta), a reserva volta (`envios.cobranca`) e, com `whatsapp_e_email`, o mesmo convite vai por e-mail.
+  Lembretes: só o 1º de um convite por WhatsApp vai por WhatsApp.
+- **Webhooks de saída** (`modulos/integracoes/webhooks.py`): fila `webhook_entregas`; entrega logo depois da
+  resposta (`coletar_entregas` + `BackgroundTasks`) e na tarefa `webhooks`. POST pelo `core/rede.py` (IP público
+  conferido, sem redirecionamento, 10 s), assinado `t=<unix>,v1=HMAC(segredo, "<t>.<corpo>")`. Novas tentativas em
+  1 min, 5 min, 30 min, 2 h e 6 h; 10 falhas seguidas (tentativas) desativam o webhook e avisam os admins.
+- **Graph API** (`modulos/whatsapp/graph.py`): httpx sem redirecionamento, timeout 10 s; os testes trocam
+  `graph.transporte` por um `httpx.MockTransport` (o `conftest` bloqueia a rede por padrão).
+- **Webhook da Meta** (`modulos/whatsapp/webhook.py`): assinatura conferida no corpo cru; a conta sai do
+  `phone_number_id` em modo sistema. "SAIR" descadastra o telefone (forma canônica com o nono dígito).
+- **Avisos aos admins** (`core/avisos.py`) saem depois do commit (`core.db.apos_commit`).
 
 ## Estrutura
 ```
@@ -146,10 +169,13 @@ toqqi/
   modulos/publico/        páginas públicas (convite, link público e descadastro)
   modulos/envios/         configuração e pré-condições, fila/situação, disparo, histórico, WhatsApp,
                           robô/lembretes/pendentes, agradecimento, descadastro, modelos de e-mail
+  modulos/integracoes/     chave da conta, disparo por evento (/integracao) e webhooks de saída
+  modulos/whatsapp/       conexão (Graph API), modelo, franquia, webhook da Meta
   tarefas.py              CLI das tarefas periódicas (python -m toqqi.tarefas)
 alembic/versions/0001_inicial.py   esquema da etapa 1 + RLS + GRANTs
 alembic/versions/0002_cadastros_formularios.py   tabelas da etapa 2 + RLS + limite do plano + dados iniciais
 alembic/versions/0003_envios.py    config_envios, envios, descadastros + colunas de fila/lembrete + RLS
+alembic/versions/0004_integracoes.py   chaves, webhooks, entregas, WhatsApp, franquia, idempotência + RLS
 tests/                             pytest
 ```
 

@@ -1,5 +1,5 @@
 import { formatarDiaMes } from './datas'
-import type { CanalResposta, Gravidade, Perfil, SituacaoContato, SituacaoUsuario, TipoFormulario } from '@/api/tipos'
+import type { CanalConfig, CanalResposta, EventoWebhook, Gravidade, Perfil, SituacaoContato, SituacaoUsuario, TipoFormulario } from '@/api/tipos'
 
 export type Tom = 'neutro' | 'marca' | 'sucesso' | 'atencao' | 'erro' | 'info'
 
@@ -115,4 +115,33 @@ export const TIPOS_FORMULARIO: Record<TipoFormulario, { rotulo: string; tom: Tom
   nps: { rotulo: 'NPS', tom: 'marca' },
   csat: { rotulo: 'CSAT', tom: 'info' },
   personalizado: { rotulo: 'Personalizado', tom: 'neutro' },
+}
+
+// ── Etapa 3b ────────────────────────────────────────────────────────────────
+
+/** Canal das pesquisas (Configurações de envio), com a explicação em português simples. */
+export const CANAIS_CONFIG: Record<CanalConfig, { rotulo: string; descricao: string; recomendado?: boolean }> = {
+  email: {
+    rotulo: 'Só e-mail',
+    descricao: 'A pesquisa vai para o e-mail do cliente. Quem não tem e-mail cadastrado fica de fora.',
+  },
+  whatsapp: {
+    rotulo: 'WhatsApp',
+    descricao: 'A pesquisa chega no WhatsApp do cliente, sem ninguém precisar apertar Enviar. Quem não tem telefone recebe por e-mail.',
+  },
+  whatsapp_e_email: {
+    rotulo: 'WhatsApp com e-mail de reserva',
+    descricao: 'Tenta primeiro pelo WhatsApp. Se a mensagem não sair ou o cliente não tiver telefone, vai por e-mail.',
+    recomendado: true,
+  },
+}
+
+/** Eventos dos avisos para outros sistemas (webhooks). */
+export const EVENTOS_WEBHOOK: Record<EventoWebhook, { rotulo: string; descricao: string }> = {
+  'resposta.criada': { rotulo: 'Nova resposta', descricao: 'Quando um cliente responde uma pesquisa.' },
+  'contato.descadastrado': { rotulo: 'Cliente saiu da lista', descricao: 'Quando alguém pede para não receber mais pesquisas.' },
+}
+
+export function rotuloEventoWebhook(v: string | null | undefined): string {
+  return (v && EVENTOS_WEBHOOK[v as EventoWebhook]?.rotulo) || v || '—'
 }

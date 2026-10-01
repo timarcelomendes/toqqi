@@ -1,14 +1,16 @@
-"""Descadastro (conta + e-mail): token assinado, página pública e tela interna.
+"""Descadastro (conta + e-mail ou telefone): token assinado, página pública e tela interna.
 
 O token leva conta_id e e-mail, assinados com HMAC(JWT_SECRET); não expira. A página pública só confia
 na conta que vem de um token com assinatura válida e trabalha dentro de em_conta(conta).
+O descadastro por telefone vem do WhatsApp ("SAIR"). Um contato com o e-mail ou o telefone descadastrado
+sai da lista: não recebe nada da conta, em nenhum canal.
 """
 import base64
 import binascii
 import hashlib
 import hmac
 
-from sqlalchemy import String, cast, delete, func, or_, select
+from sqlalchemy import String, and_, cast, delete, exists, func, or_, select, true
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -18,7 +20,9 @@ from toqqi.core.db import em_conta
 from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError
 from toqqi.core.paginacao import Pagina
+from toqqi.core.texto import RE_CELULAR_SEM_NOVE, telefone_canonico
 from toqqi.modelos import Conta, Contato, Descadastro
+from toqqi.modulos.integracoes.webhooks import enfileirar
 
 _MAX_TOKEN = 600
 
@@ -64,17 +68,54 @@ def mascarar(email: str) -> str:
     return f"{nome[:2]}***@{dominio}"
 
 
-def esta_descadastrado(s: Session, email: str | None) -> bool:
-    return bool(email) and s.scalar(select(func.count()).select_from(Descadastro)
-                                    .where(Descadastro.email == email)) > 0
+def mascarar_telefone(telefone: str) -> str:
+    """ "5511987654321" → "***4321"."""
+    return f"***{telefone[-4:]}"
 
 
-def gravar(s: Session, email: str, origem: str, motivo: str | None, usuario_id: int | None = None) -> None:
-    """Registra (ou mantém) o descadastro e audita sem o e-mail completo."""
-    s.execute(insert(Descadastro).values(email=email, origem=origem, motivo=motivo, usuario_id=usuario_id)
-              .on_conflict_do_nothing(index_elements=["conta_id", "email"]))
-    registrar(s, "descadastro", "atencao", {"email": mascarar(email), "origem": origem, "motivo": motivo},
-              usuario_id=usuario_id)
+def telefone_sql(coluna):
+    """Telefone canônico (ver core.texto.telefone_canonico) de uma coluna."""
+    return func.regexp_replace(coluna, RE_CELULAR_SEM_NOVE, "\\19\\2")
+
+
+def descadastrado(email_coluna, telefone_coluna):
+    """Expressão: o e-mail ou o telefone (colunas) está descadastrado."""
+    return exists().where(or_(Descadastro.email == email_coluna,
+                              Descadastro.telefone == telefone_sql(telefone_coluna)))
+
+
+def esta_descadastrado(s: Session, email: str | None, telefone: str | None = None) -> bool:
+    conds = []
+    if email:
+        conds.append(Descadastro.email == email)
+    if telefone:
+        conds.append(Descadastro.telefone == telefone_canonico(telefone))
+    return bool(conds) and bool(s.scalar(select(exists().where(or_(*conds)))))
+
+
+def _contato_de(s: Session, email: str | None, telefone: str | None) -> Contato | None:
+    cond = Contato.email == email if email else telefone_sql(Contato.telefone) == telefone
+    return s.scalar(select(Contato).where(cond).order_by(Contato.ativo.desc(), Contato.id).limit(1))
+
+
+def gravar(s: Session, email: str | None, origem: str, motivo: str | None, usuario_id: int | None = None,
+           telefone: str | None = None) -> None:
+    """Registra (ou mantém) o descadastro por e-mail ou por telefone, audita sem o dado completo e avisa os
+    webhooks (`contato.descadastrado`)."""
+    telefone = telefone_canonico(telefone) if telefone and not email else None
+    alvo = ({"index_elements": ["conta_id", "email"]} if email else
+            {"index_elements": ["conta_id", "telefone"], "index_where": Descadastro.telefone.is_not(None)})
+    novo = s.scalar(insert(Descadastro).values(email=email, telefone=telefone, origem=origem, motivo=motivo,
+                                               usuario_id=usuario_id)
+                    .on_conflict_do_nothing(**alvo).returning(Descadastro.id))
+    dado = {"email": mascarar(email)} if email else {"telefone": mascarar_telefone(telefone)}
+    registrar(s, "descadastro", "atencao", {**dado, "origem": origem, "motivo": motivo}, usuario_id=usuario_id)
+    if novo is not None:
+        contato = _contato_de(s, email, telefone)
+        email_contato = email or (contato.email if contato else None)
+        enfileirar(s, "contato.descadastrado", {
+            "email_mascarado": mascarar(email_contato) if email_contato else None,
+            "contato_id": contato.id if contato else None, "origem": origem})
 
 
 # ---- página pública ---------------------------------------------------------
@@ -125,19 +166,28 @@ def voltar(token: str) -> dict:
 # ---- tela interna -----------------------------------------------------------
 
 def _json(d: Descadastro, contato_id: int | None, contato_nome: str | None) -> dict:
-    return {"email": d.email, "contato": {"id": contato_id, "nome": contato_nome} if contato_id else None,
+    return {"email": d.email, "telefone": d.telefone,
+            "contato": {"id": contato_id, "nome": contato_nome} if contato_id else None,
             "motivo": d.motivo, "origem": d.origem, "criado_em": d.criado_em}
 
 
+# contato do descadastro: pelo e-mail ou, no descadastro por telefone, pelo telefone
+_CONTATO = (select(Contato.id, Contato.nome)
+            .where(or_(Contato.email == Descadastro.email,
+                       and_(Descadastro.email.is_(None), telefone_sql(Contato.telefone) == Descadastro.telefone)))
+            .order_by(Contato.ativo.desc(), Contato.id).limit(1).correlate(Descadastro).lateral("contato"))
+
+
 def _consulta():
-    return select(Descadastro, Contato.id, Contato.nome).outerjoin(Contato, Contato.email == Descadastro.email)
+    return select(Descadastro, _CONTATO.c.id, _CONTATO.c.nome).outerjoin(_CONTATO, true())
 
 
 def listar(ctx: Contexto, pg: Pagina, busca: str | None) -> dict:
     filtros = []
     if busca:
         termo = f"%{busca}%"
-        filtros.append(or_(cast(Descadastro.email, String).ilike(termo), Contato.nome.ilike(termo)))
+        filtros.append(or_(cast(Descadastro.email, String).ilike(termo), Descadastro.telefone.contains(busca),
+                           _CONTATO.c.nome.ilike(termo)))
     with em_conta(ctx.conta_id) as s:
         total = s.scalar(select(func.count()).select_from(_consulta().where(*filtros).subquery()))
         linhas = s.execute(_consulta().where(*filtros).order_by(Descadastro.criado_em.desc(), Descadastro.id.desc())

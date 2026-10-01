@@ -61,6 +61,7 @@ class ConfigIn(BaseModel):
     texto_whatsapp: TextoLongo | None = None
     agradecimento_ativo: bool | None = None
     agradecimento: AgradecimentoIn | None = None
+    canal: Literal["email", "whatsapp", "whatsapp_e_email"] | None = None
 
 
 Opcional = BeforeValidator(_vazio_none)
@@ -100,7 +101,8 @@ class FiltrosHistorico(BaseModel):
     ate: Annotated[date | None, Opcional] = None
     tipo: Annotated[Literal["convite", "lembrete", "agradecimento"] | None, Opcional] = None
     canal: Annotated[Literal["email", "whatsapp"] | None, Opcional] = None
-    situacao: Annotated[Literal["pendente", "enviado", "erro", "aberto_no_whatsapp"] | None, Opcional] = None
+    situacao: Annotated[Literal["pendente", "enviado", "entregue", "lido", "erro", "aberto_no_whatsapp"] | None,
+                        Opcional] = None
     busca: Annotated[Annotated[str, Field(max_length=100)] | None, Opcional] = None
     contato_id: Annotated[int | None, Opcional] = None
 

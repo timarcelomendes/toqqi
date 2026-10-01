@@ -36,6 +36,11 @@ ROTULOS = {
     "descadastro": "Contato saiu da lista de pesquisas",
     "descadastro_desfeito": "Contato voltou a receber pesquisas",
     "conta_excluida": "Conta excluída pela equipe Toqqi",
+    "chave_gerada": "Chave de integração gerada",
+    "chave_revogada": "Chave de integração revogada",
+    "webhook_desativado": "Webhook desativado após falhas seguidas",
+    "whatsapp_conectado": "WhatsApp automático conectado",
+    "whatsapp_desconectado": "WhatsApp automático desconectado",
 }
 
 

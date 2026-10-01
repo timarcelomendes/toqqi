@@ -6,6 +6,7 @@ import {
   History,
   Home,
   MessageSquareText,
+  Plug,
   Send,
   ShieldCheck,
   Building2,
@@ -20,6 +21,8 @@ export interface ItemNavegacao {
   icone: Component
   permissao?: Permissao
   superadmin?: boolean
+  /** Só para o perfil administrador da conta. */
+  admin?: boolean
   /** Marca o item como ativo em qualquer página que comece com este caminho (padrão: `para`). */
   prefixo?: string
   /** Ainda não existe nesta etapa. */
@@ -39,6 +42,7 @@ export const navegacaoPrincipal: ItemNavegacao[] = [
 export const navegacaoAdministracao: ItemNavegacao[] = [
   { rotulo: 'Equipe', para: '/equipe', icone: Users, permissao: 'equipe.gerenciar' },
   { rotulo: 'Configurações', para: '/configuracoes/seguranca', prefixo: '/configuracoes', icone: ShieldCheck, permissao: 'configuracoes.gerenciar' },
+  { rotulo: 'Integrações', para: '/integracoes', icone: Plug, admin: true },
   { rotulo: 'Auditoria', para: '/auditoria', icone: History, permissao: 'auditoria.ver' },
   { rotulo: 'Plataforma', para: '/plataforma', icone: Building2, superadmin: true },
 ]
@@ -47,6 +51,7 @@ export function filtrarNavegacao(
   itens: ItemNavegacao[],
   pode: (p: Permissao) => boolean,
   superadmin: boolean,
+  admin = false,
 ): ItemNavegacao[] {
-  return itens.filter((i) => (i.superadmin ? superadmin : !i.permissao || pode(i.permissao)))
+  return itens.filter((i) => (i.superadmin ? superadmin : i.admin ? admin : !i.permissao || pode(i.permissao)))
 }

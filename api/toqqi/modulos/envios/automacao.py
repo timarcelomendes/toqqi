@@ -11,8 +11,16 @@ from toqqi.core import relogio
 from toqqi.core.db import em_conta, modo_sistema
 from toqqi.modelos import ConfigEnvios, Contato, Convite, Envio
 from toqqi.modulos.envios.configuracao import na_janela, obter, prazo_aguardando, pronto
-from toqqi.modulos.envios.fila import consulta_fila, data_local, descadastrado, dia_do_lembrete
-from toqqi.modulos.envios.processamento import RETOMAR_APOS, criar_convite_email, novo_envio, processar_lista
+from toqqi.modulos.envios.fila import SAIU, consulta_fila, data_local, descadastrado, dia_do_lembrete
+from toqqi.modulos.envios.processamento import (
+    RETOMAR_APOS,
+    criar_convite,
+    escolher_canal,
+    novo_envio,
+    ordem_canais,
+    processar_lista,
+    whatsapp_da_config,
+)
 
 LIMITE_ROBO = 100
 LIMITE_LEMBRETES = 200
@@ -45,11 +53,19 @@ def robo_conta(conta_id: int, forcar: bool = False) -> dict | None:
         q = consulta_fila(cfg, hoje)
         na_fila = and_(q.c.ativo.is_(True), q.c.situacao.in_(("na_fila", "nao_saiu")),
                        or_(q.c.proximo_envio.is_(None), q.c.proximo_envio <= hoje))
-        elegivel = and_(q.c.email.is_not(None), q.c.descanso_ate.is_(None), q.c.falhas < MAX_FALHAS)
+        wa = whatsapp_da_config(s, cfg)
+        tem_canal = q.c.email.is_not(None) if wa is None else or_(q.c.email.is_not(None), q.c.telefone.is_not(None))
+        elegivel = and_(tem_canal, q.c.descanso_ate.is_(None), q.c.falhas < MAX_FALHAS)
         ids = s.scalars(select(q.c.id).where(na_fila, elegivel)
                         .order_by(q.c.proximo_envio.asc().nulls_first(), q.c.id).limit(LIMITE_ROBO)).all()
         ignorados = s.scalar(select(func.count()).select_from(q).where(na_fila, not_(elegivel)))
-        envios = [(conta_id, criar_convite_email(s, cfg, s.get(Contato, i), "automatico").id) for i in ids]
+        envios = []
+        for i in ids:
+            e = criar_convite(s, cfg, s.get(Contato, i), "automatico", ordem_canais(cfg), wa)
+            if e is None:  # só telefone e a franquia do WhatsApp acabou
+                ignorados += 1
+            else:
+                envios.append((conta_id, e.id))
     return {"agendados": len(envios), "ignorados": ignorados, "envios": envios}
 
 
@@ -69,8 +85,9 @@ def robo() -> dict:
 # ---- lembretes --------------------------------------------------------------
 
 def _lembretes_devidos(cfg: ConfigEnvios, hoje):
-    """(convite, contato, pode_receber) dos convites por e-mail com lembrete devido até `hoje` (inclusive),
-    e a expressão da data devida (para a prévia)."""
+    """(convite, contato, pode_receber) dos convites que saíram (e-mail ou WhatsApp automático) com lembrete
+    devido até `hoje` (inclusive), e a expressão da data devida (para a prévia). Só o 1º lembrete de um convite
+    por WhatsApp pode ir por WhatsApp; os demais vão por e-mail."""
     dia = dia_do_lembrete(cfg, Convite.lembretes_enviados)
     data_convite = data_local(Convite.criado_em)
     devido = data_convite + dia
@@ -78,16 +95,18 @@ def _lembretes_devidos(cfg: ConfigEnvios, hoje):
     ultimo_envio = (select(Envio.situacao).where(Envio.convite_id == Convite.id, Envio.tipo == "convite")
                     .order_by(Envio.id.desc()).limit(1).correlate(Convite).scalar_subquery())
     pendente = exists().where(Envio.convite_id == Convite.id, Envio.situacao == "pendente")
-    pode_receber = and_(Contato.ativo.is_(True), Contato.recebe_pesquisas.is_(True), Contato.email.is_not(None),
-                        not_(descadastrado(Contato.email)))
+    por_whatsapp = and_(Convite.canal == "whatsapp", Convite.lembretes_enviados == 0, Contato.telefone.is_not(None))
+    pode_receber = and_(Contato.ativo.is_(True), Contato.recebe_pesquisas.is_(True),
+                        or_(Contato.email.is_not(None), por_whatsapp),
+                        not_(descadastrado(Contato.email, Contato.telefone)))
     condicoes = [
-        Convite.canal == "email", Convite.respondido_em.is_(None),
+        Convite.canal.in_(("email", "whatsapp")), Convite.respondido_em.is_(None),
         Convite.lembretes_enviados < cfg.lembretes,
         data_convite >= hoje - timedelta(days=prazo_aguardando(cfg)),
         or_(Convite.ultimo_lembrete_em.is_(None), data_local(Convite.ultimo_lembrete_em) < hoje),
         not_(exists().where(mais_novo.contato_id == Convite.contato_id, mais_novo.id != Convite.id,
                             mais_novo.criado_em >= Convite.criado_em)),
-        ultimo_envio == "enviado",
+        ultimo_envio.in_(SAIU),
         not_(pendente),
     ]
     base = select(Convite, Contato, pode_receber.label("pode")).join(Contato, Contato.id == Convite.contato_id)
@@ -110,14 +129,18 @@ def lembretes_conta(conta_id: int, forcar: bool = False) -> dict | None:
         consulta, devido = _lembretes_devidos(cfg, hoje)
         linhas = s.execute(consulta.where(devido <= hoje).order_by(Convite.criado_em, Convite.id)
                            .limit(LIMITE_LEMBRETES)).all()
+        wa = whatsapp_da_config(s, cfg)
         envios, ignorados = [], 0
         for convite, contato, pode in linhas:
-            if not pode:
+            primeiro_por_whatsapp = convite.canal == "whatsapp" and convite.lembretes_enviados == 0
+            canais = ordem_canais(cfg) if primeiro_por_whatsapp else ("email",)
+            escolha = escolher_canal(s, contato, canais, wa) if pode else None
+            if escolha is None:
                 ignorados += 1
                 continue
             convite.ultimo_lembrete_em = agora
-            e = novo_envio(s, contato, "lembrete", "lembrete", convite_id=convite.id,
-                           lembrete=convite.lembretes_enviados + 1)
+            e = novo_envio(s, contato, "lembrete", "lembrete", canal=escolha[0], cobranca=escolha[1],
+                           convite_id=convite.id, lembrete=convite.lembretes_enviados + 1)
             envios.append((conta_id, e.id))
     return {"enviados": len(envios), "ignorados": ignorados, "envios": envios}
 

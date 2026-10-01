@@ -6,6 +6,7 @@ import { enviosApi, mensagemDoErro, type CanalEnvio, type Envio, type FiltrosHis
 import { avisar } from '@/composables/avisos'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarDataHora } from '@/utils/datas'
+import { exibirTelefone } from '@/utils/formatos'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Campo from '@/components/ui/Campo.vue'
@@ -55,6 +56,11 @@ const colunas: Coluna[] = [
   { chave: 'origem', rotulo: 'Como saiu', classe: 'hidden lg:table-cell' },
   { chave: 'acoes', rotulo: 'Ações', rotuloOculto: true, alinhar: 'direita' },
 ]
+
+/** No WhatsApp, "para" é o telefone: mostra formatado. */
+function destino(e: Envio): string {
+  return e.canal === 'whatsapp' ? exibirTelefone(e.para) || e.para : e.para
+}
 
 const filtrosAtivos = computed(() => [filtros.de, filtros.ate, filtros.tipo, filtros.canal, filtros.situacao].filter((v) => v !== '').length)
 
@@ -187,9 +193,13 @@ defineExpose({ recarregar })
       <template #cel-contato="{ linha: e }">
         <div class="min-w-0">
           <RouterLink v-if="e.contato" :to="`/contatos/${e.contato.id}`" class="block truncate font-semibold text-texto hover:underline">{{ e.contato.nome }}</RouterLink>
-          <p class="truncate" :class="e.contato ? 'text-texto-fraco' : 'font-semibold text-texto'">{{ e.para }}</p>
+          <p class="truncate" :class="e.contato ? 'text-texto-fraco' : 'font-semibold text-texto'">{{ destino(e) }}</p>
           <p class="text-xs text-texto-fraco sm:hidden">{{ formatarDataHora(e.criado_em) }}</p>
-          <p class="text-xs text-texto-suave md:hidden">{{ rotuloDe(TIPOS_ENVIO, e.tipo) }} · {{ rotuloDe(CANAIS_ENVIO, e.canal) }}</p>
+          <p class="flex items-center gap-1 text-xs text-texto-suave md:hidden">
+            <MessageCircle v-if="e.canal === 'whatsapp'" class="size-3.5 text-emerald-700" aria-hidden="true" />
+            <Mail v-else class="size-3.5 text-texto-fraco" aria-hidden="true" />
+            {{ rotuloDe(TIPOS_ENVIO, e.tipo) }} · {{ rotuloDe(CANAIS_ENVIO, e.canal) }}
+          </p>
           <div class="mt-1 sm:hidden">
             <Etiqueta :tom="situacaoEnvio(e.situacao).tom" ponto>{{ situacaoEnvio(e.situacao).rotulo }}</Etiqueta>
             <p v-if="e.erro" class="mt-1 text-xs text-erro">{{ e.erro }}</p>
@@ -200,7 +210,7 @@ defineExpose({ recarregar })
         <span class="inline-flex items-center gap-1.5 whitespace-nowrap text-texto-suave">
           <MessageCircle v-if="e.canal === 'whatsapp'" class="size-4 text-emerald-700" aria-hidden="true" />
           <Mail v-else class="size-4 text-texto-fraco" aria-hidden="true" />
-          {{ rotuloDe(TIPOS_ENVIO, e.tipo) }}<span class="sr-only"> por {{ rotuloDe(CANAIS_ENVIO, e.canal) }}</span>
+          {{ rotuloDe(TIPOS_ENVIO, e.tipo) }}<span class="text-texto-fraco" aria-hidden="true">· {{ rotuloDe(CANAIS_ENVIO, e.canal) }}</span><span class="sr-only"> por {{ rotuloDe(CANAIS_ENVIO, e.canal) }}</span>
         </span>
       </template>
       <template #cel-situacao="{ linha: e }">

@@ -1,12 +1,24 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { CalendarClock, FileText, Heart, Mail, MessageCircle, Power, Repeat, Send, UserRound } from 'lucide-vue-next'
-import { enviosApi, formulariosApi, mensagemDoErro, type ConfigEnvios, type FormularioResumo, type Id } from '@/api'
+import { CalendarClock, FileText, Heart, Mail, MessageCircle, Power, Radio, Repeat, Send, UserRound } from 'lucide-vue-next'
+import {
+  enviosApi,
+  formulariosApi,
+  mensagemDoErro,
+  whatsappAutomaticoApi,
+  type CanalConfig,
+  type ConfigEnvios,
+  type FormularioResumo,
+  type Id,
+  type WhatsappIntegracao,
+} from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
 import { useFormulario } from '@/composables/formulario'
 import { useSessaoStore } from '@/stores/sessao'
+import { CANAIS_CONFIG } from '@/utils/rotulos'
+import { avisoCanal, disponibilidadeCanais, estadoFranquia } from '@/modulos/integracoes/logica'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
@@ -61,6 +73,7 @@ const f = reactive<ConfigEnvios>({
   texto_whatsapp: '',
   agradecimento_ativo: true,
   agradecimento: { promotor: '', neutro: '', detrator: '' },
+  canal: 'email',
 })
 // Números editados como texto (o campo pode ficar vazio enquanto a pessoa digita).
 const num = reactive({ intervalo: '90', descanso: '30', dias: ['3', '7', '15'] as string[] })
@@ -81,7 +94,7 @@ function montar(): ConfigEnvios {
 }
 
 function aplicar(c: ConfigEnvios) {
-  Object.assign(f, { ...c, agradecimento: { ...c.agradecimento }, dias_lembretes: [...(c.dias_lembretes ?? [])] })
+  Object.assign(f, { ...c, canal: c.canal ?? 'email', agradecimento: { ...c.agradecimento }, dias_lembretes: [...(c.dias_lembretes ?? [])] })
   num.intervalo = String(c.intervalo_dias)
   num.descanso = String(c.descanso_dias)
   num.dias = ajustarDiasLembretes(c.dias_lembretes ?? [], c.lembretes).map(String)
@@ -115,6 +128,13 @@ const opcoesFormularios = computed(() => {
 })
 const tipoFormulario = computed(() => formularios.value.find((x) => String(x.id) === String(f.formulario_id))?.tipo_principal ?? 'nps')
 
+// Canal: WhatsApp só fica disponível com o WhatsApp automático conectado (GET /integracoes/whatsapp).
+const whatsapp = ref<WhatsappIntegracao | null>(null)
+const canais = Object.keys(CANAIS_CONFIG) as CanalConfig[]
+const disponiveis = computed(() => disponibilidadeCanais(whatsapp.value))
+const aviso = computed(() => avisoCanal(f.canal, whatsapp.value))
+const franquiaWhatsapp = computed(() => (whatsapp.value?.conectado ? estadoFranquia(whatsapp.value.franquia) : null))
+
 const opcoesLembretes = [
   { valor: 0, rotulo: 'Nenhum lembrete' },
   { valor: 1, rotulo: '1 lembrete' },
@@ -146,6 +166,10 @@ async function carregar() {
   try {
     const [c] = await Promise.all([
       enviosApi.configuracao(),
+      whatsappAutomaticoApi
+        .obter()
+        .then((w) => (whatsapp.value = w))
+        .catch(() => (whatsapp.value = null)),
       sessao.pode('formularios.ver')
         ? formulariosApi
             .listar()
@@ -270,6 +294,52 @@ onMounted(carregar)
           />
           <p v-if="f.envio_automatico && !f.envios_ativos" class="text-sm text-atencao">
             O envio automático só funciona com "Enviar pesquisas por e-mail" ligado.
+          </p>
+        </div>
+      </section>
+
+      <!-- Canal -->
+      <section class="cartao grid gap-6 p-5 sm:p-6 md:grid-cols-3" aria-labelledby="t-canal">
+        <div>
+          <div class="mb-3 flex size-10 items-center justify-center rounded-xl bg-marca-suave text-marca-texto"><Radio class="size-5" aria-hidden="true" /></div>
+          <h2 id="t-canal" class="text-base font-bold text-texto">Por onde a pesquisa sai</h2>
+          <p class="mt-1 text-sm text-texto-suave">Vale para o envio automático, o botão Enviar agora e os pedidos que chegam do sistema da sua empresa.</p>
+        </div>
+        <div class="flex flex-col gap-4 md:col-span-2">
+          <fieldset :aria-describedby="erros.canal ? 'erro-canal' : undefined">
+            <legend class="sr-only">Canal das pesquisas</legend>
+            <div class="grid gap-2 lg:grid-cols-3">
+              <label
+                v-for="c in canais"
+                :key="c"
+                class="relative flex flex-col gap-1 rounded-xl border p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-foco"
+                :class="[
+                  f.canal === c ? 'border-marca bg-marca-suave' : 'border-borda-forte',
+                  disponiveis[c].disponivel && podeSalvar ? 'cursor-pointer hover:bg-superficie-2' : 'cursor-not-allowed',
+                  !disponiveis[c].disponivel && f.canal !== c ? 'opacity-60' : '',
+                ]"
+              >
+                <input v-model="f.canal" type="radio" name="canal" :value="c" class="sr-only" :disabled="!disponiveis[c].disponivel" />
+                <span class="flex items-center gap-2 text-sm font-bold text-texto">
+                  <Mail v-if="c === 'email'" class="size-4 text-texto-fraco" aria-hidden="true" />
+                  <MessageCircle v-else class="size-4 text-emerald-700" aria-hidden="true" />
+                  {{ CANAIS_CONFIG[c].rotulo }}
+                </span>
+                <span v-if="CANAIS_CONFIG[c].recomendado" class="w-fit rounded-full bg-sucesso-suave px-2 py-0.5 text-[0.7rem] font-semibold text-sucesso">Recomendado</span>
+                <span class="text-sm text-texto-suave">{{ CANAIS_CONFIG[c].descricao }}</span>
+                <span v-if="disponiveis[c].motivo" class="text-xs font-medium text-texto-fraco">{{ disponiveis[c].motivo }}</span>
+              </label>
+            </div>
+            <p v-if="erros.canal" id="erro-canal" class="mt-1.5 text-sm font-medium text-erro">{{ erros.canal }}</p>
+          </fieldset>
+          <Alerta v-if="aviso" tom="atencao">{{ aviso }}</Alerta>
+          <p v-if="whatsapp && !whatsapp.conectado" class="text-sm text-texto-suave">
+            Quer mandar pelo WhatsApp sem ninguém precisar apertar Enviar?
+            <RouterLink v-if="sessao.admin" to="/integracoes?aba=whatsapp" class="link">Conecte o WhatsApp em Integrações</RouterLink>
+            <template v-else>Peça a um administrador para conectar o WhatsApp em Integrações.</template>
+          </p>
+          <p v-else-if="franquiaWhatsapp" class="text-sm text-texto-suave">
+            WhatsApp automático: {{ franquiaWhatsapp.resumo }}. Lembretes: só o primeiro vai pelo WhatsApp; os outros vão por e-mail.
           </p>
         </div>
       </section>

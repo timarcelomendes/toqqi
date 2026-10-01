@@ -25,6 +25,14 @@ class Config(BaseSettings):
     # Protege POST /interno/tarefas (agendador externo). Vazio = rota desligada (404).
     TAREFAS_TOKEN: str = ""
     SUPERADMIN_EMAILS: str = ""
+    # Cifra segredos guardados no banco (token do WhatsApp, segredos dos webhooks). Fora de produção,
+    # vazio = derivada do JWT_SECRET.
+    SEGREDOS_KEY: str = ""
+    # WhatsApp (API oficial da Meta, Cloud API)
+    WHATSAPP_GRAPH_URL: str = "https://graph.facebook.com"
+    WHATSAPP_GRAPH_VERSION: str = "v23.0"
+    WHATSAPP_VERIFY_TOKEN: str = ""
+    WHATSAPP_APP_SECRET: str = ""
     ALLOWED_ORIGINS: str = "http://localhost:5173"
     AUTO_MIGRATE: bool = True
     RATE_LIMIT_ENABLED: bool = True

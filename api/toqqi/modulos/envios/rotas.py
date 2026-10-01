@@ -10,6 +10,7 @@ from toqqi.core.paginacao import Pagina, pagina
 from toqqi.modulos.envios import descadastro, servico
 from toqqi.modulos.envios.esquemas import ConfigIn, DescadastroManualIn, DispararIn, FiltrosFila, FiltrosHistorico
 from toqqi.modulos.envios.processamento import processar_lista
+from toqqi.modulos.integracoes.webhooks import coletar_entregas, entregar_lista
 from toqqi.tarefas import executar
 
 router = APIRouter(prefix="/envios", tags=["envios"])
@@ -92,8 +93,12 @@ def descadastros(busca: Annotated[str | None, Query(max_length=100)] = None, pg:
 
 
 @router.post("/descadastros", status_code=201)
-def adicionar_descadastro(dados: DescadastroManualIn, ctx: Contexto = Depends(requer("contatos.editar"))):
-    return descadastro.adicionar(ctx, dados)
+def adicionar_descadastro(dados: DescadastroManualIn, tarefas: BackgroundTasks,
+                          ctx: Contexto = Depends(requer("contatos.editar"))):
+    with coletar_entregas() as entregas:
+        resultado = descadastro.adicionar(ctx, dados)
+    tarefas.add_task(entregar_lista, entregas)
+    return resultado
 
 
 @router_interno.post("/tarefas")

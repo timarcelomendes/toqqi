@@ -434,6 +434,8 @@ export interface ConfigEnvios {
   texto_whatsapp: string
   agradecimento_ativo: boolean
   agradecimento: Agradecimentos
+  /** Etapa 3b: por onde a pesquisa sai. Se não vier (API antiga), vale "email". */
+  canal?: CanalConfig
 }
 
 export interface ResumoEnvios {
@@ -479,7 +481,8 @@ export interface ResultadoDisparo {
 export type CanalEnvio = 'email' | 'whatsapp'
 export type TipoEnvio = 'convite' | 'lembrete' | 'agradecimento'
 export type OrigemEnvio = 'manual' | 'automatico' | 'lembrete' | 'resposta'
-export type SituacaoEnvio = 'pendente' | 'enviado' | 'erro' | 'aberto_no_whatsapp'
+/** `entregue` e `lido` vêm do WhatsApp automático (etapa 3b), atualizados pelo aviso da Meta. */
+export type SituacaoEnvio = 'pendente' | 'enviado' | 'entregue' | 'lido' | 'erro' | 'aberto_no_whatsapp'
 
 export interface Envio {
   id: Id
@@ -495,10 +498,12 @@ export interface Envio {
   pode_tentar_de_novo: boolean
 }
 
-export type OrigemDescadastro = 'link' | 'um_clique' | 'manual'
+export type OrigemDescadastro = 'link' | 'um_clique' | 'manual' | 'whatsapp'
 
 export interface Descadastro {
-  email: string
+  /** Na etapa 3b o descadastro pode ser só por telefone (pedido "SAIR" no WhatsApp): aí o e-mail vem null. */
+  email: string | null
+  telefone?: string | null
   contato: Referencia | null
   motivo: string | null
   origem: OrigemDescadastro | (string & {})
@@ -516,4 +521,89 @@ export interface ResultadoTarefa {
   enviados?: number
   agendados?: number
   ignorados?: number | unknown[]
+}
+
+// ───────────────────────── Etapa 3b (docs/api-etapa-3b.md) ─────────────────────────
+
+/** Canal escolhido em Configurações de envio. */
+export type CanalConfig = 'email' | 'whatsapp' | 'whatsapp_e_email'
+
+export interface ChaveIntegracao {
+  existe: boolean
+  prefixo: string | null
+  criada_em: string | null
+  ultimo_uso: string | null
+}
+
+/** Resposta de POST /integracoes/chave: a chave completa vem só aqui, uma vez. */
+export interface ChaveGerada {
+  chave: string
+  prefixo: string
+  criada_em: string
+}
+
+export type EventoWebhook = 'resposta.criada' | 'contato.descadastrado'
+
+export interface Webhook {
+  id: Id
+  url: string
+  eventos: EventoWebhook[]
+  ativo: boolean
+  segredo_prefixo: string | null
+  criado_em: string
+  ultima_entrega: { quando: string; status_http: number | null; ok: boolean } | null
+  falhas_seguidas: number
+}
+
+/** POST /integracoes/webhooks devolve o webhook e o segredo (mostrado uma vez). */
+export interface WebhookCriado extends Webhook {
+  segredo: string
+}
+
+export interface ResultadoTesteWebhook {
+  ok: boolean
+  status_http: number | null
+  mensagem: string
+}
+
+export interface EntregaWebhook {
+  id: Id
+  evento: EventoWebhook | (string & {})
+  criado_em: string
+  tentativas: number
+  status_http: number | null
+  ok: boolean
+  erro: string | null
+}
+
+export interface FranquiaWhatsapp {
+  plano: string | null
+  limite: number
+  usadas_mes: number
+  excedente_ativo: boolean
+  excedentes_mes: number
+  valor_excedente: number
+}
+
+export interface WhatsappIntegracao {
+  conectado: boolean
+  numero_exibicao: string | null
+  nome_verificado: string | null
+  phone_number_id: string | null
+  waba_id: string | null
+  modelo: { nome: string; idioma: string } | null
+  ativo: boolean
+  franquia: FranquiaWhatsapp
+  ultimo_erro: string | null
+  /** Para colar no painel da Meta. Podem não vir para quem só lê (envios.ver). */
+  webhook_url?: string | null
+  webhook_verificacao?: string | null
+}
+
+export interface ConexaoWhatsapp {
+  phone_number_id: string
+  waba_id: string
+  token: string
+  modelo_nome: string
+  modelo_idioma: string
 }
