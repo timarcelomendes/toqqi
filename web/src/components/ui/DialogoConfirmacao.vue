@@ -13,7 +13,7 @@ const aberto = computed({
 </script>
 
 <template>
-  <Modal v-model:aberto="aberto" :titulo="estadoConfirmacao.titulo" tamanho="sm" papel="alertdialog">
+  <Modal v-model:aberto="aberto" :titulo="estadoConfirmacao.titulo" tamanho="sm" papel="alertdialog" elevado>
     <p v-if="estadoConfirmacao.mensagem" class="text-[0.95rem] leading-relaxed text-texto-suave">
       {{ estadoConfirmacao.mensagem }}
     </p>

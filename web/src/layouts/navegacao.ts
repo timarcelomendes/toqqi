@@ -34,8 +34,8 @@ export const navegacaoPrincipal: ItemNavegacao[] = [
   { rotulo: 'Contatos', para: '/contatos', icone: UsersRound, permissao: 'contatos.ver' },
   { rotulo: 'Envios', para: '/envios', icone: Send, permissao: 'envios.ver' },
   { rotulo: 'Formulários', para: '/formularios', icone: FileText, permissao: 'formularios.ver' },
-  { rotulo: 'Respostas', para: '/respostas', icone: MessageSquareText, permissao: 'respostas.ver', emBreve: true },
-  { rotulo: 'Planos de ação', para: '/planos-de-acao', icone: ClipboardList, permissao: 'acoes.ver', emBreve: true },
+  { rotulo: 'Respostas', para: '/respostas', icone: MessageSquareText, permissao: 'respostas.ver' },
+  { rotulo: 'Planos de ação', para: '/planos-de-acao', icone: ClipboardList, permissao: 'acoes.ver' },
   { rotulo: 'Relatórios', para: '/relatorios', icone: BarChart3, permissao: 'relatorios.ver', emBreve: true },
 ]
 
@@ -46,6 +46,16 @@ export const navegacaoAdministracao: ItemNavegacao[] = [
   { rotulo: 'Auditoria', para: '/auditoria', icone: History, permissao: 'auditoria.ver' },
   { rotulo: 'Plataforma', para: '/plataforma', icone: Building2, superadmin: true },
 ]
+
+/**
+ * O item fica marcado na própria página e nas de dentro (ex.: /contatos/123 marca Contatos).
+ * "Importar respostas antigas" (/contatos/importar?tipo=respostas) marca Respostas, de onde a pessoa veio.
+ */
+export function itemAtivo(i: ItemNavegacao, caminho: string, query: Record<string, unknown>, ativoNoLink: boolean): boolean {
+  const tipo = Array.isArray(query.tipo) ? query.tipo[0] : query.tipo
+  if (caminho === '/contatos/importar' && tipo === 'respostas') return i.para === '/respostas'
+  return ativoNoLink || caminho.startsWith(`${i.prefixo ?? i.para}/`)
+}
 
 export function filtrarNavegacao(
   itens: ItemNavegacao[],

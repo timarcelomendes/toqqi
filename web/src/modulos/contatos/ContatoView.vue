@@ -1,20 +1,22 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, History, Link2, MessageCircle, MessageSquareText, Pencil, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, History, Link2, MessageCircle, MessageSquarePlus, MessageSquareText, Pencil, Trash2 } from 'lucide-vue-next'
 import { ApiError, contatosApi, mensagemDoErro, type Contato, type ContatoDetalhe, type ItemHistorico } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
 import { useWhatsapp } from '@/composables/whatsapp'
 import { useSessaoStore } from '@/stores/sessao'
-import { formatarData, formatarDataHora } from '@/utils/datas'
+import { formatarData } from '@/utils/datas'
 import { exibirTelefone } from '@/utils/formatos'
-import { GRUPOS_NOTA, iniciais, situacaoContato, tomGrupo } from '@/utils/rotulos'
+import { CANAIS, GRUPOS_NOTA, iniciais, situacaoContato, tomGrupo } from '@/utils/rotulos'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Carregando from '@/components/ui/Carregando.vue'
 import EstadoVazio from '@/components/ui/EstadoVazio.vue'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
+import ModalRegistrarResposta from '@/modulos/respostas/ModalRegistrarResposta.vue'
+import { quandoFoiResposta, seloOrigem } from '@/modulos/respostas/logica'
 import ModalContato from './ModalContato.vue'
 import ModalLinkPesquisa from './ModalLinkPesquisa.vue'
 
@@ -27,6 +29,7 @@ const erro = ref<string | null>(null)
 const naoExiste = ref(false)
 const editarAberto = ref(false)
 const linkAberto = ref(false)
+const registrarAberto = ref(false)
 const excluindo = ref(false)
 const whatsapp = useWhatsapp()
 const podeWhatsapp = computed(
@@ -89,6 +92,10 @@ const proximoEnvio = computed(() => {
   if (c.situacao === 'na_fila') return 'Já está na fila'
   return formatarData(c.proximo_envio)
 })
+
+const contatoParaRegistro = computed(() =>
+  contato.value ? { id: contato.value.id, nome: contato.value.nome, email: contato.value.email, empresa: contato.value.empresa } : null,
+)
 
 function nomeFormulario(h: ItemHistorico) {
   if (!h.formulario) return null
@@ -183,10 +190,26 @@ onMounted(carregar)
         </section>
 
         <section class="cartao lg:col-span-2" aria-labelledby="titulo-historico">
-          <h2 id="titulo-historico" class="border-b border-borda px-5 py-4 font-bold text-texto">Histórico de respostas</h2>
+          <div class="flex flex-col gap-3 border-b border-borda px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <h2 id="titulo-historico" class="font-bold text-texto">Histórico de respostas</h2>
+            <div class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+              <Botao
+                v-if="sessao.pode('respostas.ver')"
+                variante="secundario"
+                tamanho="sm"
+                class="!h-10 w-full sm:w-auto"
+                :para="{ path: '/respostas', query: { contato_id: String(contato.id) } }"
+              >
+                <MessageSquareText class="size-4" aria-hidden="true" /> Ver respostas
+              </Botao>
+              <Botao v-if="sessao.pode('respostas.editar')" variante="secundario" tamanho="sm" class="!h-10 w-full sm:w-auto" @click="registrarAberto = true">
+                <MessageSquarePlus class="size-4" aria-hidden="true" /> Registrar resposta
+              </Botao>
+            </div>
+          </div>
           <EstadoVazio v-if="!contato.historico?.length" :icone="MessageSquareText" titulo="Nenhuma resposta ainda" descricao="Quando esta pessoa responder uma pesquisa, a nota e o comentário aparecem aqui." />
           <ol v-else class="divide-y divide-borda">
-            <li v-for="(h, i) in contato.historico" :key="i" class="flex gap-4 px-5 py-4">
+            <li v-for="(h, i) in contato.historico" :key="h.id ?? i" class="flex gap-4 px-5 py-4">
               <span
                 v-if="h.nota !== null && h.nota !== undefined"
                 class="flex size-11 shrink-0 items-center justify-center rounded-xl text-lg font-extrabold"
@@ -204,8 +227,13 @@ onMounted(carregar)
                 <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <p class="font-semibold text-texto">{{ nomeFormulario(h) ?? 'Resposta' }}</p>
                   <Etiqueta v-if="h.grupo" :tom="tomGrupo(h.grupo, h.nota)">{{ GRUPOS_NOTA[h.grupo] ?? h.grupo }}</Etiqueta>
+                  <Etiqueta v-if="seloOrigem(h.origem)" tom="neutro">{{ seloOrigem(h.origem) }}</Etiqueta>
+                  <Etiqueta v-if="h.arquivada" tom="neutro" title="Não entra no NPS, no painel nem nas métricas">Arquivada</Etiqueta>
                 </div>
-                <p class="text-xs text-texto-fraco">{{ formatarDataHora(h.data) }}</p>
+                <p class="text-xs text-texto-fraco">
+                  {{ [quandoFoiResposta(h), h.canal ? (CANAIS[h.canal] ?? h.canal) : ''].filter(Boolean).join(' · ') }}
+                  <template v-if="h.arquivada"> · não entra nos números</template>
+                </p>
                 <p v-if="h.comentario" class="mt-2 whitespace-pre-line text-sm text-texto-suave">{{ h.comentario }}</p>
               </div>
             </li>
@@ -215,6 +243,7 @@ onMounted(carregar)
 
       <ModalContato v-model:aberto="editarAberto" :contato="contato" @salvo="aoSalvar" />
       <ModalLinkPesquisa v-model:aberto="linkAberto" :contato="contato" />
+      <ModalRegistrarResposta v-model:aberto="registrarAberto" :contato-inicial="contatoParaRegistro" @registrada="carregar" />
     </template>
   </div>
 </template>

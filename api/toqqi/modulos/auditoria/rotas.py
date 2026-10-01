@@ -4,21 +4,15 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Query
 
 from toqqi.core.deps import Contexto, requer
-from toqqi.core.errors import AppError
+from toqqi.core.filtros import data_filtro
 from toqqi.modulos.auditoria import servico
 
 router = APIRouter(prefix="/auditoria", tags=["auditoria"])
 
 
 def _data(v: str | None, campo: str) -> date | None:
-    """Aceita vazio (sem filtro) ou AAAA-MM-DD."""
-    if not v:
-        return None
-    try:
-        return date.fromisoformat(v)
-    except ValueError:
-        raise AppError(422, "dados_invalidos", "Confira os filtros.",
-                       {campo: "Informe uma data no formato AAAA-MM-DD."})
+    """Aceita vazio (sem filtro) ou AAAA-MM-DD de 2000 a 2100."""
+    return data_filtro(v, campo)
 
 
 @router.get("")

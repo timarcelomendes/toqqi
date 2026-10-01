@@ -1,10 +1,11 @@
 import re
-from datetime import date, time
+from datetime import time
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, model_validator
 from pydantic_core import PydanticCustomError
 
+from toqqi.core.filtros import DataFiltro
 from toqqi.core.validacao import Email, EmailOpcional, Texto, TextoAte
 
 
@@ -75,10 +76,10 @@ class FiltrosFila(BaseModel):
     grupo_id: Annotated[int | None, Opcional] = None
     responsavel_id: Annotated[int | None, Opcional] = None
     empresa_id: Annotated[int | None, Opcional] = None
-    proximo_de: Annotated[date | None, Opcional] = None
-    proximo_ate: Annotated[date | None, Opcional] = None
-    ultimo_de: Annotated[date | None, Opcional] = None
-    ultimo_ate: Annotated[date | None, Opcional] = None
+    proximo_de: DataFiltro = None
+    proximo_ate: DataFiltro = None
+    ultimo_de: DataFiltro = None
+    ultimo_ate: DataFiltro = None
     lembrete: Annotated[Literal["hoje", "amanha"] | None, Opcional] = None
     mostrar_inativos: bool = False
 
@@ -97,8 +98,8 @@ class DispararIn(BaseModel):
 
 
 class FiltrosHistorico(BaseModel):
-    de: Annotated[date | None, Opcional] = None
-    ate: Annotated[date | None, Opcional] = None
+    de: DataFiltro = None
+    ate: DataFiltro = None
     tipo: Annotated[Literal["convite", "lembrete", "agradecimento"] | None, Opcional] = None
     canal: Annotated[Literal["email", "whatsapp"] | None, Opcional] = None
     situacao: Annotated[Literal["pendente", "enviado", "entregue", "lido", "erro", "aberto_no_whatsapp"] | None,

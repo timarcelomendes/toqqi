@@ -88,7 +88,8 @@ Erros em linguagem simples: "O endereço de e-mail não existe ou recusou a mens
 ## 7. Robô e lembretes
 Rodam fora da requisição: `python -m toqqi.tarefas [robo|lembretes|pendentes|tudo]` (padrão `tudo`), ou
 `POST /api/v1/interno/tarefas` com cabeçalho `X-Tarefas-Token: <TAREFAS_TOKEN>` (comparação em tempo constante; 404 se o token não
-estiver configurado; 401 se errado) → `{robo: {...}, lembretes: {...}, pendentes: n}`. Um agendador externo chama a cada hora.
+estiver configurado; 401 se errado) → `{robo: {...}, lembretes: {...}, pendentes: n}`. Em produção, o Cron Job `toqqi-tarefas` do
+Render roda `python -m toqqi.tarefas` a cada 15 minutos (etapa 4a; antes era uma rotina do GitHub Actions); a rota fica para rodar à mão.
 - **Robô** (por conta, em modo sistema e depois `em_conta`): só se pré-condições ok **e** `envio_automatico`; só dentro da janela e
   (se `so_dias_uteis`) de segunda a sexta; no máximo 1 rodada a cada 6 h por conta (`robo_rodou_em`); até 100 contatos por rodada,
   mais atrasados primeiro. Elegível: ativo, com e-mail, não descadastrado, `recebe_pesquisas`, `na_fila`, fora do descanso, sem

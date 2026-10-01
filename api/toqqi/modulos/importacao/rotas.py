@@ -1,7 +1,7 @@
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 
 from toqqi.core.deps import Contexto, requer
 from toqqi.modulos.importacao import servico
@@ -10,18 +10,19 @@ from toqqi.modulos.importacao.planilha import MAX_BYTES
 
 router = APIRouter(prefix="/importacao", tags=["importacao"])
 USAR = requer("importacao.usar")
+Tipo = Literal["contatos", "respostas"]
 
 
 @router.get("/modelo")
-def modelo(tipo: Literal["contatos"] = "contatos", ctx: Contexto = Depends(USAR)):
-    return Response(servico.modelo_csv(), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": 'attachment; filename="modelo-contatos.csv"'})
+def modelo(tipo: Tipo = "contatos", ctx: Contexto = Depends(USAR)):
+    return Response(servico.modelo_csv(tipo), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="modelo-{tipo}.csv"'})
 
 
 @router.post("/analisar")
-def analisar(arquivo: UploadFile = File(...), ctx: Contexto = Depends(USAR)):
+def analisar(arquivo: UploadFile = File(...), tipo: Tipo = Form("contatos"), ctx: Contexto = Depends(USAR)):
     conteudo = arquivo.file.read(MAX_BYTES + 1)
-    return servico.analisar(ctx, arquivo.filename or "", conteudo)
+    return servico.analisar(ctx, arquivo.filename or "", conteudo, tipo)
 
 
 @router.post("/{imp_id}/conferir")

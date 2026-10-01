@@ -166,12 +166,37 @@ _ALIASES = {
 }
 ALIASES = {alias: campo for campo, lista in _ALIASES.items() for alias in lista}
 
+# ---- respostas antigas ------------------------------------------------------
 
-def sugerir_mapeamento(colunas: list[str]) -> dict[str, str | None]:
+CAMPOS_RESPOSTAS = [
+    ("email", "E-mail do contato", True),
+    ("data", "Data da resposta", True),
+    ("nota", "Nota (0 a 10)", True),
+    ("empresa", "Empresa", False),
+    ("comentario", "Comentário", False),
+]
+CHAVES_RESPOSTAS = [c for c, _, _ in CAMPOS_RESPOSTAS]
+ROTULOS_RESPOSTAS = {c: r for c, r, _ in CAMPOS_RESPOSTAS}
+OBRIGATORIOS_RESPOSTAS = [c for c, _, o in CAMPOS_RESPOSTAS if o]
+_ALIASES_RESPOSTAS = {
+    "email": ["email", "e_mail", "email_cliente", "e_mail_cliente", "email_contato", "e_mail_contato",
+              "email_do_contato", "correio_eletronico", "mail"],
+    "data": ["data", "data_resposta", "data_da_resposta", "dt", "dt_resposta", "respondida_em", "respondido_em"],
+    "nota": ["nota", "nps", "nota_nps", "score", "pontuacao", "nota_do_cliente"],
+    "empresa": ["empresa", "razao_social", "cliente", "nome_empresa", "nome_da_empresa", "nome_fantasia",
+                "empresa_cliente"],
+    "comentario": ["comentario", "comentarios", "motivo", "observacao", "observacoes", "obs", "justificativa",
+                   "comentario_do_cliente"],
+}
+ALIASES_RESPOSTAS = {alias: campo for campo, lista in _ALIASES_RESPOSTAS.items() for alias in lista}
+
+
+def sugerir_mapeamento(colunas: list[str], tipo: str = "contatos") -> dict[str, str | None]:
+    aliases = ALIASES_RESPOSTAS if tipo == "respostas" else ALIASES
     usados: set[str] = set()
     saida: dict[str, str | None] = {}
     for c in colunas:
-        campo = ALIASES.get(normalizar_cabecalho(c))
+        campo = aliases.get(normalizar_cabecalho(c))
         if campo in usados:
             campo = None
         if campo:

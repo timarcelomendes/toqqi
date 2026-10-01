@@ -109,6 +109,8 @@ export const CANAIS: Record<CanalResposta, string> = {
   api: 'Integração',
   importacao: 'Importação',
   manual: 'Manual',
+  telefone: 'Telefone',
+  reuniao: 'Reunião',
 }
 
 export const TIPOS_FORMULARIO: Record<TipoFormulario, { rotulo: string; tom: Tom }> = {

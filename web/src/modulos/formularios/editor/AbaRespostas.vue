@@ -3,11 +3,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { Download, MessageSquareText } from 'lucide-vue-next'
 import { formulariosApi, mensagemDoErro, type Id, type Pergunta, type Resposta, type ResultadoPergunta, type Resultados } from '@/api'
 import { avisar } from '@/composables/avisos'
-import { formatarData, formatarDataHora, hojeIso } from '@/utils/datas'
+import { formatarData, hojeIso } from '@/utils/datas'
 import { formatarNumero, plural } from '@/utils/formatos'
 import { CANAIS, GRUPOS_NOTA, tomGrupo } from '@/utils/rotulos'
 import { ROTULOS_CONTEXTO, type CampoContexto } from '@/pesquisa/tipos'
 import { renderizarVariaveis } from '@/pesquisa/variaveis'
+import { quandoFoiResposta, seloOrigem } from '@/modulos/respostas/logica'
 import { useSessaoStore } from '@/stores/sessao'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
@@ -306,8 +307,10 @@ function chipsContexto(r: Resposta) {
                 </p>
                 <span v-if="r.empresa" class="text-sm text-texto-suave">· {{ r.empresa.nome }}</span>
                 <Etiqueta v-if="r.grupo" :tom="tomGrupo(r.grupo, r.nota, r.tipo_nota)">{{ GRUPOS_NOTA[r.grupo] ?? r.grupo }}</Etiqueta>
+                <Etiqueta v-if="seloOrigem(r.origem)" tom="neutro">{{ seloOrigem(r.origem) }}</Etiqueta>
               </div>
-              <p class="text-xs text-texto-fraco">{{ formatarDataHora(r.criada_em) }} · {{ CANAIS[r.canal] ?? r.canal }}</p>
+              <!-- A data da resposta (a informada, nas registradas à mão e importadas); a de entrada só se não vier. -->
+              <p class="text-xs text-texto-fraco">{{ quandoFoiResposta(r) }} · {{ CANAIS[r.canal] ?? r.canal }}</p>
               <p v-if="r.comentario" class="mt-1.5 whitespace-pre-line text-sm text-texto-suave">{{ r.comentario }}</p>
               <div v-if="chipsContexto(r).length || r.referencia" class="mt-2 flex flex-wrap gap-1.5">
                 <Etiqueta v-if="r.referencia" tom="info">Ref.: {{ r.referencia }}</Etiqueta>

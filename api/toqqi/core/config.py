@@ -22,7 +22,7 @@ class Config(BaseSettings):
     EMAIL_FROM: str = "Toqqi <nao-responda@toqqi.com>"
     # "producao" não aceita o provedor console como envio de pesquisas.
     AMBIENTE: Literal["desenvolvimento", "producao"] = "desenvolvimento"
-    # Protege POST /interno/tarefas (agendador externo). Vazio = rota desligada (404).
+    # Protege POST /interno/tarefas (rodar as tarefas à mão). Vazio = rota desligada (404).
     TAREFAS_TOKEN: str = ""
     SUPERADMIN_EMAILS: str = ""
     # Cifra segredos guardados no banco (token do WhatsApp, segredos dos webhooks). Fora de produção,

@@ -336,3 +336,46 @@ class DestinoFalso:
 
         self.recebidos.append({"url": url, "ip": ip, "host": host, "corpo": corpo, "cabecalhos": cabecalhos or {}})
         return httpx.Response(self.status, text="ok")
+
+
+# ---- etapa 4a ---------------------------------------------------------------
+
+def registrar_resposta(client, h: dict, contato_id: int, nota: int, **extra):
+    """POST /respostas (resposta registrada à mão)."""
+    return client.post(f"{API}/respostas", headers=h, json={"contato_id": contato_id, "nota": nota, **extra})
+
+
+def responder_convite(client, h: dict, contato_id: int, nota: int, comentario: str | None = None,
+                      formulario: dict | None = None, **convite) -> dict:
+    """Cria um link de pesquisa para o contato (formulário padrão de NPS, se não vier outro) e responde."""
+    f = formulario or form_padrao(client, h)
+    token = link_pesquisa(client, h, contato_id, formulario_id=f["id"], **convite)
+    respostas = {f["perguntas"][0]["id"]: nota}
+    if comentario:
+        respostas[f["perguntas"][1]["id"]] = comentario
+    r = client.post(f"{API}/publico/convites/{token}/responder", json={"respostas": respostas})
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def lista_respostas(client, h: dict, **filtros) -> dict:
+    r = client.get(f"{API}/respostas", headers=h, params={"por_pagina": 200, **filtros})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def quadro(client, h: dict, **filtros) -> dict:
+    r = client.get(f"{API}/acoes/quadro", headers=h, params=filtros)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def criar_responsavel(client, h: dict, nome: str = "Rita Gomes", **campos) -> dict:
+    r = client.post(f"{API}/responsaveis", headers=h, json={"nome": nome, **campos})
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def perfil_id(client, h: dict, nome: str = "Decisor") -> int:
+    perfis = client.get(f"{API}/cadastros/perfis", headers=h).json()
+    return next(p["id"] for p in perfis if p["nome"] == nome)

@@ -132,6 +132,8 @@ def enfileirar(s: Session, evento: str, dados: dict) -> None:
 
 
 def _ao_registrar_resposta(s: Session, r: Resposta) -> None:
+    if r.origem == "importacao":
+        return  # histórico importado não vira evento
     if not s.scalar(select(func.count()).select_from(Webhook)
                     .where(Webhook.ativo.is_(True), Webhook.eventos.any("resposta.criada"))):
         return

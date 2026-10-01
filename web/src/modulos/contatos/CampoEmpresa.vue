@@ -1,8 +1,10 @@
 <script setup lang="ts">
 // Busca de empresa (combobox acessível) com opção de criar na hora.
+// Sem acesso aos contatos (contatos.ver), não busca nada: mostra o valor atual, com um aviso curto.
 import { computed, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { Building2, LoaderCircle, Plus, Search, X } from 'lucide-vue-next'
 import { ApiError, empresasApi, mensagemDoErro, type Empresa, type Referencia } from '@/api'
+import { useSessaoStore } from '@/stores/sessao'
 
 const props = withDefaults(
   defineProps<{ rotulo: string; podeCriar?: boolean; erro?: string | null; placeholder?: string; rotuloOculto?: boolean; opcional?: boolean }>(),
@@ -12,6 +14,11 @@ const modelo = defineModel<Referencia | null>({ required: true })
 const emit = defineEmits<{ criada: [Empresa] }>()
 
 const id = `empresa-${useId()}`
+const sessao = useSessaoStore()
+/** A lista de empresas pede contatos.ver: sem ela, o campo só mostra o valor (e deixa limpar). */
+const podeBuscar = computed(() => sessao.pode('contatos.ver'))
+/** Texto quando não há empresa: nos filtros ("Todas") vale o próprio placeholder. */
+const textoVazio = computed(() => (props.placeholder === 'Todas' ? 'Todas' : 'Nenhuma'))
 const texto = ref(modelo.value?.nome ?? '')
 const aberto = ref(false)
 const buscando = ref(false)
@@ -40,6 +47,7 @@ const opcoes = computed(() => [
 ])
 
 async function buscar() {
+  if (!podeBuscar.value) return
   controle?.abort()
   controle = new AbortController()
   buscando.value = true
@@ -136,7 +144,32 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="raiz" class="relative flex flex-col gap-1.5">
+  <div v-if="!podeBuscar" class="flex flex-col gap-1.5">
+    <span :id="`${id}-rotulo`" class="text-sm font-semibold text-texto" :class="{ 'sr-only': rotuloOculto }">
+      {{ rotulo }} <span v-if="opcional" class="font-normal text-texto-fraco">(opcional)</span>
+    </span>
+    <div
+      role="group"
+      :aria-labelledby="`${id}-rotulo`"
+      :aria-describedby="`${id}-sem-acesso`"
+      class="flex min-h-11 items-center gap-2 rounded-xl border border-borda bg-superficie-2 pl-3 pr-1.5 text-[0.95rem]"
+    >
+      <Building2 class="size-4 shrink-0 text-texto-fraco" aria-hidden="true" />
+      <span class="min-w-0 flex-1 truncate" :class="modelo ? 'text-texto' : 'text-texto-fraco'">{{ modelo?.nome ?? textoVazio }}</span>
+      <button
+        v-if="modelo"
+        type="button"
+        class="flex size-8 shrink-0 items-center justify-center rounded-lg text-texto-fraco hover:bg-superficie hover:text-texto"
+        :aria-label="`Limpar ${rotulo.toLowerCase()}`"
+        @click="limpar"
+      >
+        <X class="size-4" aria-hidden="true" />
+      </button>
+    </div>
+    <p :id="`${id}-sem-acesso`" class="text-xs text-texto-fraco">Seu perfil não tem acesso à lista de empresas.</p>
+    <p v-if="erro" class="text-sm font-medium text-erro">{{ erro }}</p>
+  </div>
+  <div v-else ref="raiz" class="relative flex flex-col gap-1.5">
     <label :for="id" class="text-sm font-semibold text-texto" :class="{ 'sr-only': rotuloOculto }">
       {{ rotulo }} <span v-if="opcional" class="font-normal text-texto-fraco">(opcional)</span>
     </label>

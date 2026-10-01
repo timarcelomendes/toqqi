@@ -49,15 +49,21 @@ class Estado:
 
 
 def estado(cfg: ConfigEnvios, hoje: date) -> Estado:
+    # As buscas por contato levam a conta explícita (além do RLS, cuja política tem `OR app_sistema()`): assim o
+    # banco usa os índices (conta_id, contato_id, ...) / (conta_id, convite_id, ...) em vez de varrê-los.
     uc = (select(Convite.id, Convite.criado_em, Convite.respondido_em, Convite.lembretes_enviados,
                  Convite.ultimo_lembrete_em)
-          .where(Convite.contato_id == Contato.id, Convite.canal.in_(("email", "whatsapp")))
+          .where(Convite.conta_id == Contato.conta_id, Convite.contato_id == Contato.id,
+                 Convite.canal.in_(("email", "whatsapp")))
           .order_by(Convite.criado_em.desc(), Convite.id.desc()).limit(1)
           .correlate(Contato).lateral("uc"))
     ue = (select(Envio.id, Envio.situacao, Envio.erro)
-          .where(Envio.convite_id == uc.c.id, Envio.tipo == "convite")
-          .order_by(Envio.id.desc()).limit(1).lateral("ue"))
-    ultima_resposta = (select(func.max(Resposta.criada_em)).where(Resposta.contato_id == Contato.id)
+          .where(Envio.conta_id == Contato.conta_id, Envio.convite_id == uc.c.id, Envio.tipo == "convite")
+          .order_by(Envio.id.desc()).limit(1).correlate(Contato, uc).lateral("ue"))
+    # data da resposta (informada ou de entrada); o histórico importado não mexe na fila
+    ultima_resposta = (select(func.max(Resposta.data_resposta))
+                       .where(Resposta.conta_id == Contato.conta_id, Resposta.contato_id == Contato.id,
+                              Resposta.origem != "importacao")
                        .correlate(Contato).scalar_subquery())
     data_convite = data_local(uc.c.criado_em)
     saiu = or_(descadastrado(Contato.email, Contato.telefone), Contato.recebe_pesquisas.is_(False))

@@ -1,5 +1,5 @@
-// Tipos do contrato da API (docs/api-etapa-1.md e docs/api-etapa-2.md).
-import type { Contexto, Pergunta, Tema } from '@/pesquisa/tipos'
+// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b e -4a).
+import type { Contexto, GrupoNota, Pergunta, Tema } from '@/pesquisa/tipos'
 
 export type Perfil = 'admin' | 'gestor' | 'consulta'
 export type SituacaoUsuario = 'ativo' | 'pendente' | 'bloqueado'
@@ -246,6 +246,12 @@ export interface ItemHistorico {
   comentario: string | null
   /** O contrato não fixa: pode vir o nome ou {id, nome}. */
   formulario: string | Referencia | null
+  /** Etapa 4a (vêm do servidor novo; podem faltar no antigo). */
+  id?: Id
+  tipo_nota?: 'nps' | 'csat' | null
+  canal?: CanalResposta
+  origem?: OrigemResposta
+  arquivada?: boolean
 }
 
 export interface ContatoDetalhe extends Contato {
@@ -272,6 +278,8 @@ export interface LinkPesquisa {
 
 // Importação
 export type ChaveImportacao = 'email' | 'codigo_externo' | 'telefone'
+/** Etapa 4a: a mesma tela importa contatos ou respostas antigas. */
+export type TipoImportacao = 'contatos' | 'respostas'
 
 export interface CampoImportacao {
   chave: string
@@ -281,6 +289,8 @@ export interface CampoImportacao {
 
 export interface AnaliseImportacao {
   id: Id
+  /** Etapa 4a: o tipo escolhido na análise (vale para conferir e importar). */
+  tipo?: TipoImportacao
   colunas: string[]
   mapeamento_sugerido: Record<string, string | null>
   total_linhas: number
@@ -293,6 +303,12 @@ export interface CorpoImportacao {
   chave: ChaveImportacao
   atualizar_existentes: boolean
   grupo_id?: Id
+}
+
+/** Respostas antigas: só o mapeamento e se atualiza as já importadas (chave e grupo não se aplicam). */
+export interface CorpoImportacaoRespostas {
+  mapeamento: Record<string, string>
+  atualizar_existentes: boolean
 }
 
 export interface ProblemaImportacao {
@@ -375,7 +391,8 @@ export interface Resultados {
   perguntas: ResultadoPergunta[]
 }
 
-export type CanalResposta = 'email' | 'whatsapp' | 'link' | 'qr' | 'widget' | 'api' | 'importacao' | 'manual'
+/** Etapa 4a: respostas registradas à mão também podem vir por telefone ou reunião. */
+export type CanalResposta = 'email' | 'whatsapp' | 'link' | 'qr' | 'widget' | 'api' | 'importacao' | 'manual' | 'telefone' | 'reuniao'
 
 export interface Resposta {
   id: Id
@@ -391,6 +408,10 @@ export interface Resposta {
   contexto: Contexto
   referencia: string | null
   criada_em: string
+  /** Etapa 4a: a data da resposta (a informada, à mão ou na importação; sem ela, a de entrada). Ordena e filtra. */
+  data?: string
+  /** Etapa 4a: como a resposta entrou (pela pesquisa, registrada à mão ou importada). */
+  origem?: OrigemResposta
 }
 
 // ───────────────────────── Etapa 3a (docs/api-etapa-3.md) ─────────────────────────
@@ -606,4 +627,305 @@ export interface ConexaoWhatsapp {
   token: string
   modelo_nome: string
   modelo_idioma: string
+}
+
+// ───────────────────────── Etapa 4a (docs/api-etapa-4a.md) ─────────────────────────
+
+export type TipoNota = 'nps' | 'csat'
+
+/** Faixa do NPS: ≥ 75 excelente, ≥ 50 muito bom, ≥ 0 pode melhorar, < 0 crítico. */
+export type FaixaNps = 'excelente' | 'muito_bom' | 'pode_melhorar' | 'critico'
+
+export type OrigemResposta = 'pesquisa' | 'manual' | 'importacao'
+
+/** Canais aceitos ao registrar uma resposta à mão (POST /respostas). */
+export type CanalManual = 'manual' | 'whatsapp' | 'telefone' | 'email' | 'reuniao'
+
+/** Assunto do comentário, achado por palavras-chave (GET /respostas/temas). */
+export interface TemaResposta {
+  chave: string
+  rotulo: string
+}
+
+export type SituacaoAcao = 'a_fazer' | 'em_andamento' | 'concluida'
+export type PrioridadeAcao = 'alta' | 'media' | 'baixa'
+export type OrigemAcao = 'automatica' | 'manual'
+/** Só para ação não concluída com prazo; null = prazo depois de amanhã (ou sem prazo). */
+export type SeloPrazo = 'vencido' | 'hoje' | 'amanha'
+
+/** A ação ligada a uma resposta: a automática; senão a mais recente. */
+export interface AcaoDaResposta {
+  id: Id
+  situacao: SituacaoAcao
+  prazo: string | null
+  prazo_selo: SeloPrazo | null
+}
+
+/** Resposta da etapa 4a (lista, registro, análise, arquivar): o formato da etapa 2 com mais campos. */
+export interface RespostaItem extends Omit<Resposta, 'contato' | 'empresa' | 'grupo' | 'tipo_nota'> {
+  /** Data da resposta (informada ou, sem ela, a de entrada): a data de toda regra de período. */
+  data: string
+  respondida_em: string | null
+  origem: OrigemResposta
+  tipo_nota: TipoNota | null
+  /** Categoria (grupo da nota). */
+  grupo: GrupoNota | null
+  temas: string[]
+  temas_manuais: boolean
+  o_que_faltou: string | null
+  o_que_combinamos: string | null
+  analisada_em: string | null
+  analisada_por: Referencia | null
+  registrada_por: Referencia | null
+  arquivada: boolean
+  contato: { id: Id; nome: string; email: string | null; perfil: Referencia | null } | null
+  empresa: { id: Id; nome: string; grupo: Referencia | null } | null
+  acao: AcaoDaResposta | null
+}
+
+/** Pergunta com a resposta já em texto (ex.: "Sim", "31/12/2025"). */
+export interface PerguntaRespondida {
+  id: string
+  titulo: string
+  tipo: string
+  resposta: string | null
+}
+
+export interface RespostaDetalhe extends RespostaItem {
+  perguntas: PerguntaRespondida[]
+  convite: { evento: string | null; referencia: string | null; assunto: string | null } | null
+  /** Todas as ações ligadas à resposta (resumidas). */
+  acoes: (AcaoDaResposta & { titulo: string })[]
+}
+
+export interface NpsResumo {
+  valor: number | null
+  faixa: FaixaNps | null
+  promotores: number
+  neutros: number
+  detratores: number
+  total: number
+}
+
+/** Métricas de GET /respostas, sobre o mesmo filtro (todas as páginas). */
+export interface MetricasRespostas {
+  nps: NpsResumo | null
+  csat: { percentual: number | null; media: number | null; total: number } | null
+  total: number
+}
+
+export interface PaginaRespostas extends Pagina<RespostaItem> {
+  metricas?: MetricasRespostas | null
+}
+
+export interface FiltrosRespostas {
+  busca?: string
+  categoria?: GrupoNota | ''
+  tipo_nota?: TipoNota | ''
+  /** Grupo de empresas. */
+  grupo_id?: Id | ''
+  empresa_id?: Id | ''
+  contato_id?: Id | ''
+  tema?: string
+  perfil_id?: Id | ''
+  canal?: CanalResposta | ''
+  origem?: OrigemResposta | ''
+  formulario_id?: Id | ''
+  de?: string
+  ate?: string
+  /** "entrada" filtra pela data em que a resposta chegou ao Toqqi. */
+  data_por?: 'resposta' | 'entrada'
+  arquivadas?: 'false' | 'true' | 'todas'
+  /** Tira as respostas de empresas desativadas (as sem empresa continuam), como no painel. */
+  so_ativos?: boolean
+  pagina?: number
+  por_pagina?: number
+}
+
+export interface DadosRegistroResposta {
+  contato_id: Id
+  nota: number
+  canal?: CanalManual
+  comentario?: string
+  /** AAAA-MM-DD; sem ela, vale hoje. */
+  data?: string
+}
+
+/** PATCH /respostas/{id}: só o que mudou. Mandar `temas` marca os temas como escolhidos à mão. */
+export interface DadosAnaliseResposta {
+  nota?: number
+  comentario?: string | null
+  o_que_faltou?: string | null
+  o_que_combinamos?: string | null
+  temas?: string[]
+}
+
+export interface ResponsavelAcao {
+  id: Id
+  nome: string
+  email: string | null
+  foto_url: string | null
+}
+
+export interface Acao {
+  id: Id
+  titulo: string
+  descricao: string
+  /** "O que foi feito". Obrigatória para concluir. */
+  resolucao: string | null
+  situacao: SituacaoAcao
+  prioridade: PrioridadeAcao
+  prazo: string | null
+  prazo_selo: SeloPrazo | null
+  empresa: Referencia | null
+  contato: Referencia | null
+  responsavel: ResponsavelAcao | null
+  resposta: { id: Id; nota: number | null; tipo_nota: TipoNota | null; grupo: GrupoNota | null; comentario: string | null; data: string } | null
+  origem: OrigemAcao
+  grupo: GrupoNota | null
+  tipo_nota: TipoNota | null
+  nota: number | null
+  criada_em: string
+  atualizada_em: string
+  iniciada_em: string | null
+  concluida_em: string | null
+  criado_por: Referencia | null
+  concluida_por: Referencia | null
+}
+
+export interface TotaisQuadro {
+  a_fazer: number
+  em_andamento: number
+  concluida: number
+  vencidas: number
+}
+
+export interface QuadroAcoes {
+  colunas: Record<SituacaoAcao, Acao[]>
+  totais: TotaisQuadro
+}
+
+export interface FiltrosAcoes {
+  busca?: string
+  categoria?: GrupoNota | ''
+  tipo_nota?: TipoNota | ''
+  /** 0 = sem responsável. */
+  responsavel_id?: Id | ''
+  empresa_id?: Id | ''
+  /** Grupo de empresas. */
+  grupo_id?: Id | ''
+  /** Data de criação da ação. */
+  de?: string
+  ate?: string
+  so_vencidas?: boolean
+}
+
+export interface DadosNovaAcao {
+  titulo: string
+  descricao?: string
+  empresa_id?: Id | null
+  contato_id?: Id | null
+  resposta_id?: Id | null
+  responsavel_id?: Id | null
+  prioridade?: PrioridadeAcao
+  prazo?: string | null
+}
+
+/** PATCH /acoes/{id}: null limpa os opcionais. Mover = mudar a situação. */
+export interface DadosEdicaoAcao {
+  titulo?: string
+  descricao?: string
+  resolucao?: string | null
+  responsavel_id?: Id | null
+  prioridade?: PrioridadeAcao
+  prazo?: string | null
+  situacao?: SituacaoAcao
+  empresa_id?: Id | null
+}
+
+/** Prazos (1 a 90 dias) das ações automáticas e se promotor também ganha ação. */
+export interface ConfigAcoes {
+  prazo_detrator: number
+  prazo_neutro: number
+  prazo_promotor: number
+  acao_promotor: boolean
+}
+
+export interface FiltrosPainel {
+  de?: string
+  ate?: string
+  /** Grupo de empresas. */
+  grupo_id?: Id | ''
+  so_ativos?: boolean
+}
+
+export interface ItemMovimentacao {
+  tipo: 'resgatado' | 'deixou_de_ser_promotor'
+  contato: Referencia
+  empresa: Referencia | null
+  nota_anterior: number
+  nota_atual: number
+  data_anterior: string
+  data_atual: string
+}
+
+export interface EmpresaAtencao {
+  empresa: Referencia
+  nps: number | null
+  acoes_abertas: number
+  acoes_vencidas: number
+  /** Data da ação aberta mais antiga. */
+  desde: string | null
+  responsavel: Referencia | null
+  ultimo_comentario_detrator: string | null
+  /** A ação mais urgente (botão Tratar). */
+  acao_id: Id | null
+}
+
+export interface EmpresaNps {
+  empresa: Referencia
+  nps: number
+  respostas: number
+}
+
+export interface Painel {
+  periodo: { de: string | null; ate: string | null; anterior: { de: string; ate: string } | null }
+  nps: NpsResumo & {
+    pct: { promotores: number; neutros: number; detratores: number }
+    decisores: { valor: number | null; total: number }
+  }
+  /** valor = NPS do período − NPS do período anterior (anterior). Null sem período ou sem NPS em um dos dois. */
+  variacao: { valor: number; anterior: number } | null
+  csat: { percentual: number | null; media: number | null; total: number; satisfeitos: number }
+  taxa_resposta: { percentual: number | null; responderam: number; convidados: number; amostra_pequena: boolean }
+  movimentacao: { resgatados: number; deixaram_de_ser_promotores: number; itens: ItemMovimentacao[] }
+  atencao: {
+    acoes_abertas: number
+    acoes_vencidas: number
+    tudo_em_dia: boolean
+    empresas: EmpresaAtencao[]
+    receita_em_risco: { valor: number | string; empresas: number; sem_valor: number }
+  }
+  temas: { chave: string; rotulo: string; mencoes: number; nota_media: number | null }[]
+  comentarios: {
+    resposta_id: Id
+    data: string
+    nota: number | null
+    tipo_nota: TipoNota | null
+    grupo: GrupoNota | null
+    comentario: string
+    contato: Referencia | null
+    empresa: Referencia | null
+  }[]
+  /** NPS por mês (AAAA-MM), em ordem cronológica. */
+  evolucao: { mes: string; nps: number | null; total: number }[]
+  empresas: { menor: EmpresaNps[]; maior: EmpresaNps[] }
+  palavras: { palavra: string; total: number }[]
+  /** Cada passo: feito ou não (o contrato não fixa se vem booleano ou contagem). */
+  primeiros_passos: {
+    contatos: boolean | number
+    envios_ligados: boolean | number
+    primeiro_envio: boolean | number
+    primeira_resposta: boolean | number
+  }
 }

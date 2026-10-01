@@ -21,9 +21,13 @@ from toqqi.modulos.formularios.validacao import (
     visivel,
 )
 from toqqi.modulos.respostas.eventos import ao_registrar_resposta
+from toqqi.modulos.respostas.temas import detectar
 
 ASSUNTO_PADRAO = "o nosso atendimento"
 MAX_RESUMO = 2000
+ORIGENS = ("pesquisa", "manual", "importacao")
+SEPARADOR_COMENTARIOS = " · "  # entre duas perguntas de comentário da mesma resposta
+TIPOS_ESCOLHA = ("escolha_unica", "escolha_multipla")
 
 
 # ---- variáveis --------------------------------------------------------------
@@ -197,6 +201,33 @@ def resumo(perguntas: list[dict], respostas: dict, v: dict) -> str:
     return texto if len(texto) <= MAX_RESUMO else texto[:MAX_RESUMO - 1] + "…"
 
 
+def comentario_do_cliente(perguntas: list[dict] | None, respostas: dict | None) -> str:
+    """O que o cliente escreveu numa resposta de pesquisa: as respostas das perguntas de comentário, na ordem do
+    formulário (lidas das respostas, não do resumo: um " | " no texto do cliente não atrapalha). Nome, e-mail,
+    telefone, número, nota, data, sim/não e opções marcadas não são comentário."""
+    respostas = respostas or {}
+    partes = []
+    for p in perguntas or []:
+        valor = respostas.get(p.get("id"))
+        if p.get("tipo") == "comentario" and isinstance(valor, str) and valor.strip():
+            partes.append(valor.strip())
+    return SEPARADOR_COMENTARIOS.join(partes)
+
+
+def escolhas_do_cliente(perguntas: list[dict] | None, respostas: dict | None) -> list[str]:
+    """As opções marcadas em cada pergunta de escolha (ex.: "Atrasou, Produto avariado")."""
+    respostas = respostas or {}
+    return [formatar_valor(respostas[p["id"]]) for p in perguntas or []
+            if p.get("tipo") in TIPOS_ESCOLHA and p.get("id") in respostas]
+
+
+def temas_da_resposta(comentario_cliente: str | None, o_que_faltou: str | None = None,
+                      perguntas: list[dict] | None = None, respostas: dict | None = None) -> list[str]:
+    """Temas: palavras-chave no comentário do cliente, nas opções que ele marcou e em "o que faltou"."""
+    return detectar("\n".join((comentario_cliente or "", " ".join(escolhas_do_cliente(perguntas, respostas)),
+                               o_que_faltou or "")))
+
+
 def email_informado(perguntas: list[dict], respostas: dict) -> str | None:
     for p in perguntas:
         if p["tipo"] == "texto_curto" and p.get("formato") == "email" and respostas.get(p["id"]):
@@ -205,6 +236,22 @@ def email_informado(perguntas: list[dict], respostas: dict) -> str | None:
 
 
 # ---- gravação ---------------------------------------------------------------
+
+def atualizar_ultima_nota(s: Session, contato_id: int | None) -> None:
+    """`ultima_nota` do contato = nota da resposta mais recente dele (pela data da resposta; arquivadas e
+    respostas sem nota não contam). Sem nenhuma, fica vazia."""
+    if contato_id is None:
+        return
+    contato = s.get(Contato, contato_id)
+    if contato is None:
+        return
+    # conta explícita (além do RLS): o banco usa o índice (conta_id, contato_id)
+    contato.ultima_nota = s.scalar(
+        select(Resposta.nota)
+        .where(Resposta.conta_id == contato.conta_id, Resposta.contato_id == contato_id,
+               Resposta.arquivada.is_(False), Resposta.nota.is_not(None))
+        .order_by(Resposta.data_resposta.desc(), Resposta.id.desc()).limit(1))
+
 
 def gravar_resposta(
     s: Session,
@@ -219,8 +266,15 @@ def gravar_resposta(
     referencia: str | None = None,
     ip_hash: str | None = None,
     respostas_validadas: tuple | None = None,
+    origem: str = "pesquisa",
+    comentario: str | None = None,
+    respondida_em=None,
+    registrada_por: int | None = None,
 ) -> Resposta:
-    """Valida, grava e chama o ponto único `ao_registrar_resposta`. Deve rodar dentro de em_conta."""
+    """Valida, grava (com grupo, comentário do cliente e temas) e chama o ponto único `ao_registrar_resposta`. Deve
+    rodar dentro de em_conta. `origem`: pesquisa (páginas públicas), manual (registrada por alguém da conta) ou
+    importacao. `comentario` substitui o resumo das respostas (resposta à mão) e é o próprio comentário do cliente."""
+    assert origem in ORIGENS
     limpas, nota, tipo_nota, grupo = respostas_validadas or validar_respostas(f.perguntas, brutas)
     if contato is None:
         email = email_informado(f.perguntas, limpas)
@@ -228,15 +282,21 @@ def gravar_resposta(
             contato = s.scalar(select(Contato).where(Contato.email == email))
     if contato is not None and empresa_id is None:
         empresa_id = contato.empresa_id
+    if comentario is None:
+        comentario = resumo(f.perguntas, limpas, v)
+        cliente = comentario_do_cliente(f.perguntas, limpas) if origem == "pesquisa" else comentario
+    else:
+        cliente = comentario.strip()
     r = Resposta(
         formulario_id=f.id, convite_id=convite_id, contato_id=contato.id if contato else None,
         empresa_id=empresa_id, canal=canal, nota=nota, tipo_nota=tipo_nota, grupo=grupo,
-        comentario=resumo(f.perguntas, limpas, v), respostas=limpas, contexto=contexto or {},
-        referencia=referencia or None, ip_hash=ip_hash,
+        comentario=comentario, comentario_cliente=cliente, respostas=limpas, contexto=contexto or {},
+        referencia=referencia or None, ip_hash=ip_hash, origem=origem, respondida_em=respondida_em,
+        registrada_por=registrada_por, temas=temas_da_resposta(cliente, None, f.perguntas, limpas),
     )
     s.add(r)
-    if contato is not None and nota is not None:
-        contato.ultima_nota = nota
     s.flush()
+    if contato is not None and nota is not None:
+        atualizar_ultima_nota(s, contato.id)
     ao_registrar_resposta(s, r)
     return r

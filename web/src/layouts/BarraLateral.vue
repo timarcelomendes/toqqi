@@ -3,14 +3,14 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSessaoStore } from '@/stores/sessao'
 import Marca from '@/components/app/Marca.vue'
-import { filtrarNavegacao, navegacaoAdministracao, navegacaoPrincipal, type ItemNavegacao } from './navegacao'
+import { filtrarNavegacao, itemAtivo, navegacaoAdministracao, navegacaoPrincipal, type ItemNavegacao } from './navegacao'
 
 defineEmits<{ navegou: [] }>()
 const sessao = useSessaoStore()
 const rota = useRoute()
 /** Ativo também nas páginas de dentro (ex.: /contatos/123 marca Contatos). */
 function ativoNa(i: ItemNavegacao, isActive: boolean) {
-  return isActive || rota.path.startsWith(`${i.prefixo ?? i.para}/`)
+  return itemAtivo(i, rota.path, rota.query, isActive)
 }
 
 const principal = computed(() => filtrarNavegacao(navegacaoPrincipal, sessao.pode, sessao.superadmin))

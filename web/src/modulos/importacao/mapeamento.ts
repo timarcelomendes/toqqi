@@ -1,4 +1,12 @@
-import type { AnaliseImportacao, CampoImportacao, ChaveImportacao } from '@/api/tipos'
+import type {
+  AnaliseImportacao,
+  CampoImportacao,
+  ChaveImportacao,
+  CorpoImportacao,
+  CorpoImportacaoRespostas,
+  Id,
+  TipoImportacao,
+} from '@/api/tipos'
 
 export const LIMITE_ARQUIVO = 5 * 1024 * 1024
 export const EXTENSOES_ACEITAS = ['.csv', '.xlsx', '.xls']
@@ -73,15 +81,71 @@ export function mapeamentoParaEnvio(m: Mapeamento): Record<string, string> {
   return Object.fromEntries(Object.entries(m).filter(([, c]) => !!c))
 }
 
-/** Problemas que impedem conferir (mensagens prontas para mostrar). */
-export function pendenciasMapeamento(m: Mapeamento, campos: CampoImportacao[], chave: ChaveImportacao | null): string[] {
+/**
+ * Problemas que impedem conferir (mensagens prontas para mostrar).
+ * Respostas antigas: valem só as colunas obrigatórias que a API indicar (e-mail, data e nota) e não há chave a escolher.
+ */
+export function pendenciasMapeamento(
+  m: Mapeamento,
+  campos: CampoImportacao[],
+  chave: ChaveImportacao | null,
+  tipo: TipoImportacao = 'contatos',
+): string[] {
   const p: string[] = []
   const rotulo = (k: string) => campos.find((c) => c.chave === k)?.rotulo ?? k
   for (const c of camposDuplicados(m)) p.push(`“${rotulo(c)}” foi escolhido em mais de uma coluna.`)
   for (const c of obrigatoriosFaltando(m, campos)) p.push(`Falta indicar a coluna de “${c.rotulo}”.`)
+  if (tipo === 'respostas') return p
   if (faltaEmailOuTelefone(m)) p.push('Indique a coluna de e-mail ou a de telefone (pelo menos uma).')
   if (!chave) p.push('Escolha como reconhecer quem já está cadastrado.')
   return p
+}
+
+// ── Tipo da importação (etapa 4a) ────────────────────────────────────────────
+
+export const TIPOS_IMPORTACAO: Record<
+  TipoImportacao,
+  { rotulo: string; descricao: string; titulo: string; subtitulo: string; item: [string, string]; voltar: { rotulo: string; para: string } }
+> = {
+  contatos: {
+    rotulo: 'Contatos',
+    descricao: 'Seus clientes: nome, e-mail ou telefone, empresa e cargo.',
+    titulo: 'Importar contatos',
+    subtitulo: 'Traga seus clientes de uma planilha do Excel ou de outro sistema, sem digitar um por um.',
+    item: ['contato', 'contatos'],
+    voltar: { rotulo: 'Contatos', para: '/contatos' },
+  },
+  respostas: {
+    rotulo: 'Respostas antigas',
+    descricao: 'Notas que seus clientes deram antes de usar o Toqqi, para ver o histórico completo.',
+    titulo: 'Importar respostas antigas',
+    subtitulo: 'Traga as notas que seus clientes já deram, de outra ferramenta ou de uma planilha, para o histórico ficar completo.',
+    item: ['resposta', 'respostas'],
+    voltar: { rotulo: 'Respostas', para: '/respostas' },
+  },
+}
+
+/** `?tipo=respostas` escolhe respostas antigas; qualquer outra coisa, contatos. */
+export function tipoDaQuery(v: unknown): TipoImportacao {
+  const s = Array.isArray(v) ? v[0] : v
+  return s === 'respostas' ? 'respostas' : 'contatos'
+}
+
+/** Corpo de conferir/importar conforme o tipo (respostas: sem chave e sem grupo). Null enquanto falta a chave dos contatos. */
+export function corpoParaTipo(
+  tipo: TipoImportacao,
+  m: Mapeamento,
+  opcoes: { chave: ChaveImportacao | null; atualizar_existentes: boolean; grupo_id?: Id | '' },
+): CorpoImportacao | CorpoImportacaoRespostas | null {
+  const mapeamento = mapeamentoParaEnvio(m)
+  if (tipo === 'respostas') return { mapeamento, atualizar_existentes: opcoes.atualizar_existentes }
+  if (!opcoes.chave) return null
+  return {
+    mapeamento,
+    chave: opcoes.chave,
+    atualizar_existentes: opcoes.atualizar_existentes,
+    ...(opcoes.grupo_id !== undefined && opcoes.grupo_id !== '' ? { grupo_id: opcoes.grupo_id } : {}),
+  }
 }
 
 /** Até `n` valores de exemplo de uma coluna, vindos da amostra (objeto por coluna ou lista por posição). */

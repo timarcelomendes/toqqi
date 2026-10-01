@@ -1,7 +1,12 @@
 """Ponto único "resposta registrada".
 
-Toda resposta nova passa por `ao_registrar_resposta`, dentro da mesma transação que a gravou.
-As etapas 3 e 4 penduram aqui os efeitos seguintes (plano de ação, alertas, agradecimento).
+Toda resposta nova gravada por `gravar_resposta` passa por `ao_registrar_resposta`, dentro da mesma transação
+que a gravou. Os ganchos (agradecimento e fila de envios, webhooks, ação automática + alerta) conferem
+`resposta.origem`:
+- `pesquisa` (páginas públicas): todos os efeitos;
+- `manual` (registrada por alguém da conta): tudo, menos o agradecimento por e-mail;
+- `importacao` (histórico): nenhum efeito. A importação grava em lote e não chama os ganchos; eles ignoram
+  essa origem de qualquer forma.
 """
 from collections.abc import Callable
 

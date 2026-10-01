@@ -32,7 +32,7 @@ from toqqi.core.email import caixa_memoria  # noqa: E402
 from toqqi.core.rate_limit import limiter  # noqa: E402
 from toqqi.main import create_app  # noqa: E402
 
-TABELAS = ("envios, descadastros, config_envios, importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
+TABELAS = ("acoes, config_acoes, envios, descadastros, config_envios, importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
            "perfis_contato, cargos, auditoria, dominios_liberados, perfil_permissoes, tokens_uso_unico, sessoes, usuarios, contas")
 
 
@@ -121,3 +121,18 @@ def destino(monkeypatch):
     monkeypatch.setattr(rede, "resolver", lambda host: ["52.96.1.10"])
     monkeypatch.setattr(rede, "enviar_post", d)
     return d
+
+
+@pytest.fixture
+def relogio_estavel(monkeypatch):
+    """Relógio das regras ao meio-dia de hoje (São Paulo), andando no tempo real: o "hoje" do teste e o da API
+    não viram à meia-noite no meio do teste. Devolve a data."""
+    import time as _t
+    from datetime import datetime, time, timedelta
+
+    from toqqi.core import relogio
+
+    inicio = datetime.combine(datetime.now(relogio.FUSO).date(), time(12), tzinfo=relogio.FUSO)
+    t0 = _t.monotonic()
+    monkeypatch.setattr(relogio, "agora", lambda: inicio + timedelta(seconds=_t.monotonic() - t0))
+    return inicio.date()

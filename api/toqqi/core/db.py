@@ -58,6 +58,12 @@ def modo_sistema() -> Iterator[Session]:
         yield s
 
 
+def sem_jit(s: Session) -> None:
+    """Desliga o JIT do PostgreSQL até o fim da transação: nas leituras grandes (painel, listas, CSV) compilar a
+    consulta custava mais que executá-la."""
+    s.execute(text("SET LOCAL jit = off"))
+
+
 def travar(s: Session, chave: str) -> None:
     """Trava pelo texto `chave` até o fim da transação (serializa operações concorrentes da mesma chave)."""
     s.execute(text("select pg_advisory_xact_lock(hashtextextended(:k, 0))"), {"k": chave})

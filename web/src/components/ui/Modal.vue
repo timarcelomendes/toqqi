@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, toRef, useId, watch } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useFocoPreso } from '@/composables/focoPreso'
+import { liberarRolagem, travarRolagem } from '@/composables/rolagem'
 
 const props = withDefaults(
   defineProps<{
@@ -11,6 +12,8 @@ const props = withDefaults(
     /** Impede fechar (ex.: enquanto salva). */
     bloqueado?: boolean
     papel?: 'dialog' | 'alertdialog'
+    /** Por cima de painéis e outros modais (ex.: confirmação aberta de dentro de um painel lateral). */
+    elevado?: boolean
   }>(),
   { tamanho: 'md', papel: 'dialog' },
 )
@@ -27,14 +30,17 @@ function fechar() {
 
 useFocoPreso(painel, toRef(aberto), fechar)
 
-// Trava a rolagem da página enquanto o modal está aberto.
+// Trava a rolagem da página enquanto o modal está aberto (contando com outras janelas abertas por baixo).
 watch(aberto, (v, antes) => {
-  document.body.style.overflow = v ? 'hidden' : ''
-  if (!v && antes) emit('fechado')
+  if (v && !antes) travarRolagem()
+  else if (!v && antes) {
+    liberarRolagem()
+    emit('fechado')
+  }
 })
 
 onBeforeUnmount(() => {
-  if (aberto.value) document.body.style.overflow = ''
+  if (aberto.value) liberarRolagem()
 })
 
 const largura = computed(() => ({ sm: 'sm:max-w-md', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl' })[props.tamanho])
@@ -42,7 +48,7 @@ const largura = computed(() => ({ sm: 'sm:max-w-md', md: 'sm:max-w-lg', lg: 'sm:
 
 <template>
   <Teleport to="body">
-    <div v-if="aberto" class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+    <div v-if="aberto" class="fixed inset-0 flex items-end justify-center sm:items-center sm:p-6" :class="elevado ? 'z-[58]' : 'z-50'">
       <div class="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]" aria-hidden="true" @click="fechar" />
       <div
         ref="painel"

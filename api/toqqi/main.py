@@ -1,5 +1,5 @@
-"""Aplicação FastAPI do Toqqi (etapas 1 a 3b: acesso, equipe, cadastros, formulários, páginas públicas, envios,
-integrações e WhatsApp automático)."""
+"""Aplicação FastAPI do Toqqi (etapas 1 a 4a: acesso, equipe, cadastros, formulários, páginas públicas, envios,
+integrações, WhatsApp automático, respostas, planos de ação e painel)."""
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -14,6 +14,7 @@ from toqqi.core.errors import registrar_handlers
 from toqqi.core.rate_limit import ao_exceder, limiter
 from toqqi.core.requisicao import ip_cliente, request_id
 from toqqi.modulos.acesso.rotas import router as acesso
+from toqqi.modulos.acoes.rotas import router as acoes
 from toqqi.modulos.auditoria.rotas import router as auditoria
 from toqqi.modulos.cadastros.rotas import router as cadastros
 from toqqi.modulos.conta.rotas import router as conta
@@ -26,8 +27,10 @@ from toqqi.modulos.formularios.rotas import router as formularios
 from toqqi.modulos.importacao.rotas import router as importacao
 from toqqi.modulos.integracoes.rotas import router as integracoes
 from toqqi.modulos.integracoes.rotas import router_chave as integracao
+from toqqi.modulos.painel.rotas import router as painel
 from toqqi.modulos.plataforma.rotas import router as plataforma
 from toqqi.modulos.publico.rotas import router as publico
+from toqqi.modulos.respostas.rotas import router as respostas
 from toqqi.modulos.whatsapp.rotas import router as whatsapp
 from toqqi.modulos.whatsapp.rotas import router_publico as whatsapp_publico
 
@@ -80,11 +83,13 @@ def create_app() -> FastAPI:
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Api-Key"],
-        expose_headers=["X-Request-ID"],
+        # Content-Disposition: o site (outra origem) lê o nome dos arquivos baixados (CSV, modelos).
+        expose_headers=["X-Request-ID", "Content-Disposition"],
     )
 
     for r in (acesso, equipe, conta, auditoria, plataforma, cadastros, empresas, contatos, importacao,
-              formularios, publico, envios, interno, integracoes, whatsapp, integracao, whatsapp_publico):
+              formularios, publico, envios, interno, integracoes, whatsapp, integracao, whatsapp_publico,
+              respostas, acoes, painel):
         app.include_router(r, prefix=PREFIXO)
 
     @app.get(f"{PREFIXO}/saude", tags=["infra"])

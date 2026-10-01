@@ -10,7 +10,8 @@ const props = withDefaults(
   }>(),
   { alinhar: 'direita' },
 )
-const estiloFixo = ref<Record<string, string>>({})
+// Fora da tela até medir: o menu "fixo" nunca entra no fluxo (senão empurraria o botão antes da medida).
+const estiloFixo = ref<Record<string, string>>({ top: '-9999px', left: '-9999px' })
 
 function posicionar() {
   const gatilho = raiz.value?.querySelector<HTMLElement>('[aria-haspopup]')
@@ -60,29 +61,48 @@ function aoTeclarMenu(e: KeyboardEvent) {
   e.preventDefault()
 }
 
+/**
+ * Escolheu um item: o menu fecha e o foco volta ao botão do menu (para o teclado não se perder), a não ser
+ * que a ação do item já tenha levado o foco para outro lugar (ex.: abriu uma janela de confirmação).
+ */
+function aoEscolher() {
+  const foco = document.activeElement
+  const ficouNoMenu = !foco || foco === document.body || !!menu.value?.contains(foco)
+  fechar(ficouNoMenu)
+}
+
 function cliqueFora(e: MouseEvent) {
   if (raiz.value && !raiz.value.contains(e.target as Node)) fechar(false)
 }
 
 const fecharSemFoco = () => fechar(false)
 
+/** Rolou a página com o menu "fixo" aberto: ele acompanha o botão; se o botão sair da tela, fecha. */
+function aoRolar() {
+  const gatilho = raiz.value?.querySelector<HTMLElement>('[aria-haspopup]')
+  if (!gatilho) return fecharSemFoco()
+  const r = gatilho.getBoundingClientRect()
+  if (r.bottom < 0 || r.top > window.innerHeight) fecharSemFoco()
+  else posicionar()
+}
+
 watch(aberto, (v) => {
   if (v) {
     document.addEventListener('mousedown', cliqueFora)
     if (props.fixo) {
-      window.addEventListener('scroll', fecharSemFoco, true)
-      window.addEventListener('resize', fecharSemFoco)
+      window.addEventListener('scroll', aoRolar, true)
+      window.addEventListener('resize', aoRolar)
     }
   } else {
     document.removeEventListener('mousedown', cliqueFora)
-    window.removeEventListener('scroll', fecharSemFoco, true)
-    window.removeEventListener('resize', fecharSemFoco)
+    window.removeEventListener('scroll', aoRolar, true)
+    window.removeEventListener('resize', aoRolar)
   }
 })
 onBeforeUnmount(() => {
   document.removeEventListener('mousedown', cliqueFora)
-  window.removeEventListener('scroll', fecharSemFoco, true)
-  window.removeEventListener('resize', fecharSemFoco)
+  window.removeEventListener('scroll', aoRolar, true)
+  window.removeEventListener('resize', aoRolar)
 })
 </script>
 
@@ -99,6 +119,7 @@ onBeforeUnmount(() => {
         onKeydown: (e: KeyboardEvent) => {
           if (e.key === 'ArrowDown') { e.preventDefault(); abrir() }
           else if (e.key === 'ArrowUp') { e.preventDefault(); abrir(true) }
+          else if (e.key === 'Escape' && aberto) { e.preventDefault(); fechar() }
         },
       }"
     />
@@ -109,10 +130,10 @@ onBeforeUnmount(() => {
       role="menu"
       :aria-label="rotulo"
       class="z-40 min-w-56 overflow-hidden rounded-xl border border-borda bg-superficie p-1.5 text-left shadow-lg animate-surgir"
-      :class="fixo ? '' : ['absolute mt-2', alinhar === 'direita' ? 'right-0' : 'left-0']"
+      :class="fixo ? 'fixed' : ['absolute mt-2', alinhar === 'direita' ? 'right-0' : 'left-0']"
       :style="fixo ? estiloFixo : undefined"
       @keydown="aoTeclarMenu"
-      @click="fechar(false)"
+      @click="aoEscolher"
     >
       <slot />
     </div>

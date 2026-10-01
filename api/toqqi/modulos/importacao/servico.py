@@ -1,4 +1,5 @@
-"""Importação de contatos por planilha: analisar → conferir → importar (tudo ou nada)."""
+"""Importação por planilha: analisar → conferir → importar (tudo ou nada). Dois tipos: contatos (aqui) e
+respostas antigas (`importacao.respostas`); o tipo é escolhido na análise e guardado com ela."""
 import uuid
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -8,7 +9,7 @@ from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.orm import Session
 
 from toqqi.core.auditoria import registrar
-from toqqi.core.db import em_conta, modo_sistema
+from toqqi.core.db import em_conta, modo_sistema, travar
 from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError
 from toqqi.core.planos import contatos_ativos, erro_limite, limite_da_conta
@@ -22,7 +23,8 @@ from toqqi.core.texto import (
 from toqqi.modelos import Cargo, Contato, Empresa, Grupo, Importacao, PerfilContato, Responsavel, Segmento
 from toqqi.modulos.contatos.servico import novo_codigo
 from toqqi.modulos.importacao import planilha
-from toqqi.modulos.importacao.planilha import CAMPOS, CHAVES_CAMPOS, ROTULOS
+from toqqi.modulos.importacao import respostas as importacao_respostas
+from toqqi.modulos.importacao.planilha import CAMPOS, CAMPOS_RESPOSTAS, CHAVES_CAMPOS, ROTULOS
 
 VALIDADE = timedelta(hours=1)
 MAX_PROBLEMAS = 500
@@ -37,33 +39,42 @@ LIMITES_TEXTO = {"nome": 120, "empresa": 200, "cargo": 80, "perfil": 80, "grupo"
                  "responsavel": 120, "codigo_externo": 100}
 
 
-def _campos_json() -> list[dict]:
-    return [{"chave": c, "rotulo": r, "obrigatorio": o} for c, r, o in CAMPOS]
+# modelo de respostas antigas: cabeçalho + uma linha de exemplo
+MODELO_RESPOSTAS = ("email;empresa;data;nota;comentario\r\n"
+                    "maria@cliente.com.br;Mercado Bom Preço;15/03/2025;9;Entrega sempre no prazo\r\n")
 
 
-def modelo_csv() -> bytes:
+def _campos_json(tipo: str = "contatos") -> list[dict]:
+    campos = CAMPOS_RESPOSTAS if tipo == "respostas" else CAMPOS
+    return [{"chave": c, "rotulo": r, "obrigatorio": o} for c, r, o in campos]
+
+
+def modelo_csv(tipo: str = "contatos") -> bytes:
+    if tipo == "respostas":
+        return ("﻿" + MODELO_RESPOSTAS).encode("utf-8")
     return ("﻿" + ";".join(CHAVES_CAMPOS) + "\r\n").encode("utf-8")
 
 
 # ---- analisar ---------------------------------------------------------------
 
-def analisar(ctx: Contexto, nome_arquivo: str, conteudo: bytes) -> dict:
+def analisar(ctx: Contexto, nome_arquivo: str, conteudo: bytes, tipo: str = "contatos") -> dict:
     colunas, linhas = planilha.ler(nome_arquivo or "", conteudo)
     with modo_sistema() as s:  # limpeza global das análises vencidas (de qualquer conta)
         s.execute(delete(Importacao).where(Importacao.expira_em < func.now()))
     with em_conta(ctx.conta_id) as s:
         imp = Importacao(conta_id=ctx.conta_id, usuario_id=ctx.usuario_id, arquivo_nome=(nome_arquivo or "")[:200],
-                         dados=linhas, colunas=colunas, expira_em=s.scalar(select(func.now())) + VALIDADE)
+                         dados=linhas, colunas=colunas, expira_em=s.scalar(select(func.now())) + VALIDADE, tipo=tipo)
         s.add(imp)
         s.flush()
         imp_id = imp.id
     return {
         "id": str(imp_id),
+        "tipo": tipo,
         "colunas": colunas,
-        "mapeamento_sugerido": planilha.sugerir_mapeamento(colunas),
+        "mapeamento_sugerido": planilha.sugerir_mapeamento(colunas, tipo),
         "total_linhas": len(linhas),
         "amostra": [{"linha": ln[0], "valores": dict(zip(colunas, ln[1:]))} for ln in linhas[:AMOSTRA]],
-        "campos": _campos_json(),
+        "campos": _campos_json(tipo),
     }
 
 
@@ -285,6 +296,8 @@ def _resumo(plano: Plano) -> dict:
 def conferir(ctx: Contexto, imp_id: uuid.UUID, corpo) -> dict:
     with em_conta(ctx.conta_id) as s:
         imp = _importacao(s, imp_id)
+        if imp.tipo == "respostas":  # chave e grupo_id não se aplicam
+            return importacao_respostas.resumo(importacao_respostas.planejar(s, imp, corpo))
         return _resumo(_planejar(s, imp, corpo))
 
 
@@ -296,7 +309,12 @@ def _mapa_nomes(s: Session, modelo) -> dict[str, int]:
 
 def importar(ctx: Contexto, imp_id: uuid.UUID, corpo) -> dict:
     with em_conta(ctx.conta_id) as s:
+        # uma importação por vez em cada conta: duas ao mesmo tempo (ex.: a mesma planilha enviada duas vezes)
+        # planejariam sobre o mesmo estado e gravariam as mesmas linhas duas vezes
+        travar(s, f"importacao:{ctx.conta_id}")
         imp = _importacao(s, imp_id, travar=True)
+        if imp.tipo == "respostas":
+            return importacao_respostas.importar(s, ctx, imp, corpo)
         plano = _planejar(s, imp, corpo)
         if plano.problemas and not corpo.ignorar_com_problema:
             n = len(plano.problemas)

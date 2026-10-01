@@ -1,4 +1,4 @@
-# Toqqi API · etapas 1, 2, 3a e 3b
+# Toqqi API · etapas 1, 2, 3a, 3b e 4a
 
 FastAPI + SQLAlchemy 2 (psycopg 3) + Alembic + PostgreSQL 16.
 Contratos implementados (base `/api/v1`):
@@ -6,7 +6,10 @@ Contratos implementados (base `/api/v1`):
 - `../docs/api-etapa-2.md`: cadastros auxiliares, responsáveis, empresas, contatos, importação de planilha,
   formulários (modelos, resultados, CSV) e páginas públicas de pesquisa;
 - `../docs/api-etapa-3.md`: envios por e-mail (fila, disparo manual, robô, lembretes, agradecimento),
-  histórico, convite por WhatsApp (link wa.me), descadastro e exclusão de conta pela plataforma.
+  histórico, convite por WhatsApp (link wa.me), descadastro e exclusão de conta pela plataforma;
+- `../docs/api-etapa-3b.md`: chave de integração, disparo por evento, webhooks de saída e WhatsApp automático;
+- `../docs/api-etapa-4a.md`: respostas (lista, análise, registro à mão, arquivar, excluir, CSV), temas por
+  palavras-chave, planos de ação (quadro, ação automática, alerta de risco), painel e importação de respostas antigas.
 
 ## Isolamento entre contas (RLS)
 O isolamento é garantido pelo próprio PostgreSQL:
@@ -108,8 +111,8 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
 
 ## Etapa 3a: envios
 - **Tarefas periódicas**: `python -m toqqi.tarefas [robo|lembretes|pendentes|webhooks|tudo]` ou
-  `POST /api/v1/interno/tarefas` com `X-Tarefas-Token` (comparação em tempo constante). Um agendador externo
-  chama a cada hora; cada conta decide se é hora (janela, dias úteis, 6 h entre rodadas do robô, lembretes uma vez
+  `POST /api/v1/interno/tarefas` com `X-Tarefas-Token` (comparação em tempo constante). Em produção, o Cron Job
+  `toqqi-tarefas` do Render roda o comando a cada 15 minutos; cada conta decide se é hora (janela, dias úteis, 6 h entre rodadas do robô, lembretes uma vez
   por dia a partir das 10:00). A lista de contas sai do modo sistema (só ids); o trabalho de cada conta roda em
   `em_conta`.
 - **Envio em segundo plano**: o envio nasce `pendente` na transação que o decide e sai depois do commit
@@ -146,6 +149,89 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
   `phone_number_id` em modo sistema. "SAIR" descadastra o telefone (forma canônica com o nono dígito).
 - **Avisos aos admins** (`core/avisos.py`) saem depois do commit (`core.db.apos_commit`).
 
+## Etapa 4a: respostas, planos de ação e painel
+- **Data da resposta**: `respostas.data_resposta` é coluna gerada (`coalesce(respondida_em, criada_em)`) e é a data
+  de toda regra de período: lista de respostas, painel, resultados/respostas/CSV do formulário, histórico do contato e
+  a situação "respondeu" da fila de envios. Resposta à mão com data anterior a hoje e resposta importada ficam às
+  12:00 de São Paulo daquele dia; à mão com a data de hoje (a tela sempre manda), vale a hora real de entrada
+  (`respondida_em` vazio: 12:00 poderia ficar no futuro). Como no resto da API, os horários saem em UTC (ISO 8601 com
+  fuso).
+- **Filtros de data** (`core/filtros.py`: `DataFiltro` nos modelos de query, `data_filtro` nas rotas que recebem
+  texto): AAAA-MM-DD de 01/01/2000 a 31/12/2100 em todas as rotas com período (respostas e CSV, ações e quadro,
+  painel e exportação, resultados/respostas do formulário, fila e histórico de envios, auditoria). Fora disso, 422 com
+  o campo (`de`, `ate`, `ultimo_ate`...): "Use uma data entre 01/01/2000 e 31/12/2100." (9999-12-31 estourava o
+  calendário no fim do dia ou no período anterior).
+- **Origem e ponto único**: `gravar_resposta(..., origem=)` grava grupo e temas e chama `ao_registrar_resposta`. Os
+  ganchos conferem a origem: `pesquisa` tem tudo; `manual` (POST /respostas) tem fila, ação automática, alerta e
+  webhook, sem agradecimento; `importacao` não tem nenhum efeito (a importação grava em lote e nem chama os
+  ganchos). A fila de envios ignora as respostas importadas.
+- **Comentário do cliente** (`respostas.comentario_cliente`, gravado com a resposta): só o que o cliente escreveu. Nas
+  respostas de pesquisa, as respostas das perguntas de comentário, na ordem do formulário, separadas por " · "
+  (`registro.comentario_do_cliente`, lidas do JSON das respostas e não do resumo "Pergunta: resposta | ...": um " | "
+  no texto do cliente não atrapalha); nome, e-mail, telefone e número (texto curto), nota, escala, data, sim/não e
+  opções marcadas não entram. Nas manuais e importadas, o comentário. Editado na análise, vale o texto como ficou
+  (mudar só a nota, ou salvar com o mesmo comentário, não mexe nele). O painel usa só ele (comentários recentes,
+  último comentário de detrator e palavras); a lista de respostas e os CSV continuam com `comentario` (o resumo da
+  etapa 2).
+- **Temas** (`modulos/respostas/temas.py`, funções puras): comentário do cliente + opções marcadas nas perguntas de
+  escolha + "o que faltou". Recalculados ao gravar, quando o comentário ou "o que faltou" mudam na análise e quando a
+  importação traz comentário, salvo `temas_manuais`. A migração 0005 preenche o comentário do cliente e os temas das
+  respostas que já existiam com uma cópia congelada dessas regras (não importa código da aplicação, que pode mudar).
+- **Última nota do contato** = nota da resposta não arquivada mais recente pela data da resposta; recalculada ao
+  gravar, mudar a nota, arquivar/restaurar, excluir e importar (uma resposta à mão com data antiga não a troca).
+- **Ação automática e alerta** (`modulos/acoes/automatica.py`): uma ação automática por resposta (índice único
+  parcial). O "Alerta de risco" é coletado na transação (`coletar_alertas()`) e sai por `BackgroundTasks` depois do
+  commit, nas rotas públicas e em POST /respostas; sem coletor não sai. E-mail do sistema (`core.email.enviar`): não
+  entra no histórico de envios. Só sai com provedor de e-mail configurado pela mesma regra dos envios de pesquisa
+  (`provedor_ok`: o `console` não conta em produção, para o comentário e os dados do cliente não irem para o log; a
+  ação é criada do mesmo jeito). Descrição da ação e alerta trazem o contato só pelo nome (sem e-mail e telefone).
+- **Arredondamento** (`modulos/respostas/indicadores.py`): `Decimal` + `ROUND_HALF_UP` sobre o valor exato
+  (NPS 12,5 → 13, −12,5 → −13; CSAT 12,5% → 13%).
+- **Painel** (`modulos/painel/servico.py`): cerca de 12 consultas agregadas no banco. Medido no teste de desempenho
+  (5.000 contatos, 50.000 respostas, 8.000 convites, 3.000 ações): 250–400 ms com 90 dias e 450–600 ms com todo o
+  histórico; lista de respostas ~120 ms e quadro ~160 ms. Duas medidas foram necessárias: `core.db.sem_jit`
+  (`SET LOCAL jit = off` no painel, nas listas e nos CSV: o JIT do PostgreSQL gastava 300–500 ms compilando
+  consultas que rodam em ~50 ms) e o filtro explícito `conta_id = ...` nessas consultas (a política RLS tem
+  `OR app_sistema()`, que impede o planejador de usar os índices `(conta_id, ...)`; o RLS continua valendo igual).
+  A lista de respostas busca primeiro os ids da página e só depois os detalhes e a ação de cada uma. O mesmo filtro
+  explícito vale na última nota do contato (`registro.atualizar_ultima_nota`) e nas subconsultas correlacionadas da
+  fila de envios (`envios/fila.py`); no EXPLAIN ANALYZE com 5.000 contatos: última nota 0,50 → 0,05 ms, contagem da
+  fila 788 → 29 ms.
+- **Importação de respostas antigas** (`modulos/importacao/respostas.py`): o tipo vem do campo `tipo` da análise e
+  fica em `importacoes.tipo`; conferir/importar decidem por ele. As linhas novas entram num INSERT só, com um vetor
+  por coluna desfeito por `unnest` (`COPY` não é aceito em tabela com RLS, e milhares de `VALUES` custam caro para
+  montar): 20.000 linhas em cerca de 1 s nos testes. O e-mail de um contato cadastrado não é validado de novo.
+  Datas de 2000 até hoje (ano anterior a 2000 vira linha com problema: pega ano digitado errado).
+  "Mesma data" de uma resposta já importada = o dia dela em São Paulo. Ao atualizar as que já existem, nota e grupo
+  sempre mudam; comentário (e temas) só quando a célula tem texto (vazia ou coluna não ligada = fica como está).
+  Uma importação por vez em cada conta (`core.db.travar` no início de importar, contatos e respostas): a mesma
+  planilha enviada duas vezes e importada ao mesmo tempo não grava em dobro (a segunda espera e encontra as linhas).
+- **Exclusões**: excluir resposta (só perfil admin) apaga as ações ligadas a ela. Excluir contato apaga as respostas
+  dele (regra da etapa 2) e mantém as ações, sem a referência; excluir empresa, responsável ou usuário mantém ações e
+  respostas, só sem a referência (`ON DELETE SET NULL` nas chaves compostas).
+
+### Etapa 4a: decisões tomadas aqui (além da seção 0 do contrato)
+- `metricas` de GET /respostas usam exatamente o filtro da lista, inclusive `arquivadas=true|todas`.
+- GET /respostas e /respostas.csv aceitam `so_ativos` (padrão `false`), com a regra do painel (tira as respostas de
+  empresas inativas; resposta sem empresa sempre conta). Com os mesmos `de`, `ate`, `grupo_id`, `so_ativos` e
+  `tipo_nota=nps`, as métricas da lista batem com o NPS do painel (há teste para isso).
+- PATCH /respostas: mudar a nota também troca a nota guardada em `respostas` (pergunta principal), para os resultados
+  por pergunta do formulário continuarem batendo; `temas: null` é ignorado (não volta para o automático).
+- Arquivar e restaurar recalculam a última nota do contato ("arquivada sai de todos os indicadores").
+- POST /acoes: sem empresa, usa a da resposta (ou a do contato); sem contato, o da resposta; copia grupo, tipo e nota da
+  resposta. PATCH numa ação já concluída que mexe no responsável ou na resolução confere de novo as regras de conclusão.
+- Descrição da ação automática: "Comentário do cliente" (o `comentario_cliente`; "(sem comentário)" se vazio), "O
+  cliente marcou: ..." com as opções escolhidas (se houver), "Contato: nome" e o contexto do pedido.
+- Painel: `temas` traz só temas com menção (até 5); `empresas` divide as empresas com 3+ respostas entre as duas listas
+  (metade, arredondada para cima, em `menor`, até 6 cada, sem repetir); `desde`, `data_anterior` e `data_atual` são
+  data e hora (ISO), como `data` das respostas; `primeira_resposta` conta qualquer resposta.
+- Formato `Resposta` da etapa 2 (formulário e webhook `resposta.criada`) ganha `data` e `origem`; o histórico do
+  contato ganha `id`, `tipo_nota`, `canal`, `origem` e `arquivada` (só acréscimos).
+- Downgrade da 0005: a data informada passa para `criada_em` e o canal volta a `manual`/`importacao` pela origem; ações
+  e configuração de prazos são apagadas.
+- Testes que dependem de "hoje" usam o fixture `relogio_estavel` (relógio das regras ao meio-dia do dia corrente),
+  para não falharem quando a suíte cruza a meia-noite.
+
 ## Estrutura
 ```
 toqqi/
@@ -163,9 +249,12 @@ toqqi/
   modulos/cadastros/      grupos, segmentos, perfis, cargos e responsáveis (teste do Teams)
   modulos/empresas/       empresas (clientes da conta)
   modulos/contatos/       contatos e link de pesquisa manual
-  modulos/importacao/     leitura de planilhas, nomes equivalentes, conferir e importar
+  modulos/importacao/     leitura de planilhas, nomes equivalentes, conferir e importar (contatos e respostas)
   modulos/formularios/    modelos prontos, validação das perguntas, padrões, resultados, CSV
-  modulos/respostas/      convites, validação/gravação de respostas, variáveis, "resposta registrada"
+  modulos/respostas/      convites, validação/gravação de respostas, variáveis, "resposta registrada",
+                          temas (palavras-chave), indicadores (NPS/CSAT), tela Respostas (lista, análise, CSV)
+  modulos/acoes/          planos de ação: quadro, regras (selo, urgência), ação automática + alerta, prazos
+  modulos/painel/         painel (visão geral) e palavras mais citadas
   modulos/publico/        páginas públicas (convite, link público e descadastro)
   modulos/envios/         configuração e pré-condições, fila/situação, disparo, histórico, WhatsApp,
                           robô/lembretes/pendentes, agradecimento, descadastro, modelos de e-mail
@@ -176,6 +265,7 @@ alembic/versions/0001_inicial.py   esquema da etapa 1 + RLS + GRANTs
 alembic/versions/0002_cadastros_formularios.py   tabelas da etapa 2 + RLS + limite do plano + dados iniciais
 alembic/versions/0003_envios.py    config_envios, envios, descadastros + colunas de fila/lembrete + RLS
 alembic/versions/0004_integracoes.py   chaves, webhooks, entregas, WhatsApp, franquia, idempotência + RLS
+alembic/versions/0005_respostas_acoes.py   data/origem/temas/análise das respostas, ações, prazos, tipo da importação
 tests/                             pytest
 ```
 

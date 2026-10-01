@@ -449,10 +449,11 @@ defineExpose({ recarregar })
           <span v-else class="sr-only">{{ motivoSemEmail(c) ?? 'Não pode ser selecionado agora' }}</span>
         </template>
         <template #cel-nome="{ linha: c }">
-          <div class="min-w-0">
-            <RouterLink :to="`/contatos/${c.id}`" class="block truncate font-semibold text-texto hover:underline">{{ c.nome }}</RouterLink>
-            <p class="truncate text-texto-fraco">{{ c.email || exibirTelefone(c.telefone) || 'Sem e-mail e sem telefone' }}</p>
-            <p v-if="c.empresa" class="truncate text-xs text-texto-suave">{{ c.empresa.nome }}</p>
+          <!-- Largura máxima: sem ela, um e-mail ou empresa longos alargam a tabela (o "truncate" não corta numa tabela automática). -->
+          <div class="min-w-0 max-w-[13rem] xl:max-w-[15rem] 2xl:max-w-xs">
+            <RouterLink :to="`/contatos/${c.id}`" class="block truncate font-semibold text-texto hover:underline" :title="c.nome">{{ c.nome }}</RouterLink>
+            <p class="truncate text-texto-fraco" :title="c.email || undefined">{{ c.email || exibirTelefone(c.telefone) || 'Sem e-mail e sem telefone' }}</p>
+            <p v-if="c.empresa" class="truncate text-xs text-texto-suave" :title="c.empresa.nome">{{ c.empresa.nome }}</p>
             <div class="mt-1 flex flex-wrap gap-1.5 md:hidden">
               <Etiqueta :tom="situacaoContato(c.situacao, c).tom" ponto>{{ situacaoContato(c.situacao, c).rotulo }}</Etiqueta>
             </div>
@@ -462,7 +463,7 @@ defineExpose({ recarregar })
         <template #cel-situacao="{ linha: c }">
           <div class="flex flex-col items-start gap-1">
             <Etiqueta :tom="situacaoContato(c.situacao, c).tom" ponto>{{ situacaoContato(c.situacao, c).rotulo }}</Etiqueta>
-            <p v-if="c.situacao === 'nao_saiu' && c.ultimo_erro" class="max-w-56 text-xs text-erro">{{ c.ultimo_erro }}</p>
+            <p v-if="c.situacao === 'nao_saiu' && c.ultimo_erro" class="max-w-48 text-xs text-erro">{{ c.ultimo_erro }}</p>
             <p v-if="c.descanso_ate && c.situacao === 'na_fila'" class="text-xs text-texto-fraco">Em descanso até {{ formatarDiaMes(c.descanso_ate) }}</p>
           </div>
         </template>
@@ -478,14 +479,16 @@ defineExpose({ recarregar })
         </template>
         <template #cel-acoes="{ linha: c }">
           <div v-if="podeDisparar" class="flex justify-end gap-1.5">
+            <!-- Só os ícones (o nome vai para o leitor de tela e para a dica do mouse): com os textos, a tabela não cabia no cartão. -->
             <Botao
               v-if="podeEnviarEmail(c)"
               variante="secundario"
               tamanho="sm"
               :desabilitado="!emailLiberado"
+              :title="`Enviar agora para ${c.nome}`"
               @click="enviarUm(c)"
             >
-              <Send class="size-4" aria-hidden="true" /><span class="hidden sm:inline">Enviar agora</span><span class="sr-only sm:hidden">Enviar agora para {{ c.nome }}</span>
+              <Send class="size-4" aria-hidden="true" /><span class="sr-only">Enviar agora para {{ c.nome }}</span>
             </Botao>
             <button
               v-if="podeEnviarWhatsapp(c)"
@@ -497,7 +500,6 @@ defineExpose({ recarregar })
               @click="abrirWhatsapp(c)"
             >
               <MessageCircle class="size-4" :class="{ 'animate-pulse': whatsapp.abrindo.value === c.id }" aria-hidden="true" />
-              <span class="hidden sm:inline">WhatsApp</span>
             </button>
           </div>
         </template>

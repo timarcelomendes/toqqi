@@ -14,8 +14,10 @@ from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.permissoes import semear_padrao
 from toqqi.core.security import gerar_hash
 from toqqi.modelos import (
+    Acao,
     Auditoria,
     Cargo,
+    ConfigAcoes,
     ConfigEnvios,
     Conta,
     Contato,
@@ -120,9 +122,9 @@ def cortesia(ctx: Contexto, conta_id: int) -> dict:
 
 
 # Ordem de exclusão: quem aponta para outras tabelas da conta sai antes.
-_ORDEM_EXCLUSAO = (Envio, Descadastro, ConfigEnvios, Resposta, Convite, Importacao, Contato, Empresa, Responsavel,
-                   Grupo, Segmento, PerfilContato, Cargo, Formulario, Auditoria, DominioLiberado, PerfilPermissao,
-                   TokenUsoUnico, Sessao, Usuario)
+_ORDEM_EXCLUSAO = (Acao, ConfigAcoes, Envio, Descadastro, ConfigEnvios, Resposta, Convite, Importacao, Contato,
+                   Empresa, Responsavel, Grupo, Segmento, PerfilContato, Cargo, Formulario, Auditoria, DominioLiberado,
+                   PerfilPermissao, TokenUsoUnico, Sessao, Usuario)
 
 
 def excluir_conta(ctx: Contexto, conta_id: int, confirmar_nome: str) -> None:

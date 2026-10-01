@@ -42,13 +42,14 @@ const rotas: RouteRecordRaw[] = [
     children: [
       { path: 'inicio', name: 'inicio', component: () => import('@/modulos/inicio/InicioView.vue'), meta: { titulo: 'Início' } },
       { path: 'contatos', name: 'contatos', component: () => import('@/modulos/contatos/ContatosView.vue'), meta: { titulo: 'Contatos', permissao: 'contatos.ver' } },
-      { path: 'contatos/importar', name: 'importar', component: () => import('@/modulos/importacao/ImportacaoView.vue'), meta: { titulo: 'Importar contatos', permissao: 'importacao.usar' } },
+      { path: 'contatos/importar', name: 'importar', component: () => import('@/modulos/importacao/ImportacaoView.vue'), meta: { titulo: 'Importar planilha', permissao: 'importacao.usar' } },
       { path: 'contatos/:id', name: 'contato', component: () => import('@/modulos/contatos/ContatoView.vue'), meta: { titulo: 'Contato', permissao: 'contatos.ver' } },
       { path: 'envios', name: 'envios', component: () => import('@/modulos/envios/EnviosView.vue'), meta: { titulo: 'Envios', permissao: 'envios.ver' } },
       { path: 'formularios', name: 'formularios', component: () => import('@/modulos/formularios/FormulariosView.vue'), meta: { titulo: 'Formulários', permissao: 'formularios.ver' } },
       { path: 'formularios/:id', name: 'formulario', component: () => import('@/modulos/formularios/EditorFormularioView.vue'), meta: { titulo: 'Formulário', permissao: 'formularios.ver' } },
-      { path: 'respostas', name: 'respostas', component: emConstrucao, meta: { titulo: 'Respostas', permissao: 'respostas.ver' } },
-      { path: 'planos-de-acao', name: 'planos-de-acao', component: emConstrucao, meta: { titulo: 'Planos de ação', permissao: 'acoes.ver' } },
+      { path: 'respostas', name: 'respostas', component: () => import('@/modulos/respostas/RespostasView.vue'), meta: { titulo: 'Respostas', permissao: 'respostas.ver' } },
+      // Um registro só (com :id opcional): abrir e fechar o painel de uma ação não recria a tela.
+      { path: 'planos-de-acao/:id?', name: 'planos-de-acao', component: () => import('@/modulos/acoes/PlanosAcaoView.vue'), meta: { titulo: 'Planos de ação', permissao: 'acoes.ver' } },
       { path: 'relatorios', name: 'relatorios', component: emConstrucao, meta: { titulo: 'Relatórios', permissao: 'relatorios.ver' } },
       { path: 'assinatura', name: 'assinatura', component: emConstrucao, meta: { titulo: 'Assinatura' } },
       { path: 'minha-conta', name: 'minha-conta', component: () => import('@/modulos/conta/MinhaContaView.vue'), meta: { titulo: 'Minha conta' } },
@@ -56,10 +57,17 @@ const rotas: RouteRecordRaw[] = [
       {
         path: 'configuracoes',
         // Leva para a primeira seção que o perfil pode ver.
-        redirect: () => (useSessaoStore().pode('configuracoes.gerenciar') ? '/configuracoes/seguranca' : '/configuracoes/envios'),
+        redirect: () => {
+          const sessao = useSessaoStore()
+          if (sessao.pode('configuracoes.gerenciar')) return '/configuracoes/seguranca'
+          if (sessao.pode('envios.ver')) return '/configuracoes/envios'
+          if (sessao.pode('acoes.ver')) return '/configuracoes/acoes'
+          return '/inicio'
+        },
       },
       { path: 'configuracoes/seguranca', name: 'seguranca', component: () => import('@/modulos/configuracoes/SegurancaView.vue'), meta: { titulo: 'Segurança', permissao: 'configuracoes.gerenciar' } },
       { path: 'configuracoes/envios', name: 'config-envios', component: () => import('@/modulos/configuracoes/ConfigEnviosView.vue'), meta: { titulo: 'Configurações de envio', permissao: 'envios.ver' } },
+      { path: 'configuracoes/acoes', name: 'config-acoes', component: () => import('@/modulos/configuracoes/ConfigAcoesView.vue'), meta: { titulo: 'Configurações dos planos de ação', permissao: 'acoes.ver' } },
       { path: 'integracoes', name: 'integracoes', component: () => import('@/modulos/integracoes/IntegracoesView.vue'), meta: { titulo: 'Integrações', admin: true } },
       { path: 'auditoria', name: 'auditoria', component: () => import('@/modulos/auditoria/AuditoriaView.vue'), meta: { titulo: 'Auditoria', permissao: 'auditoria.ver' } },
       { path: 'plataforma', name: 'plataforma', component: () => import('@/modulos/plataforma/PlataformaView.vue'), meta: { titulo: 'Plataforma', superadmin: true } },

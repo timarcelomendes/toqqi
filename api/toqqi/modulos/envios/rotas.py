@@ -103,7 +103,7 @@ def adicionar_descadastro(dados: DescadastroManualIn, tarefas: BackgroundTasks,
 
 @router_interno.post("/tarefas")
 def tarefas(x_tarefas_token: Annotated[str | None, Header()] = None):
-    """Chamada pelo agendador externo (a cada hora). Comparação do token em tempo constante."""
+    """Roda as tarefas à mão (o Cron Job do Render usa o comando direto). Comparação do token em tempo constante."""
     esperado = config().TAREFAS_TOKEN
     if not esperado:
         raise nao_encontrado()

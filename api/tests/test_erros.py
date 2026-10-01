@@ -69,3 +69,9 @@ def test_cors_permite_so_origem_configurada(client):
         "Origin": "http://malicioso.com", "Access-Control-Request-Method": "POST"})
     assert ok.headers.get("access-control-allow-origin") == "http://app.teste"
     assert "access-control-allow-origin" not in ruim.headers
+
+
+def test_cors_expoe_o_nome_dos_arquivos(client):
+    """O site fica em outra origem: sem expor o Content-Disposition, os CSV baixam com o nome genérico."""
+    r = client.get(f"{API}/importacao/modelo", headers={"Origin": "http://app.teste"})
+    assert "content-disposition" in r.headers.get("access-control-expose-headers", "").lower()

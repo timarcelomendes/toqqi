@@ -228,14 +228,14 @@ def _pct(parte: int, total: int) -> float:
 
 
 def _filtro_sql(de: str | None, ate: str | None) -> tuple[str, dict]:
-    """O mesmo período de `periodo`, em SQL puro, para as agregações por pergunta."""
+    """O mesmo período de `periodo` (pela data da resposta), em SQL puro, para as agregações por pergunta."""
     inicio, fim = limites(de, ate)
     sql, params = "", {}
     if inicio:
-        sql += " AND r.criada_em >= :inicio"
+        sql += " AND r.data_resposta >= :inicio"
         params["inicio"] = inicio
     if fim:
-        sql += " AND r.criada_em < :fim"
+        sql += " AND r.data_resposta < :fim"
         params["fim"] = fim
     return sql, params
 
@@ -244,7 +244,7 @@ def resultados(ctx: Contexto, formulario_id: int, de: str | None, ate: str | Non
     with em_conta(ctx.conta_id) as s:
         f = _form_ou_404(s, formulario_id)
         filtros = [Resposta.formulario_id == f.id, Resposta.arquivada.is_(False),
-                   *periodo(Resposta.criada_em, de, ate)]
+                   *periodo(Resposta.data_resposta, de, ate)]
         total = s.scalar(select(func.count()).select_from(Resposta).where(*filtros))
         saida: dict = {"total": total}
         tp = tipo_principal(f.perguntas)
@@ -288,8 +288,8 @@ def resultados(ctx: Contexto, formulario_id: int, de: str | None, ate: str | Non
         if ids_texto:
             for chave, texto_, data in s.execute(text(f"""
                 SELECT key, texto, data FROM (
-                    SELECT kv.key, kv.value #>> '{{}}' AS texto, r.criada_em AS data,
-                           row_number() OVER (PARTITION BY kv.key ORDER BY r.criada_em DESC, r.id DESC) AS n
+                    SELECT kv.key, kv.value #>> '{{}}' AS texto, r.data_resposta AS data,
+                           row_number() OVER (PARTITION BY kv.key ORDER BY r.data_resposta DESC, r.id DESC) AS n
                     {origem} {onde} AND kv.key = ANY(:ids)
                 ) x WHERE n <= {MAX_TEXTOS} ORDER BY key, data DESC
             """), {**params, "ids": ids_texto}):
@@ -328,7 +328,7 @@ def _consulta_respostas(filtros):
         .outerjoin(Contato, Contato.id == Resposta.contato_id)
         .outerjoin(Empresa, Empresa.id == Resposta.empresa_id)
         .where(*filtros)
-        .order_by(Resposta.criada_em.desc(), Resposta.id.desc())
+        .order_by(Resposta.data_resposta.desc(), Resposta.id.desc())
     )
 
 
@@ -340,6 +340,7 @@ def resposta_json(linha) -> dict:
         "empresa": {"id": r.empresa_id, "nome": empresa_nome} if r.empresa_id else None,
         "canal": r.canal, "nota": r.nota, "tipo_nota": r.tipo_nota, "grupo": r.grupo, "comentario": r.comentario,
         "respostas": r.respostas, "contexto": r.contexto, "referencia": r.referencia, "criada_em": r.criada_em,
+        "data": r.data_resposta, "origem": r.origem,
     }
 
 
@@ -347,7 +348,7 @@ def listar_respostas(ctx: Contexto, formulario_id: int, de: str | None, ate: str
     with em_conta(ctx.conta_id) as s:
         f = _form_ou_404(s, formulario_id)
         filtros = [Resposta.formulario_id == f.id, Resposta.arquivada.is_(False),
-                   *periodo(Resposta.criada_em, de, ate)]
+                   *periodo(Resposta.data_resposta, de, ate)]
         total = s.scalar(select(func.count()).select_from(Resposta).where(*filtros))
         linhas = s.execute(_consulta_respostas(filtros).limit(pg.por_pagina).offset(pg.offset)).all()
     return pg.resultado([resposta_json(x) for x in linhas], total)
@@ -365,7 +366,7 @@ def respostas_csv(ctx: Contexto, formulario_id: int, de: str | None, ate: str | 
         f = _form_ou_404(s, formulario_id)
         empresa = s.scalar(select(Conta.nome).where(Conta.id == ctx.conta_id))
         filtros = [Resposta.formulario_id == f.id, Resposta.arquivada.is_(False),
-                   *periodo(Resposta.criada_em, de, ate)]
+                   *periodo(Resposta.data_resposta, de, ate)]
         linhas = s.execute(_consulta_respostas(filtros)).all()
     perguntas = [p for p in f.perguntas if p["tipo"] != "quebra_pagina"]
     v = variaveis(empresa)
@@ -377,7 +378,7 @@ def respostas_csv(ctx: Contexto, formulario_id: int, de: str | None, ate: str | 
                 *[renderizar(p["titulo"], v) or p["id"] for p in perguntas]])
     for r, _, contato_nome, contato_email, empresa_nome in linhas:
         w.writerow([
-            r.criada_em.astimezone(FUSO).strftime("%d/%m/%Y %H:%M"),
+            r.data_resposta.astimezone(FUSO).strftime("%d/%m/%Y %H:%M"),
             _celula(contato_nome), _celula(contato_email), _celula(empresa_nome), r.canal, _celula(r.referencia),
             *[_celula(r.contexto.get(k)) for k in CHAVES_CONTEXTO],
             *[_celula(formatar_valor(r.respostas[p["id"]])) if p["id"] in r.respostas else "" for p in perguntas],

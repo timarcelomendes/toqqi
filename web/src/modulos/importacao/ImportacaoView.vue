@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
-import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, RefreshCw, Upload, X } from 'lucide-vue-next'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, MessageSquareText, RefreshCw, Upload, UsersRound, X } from 'lucide-vue-next'
 import {
   ApiError,
   importacaoApi,
@@ -9,12 +9,13 @@ import {
   type AnaliseImportacao,
   type ChaveImportacao,
   type ConferenciaImportacao,
-  type CorpoImportacao,
   type Id,
   type ResultadoImportacao,
+  type TipoImportacao,
 } from '@/api'
 import { confirmar } from '@/composables/confirmacao'
 import { useCadastrosStore } from '@/stores/cadastros'
+import { useSessaoStore } from '@/stores/sessao'
 import { formatarNumero, plural } from '@/utils/formatos'
 import AlertaLimitePlano from '@/components/app/AlertaLimitePlano.vue'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
@@ -24,14 +25,16 @@ import CaixaSelecao from '@/components/ui/CaixaSelecao.vue'
 import Interruptor from '@/components/ui/Interruptor.vue'
 import Selecao from '@/components/ui/Selecao.vue'
 import {
+  TIPOS_IMPORTACAO,
   chavesPossiveis,
+  corpoParaTipo,
   escolherChave,
   exemplosDaColuna,
   faltaEmailOuTelefone,
   mapeamentoInicial,
-  mapeamentoParaEnvio,
   obrigatoriosFaltando,
   pendenciasMapeamento,
+  tipoDaQuery,
   validarArquivo,
   type Mapeamento,
 } from './mapeamento'
@@ -45,7 +48,13 @@ const CHAVES: Record<ChaveImportacao, { rotulo: string; descricao: string }> = {
 }
 
 const cadastros = useCadastrosStore()
+const sessao = useSessaoStore()
+const rota = useRoute()
+const router = useRouter()
 const passo = ref<Passo>(1)
+
+// Etapa 4a: a mesma tela importa contatos ou respostas antigas (?tipo=respostas).
+const tipoEscolhido = ref<TipoImportacao>(tipoDaQuery(rota.query.tipo))
 const arquivo = ref<File | null>(null)
 const erroArquivo = ref<string | null>(null)
 const arrastando = ref(false)
@@ -65,23 +74,38 @@ const limitePlano = ref<string | null>(null)
 const expirou = ref(false)
 const entrada = ref<HTMLInputElement | null>(null)
 
+/** Depois da análise, vale o tipo que a API confirmou. */
+const tipo = computed<TipoImportacao>(() => analise.value?.tipo ?? tipoEscolhido.value)
+const textos = computed(() => TIPOS_IMPORTACAO[tipo.value])
+const voltar = computed(() =>
+  tipo.value === 'respostas' && !sessao.pode('respostas.ver') ? TIPOS_IMPORTACAO.contatos.voltar : textos.value.voltar,
+)
+watch(
+  tipoEscolhido,
+  (t) => {
+    if (tipoDaQuery(rota.query.tipo) !== t) router.replace({ query: t === 'respostas' ? { ...rota.query, tipo: 'respostas' } : {} })
+    document.title = `${TIPOS_IMPORTACAO[t].titulo} · Toqqi`
+  },
+  { immediate: true },
+)
+watch(
+  () => rota.query.tipo,
+  (v) => {
+    if (passo.value === 1 && !analise.value) tipoEscolhido.value = tipoDaQuery(v)
+  },
+)
+function item(n: number) {
+  return plural(n, textos.value.item[0], textos.value.item[1])
+}
+
 const campos = computed(() => analise.value?.campos ?? [])
 const opcoesCampos = computed(() => campos.value.map((c) => ({ valor: c.chave, rotulo: c.rotulo + (c.obrigatorio ? ' *' : '') })))
 const possiveis = computed(() => chavesPossiveis(mapeamento))
-const pendencias = computed(() => pendenciasMapeamento(mapeamento, campos.value, opcoes.chave))
+const pendencias = computed(() => pendenciasMapeamento(mapeamento, campos.value, opcoes.chave, tipo.value))
 const faltando = computed(() => obrigatoriosFaltando(mapeamento, campos.value))
 const colunasImportadas = computed(() => Object.values(mapeamento).filter(Boolean).length)
 
-const corpo = computed<CorpoImportacao | null>(() =>
-  opcoes.chave
-    ? {
-        mapeamento: mapeamentoParaEnvio(mapeamento),
-        chave: opcoes.chave,
-        atualizar_existentes: opcoes.atualizar_existentes,
-        ...(opcoes.grupo_id !== '' ? { grupo_id: opcoes.grupo_id } : {}),
-      }
-    : null,
-)
+const corpo = computed(() => corpoParaTipo(tipo.value, mapeamento, opcoes))
 // Mudou algo depois de conferir: precisa conferir de novo.
 const conferenciaValida = computed(() => !!conferencia.value && corpoConferido.value === JSON.stringify(corpo.value))
 const podeImportar = computed(
@@ -109,7 +133,7 @@ async function baixarModelo() {
   baixando.value = true
   limparErros()
   try {
-    await importacaoApi.baixarModelo()
+    await importacaoApi.baixarModelo(tipoEscolhido.value)
   } catch (e) {
     erro.value = mensagemDoErro(e)
   } finally {
@@ -139,7 +163,7 @@ async function analisar() {
   analisando.value = true
   limparErros()
   try {
-    const a = await importacaoApi.analisar(arquivo.value)
+    const a = await importacaoApi.analisar(arquivo.value, tipoEscolhido.value)
     analise.value = a
     for (const k of Object.keys(mapeamento)) delete mapeamento[k]
     Object.assign(mapeamento, mapeamentoInicial(a.colunas, a.mapeamento_sugerido ?? {}, a.campos))
@@ -148,7 +172,7 @@ async function analisar() {
     corpoConferido.value = null
     ignorarComProblema.value = false
     passo.value = 3
-    cadastros.garantir(['grupos'])
+    if (tipo.value === 'contatos') cadastros.garantir(['grupos'])
   } catch (e) {
     if (e instanceof ApiError && e.status === 422) erroArquivo.value = e.campo('arquivo') ?? e.mensagem
     else tratarErro(e)
@@ -214,14 +238,16 @@ onBeforeRouteLeave(async () => {
   })
 })
 
-onMounted(() => cadastros.garantir(['grupos']))
+onMounted(() => {
+  if (tipoEscolhido.value === 'contatos') cadastros.garantir(['grupos'])
+})
 </script>
 
 <template>
-  <RouterLink to="/contatos" class="mb-4 inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold text-texto-suave hover:text-texto">
-    <ArrowLeft class="size-4" aria-hidden="true" /> Contatos
+  <RouterLink :to="voltar.para" class="mb-4 inline-flex min-h-10 items-center gap-1.5 rounded-lg text-sm font-semibold text-texto-suave hover:text-texto">
+    <ArrowLeft class="size-4" aria-hidden="true" /> {{ voltar.rotulo }}
   </RouterLink>
-  <CabecalhoPagina titulo="Importar contatos" descricao="Traga seus clientes de uma planilha do Excel ou de outro sistema, sem digitar um por um." />
+  <CabecalhoPagina :titulo="textos.titulo" :descricao="textos.subtitulo" />
 
   <!-- Etapas -->
   <ol class="mb-6 grid grid-cols-4 gap-2" aria-label="Etapas da importação">
@@ -242,13 +268,43 @@ onMounted(() => cadastros.garantir(['grupos']))
     </Alerta>
     <Alerta v-if="erro" tom="erro">{{ erro }}</Alerta>
 
-    <!-- 1. Modelo -->
+    <!-- 1. O que importar e como preparar a planilha -->
     <section v-if="passo === 1" class="cartao p-5 sm:p-8" aria-labelledby="t-passo1">
-      <h2 id="t-passo1" class="text-lg font-bold text-texto">Como deixar a planilha pronta</h2>
-      <ul class="mt-3 flex max-w-2xl list-disc flex-col gap-1.5 pl-5 text-[0.95rem] text-texto-suave">
+      <fieldset>
+        <legend id="t-passo1" class="text-lg font-bold text-texto">O que você quer importar?</legend>
+        <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <label
+            v-for="(t, k) in TIPOS_IMPORTACAO"
+            :key="k"
+            class="flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-foco"
+            :class="tipoEscolhido === k ? 'border-marca bg-marca-suave' : 'border-borda-forte hover:bg-superficie-2'"
+          >
+            <input v-model="tipoEscolhido" type="radio" name="tipo-importacao" :value="k" class="sr-only" />
+            <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-superficie text-marca-texto ring-1 ring-borda" aria-hidden="true">
+              <UsersRound v-if="k === 'contatos'" class="size-5" />
+              <MessageSquareText v-else class="size-5" />
+            </span>
+            <span class="flex flex-col gap-0.5">
+              <span class="font-bold text-texto">{{ t.rotulo }}</span>
+              <span class="text-sm text-texto-suave">{{ t.descricao }}</span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      <h2 class="mt-8 text-lg font-bold text-texto">Como deixar a planilha pronta</h2>
+      <ul v-if="tipoEscolhido === 'contatos'" class="mt-3 flex max-w-2xl list-disc flex-col gap-1.5 pl-5 text-[0.95rem] text-texto-suave">
         <li>Uma pessoa por linha, com o <strong class="text-texto">nome</strong> e o <strong class="text-texto">e-mail ou o telefone</strong>.</li>
         <li>A primeira linha tem o nome das colunas. Não precisa ser igual ao modelo: na próxima etapa você diz o que é cada coluna.</li>
         <li>Empresas, grupos, cargos e responsáveis que ainda não existem são criados sozinhos.</li>
+        <li>Aceitamos .csv, .xlsx e .xls de até 5 MB (cerca de 20 mil linhas).</li>
+      </ul>
+      <ul v-else class="mt-3 flex max-w-2xl list-disc flex-col gap-1.5 pl-5 text-[0.95rem] text-texto-suave">
+        <li>Uma resposta por linha, com o <strong class="text-texto">e-mail do contato</strong>, a <strong class="text-texto">data</strong> e a <strong class="text-texto">nota de 0 a 10</strong>. Empresa e comentário são opcionais.</li>
+        <li>O contato precisa já estar cadastrado no Toqqi. Se ainda não está, importe os contatos antes.</li>
+        <li>Datas como 31/12/2025 ou 2025-12-31, de 2000 até hoje. A nota precisa ser inteira: “9,0” vale 9, mas “8,7” não é aceita.</li>
+        <li>O mesmo contato com a mesma data é a mesma resposta: você escolhe se atualiza a que já foi importada ou mantém.</li>
+        <li>As respostas antigas entram no histórico e nos números, mas não viram ação e ninguém recebe e-mail.</li>
         <li>Aceitamos .csv, .xlsx e .xls de até 5 MB (cerca de 20 mil linhas).</li>
       </ul>
       <div class="mt-6 flex flex-wrap gap-2">
@@ -271,7 +327,7 @@ onMounted(() => cadastros.garantir(['grupos']))
         <template v-if="arquivo">
           <p class="font-semibold text-texto">{{ arquivo.name }}</p>
           <p class="text-sm text-texto-fraco">{{ tamanho(arquivo.size) }}</p>
-          <button type="button" class="inline-flex items-center gap-1 text-sm font-semibold text-texto-suave hover:text-texto" @click="arquivo = null">
+          <button type="button" class="inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-texto-suave hover:text-texto" @click="arquivo = null">
             <X class="size-4" aria-hidden="true" /> Trocar arquivo
           </button>
         </template>
@@ -319,6 +375,7 @@ onMounted(() => cadastros.garantir(['grupos']))
               {{ c.rotulo }}<span class="sr-only">{{ faltando.some((f) => f.chave === c.chave) ? ': falta indicar' : ': ok' }}</span>
             </li>
             <li
+              v-if="tipo === 'contatos'"
               class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold"
               :class="faltaEmailOuTelefone(mapeamento) ? 'bg-atencao-suave text-atencao' : 'bg-sucesso-suave text-sucesso'"
             >
@@ -346,37 +403,48 @@ onMounted(() => cadastros.garantir(['grupos']))
       </section>
 
       <section class="cartao flex flex-col gap-5 p-5" aria-labelledby="t-opcoes">
-        <h2 id="t-opcoes" class="text-lg font-bold text-texto">Como tratar quem já está cadastrado</h2>
-        <fieldset>
-          <legend class="mb-2 text-sm font-semibold text-texto">Reconhecer a mesma pessoa</legend>
-          <div class="grid gap-2 sm:grid-cols-3">
-            <label
-              v-for="(c, k) in CHAVES"
-              :key="k"
-              class="flex cursor-pointer flex-col gap-0.5 rounded-xl border p-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-foco"
-              :class="[
-                opcoes.chave === k ? 'border-marca bg-marca-suave' : 'border-borda-forte hover:bg-superficie-2',
-                possiveis.includes(k) ? '' : 'cursor-not-allowed opacity-50',
-              ]"
-            >
-              <input v-model="opcoes.chave" type="radio" name="chave" :value="k" class="sr-only" :disabled="!possiveis.includes(k)" />
-              <span class="text-sm font-bold text-texto">{{ c.rotulo }}</span>
-              <span class="text-xs text-texto-suave">{{ possiveis.includes(k) ? c.descricao : 'Essa coluna não está na planilha.' }}</span>
-            </label>
-          </div>
-        </fieldset>
-        <Interruptor
-          v-model="opcoes.atualizar_existentes"
-          rotulo="Atualizar quem já existe"
-          descricao="Ligado: os dados da planilha substituem os do cadastro. Desligado: quem já existe fica como está."
-        />
-        <Selecao
-          v-model="opcoes.grupo_id"
-          rotulo="Grupo para esta importação (opcional)"
-          :opcoes="cadastros.listas.grupos.map((g) => ({ valor: g.id, rotulo: g.nome }))"
-          vazio="Nenhum"
-          dica="Coloca as empresas desta planilha no grupo escolhido. Útil para separar uma carteira ou filial."
-        />
+        <template v-if="tipo === 'contatos'">
+          <h2 id="t-opcoes" class="text-lg font-bold text-texto">Como tratar quem já está cadastrado</h2>
+          <fieldset>
+            <legend class="mb-2 text-sm font-semibold text-texto">Reconhecer a mesma pessoa</legend>
+            <div class="grid gap-2 sm:grid-cols-3">
+              <label
+                v-for="(c, k) in CHAVES"
+                :key="k"
+                class="flex cursor-pointer flex-col gap-0.5 rounded-xl border p-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-foco"
+                :class="[
+                  opcoes.chave === k ? 'border-marca bg-marca-suave' : 'border-borda-forte hover:bg-superficie-2',
+                  possiveis.includes(k) ? '' : 'cursor-not-allowed opacity-50',
+                ]"
+              >
+                <input v-model="opcoes.chave" type="radio" name="chave" :value="k" class="sr-only" :disabled="!possiveis.includes(k)" />
+                <span class="text-sm font-bold text-texto">{{ c.rotulo }}</span>
+                <span class="text-xs text-texto-suave">{{ possiveis.includes(k) ? c.descricao : 'Essa coluna não está na planilha.' }}</span>
+              </label>
+            </div>
+          </fieldset>
+          <Interruptor
+            v-model="opcoes.atualizar_existentes"
+            rotulo="Atualizar quem já existe"
+            descricao="Ligado: os dados da planilha substituem os do cadastro. Desligado: quem já existe fica como está."
+          />
+          <Selecao
+            v-model="opcoes.grupo_id"
+            rotulo="Grupo para esta importação (opcional)"
+            :opcoes="cadastros.listas.grupos.map((g) => ({ valor: g.id, rotulo: g.nome }))"
+            vazio="Nenhum"
+            dica="Coloca as empresas desta planilha no grupo escolhido. Útil para separar uma carteira ou filial."
+          />
+        </template>
+        <template v-else>
+          <h2 id="t-opcoes" class="text-lg font-bold text-texto">Respostas que já foram importadas</h2>
+          <Interruptor
+            v-model="opcoes.atualizar_existentes"
+            rotulo="Atualizar as que já existem"
+            descricao="Se já existe uma resposta importada do mesmo contato na mesma data: ligado, a nota e o comentário são trocados pelos da planilha; desligado, a que já existe fica como está."
+          />
+          <p class="text-sm text-texto-fraco">Se a empresa da planilha for diferente da empresa do contato, vale a do cadastro do contato.</p>
+        </template>
 
         <Alerta v-if="pendencias.length" tom="atencao" titulo="Antes de conferir">
           <ul class="list-disc pl-4">
@@ -407,11 +475,11 @@ onMounted(() => cadastros.garantir(['grupos']))
             <dd class="text-2xl font-extrabold text-texto">{{ formatarNumero(conferencia.com_problema) }}</dd>
           </div>
           <div class="rounded-xl bg-superficie-2 p-4">
-            <dt class="text-sm font-semibold text-texto-fraco">Contatos novos</dt>
+            <dt class="text-sm font-semibold text-texto-fraco">{{ tipo === 'respostas' ? 'Respostas novas' : 'Contatos novos' }}</dt>
             <dd class="text-2xl font-extrabold text-texto">{{ formatarNumero(conferencia.novos) }}</dd>
           </div>
           <div class="rounded-xl bg-superficie-2 p-4">
-            <dt class="text-sm font-semibold text-texto-fraco">Serão atualizados</dt>
+            <dt class="text-sm font-semibold text-texto-fraco">{{ tipo === 'respostas' ? 'Serão atualizadas' : 'Serão atualizados' }}</dt>
             <dd class="text-2xl font-extrabold text-texto">{{ formatarNumero(conferencia.atualizados) }}</dd>
           </div>
         </dl>
@@ -452,7 +520,7 @@ onMounted(() => cadastros.garantir(['grupos']))
 
         <div class="flex justify-end">
           <Botao tamanho="lg" :desabilitado="!podeImportar" :carregando="importando" @click="importar">
-            {{ importando ? 'Importando…' : `Importar ${plural(conferencia.prontas, 'contato', 'contatos')}` }}
+            {{ importando ? 'Importando…' : `Importar ${item(conferencia.prontas)}` }}
           </Botao>
         </div>
       </section>
@@ -466,11 +534,11 @@ onMounted(() => cadastros.garantir(['grupos']))
       <h2 id="t-fim" class="mt-4 text-xl font-bold text-texto">Importação concluída!</h2>
       <dl class="mx-auto mt-6 grid max-w-xl grid-cols-3 gap-3">
         <div class="rounded-xl bg-superficie-2 p-4">
-          <dt class="text-sm text-texto-fraco">Novos</dt>
+          <dt class="text-sm text-texto-fraco">{{ tipo === 'respostas' ? 'Novas' : 'Novos' }}</dt>
           <dd class="text-2xl font-extrabold text-texto">{{ formatarNumero(resultado.novos) }}</dd>
         </div>
         <div class="rounded-xl bg-superficie-2 p-4">
-          <dt class="text-sm text-texto-fraco">Atualizados</dt>
+          <dt class="text-sm text-texto-fraco">{{ tipo === 'respostas' ? 'Atualizadas' : 'Atualizados' }}</dt>
           <dd class="text-2xl font-extrabold text-texto">{{ formatarNumero(resultado.atualizados) }}</dd>
         </div>
         <div class="rounded-xl bg-superficie-2 p-4">
@@ -478,8 +546,12 @@ onMounted(() => cadastros.garantir(['grupos']))
           <dd class="text-2xl font-extrabold text-texto">{{ formatarNumero(resultado.ignorados || qtdProblemas(resultado)) }}</dd>
         </div>
       </dl>
+      <p v-if="tipo === 'respostas'" class="mx-auto mt-2 max-w-md text-sm text-texto-suave">
+        As respostas entraram no histórico de cada contato e já contam no painel. Nenhuma ação foi criada e ninguém recebeu e-mail.
+      </p>
       <div class="mt-8 flex flex-wrap justify-center gap-2">
-        <Botao para="/contatos">Ver contatos</Botao>
+        <Botao v-if="tipo === 'respostas' && sessao.pode('respostas.ver')" para="/respostas">Ver respostas</Botao>
+        <Botao v-else para="/contatos">Ver contatos</Botao>
         <Botao variante="secundario" @click="recomecar">Importar outra planilha</Botao>
       </div>
     </section>

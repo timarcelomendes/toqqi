@@ -27,7 +27,7 @@ const alinhamento = { esquerda: 'text-left', direita: 'text-right', centro: 'tex
 </script>
 
 <template>
-  <div class="overflow-x-auto">
+  <div class="relative overflow-x-auto">
     <table class="w-full border-collapse text-sm">
       <caption v-if="legenda" class="sr-only">{{ legenda }}</caption>
       <thead>

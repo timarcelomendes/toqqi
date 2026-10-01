@@ -1,5 +1,6 @@
 """Efeitos de envio no ponto único "resposta registrada": contato passa a `respondeu` e, se configurado,
-um agradecimento é agendado (enviado depois do commit, em segundo plano).
+um agradecimento é agendado (enviado depois do commit, em segundo plano). Resposta registrada à mão (origem
+`manual`) atualiza a fila, mas não recebe agradecimento; resposta importada não tem nenhum desses efeitos.
 
 Quem grava respostas envolve a chamada em `coletar_envios()` e agenda os envios coletados depois do
 commit; sem coletor, o envio fica pendente e a tarefa de pendentes o retoma.
@@ -33,13 +34,15 @@ def coletar_envios() -> Iterator[list[tuple[int, int]]]:
 
 
 def ao_registrar_resposta(s: Session, r: Resposta) -> None:
-    if r.contato_id is None:
-        return
+    if r.contato_id is None or r.origem == "importacao":
+        return  # resposta importada (histórico) não mexe na fila de envios nem recebe agradecimento
     contato = s.get(Contato, r.contato_id)
     cfg = obter(s)
     hoje = relogio.hoje()
     if contato.proximo_envio is None or contato.proximo_envio <= hoje:
         contato.proximo_envio = hoje + timedelta(days=cfg.intervalo_dias)
+    if r.origem != "pesquisa":
+        return  # registrada à mão: segue o fluxo, mas sem e-mail de agradecimento
     if not (cfg.agradecimento_ativo and r.grupo and contato.email) or esta_descadastrado(s, contato.email,
                                                                                          contato.telefone):
         return

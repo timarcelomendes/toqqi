@@ -22,6 +22,7 @@ export { API_URL, baixarArquivo, configurarCliente, salvarBlob } from './cliente
 export * from './etapa2'
 export * from './etapa3'
 export * from './etapa3b'
+export * from './etapa4a'
 
 const publico = { autenticar: false } as const
 

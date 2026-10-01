@@ -106,12 +106,13 @@ def obter(ctx: Contexto, contato_id: int) -> dict:
             select(Resposta, Formulario.nome)
             .join(Formulario, Formulario.id == Resposta.formulario_id)
             .where(Resposta.contato_id == contato_id)
-            .order_by(Resposta.criada_em.desc(), Resposta.id.desc())
+            .order_by(Resposta.data_resposta.desc(), Resposta.id.desc())
             .limit(100)
         ).all()
     dados["historico"] = [
-        {"tipo": "resposta", "data": r.criada_em, "nota": r.nota, "grupo": r.grupo, "comentario": r.comentario,
-         "formulario": {"id": r.formulario_id, "nome": nome}}
+        {"tipo": "resposta", "id": r.id, "data": r.data_resposta, "nota": r.nota, "tipo_nota": r.tipo_nota,
+         "grupo": r.grupo, "comentario": r.comentario, "canal": r.canal, "origem": r.origem,
+         "arquivada": r.arquivada, "formulario": {"id": r.formulario_id, "nome": nome}}
         for r, nome in linhas
     ]
     return dados

@@ -279,7 +279,8 @@ onBeforeUnmount(() => {
       <Alerta v-if="!podeEditar" tom="info" class="mb-4">Seu perfil pode ver este formulário, mas não editar.</Alerta>
       <Alerta v-if="erroSalvar" tom="erro" class="mb-4">{{ erroSalvar }}</Alerta>
 
-      <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <!-- A coluna da pré-visualização só existe nas abas que a mostram (nas outras, o conteúdo usa a largura toda). -->
+      <div class="grid gap-6" :class="aba === 'perguntas' || aba === 'aparencia' ? 'xl:grid-cols-[minmax(0,1fr)_24rem]' : ''">
         <div class="min-w-0">
           <Abas v-model="aba" :abas="ABAS.map((a) => (a.valor === 'perguntas' && qtdErrosPerguntas ? { ...a, rotulo: `Perguntas (${qtdErrosPerguntas} com ajuste)` } : a))" rotulo="Seções do formulário">
             <AbaPerguntas

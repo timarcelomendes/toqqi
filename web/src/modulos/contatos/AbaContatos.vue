@@ -192,7 +192,8 @@ defineExpose({ novo })
         <Campo v-model="filtros.busca" rotulo="Buscar contatos" rotulo-oculto tipo="search" placeholder="Buscar por nome, e-mail, telefone ou código" class="sm:max-w-md sm:flex-1">
           <template #antes><Search class="size-4" aria-hidden="true" /></template>
         </Campo>
-        <div class="flex items-center gap-2 sm:ml-auto">
+        <!-- No celular, "Filtros" desce para a linha de baixo quando não cabe (não vaza do cartão). -->
+        <div class="flex flex-wrap items-center gap-2 sm:ml-auto sm:flex-nowrap">
           <div class="inline-flex rounded-xl border border-borda-forte p-0.5" role="radiogroup" aria-label="Mostrar contatos">
             <button
               v-for="o in opcoesSituacao"

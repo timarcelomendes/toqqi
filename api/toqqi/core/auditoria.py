@@ -41,6 +41,11 @@ ROTULOS = {
     "webhook_desativado": "Webhook desativado após falhas seguidas",
     "whatsapp_conectado": "WhatsApp automático conectado",
     "whatsapp_desconectado": "WhatsApp automático desconectado",
+    "resposta_editada": "Resposta alterada na análise",
+    "resposta_excluida": "Resposta excluída",
+    "importacao_respostas": "Planilha de respostas antigas importada",
+    "acao_excluida": "Plano de ação excluído",
+    "config_acoes": "Configurações dos planos de ação alteradas",
 }
 
 

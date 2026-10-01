@@ -1,7 +1,7 @@
 """Tarefas periódicas: `python -m toqqi.tarefas [robo|lembretes|pendentes|webhooks|tudo]` (padrão: tudo).
 
-Também disponíveis em POST /api/v1/interno/tarefas (cabeçalho X-Tarefas-Token). Um agendador externo
-chama a cada hora; cada tarefa decide por conta se é hora de agir.
+Também disponíveis em POST /api/v1/interno/tarefas (cabeçalho X-Tarefas-Token). Em produção, o Cron Job
+`toqqi-tarefas` do Render roda este comando a cada 15 minutos; cada tarefa decide por conta se é hora de agir.
 """
 import json
 import sys

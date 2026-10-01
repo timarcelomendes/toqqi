@@ -3,7 +3,7 @@ import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, Date, ForeignKey, Integer, Numeric, SmallInteger, Text, Time, text
+from sqlalchemy import BigInteger, Boolean, Computed, Date, ForeignKey, Integer, Numeric, SmallInteger, Text, Time, text
 from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import DateTime
@@ -228,6 +228,20 @@ class Resposta(Base):
     ip_hash: Mapped[str | None] = mapped_column(Text)
     arquivada: Mapped[bool] = mapped_column(Boolean, server_default="false")
     criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    # etapa 4a
+    respondida_em: Mapped[datetime | None] = mapped_column(TZ)  # data informada (à mão, importação)
+    data_resposta: Mapped[datetime] = mapped_column(TZ, Computed("coalesce(respondida_em, criada_em)", persisted=True))
+    origem: Mapped[str] = mapped_column(Text, server_default="pesquisa")
+    temas: Mapped[list[str]] = mapped_column(ARRAY(Text), server_default=text("'{}'"))
+    temas_manuais: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    o_que_faltou: Mapped[str | None] = mapped_column(Text)
+    o_que_combinamos: Mapped[str | None] = mapped_column(Text)
+    analisada_em: Mapped[datetime | None] = mapped_column(TZ)
+    analisada_por: Mapped[int | None] = mapped_column(BigInteger)
+    registrada_por: Mapped[int | None] = mapped_column(BigInteger)
+    arquivada_em: Mapped[datetime | None] = mapped_column(TZ)
+    # só o que o cliente escreveu (painel, palavras, temas); `comentario` segue sendo o resumo da etapa 2
+    comentario_cliente: Mapped[str] = mapped_column(Text, server_default="")
 
 
 class Importacao(Base):
@@ -241,6 +255,7 @@ class Importacao(Base):
     colunas: Mapped[list] = mapped_column(JSONB)
     criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
     expira_em: Mapped[datetime] = mapped_column(TZ)
+    tipo: Mapped[str] = mapped_column(Text, server_default="contatos")  # contatos | respostas
 
 
 # ---- etapa 3a: envios ---------------------------------------------------------
@@ -384,3 +399,41 @@ class EventoIdempotencia(Base):
     id_evento: Mapped[str] = mapped_column(Text, primary_key=True)
     resposta: Mapped[dict] = mapped_column(JSONB)
     expira: Mapped[datetime] = mapped_column(TZ)
+
+
+# ---- etapa 4a: planos de ação -------------------------------------------------
+
+class Acao(Base):
+    __tablename__ = "acoes"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    resposta_id: Mapped[int | None] = mapped_column(BigInteger)
+    empresa_id: Mapped[int | None] = mapped_column(BigInteger)
+    contato_id: Mapped[int | None] = mapped_column(BigInteger)
+    responsavel_id: Mapped[int | None] = mapped_column(BigInteger)  # responsaveis (carteira), não usuário
+    titulo: Mapped[str] = mapped_column(Text)
+    descricao: Mapped[str] = mapped_column(Text, server_default="")
+    resolucao: Mapped[str | None] = mapped_column(Text)
+    prioridade: Mapped[str] = mapped_column(Text)
+    prazo: Mapped[date | None] = mapped_column(Date)
+    situacao: Mapped[str] = mapped_column(Text, server_default="a_fazer")
+    origem: Mapped[str] = mapped_column(Text, server_default="manual")
+    grupo: Mapped[str | None] = mapped_column(Text)
+    tipo_nota: Mapped[str | None] = mapped_column(Text)
+    nota: Mapped[int | None] = mapped_column(SmallInteger)
+    criado_por: Mapped[int | None] = mapped_column(BigInteger)
+    criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    atualizada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    iniciada_em: Mapped[datetime | None] = mapped_column(TZ)
+    concluida_em: Mapped[datetime | None] = mapped_column(TZ)
+    concluida_por: Mapped[int | None] = mapped_column(BigInteger)
+
+
+class ConfigAcoes(Base):
+    __tablename__ = "config_acoes"
+    conta_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, server_default=CONTA_ATUAL)
+    prazo_detrator: Mapped[int] = mapped_column(Integer, server_default="2")
+    prazo_neutro: Mapped[int] = mapped_column(Integer, server_default="5")
+    prazo_promotor: Mapped[int] = mapped_column(Integer, server_default="7")
+    acao_promotor: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    atualizado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)

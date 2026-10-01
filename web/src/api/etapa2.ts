@@ -7,6 +7,7 @@ import type {
   ContatoDetalhe,
   Contexto,
   CorpoImportacao,
+  CorpoImportacaoRespostas,
   DadosContato,
   DadosEmpresa,
   DadosFormulario,
@@ -27,6 +28,7 @@ import type {
   Resultados,
   Tema,
   TipoCadastro,
+  TipoImportacao,
 } from './tipos'
 
 const seg = (v: Id) => encodeURIComponent(String(v))
@@ -92,15 +94,20 @@ export const contatosApi = {
   linkPesquisa: (id: Id, dados: PedidoLinkPesquisa) => api.post<LinkPesquisa>(`/contatos/${seg(id)}/link-pesquisa`, dados),
 }
 
+/** Etapa 4a: o mesmo fluxo importa contatos (padrão) ou respostas antigas, conforme o `tipo`. */
 export const importacaoApi = {
-  baixarModelo: () => baixarArquivo('/importacao/modelo', 'modelo-contatos.csv', { tipo: 'contatos' }),
-  analisar: (arquivo: File) => {
+  baixarModelo: (tipo: TipoImportacao = 'contatos') =>
+    baixarArquivo('/importacao/modelo', tipo === 'respostas' ? 'modelo-respostas.csv' : 'modelo-contatos.csv', { tipo }),
+  analisar: (arquivo: File, tipo: TipoImportacao = 'contatos') => {
     const corpo = new FormData()
     corpo.append('arquivo', arquivo)
+    corpo.append('tipo', tipo)
     return api.post<AnaliseImportacao>('/importacao/analisar', corpo)
   },
-  conferir: (id: Id, corpo: CorpoImportacao) => api.post<ConferenciaImportacao>(`/importacao/${seg(id)}/conferir`, corpo),
-  importar: (id: Id, corpo: CorpoImportacao & { ignorar_com_problema: boolean }) =>
+  /** O tipo vem da análise; para respostas o corpo leva só mapeamento e atualizar_existentes. */
+  conferir: (id: Id, corpo: CorpoImportacao | CorpoImportacaoRespostas) =>
+    api.post<ConferenciaImportacao>(`/importacao/${seg(id)}/conferir`, corpo),
+  importar: (id: Id, corpo: (CorpoImportacao | CorpoImportacaoRespostas) & { ignorar_com_problema: boolean }) =>
     api.post<ResultadoImportacao>(`/importacao/${seg(id)}/importar`, corpo),
 }
 

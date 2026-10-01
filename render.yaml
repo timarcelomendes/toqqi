@@ -15,7 +15,7 @@ services:
     name: toqqi-api
     runtime: python
     region: oregon
-    plan: free            # dorme após 15 min sem uso; os envios automáticos (etapa 3) vão precisar do plano pago
+    plan: free            # dorme após 15 min sem uso; o robô e os lembretes rodam no cron toqqi-tarefas, sem depender dela
     rootDir: api
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn toqqi.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
@@ -43,7 +43,7 @@ services:
         value: console
       - key: AMBIENTE
         value: producao
-      - key: TAREFAS_TOKEN          # usado pelo agendador (GitHub Actions) para rodar robô e lembretes
+      - key: TAREFAS_TOKEN          # protege POST /interno/tarefas (rodar robô e lembretes à mão)
         generateValue: true
       - key: SEGREDOS_KEY           # cifra os tokens do WhatsApp guardados no banco
         generateValue: true
@@ -57,6 +57,63 @@ services:
         sync: false
       - key: ADMIN_INICIAL_SENHA
         sync: false
+
+  # Tarefas agendadas: robô de envio, lembretes, envios pendentes e webhooks, a cada 15 minutos (horário UTC).
+  # Conecta direto no banco (não acorda a API). Cobrança por segundo de execução, com mínimo de US$ 1 por mês.
+  # As variáveis vêm da API para os dois usarem os mesmos segredos (JWT_SECRET monta os links dos lembretes).
+  # Ao configurar o ZeptoMail, acrescente aqui EMAIL_FROM e ZEPTOMAIL_TOKEN (fromService), como as demais.
+  - type: cron
+    name: toqqi-tarefas
+    runtime: python
+    region: oregon
+    schedule: "*/15 * * * *"
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m toqqi.tarefas
+    buildFilter:
+      paths: ["api/**"]
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: toqqi-db
+          property: connectionString
+      - key: APP_DB_PASSWORD
+        fromService:
+          type: web
+          name: toqqi-api
+          envVarKey: APP_DB_PASSWORD
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: toqqi-api
+          envVarKey: JWT_SECRET
+      - key: SEGREDOS_KEY
+        fromService:
+          type: web
+          name: toqqi-api
+          envVarKey: SEGREDOS_KEY
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: toqqi-api
+          envVarKey: FRONTEND_URL
+      - key: API_PUBLIC_URL
+        fromService:
+          type: web
+          name: toqqi-api
+          envVarKey: API_PUBLIC_URL
+      - key: EMAIL_PROVIDER
+        fromService:
+          type: web
+          name: toqqi-api
+          envVarKey: EMAIL_PROVIDER
+      - key: AMBIENTE
+        fromService:
+          type: web
+          name: toqqi-api
+          envVarKey: AMBIENTE
 
   - type: web
     name: toqqi-web

@@ -41,6 +41,7 @@ watch(aba, (a) => visitadas.value.add(a))
     <SecaoChave v-if="visitadas.has('chave')" v-show="aba === 'chave'" @ir-para="(a) => (aba = a)" />
     <SecaoComoConectar v-if="visitadas.has('conectar')" v-show="aba === 'conectar'" />
     <SecaoWebhooks v-if="visitadas.has('webhooks')" v-show="aba === 'webhooks'" />
-    <SecaoWhatsapp v-if="visitadas.has('whatsapp')" v-show="aba === 'whatsapp'" />
+    <!-- A seção tem mais de uma raiz: o v-show precisa de um elemento em volta (senão ela aparece nas outras abas). -->
+    <div v-if="visitadas.has('whatsapp')" v-show="aba === 'whatsapp'"><SecaoWhatsapp /></div>
   </Abas>
 </template>
