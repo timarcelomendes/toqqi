@@ -20,6 +20,10 @@ class Config(BaseSettings):
     ZEPTOMAIL_TOKEN: str = ""
     RESEND_API_KEY: str = ""
     EMAIL_FROM: str = "Toqqi <nao-responda@toqqi.com>"
+    # "producao" não aceita o provedor console como envio de pesquisas.
+    AMBIENTE: Literal["desenvolvimento", "producao"] = "desenvolvimento"
+    # Protege POST /interno/tarefas (agendador externo). Vazio = rota desligada (404).
+    TAREFAS_TOKEN: str = ""
     SUPERADMIN_EMAILS: str = ""
     ALLOWED_ORIGINS: str = "http://localhost:5173"
     AUTO_MIGRATE: bool = True

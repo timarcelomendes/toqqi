@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 
 from toqqi.core.deps import Contexto, requer_superadmin
 from toqqi.modulos.plataforma import servico
-from toqqi.modulos.plataforma.esquemas import EstenderTesteIn, NovaContaIn
+from toqqi.modulos.plataforma.esquemas import EstenderTesteIn, ExcluirContaIn, NovaContaIn
 
 router = APIRouter(prefix="/plataforma", tags=["plataforma"])
 
@@ -25,3 +25,9 @@ def estender_teste(conta_id: int, dados: EstenderTesteIn | None = None, ctx: Con
 @router.post("/contas/{conta_id}/cortesia")
 def cortesia(conta_id: int, ctx: Contexto = Depends(requer_superadmin)):
     return servico.cortesia(ctx, conta_id)
+
+
+@router.delete("/contas/{conta_id}", status_code=204)
+def excluir(conta_id: int, dados: ExcluirContaIn, ctx: Contexto = Depends(requer_superadmin)):
+    servico.excluir_conta(ctx, conta_id, dados.confirmar_nome)
+    return Response(status_code=204)

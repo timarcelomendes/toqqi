@@ -1,0 +1,37 @@
+"""Tarefas periódicas de envio: `python -m toqqi.tarefas [robo|lembretes|pendentes|tudo]` (padrão: tudo).
+
+Também disponíveis em POST /api/v1/interno/tarefas (cabeçalho X-Tarefas-Token). Um agendador externo
+chama a cada hora; cada tarefa decide por conta se é hora de agir.
+"""
+import json
+import sys
+
+from toqqi.modulos.envios import automacao
+
+TAREFAS = ("robo", "lembretes", "pendentes", "tudo")
+
+
+def executar(qual: str = "tudo") -> dict:
+    """Roda as tarefas pedidas (pendentes primeiro) e devolve o resumo de cada uma."""
+    assert qual in TAREFAS
+    resultado: dict = {}
+    if qual in ("pendentes", "tudo"):
+        resultado["pendentes"] = automacao.pendentes()
+    if qual in ("robo", "tudo"):
+        resultado["robo"] = automacao.robo()
+    if qual in ("lembretes", "tudo"):
+        resultado["lembretes"] = automacao.lembretes()
+    return resultado
+
+
+def main(argv: list[str]) -> int:
+    qual = argv[0] if argv else "tudo"
+    if qual not in TAREFAS or len(argv) > 1:
+        print(f"Uso: python -m toqqi.tarefas [{'|'.join(TAREFAS)}]", file=sys.stderr)
+        return 2
+    print(json.dumps(executar(qual), ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

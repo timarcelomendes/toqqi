@@ -1,6 +1,7 @@
 export const FUSO = 'America/Sao_Paulo'
 
 const fmtData = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, day: '2-digit', month: '2-digit', year: 'numeric' })
+const fmtDiaMes = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, day: '2-digit', month: '2-digit' })
 const fmtHora = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, hour: '2-digit', minute: '2-digit' })
 const fmtIso = new Intl.DateTimeFormat('en-CA', { timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit' })
 
@@ -15,6 +16,12 @@ function paraData(valor: string | Date | null | undefined): Date | null {
 export function formatarData(valor: string | Date | null | undefined, vazio = '—'): string {
   const d = paraData(valor)
   return d ? fmtData.format(d) : vazio
+}
+
+/** dd/mm no horário de Brasília (ex.: "Próximo envio em 12/03"). */
+export function formatarDiaMes(valor: string | Date | null | undefined, vazio = '—'): string {
+  const d = paraData(valor)
+  return d ? fmtDiaMes.format(d) : vazio
 }
 
 /** dd/mm/aaaa às hh:mm no horário de Brasília. */

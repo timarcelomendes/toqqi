@@ -10,7 +10,7 @@ const sessao = useSessaoStore()
 const rota = useRoute()
 /** Ativo também nas páginas de dentro (ex.: /contatos/123 marca Contatos). */
 function ativoNa(i: ItemNavegacao, isActive: boolean) {
-  return isActive || rota.path.startsWith(`${i.para}/`)
+  return isActive || rota.path.startsWith(`${i.prefixo ?? i.para}/`)
 }
 
 const principal = computed(() => filtrarNavegacao(navegacaoPrincipal, sessao.pode, sessao.superadmin))

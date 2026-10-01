@@ -35,19 +35,19 @@ O build gera **duas páginas**:
 | Arquivo | O que é | Carrega |
 |---|---|---|
 | `dist/index.html` | o app (área logada e telas de acesso) | Vue, router, Pinia, ícones, telas |
-| `dist/responder.html` | a pesquisa pública (`/r/:token` e `/f/:codigo`) | só Vue, o cliente fetch e o componente da pesquisa (~45 KB gzip de JS) |
+| `dist/responder.html` | a pesquisa pública (`/r/:token` e `/f/:codigo`) e a página para sair da lista (`/sair/:token`) | só Vue, o cliente fetch e o componente da pesquisa (~45 KB gzip de JS) |
 
 A página pública é separada de propósito: abre rápido no 4G e não baixa nada da área logada.
 Em `npm run dev` e `npm run preview` o próprio Vite já faz o redirecionamento. **Em produção, configure no servidor:**
 
-1. `/r/*` e `/f/*` → servir `responder.html` (sem mudar a URL);
+1. `/r/*`, `/f/*` e `/sair/*` → servir `responder.html` (sem mudar a URL);
 2. arquivos existentes (`/assets/*`, `/widget.js`, `/favicon.svg`) → servir o arquivo;
 3. qualquer outra rota → `index.html` (SPA com histórico HTML5).
 
 Exemplo com nginx:
 
 ```nginx
-location ~ ^/(r|f)/ { try_files $uri /responder.html; }
+location ~ ^/(r|f|sair)/ { try_files $uri /responder.html; }
 location / { try_files $uri $uri/ /index.html; }
 location = /widget.js { add_header Cache-Control "public, max-age=3600"; }
 ```
@@ -57,6 +57,7 @@ Exemplo Netlify (`public/_redirects`) ou equivalente em outro host:
 ```
 /r/*  /responder.html  200
 /f/*  /responder.html  200
+/sair/*  /responder.html  200
 /*    /index.html      200
 ```
 

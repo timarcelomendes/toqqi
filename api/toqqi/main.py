@@ -1,4 +1,4 @@
-"""Aplicação FastAPI do Toqqi (etapas 1 e 2: acesso, equipe, cadastros, formulários, páginas públicas)."""
+"""Aplicação FastAPI do Toqqi (etapas 1 a 3a: acesso, equipe, cadastros, formulários, páginas públicas, envios)."""
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -18,6 +18,8 @@ from toqqi.modulos.cadastros.rotas import router as cadastros
 from toqqi.modulos.conta.rotas import router as conta
 from toqqi.modulos.contatos.rotas import router as contatos
 from toqqi.modulos.empresas.rotas import router as empresas
+from toqqi.modulos.envios.rotas import router as envios
+from toqqi.modulos.envios.rotas import router_interno as interno
 from toqqi.modulos.equipe.rotas import router as equipe
 from toqqi.modulos.formularios.rotas import router as formularios
 from toqqi.modulos.importacao.rotas import router as importacao
@@ -77,7 +79,7 @@ def create_app() -> FastAPI:
     )
 
     for r in (acesso, equipe, conta, auditoria, plataforma, cadastros, empresas, contatos, importacao,
-              formularios, publico):
+              formularios, publico, envios, interno):
         app.include_router(r, prefix=PREFIXO)
 
     @app.get(f"{PREFIXO}/saude", tags=["infra"])

@@ -32,7 +32,7 @@ from toqqi.core.email import caixa_memoria  # noqa: E402
 from toqqi.core.rate_limit import limiter  # noqa: E402
 from toqqi.main import create_app  # noqa: E402
 
-TABELAS = ("importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
+TABELAS = ("envios, descadastros, config_envios, importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
            "perfis_contato, cargos, auditoria, dominios_liberados, perfil_permissoes, tokens_uso_unico, sessoes, usuarios, contas")
 
 

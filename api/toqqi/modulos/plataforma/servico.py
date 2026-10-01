@@ -4,7 +4,7 @@ Usa modo sistema de propósito: aqui a pessoa age sobre contas que não são a d
 """
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 
 from toqqi.core.auditoria import registrar
@@ -13,7 +13,29 @@ from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.permissoes import semear_padrao
 from toqqi.core.security import gerar_hash
-from toqqi.modelos import Conta, Usuario
+from toqqi.modelos import (
+    Auditoria,
+    Cargo,
+    ConfigEnvios,
+    Conta,
+    Contato,
+    Convite,
+    Descadastro,
+    DominioLiberado,
+    Empresa,
+    Envio,
+    Formulario,
+    Grupo,
+    Importacao,
+    PerfilContato,
+    PerfilPermissao,
+    Responsavel,
+    Resposta,
+    Segmento,
+    Sessao,
+    TokenUsoUnico,
+    Usuario,
+)
 from toqqi.modulos.acesso.servico import DIAS_TESTE
 from toqqi.modulos.formularios.semear import semear_conta
 
@@ -95,3 +117,26 @@ def cortesia(ctx: Contexto, conta_id: int) -> dict:
         registrar(s, "cortesia", "info", {"por": ctx.email, "situacao_anterior": anterior}, conta_id=c.id)
         s.flush()
         return _conta_json(c, _contar_usuarios(s, c.id))
+
+
+# Ordem de exclusão: quem aponta para outras tabelas da conta sai antes.
+_ORDEM_EXCLUSAO = (Envio, Descadastro, ConfigEnvios, Resposta, Convite, Importacao, Contato, Empresa, Responsavel,
+                   Grupo, Segmento, PerfilContato, Cargo, Formulario, Auditoria, DominioLiberado, PerfilPermissao,
+                   TokenUsoUnico, Sessao, Usuario)
+
+
+def excluir_conta(ctx: Contexto, conta_id: int, confirmar_nome: str) -> None:
+    """Apaga a conta e todos os dados dela. Auditoria global (sem conta), visível só na plataforma."""
+    with modo_sistema() as s:
+        c = _conta_travada(s, conta_id)
+        if c.id == ctx.conta_id:
+            raise AppError(409, "propria_conta", "Você não pode excluir a conta que está usando.")
+        if " ".join(confirmar_nome.split()).casefold() != " ".join(c.nome.split()).casefold():
+            msg = "O nome digitado não confere com o nome da conta."
+            raise AppError(409, "nome_nao_confere", msg, {"confirmar_nome": msg})
+        conta = {"id": c.id, "nome": c.nome}
+        usuarios = _contar_usuarios(s, c.id)
+        for modelo in _ORDEM_EXCLUSAO:
+            s.execute(delete(modelo).where(modelo.conta_id == conta["id"]))
+        s.execute(delete(Conta).where(Conta.id == conta["id"]))
+        registrar(s, "conta_excluida", "atencao", {"conta": conta, "usuarios": usuarios, "por": ctx.email})

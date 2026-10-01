@@ -15,3 +15,7 @@ class NovaContaIn(BaseModel):
 
 class EstenderTesteIn(BaseModel):
     dias: Annotated[int, Field(ge=1, le=365)] = 14
+
+
+class ExcluirContaIn(BaseModel):
+    confirmar_nome: Annotated[Texto, Field(min_length=1, max_length=200)]

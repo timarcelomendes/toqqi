@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Eye, Link2, MoreHorizontal, Pencil, Search, SlidersHorizontal, Trash2, Upload, UserPlus, UsersRound } from 'lucide-vue-next'
+import { Eye, Link2, MessageCircle, MoreHorizontal, Pencil, Search, SlidersHorizontal, Trash2, Upload, UserPlus, UsersRound } from 'lucide-vue-next'
 import { contatosApi, mensagemDoErro, type Contato, type FiltrosContatos, type Id, type Referencia } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
+import { useWhatsapp } from '@/composables/whatsapp'
 import { useCadastrosStore } from '@/stores/cadastros'
 import { useSessaoStore } from '@/stores/sessao'
 import { exibirTelefone } from '@/utils/formatos'
@@ -53,6 +54,12 @@ const paraLink = ref<Contato | null>(null)
 const podeEditar = computed(() => sessao.pode('contatos.editar'))
 const podeExcluir = computed(() => sessao.pode('contatos.excluir'))
 const podeLink = computed(() => sessao.pode('envios.disparar'))
+const whatsapp = useWhatsapp()
+const podeWhatsapp = (c: Contato) => podeLink.value && c.ativo && !!c.telefone && c.situacao !== 'saiu_da_lista'
+
+async function abrirWhatsapp(c: Contato) {
+  if (await whatsapp.abrir(c)) carregar()
+}
 
 const colunas: Coluna[] = [
   { chave: 'nome', rotulo: 'Contato' },
@@ -231,7 +238,7 @@ defineExpose({ novo })
             <p v-if="c.email && c.telefone" class="truncate text-xs text-texto-fraco">{{ exibirTelefone(c.telefone) }}</p>
             <p v-if="c.empresa" class="truncate text-xs text-texto-suave md:hidden">{{ c.empresa.nome }}</p>
             <div class="mt-1 flex flex-wrap gap-1.5 lg:hidden">
-              <Etiqueta :tom="situacaoContato(c.situacao).tom" ponto>{{ situacaoContato(c.situacao).rotulo }}</Etiqueta>
+              <Etiqueta :tom="situacaoContato(c.situacao, c).tom" ponto>{{ situacaoContato(c.situacao, c).rotulo }}</Etiqueta>
             </div>
           </div>
         </div>
@@ -243,7 +250,7 @@ defineExpose({ novo })
         <span class="text-texto-suave">{{ c.perfil?.nome ?? '—' }}</span>
       </template>
       <template #cel-situacao="{ linha: c }">
-        <Etiqueta :tom="situacaoContato(c.situacao).tom" ponto>{{ situacaoContato(c.situacao).rotulo }}</Etiqueta>
+        <Etiqueta :tom="situacaoContato(c.situacao, c).tom" ponto>{{ situacaoContato(c.situacao, c).rotulo }}</Etiqueta>
       </template>
       <template #cel-ultima_nota="{ linha: c }">
         <Etiqueta v-if="c.ultima_nota !== null && c.ultima_nota !== undefined" :tom="tomNotaNps(c.ultima_nota)">
@@ -265,6 +272,7 @@ defineExpose({ novo })
           </template>
           <ItemMenu :icone="Eye" :para="`/contatos/${c.id}`">Ver detalhes</ItemMenu>
           <ItemMenu v-if="podeEditar" :icone="Pencil" @click="editar(c)">Editar</ItemMenu>
+          <ItemMenu v-if="podeWhatsapp(c)" :icone="MessageCircle" @click="abrirWhatsapp(c)">Enviar pelo WhatsApp</ItemMenu>
           <ItemMenu v-if="podeLink && c.ativo" :icone="Link2" @click="gerarLink(c)">Gerar link de pesquisa</ItemMenu>
           <ItemMenu v-if="podeExcluir" :icone="Trash2" perigo @click="excluir(c)">Excluir</ItemMenu>
         </MenuSuspenso>

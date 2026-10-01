@@ -20,6 +20,8 @@ export interface ItemNavegacao {
   icone: Component
   permissao?: Permissao
   superadmin?: boolean
+  /** Marca o item como ativo em qualquer página que comece com este caminho (padrão: `para`). */
+  prefixo?: string
   /** Ainda não existe nesta etapa. */
   emBreve?: boolean
 }
@@ -27,7 +29,7 @@ export interface ItemNavegacao {
 export const navegacaoPrincipal: ItemNavegacao[] = [
   { rotulo: 'Início', para: '/inicio', icone: Home },
   { rotulo: 'Contatos', para: '/contatos', icone: UsersRound, permissao: 'contatos.ver' },
-  { rotulo: 'Envios', para: '/envios', icone: Send, permissao: 'envios.ver', emBreve: true },
+  { rotulo: 'Envios', para: '/envios', icone: Send, permissao: 'envios.ver' },
   { rotulo: 'Formulários', para: '/formularios', icone: FileText, permissao: 'formularios.ver' },
   { rotulo: 'Respostas', para: '/respostas', icone: MessageSquareText, permissao: 'respostas.ver', emBreve: true },
   { rotulo: 'Planos de ação', para: '/planos-de-acao', icone: ClipboardList, permissao: 'acoes.ver', emBreve: true },
@@ -36,7 +38,7 @@ export const navegacaoPrincipal: ItemNavegacao[] = [
 
 export const navegacaoAdministracao: ItemNavegacao[] = [
   { rotulo: 'Equipe', para: '/equipe', icone: Users, permissao: 'equipe.gerenciar' },
-  { rotulo: 'Configurações', para: '/configuracoes/seguranca', icone: ShieldCheck, permissao: 'configuracoes.gerenciar' },
+  { rotulo: 'Configurações', para: '/configuracoes/seguranca', prefixo: '/configuracoes', icone: ShieldCheck, permissao: 'configuracoes.gerenciar' },
   { rotulo: 'Auditoria', para: '/auditoria', icone: History, permissao: 'auditoria.ver' },
   { rotulo: 'Plataforma', para: '/plataforma', icone: Building2, superadmin: true },
 ]

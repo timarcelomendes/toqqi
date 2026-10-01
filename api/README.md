@@ -1,10 +1,12 @@
-# Toqqi API · etapas 1 e 2
+# Toqqi API · etapas 1, 2 e 3a
 
 FastAPI + SQLAlchemy 2 (psycopg 3) + Alembic + PostgreSQL 16.
 Contratos implementados (base `/api/v1`):
 - `../docs/api-etapa-1.md`: acesso, equipe, sessões, auditoria;
 - `../docs/api-etapa-2.md`: cadastros auxiliares, responsáveis, empresas, contatos, importação de planilha,
-  formulários (modelos, resultados, CSV) e páginas públicas de pesquisa.
+  formulários (modelos, resultados, CSV) e páginas públicas de pesquisa;
+- `../docs/api-etapa-3.md`: envios por e-mail (fila, disparo manual, robô, lembretes, agradecimento),
+  histórico, convite por WhatsApp (link wa.me), descadastro e exclusão de conta pela plataforma.
 
 ## Isolamento entre contas (RLS)
 O isolamento é garantido pelo próprio PostgreSQL:
@@ -64,6 +66,8 @@ para que o IP real do cliente seja usado no limite de tentativas, nas sessões e
 | `EMAIL_FROM` | Remetente, ex.: `Toqqi <nao-responda@toqqi.com>` |
 | `SUPERADMIN_EMAILS` | E-mails com acesso à área `/plataforma`, separados por vírgula |
 | `RATE_LIMIT_ENABLED` | `0` desliga o limite de tentativas (usado nos testes) |
+| `AMBIENTE` | `desenvolvimento` (padrão) ou `producao`; em produção o provedor `console` não conta como configurado |
+| `TAREFAS_TOKEN` | Segredo do cabeçalho `X-Tarefas-Token` de `POST /api/v1/interno/tarefas` (vazio = rota desligada, 404) |
 
 A etapa 2 não criou variáveis novas. `FRONTEND_URL` também é a base dos links de convite (`/r/{token}`)
 e `JWT_SECRET` entra no sal diário do hash de IP das respostas públicas.
@@ -82,10 +86,10 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
   plano): a API confere antes (importação) e o banco garante com o gatilho `contatos_limite_plano`
   (`BEFORE INSERT OR UPDATE OF ativo`, trava consultiva por conta). O gatilho levanta SQLSTATE `TQ402`, que a
   aplicação converte em 402 `limite_do_plano`. Editar um contato que já estava ativo não conta.
-- **Convites**: o token só aparece no link; o banco guarda o sha256 (`convites.token_hash`). A etapa 3 cria
-  convites com `toqqi.modulos.respostas.convites.criar_convite(sessao, formulario_id, contato_id=..., canal=...)`.
+- **Convites**: o token só aparece no link; o banco guarda o sha256 (`convites.token_hash`). Criação:
+  `toqqi.modulos.respostas.convites.novo_convite(...)` / `criar_convite(...)`.
 - **Resposta registrada**: toda resposta nova passa por `toqqi.modulos.respostas.eventos.ao_registrar_resposta`
-  (lista `GANCHOS`, vazia por enquanto), na mesma transação da gravação.
+  (lista `GANCHOS`; a etapa 3a pendura ali o agradecimento), na mesma transação da gravação.
 - **Respostas públicas repetidas**: `ip_hash = sha256(JWT_SECRET | dia UTC | ip)` (o IP não é guardado). A mesma
   resposta do mesmo IP em 10 minutos recebe a mesma resposta 201, sem gravar de novo.
 - **Limites por IP nas páginas públicas**: abrir 30/min, responder convite 10/min, responder link 5/min.
@@ -98,13 +102,34 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
   "Pesquisa NPS" (padrão NPS) e "Satisfação pós-entrega" (padrão CSAT); a migração 0002 faz o mesmo nas contas
   que já existiam.
 
+## Etapa 3a: envios
+- **Tarefas periódicas**: `python -m toqqi.tarefas [robo|lembretes|pendentes|tudo]` ou
+  `POST /api/v1/interno/tarefas` com `X-Tarefas-Token` (comparação em tempo constante). Um agendador externo
+  chama a cada hora; cada conta decide se é hora (janela, dias úteis, 6 h entre rodadas do robô, lembretes uma vez
+  por dia a partir das 10:00). A lista de contas sai do modo sistema (só ids); o trabalho de cada conta roda em
+  `em_conta`.
+- **Envio em segundo plano**: o envio nasce `pendente` na transação que o decide e sai depois do commit
+  (`BackgroundTasks` nas rotas; direto na tarefa). A chamada ao provedor fica fora da transação. Pendentes há mais
+  de 10 minutos (queda do processo) são retomados pela tarefa `pendentes`.
+- **Situação do contato** (`na_fila`, `aguardando`, `respondeu`...) é calculada no banco
+  (`modulos/envios/fila.py`) e usada na fila, nos filtros e em Contatos.
+- **Mesmo link no lembrete**: convites por e-mail/WhatsApp guardam `token_semente`; o token é
+  `HMAC(JWT_SECRET, semente)` e o banco continua só com o sha256 do token.
+- **Descadastro**: por conta + e-mail (`descadastros`), token `base64url(conta_id:email).HMAC(JWT_SECRET)`, sem
+  validade. Todo envio confere o descadastro na hora de sair. Cabeçalhos `List-Unsubscribe` (URL da API) e
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058).
+- **Erros do provedor** viram texto simples no histórico (`toqqi/core/email.py`); o detalhe técnico vai ao log.
+- **Relógio**: as regras usam `toqqi.core.relogio.agora()` (São Paulo); os testes trocam essa função.
+- **Exclusão de conta** (plataforma): apaga os dados em ordem, em modo sistema, e grava auditoria global
+  (`auditoria.conta_id` nulo, visível só em modo sistema).
+
 ## Estrutura
 ```
 toqqi/
   main.py                 create_app, CORS, id da requisição, handlers de erro, auto-migração
   modelos.py              modelos ORM
   apresentacao.py         formato JSON de Usuario e Conta
-  core/                   config, db (em_conta / modo_sistema), security (argon2id, JWT, tokens),
+  core/                   config, db (em_conta / modo_sistema), security (argon2id, JWT, tokens), relogio,
                           errors, validacao, email, rate_limit, auditoria, permissoes, deps (requer),
                           texto (telefone, CNPJ/CPF, valores, datas), planos, paginacao, filtros, rede
   modulos/acesso/         cadastro, entrar, sair, confirmar, reenviar, esqueci, redefinir, pedir-acesso, /eu
@@ -118,9 +143,13 @@ toqqi/
   modulos/importacao/     leitura de planilhas, nomes equivalentes, conferir e importar
   modulos/formularios/    modelos prontos, validação das perguntas, padrões, resultados, CSV
   modulos/respostas/      convites, validação/gravação de respostas, variáveis, "resposta registrada"
-  modulos/publico/        páginas públicas (convite e link público)
+  modulos/publico/        páginas públicas (convite, link público e descadastro)
+  modulos/envios/         configuração e pré-condições, fila/situação, disparo, histórico, WhatsApp,
+                          robô/lembretes/pendentes, agradecimento, descadastro, modelos de e-mail
+  tarefas.py              CLI das tarefas periódicas (python -m toqqi.tarefas)
 alembic/versions/0001_inicial.py   esquema da etapa 1 + RLS + GRANTs
 alembic/versions/0002_cadastros_formularios.py   tabelas da etapa 2 + RLS + limite do plano + dados iniciais
+alembic/versions/0003_envios.py    config_envios, envios, descadastros + colunas de fila/lembrete + RLS
 tests/                             pytest
 ```
 

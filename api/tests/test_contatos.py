@@ -80,7 +80,7 @@ def test_criar_contato_formato(client, admin):
     assert len(c["codigo"]) == 9 and c["codigo"].isdigit()
     assert c["empresa"] == {"id": e["id"], "nome": "Atacado Norte"}
     assert c["perfil"]["nome"] == "Decisor"
-    assert c["situacao"] == "nunca_enviado" and c["ultima_nota"] is None
+    assert c["situacao"] == "na_fila" and c["ultima_nota"] is None
     assert c["ultimo_envio"] is None and c["proximo_envio"] is None
 
 

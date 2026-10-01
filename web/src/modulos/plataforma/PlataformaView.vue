@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Building2, CalendarPlus, Gift, Plus, Search } from 'lucide-vue-next'
+import { Building2, CalendarPlus, Gift, Plus, Search, Trash2 } from 'lucide-vue-next'
 import { mensagemDoErro, plataformaApi, type ContaPlataforma } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
+import { useSessaoStore } from '@/stores/sessao'
 import { formatarData } from '@/utils/datas'
 import { situacaoConta } from '@/utils/rotulos'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
@@ -13,6 +14,7 @@ import Campo from '@/components/ui/Campo.vue'
 import EstadoVazio from '@/components/ui/EstadoVazio.vue'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
 import Tabela, { type Coluna } from '@/components/ui/Tabela.vue'
+import ModalExcluirConta from './ModalExcluirConta.vue'
 import ModalNovaConta from './ModalNovaConta.vue'
 
 const contas = ref<ContaPlataforma[]>([])
@@ -21,6 +23,21 @@ const erro = ref<string | null>(null)
 const busca = ref('')
 const ocupado = ref<string | null>(null)
 const modalAberto = ref(false)
+const sessao = useSessaoStore()
+const excluirAberto = ref(false)
+const paraExcluir = ref<ContaPlataforma | null>(null)
+
+/** A conta do próprio superadmin não pode ser excluída por aqui. */
+const propria = (c: ContaPlataforma) => !!sessao.conta && String(sessao.conta.id) === String(c.id)
+
+function pedirExclusao(c: ContaPlataforma) {
+  paraExcluir.value = c
+  excluirAberto.value = true
+}
+
+function aoExcluir(c: ContaPlataforma) {
+  contas.value = contas.value.filter((x) => String(x.id) !== String(c.id))
+}
 
 const colunas: Coluna[] = [
   { chave: 'nome', rotulo: 'Empresa' },
@@ -154,6 +171,9 @@ onMounted(carregar)
           >
             <Gift class="size-4" aria-hidden="true" /> Cortesia<span class="sr-only"> para {{ c.nome }}</span>
           </Botao>
+          <Botao v-if="!propria(c)" variante="perigo-suave" tamanho="sm" :desabilitado="!!ocupado" @click="pedirExclusao(c)">
+            <Trash2 class="size-4" aria-hidden="true" /> Excluir<span class="sr-only"> a conta {{ c.nome }}</span>
+          </Botao>
         </div>
       </template>
       <template #vazio>
@@ -163,4 +183,5 @@ onMounted(carregar)
   </div>
 
   <ModalNovaConta v-model:aberto="modalAberto" @criada="carregar" />
+  <ModalExcluirConta v-model:aberto="excluirAberto" :conta="paraExcluir" @excluida="aoExcluir" />
 </template>

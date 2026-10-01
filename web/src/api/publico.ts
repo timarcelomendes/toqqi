@@ -4,6 +4,12 @@ import { api } from './cliente'
 import type { CanalPublico } from '@/pesquisa/contexto'
 import type { Contexto, FormularioPublico, Respostas, TelaFinal, Variaveis } from '@/pesquisa/tipos'
 
+export interface DescadastroPublico {
+  email_mascarado: string
+  empresa: string
+  descadastrado: boolean
+}
+
 export interface PesquisaPublica {
   formulario: FormularioPublico
   variaveis: Partial<Variaveis>
@@ -22,4 +28,8 @@ export const publicoApi = {
     codigo: string,
     dados: { respostas: Respostas; canal?: CanalPublico; referencia?: string; contexto?: Contexto },
   ) => api.post<TelaFinal | undefined>(`/publico/formularios/${seg(codigo)}/responder`, dados, publico),
+  descadastro: (token: string) => api.get<DescadastroPublico>(`/publico/descadastro/${seg(token)}`, publico),
+  /** Sair da lista (com motivo opcional) ou, com `voltar`, voltar a receber. */
+  alterarDescadastro: (token: string, corpo: { motivo?: string } | { voltar: true }) =>
+    api.post<{ descadastrado: boolean }>(`/publico/descadastro/${seg(token)}`, corpo, publico),
 }

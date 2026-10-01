@@ -3,7 +3,7 @@ import re
 from typing import Annotated
 
 from email_validator import EmailNotValidError, validate_email
-from pydantic import AfterValidator, BeforeValidator
+from pydantic import AfterValidator, BeforeValidator, Field
 from pydantic_core import PydanticCustomError
 
 from toqqi.core.security import mensagem_senha_fraca, problemas_senha
@@ -101,3 +101,8 @@ Telefone = Annotated[str | None, BeforeValidator(_validar_telefone)]
 Documento = Annotated[str | None, BeforeValidator(_validar_documento)]
 EmailOpcional = Annotated[str | None, BeforeValidator(_email_opcional)]
 TextoOpcional = Annotated[str | None, BeforeValidator(_vazio_para_none)]
+
+
+def TextoAte(maximo: int):  # noqa: N802 - usado como tipo
+    """Texto opcional com tamanho máximo; vazio ou nulo vira None (o limite só vale para texto)."""
+    return Annotated[Annotated[str, Field(max_length=maximo)] | None, BeforeValidator(_vazio_para_none)]

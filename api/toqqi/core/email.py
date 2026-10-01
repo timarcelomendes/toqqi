@@ -4,11 +4,14 @@
 - memory: guarda em `caixa_memoria` (testes);
 - zeptomail / resend: envio real via HTTP.
 
-Falha no envio é registrada em log e não derruba a requisição.
+Dois caminhos:
+- `enviar()`: e-mails do sistema (confirmação, senha...). Falha vai para o log e não derruba o fluxo.
+- `enviar_mensagem()`: pesquisas. Falha vira `FalhaEnvio` com um texto simples para o histórico
+  (o detalhe técnico do provedor vai só para o log).
 """
 import html as html_lib
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from email.utils import parseaddr
 
 import httpx
@@ -17,6 +20,11 @@ from toqqi.core.config import config
 
 log = logging.getLogger("toqqi.email")
 
+MSG_ENDERECO = "O endereço de e-mail não existe ou recusou a mensagem."
+MSG_FORA_DO_AR = "O provedor de e-mail está fora do ar; tentaremos de novo."
+MSG_LIMITE = "Limite de envio do provedor atingido; tentaremos de novo."
+MSG_CONFIGURACAO = "O envio de e-mails da plataforma está com problema de configuração. A equipe Toqqi foi avisada."
+
 
 @dataclass
 class Mensagem:
@@ -24,9 +32,30 @@ class Mensagem:
     assunto: str
     texto: str
     html: str
+    remetente_nome: str | None = None      # vira "{remetente_nome} via Toqqi"
+    responder_para: str | None = None
+    cabecalhos: dict[str, str] = field(default_factory=dict)
+
+
+class FalhaEnvio(Exception):
+    def __init__(self, mensagem: str):
+        super().__init__(mensagem)
+        self.mensagem = mensagem
 
 
 caixa_memoria: list[Mensagem] = []
+
+
+def _limpar_nome(nome: str) -> str:
+    """Nome de exibição seguro para cabeçalho (sem aspas, <>, quebras de linha)."""
+    return " ".join("".join(c for c in nome if c not in '"<>\\\r\n').split())[:120]
+
+
+def remetente(m: Mensagem) -> tuple[str, str]:
+    nome, endereco = parseaddr(config().EMAIL_FROM)
+    if m.remetente_nome:
+        nome = f"{_limpar_nome(m.remetente_nome)} via Toqqi"
+    return nome or "Toqqi", endereco
 
 
 class Provedor:
@@ -36,7 +65,8 @@ class Provedor:
 
 class Console(Provedor):
     def enviar(self, m: Mensagem) -> None:
-        print(f"\n--- e-mail para {m.para} ---\nAssunto: {m.assunto}\n\n{m.texto}\n--- fim ---\n", flush=True)
+        extras = "".join(f"{k}: {v}\n" for k, v in m.cabecalhos.items())
+        print(f"\n--- e-mail para {m.para} ---\nAssunto: {m.assunto}\n{extras}\n{m.texto}\n--- fim ---\n", flush=True)
 
 
 class Memoria(Provedor):
@@ -48,14 +78,18 @@ class ZeptoMail(Provedor):
     URL = "https://api.zeptomail.com/v1.1/email"
 
     def enviar(self, m: Mensagem) -> None:
-        nome, endereco = parseaddr(config().EMAIL_FROM)
+        nome, endereco = remetente(m)
         corpo = {
-            "from": {"address": endereco, "name": nome or "Toqqi"},
+            "from": {"address": endereco, "name": nome},
             "to": [{"email_address": {"address": m.para}}],
             "subject": m.assunto,
             "htmlbody": m.html,
             "textbody": m.texto,
         }
+        if m.responder_para:
+            corpo["reply_to"] = [{"address": m.responder_para}]
+        if m.cabecalhos:
+            corpo["mime_headers"] = m.cabecalhos
         token = config().ZEPTOMAIL_TOKEN
         if not token.lower().startswith("zoho-enczapikey"):
             token = f"Zoho-enczapikey {token}"
@@ -67,7 +101,13 @@ class Resend(Provedor):
     URL = "https://api.resend.com/emails"
 
     def enviar(self, m: Mensagem) -> None:
-        corpo = {"from": config().EMAIL_FROM, "to": [m.para], "subject": m.assunto, "html": m.html, "text": m.texto}
+        nome, endereco = remetente(m)
+        corpo = {"from": f'"{nome}" <{endereco}>', "to": [m.para], "subject": m.assunto,
+                 "html": m.html, "text": m.texto}
+        if m.responder_para:
+            corpo["reply_to"] = [m.responder_para]
+        if m.cabecalhos:
+            corpo["headers"] = m.cabecalhos
         r = httpx.post(
             self.URL, json=corpo, headers={"Authorization": f"Bearer {config().RESEND_API_KEY}"}, timeout=10
         )
@@ -79,6 +119,30 @@ _PROVEDORES = {"console": Console, "memory": Memoria, "zeptomail": ZeptoMail, "r
 
 def provedor() -> Provedor:
     return _PROVEDORES[config().EMAIL_PROVIDER]()
+
+
+def traduzir_falha(e: Exception) -> str:
+    """Erro do provedor → texto simples para quem usa o sistema."""
+    if isinstance(e, httpx.HTTPStatusError):
+        status = e.response.status_code
+        if status == 429:
+            return MSG_LIMITE
+        if status in (401, 403):
+            return MSG_CONFIGURACAO
+        if status >= 500:
+            return MSG_FORA_DO_AR
+        return MSG_ENDERECO
+    return MSG_FORA_DO_AR
+
+
+def enviar_mensagem(m: Mensagem) -> None:
+    """Envia uma pesquisa. Levanta FalhaEnvio com o texto simples do erro."""
+    try:
+        provedor().enviar(m)
+    except Exception as e:  # noqa: BLE001 - qualquer falha do provedor vira FalhaEnvio
+        detalhe = e.response.text[:500] if isinstance(e, httpx.HTTPStatusError) else repr(e)
+        log.warning("Falha do provedor de e-mail ao enviar '%s' para %s: %s", m.assunto, m.para, detalhe)
+        raise FalhaEnvio(traduzir_falha(e)) from e
 
 
 def _html(paragrafos: list[str], botao: tuple[str, str] | None) -> str:

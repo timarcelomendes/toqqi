@@ -39,8 +39,12 @@ services:
         value: https://toqqi-web.onrender.com
       - key: API_PUBLIC_URL
         value: https://toqqi-api.onrender.com
-      - key: EMAIL_PROVIDER         # "console" até configurar o ZeptoMail (etapa 3)
+      - key: EMAIL_PROVIDER         # "console" até configurar o ZeptoMail; depois "zeptomail" + ZEPTOMAIL_TOKEN
         value: console
+      - key: AMBIENTE
+        value: producao
+      - key: TAREFAS_TOKEN          # usado pelo agendador (GitHub Actions) para rodar robô e lembretes
+        generateValue: true
       - key: SUPERADMIN_EMAILS
         sync: false                 # o Render pergunta na criação
       - key: ADMIN_INICIAL_EMAIL
@@ -65,6 +69,9 @@ services:
         destination: /responder.html
       - type: rewrite
         source: /f/*
+        destination: /responder.html
+      - type: rewrite
+        source: /sair/*
         destination: /responder.html
       - type: rewrite
         source: /*

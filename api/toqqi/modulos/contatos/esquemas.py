@@ -2,10 +2,10 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-from toqqi.core.validacao import EmailOpcional, Telefone, Texto, TextoOpcional
+from toqqi.core.validacao import EmailOpcional, Telefone, Texto, TextoAte
 
 Nome = Annotated[Texto, Field(min_length=1, max_length=120)]
-Curto = Annotated[TextoOpcional, Field(max_length=120)]
+Curto = TextoAte(120)
 
 
 class ContatoIn(BaseModel):
@@ -15,7 +15,7 @@ class ContatoIn(BaseModel):
     empresa_id: int | None = None
     cargo_id: int | None = None
     perfil_id: int | None = None
-    codigo_externo: Annotated[TextoOpcional, Field(max_length=100)] = None
+    codigo_externo: TextoAte(100) = None
     recebe_pesquisas: bool = True
     ativo: bool = True
 
@@ -27,7 +27,7 @@ class ContatoAlterarIn(BaseModel):
     empresa_id: int | None = None
     cargo_id: int | None = None
     perfil_id: int | None = None
-    codigo_externo: Annotated[TextoOpcional, Field(max_length=100)] = None
+    codigo_externo: TextoAte(100) = None
     recebe_pesquisas: bool | None = None
     ativo: bool | None = None
 

@@ -31,6 +31,11 @@ ROTULOS = {
     "formulario_excluido": "Formulário excluído",
     "formulario_arquivado": "Formulário arquivado",
     "formulario_padrao": "Formulário padrão alterado",
+    "config_envios": "Configurações de envio alteradas",
+    "envio_manual": "Pesquisas enviadas manualmente",
+    "descadastro": "Contato saiu da lista de pesquisas",
+    "descadastro_desfeito": "Contato voltou a receber pesquisas",
+    "conta_excluida": "Conta excluída pela equipe Toqqi",
 }
 
 
@@ -42,7 +47,8 @@ def registrar(
     usuario_id: int | None = None,
     conta_id: int | None = None,
 ) -> None:
-    """Grava um evento. Sem conta_id, usa a conta da transação (app_conta())."""
+    """Grava um evento. Sem conta_id, usa a conta da transação (app_conta()); em modo sistema, sem conta
+    alguma, o evento fica global (visível só pela plataforma)."""
     assert evento in ROTULOS, f"evento desconhecido: {evento}"
     assert gravidade in GRAVIDADES
     valores = {

@@ -24,7 +24,6 @@ from toqqi.modulos.respostas.eventos import ao_registrar_resposta
 
 ASSUNTO_PADRAO = "o nosso atendimento"
 MAX_RESUMO = 2000
-VARIAVEIS = ("empresa", "nome", "assunto", "referencia")
 
 
 # ---- variáveis --------------------------------------------------------------
@@ -37,11 +36,11 @@ def variaveis(empresa: str, nome_contato: str | None = None, assunto: str | None
 
 
 def renderizar(texto: str | None, v: dict) -> str | None:
-    """Troca {empresa} {nome} {assunto} {referencia}. Variável vazia some junto com o espaço antes;
-    {nome} vazio também leva a vírgula: "Olá, {nome}!" → "Olá!"."""
+    """Troca as variáveis de `v` (ex.: {empresa} {nome} {assunto} {referencia}). Variável vazia some junto
+    com o espaço antes; {nome} vazio também leva a vírgula: "Olá, {nome}!" → "Olá!"."""
     if not texto or "{" not in texto:
         return texto
-    for chave in VARIAVEIS:
+    for chave in v:
         marca = "{" + chave + "}"
         if marca not in texto:
             continue
@@ -50,13 +49,13 @@ def renderizar(texto: str | None, v: dict) -> str | None:
             texto = texto.replace(marca, valor)
             continue
         if chave == "nome":
-            texto = re.sub(r",\s*\{nome\}", "", texto)
+            texto = re.sub(r",[ \t]*\{nome\}", "", texto)
             inicio = texto.startswith(marca)
             texto = re.sub(r"^\{nome\}\s*[,!]?\s*", "", texto)
             if inicio and texto:
                 texto = texto[0].upper() + texto[1:]
-        texto = re.sub(r"\s*" + re.escape(marca), "", texto)
-    return re.sub(r" {2,}", " ", texto).strip()
+        texto = re.sub(r"[ \t]*" + re.escape(marca), "", texto)
+    return re.sub(r"[ \t]{2,}", " ", texto).strip()
 
 
 def formulario_publico(f: Formulario, v: dict) -> dict:

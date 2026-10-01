@@ -42,7 +42,7 @@ const rotas: RouteRecordRaw[] = [
       { path: 'contatos', name: 'contatos', component: () => import('@/modulos/contatos/ContatosView.vue'), meta: { titulo: 'Contatos', permissao: 'contatos.ver' } },
       { path: 'contatos/importar', name: 'importar', component: () => import('@/modulos/importacao/ImportacaoView.vue'), meta: { titulo: 'Importar contatos', permissao: 'importacao.usar' } },
       { path: 'contatos/:id', name: 'contato', component: () => import('@/modulos/contatos/ContatoView.vue'), meta: { titulo: 'Contato', permissao: 'contatos.ver' } },
-      { path: 'envios', name: 'envios', component: emConstrucao, meta: { titulo: 'Envios', permissao: 'envios.ver' } },
+      { path: 'envios', name: 'envios', component: () => import('@/modulos/envios/EnviosView.vue'), meta: { titulo: 'Envios', permissao: 'envios.ver' } },
       { path: 'formularios', name: 'formularios', component: () => import('@/modulos/formularios/FormulariosView.vue'), meta: { titulo: 'Formulários', permissao: 'formularios.ver' } },
       { path: 'formularios/:id', name: 'formulario', component: () => import('@/modulos/formularios/EditorFormularioView.vue'), meta: { titulo: 'Formulário', permissao: 'formularios.ver' } },
       { path: 'respostas', name: 'respostas', component: emConstrucao, meta: { titulo: 'Respostas', permissao: 'respostas.ver' } },
@@ -51,8 +51,13 @@ const rotas: RouteRecordRaw[] = [
       { path: 'assinatura', name: 'assinatura', component: emConstrucao, meta: { titulo: 'Assinatura' } },
       { path: 'minha-conta', name: 'minha-conta', component: () => import('@/modulos/conta/MinhaContaView.vue'), meta: { titulo: 'Minha conta' } },
       { path: 'equipe', name: 'equipe', component: () => import('@/modulos/equipe/EquipeView.vue'), meta: { titulo: 'Equipe', permissao: 'equipe.gerenciar' } },
-      { path: 'configuracoes', redirect: '/configuracoes/seguranca' },
+      {
+        path: 'configuracoes',
+        // Leva para a primeira seção que o perfil pode ver.
+        redirect: () => (useSessaoStore().pode('configuracoes.gerenciar') ? '/configuracoes/seguranca' : '/configuracoes/envios'),
+      },
       { path: 'configuracoes/seguranca', name: 'seguranca', component: () => import('@/modulos/configuracoes/SegurancaView.vue'), meta: { titulo: 'Segurança', permissao: 'configuracoes.gerenciar' } },
+      { path: 'configuracoes/envios', name: 'config-envios', component: () => import('@/modulos/configuracoes/ConfigEnviosView.vue'), meta: { titulo: 'Configurações de envio', permissao: 'envios.ver' } },
       { path: 'auditoria', name: 'auditoria', component: () => import('@/modulos/auditoria/AuditoriaView.vue'), meta: { titulo: 'Auditoria', permissao: 'auditoria.ver' } },
       { path: 'plataforma', name: 'plataforma', component: () => import('@/modulos/plataforma/PlataformaView.vue'), meta: { titulo: 'Plataforma', superadmin: true } },
     ],

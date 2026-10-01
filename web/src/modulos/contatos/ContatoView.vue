@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Link2, MessageSquareText, Pencil, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, History, Link2, MessageCircle, MessageSquareText, Pencil, Trash2 } from 'lucide-vue-next'
 import { ApiError, contatosApi, mensagemDoErro, type Contato, type ContatoDetalhe, type ItemHistorico } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
+import { useWhatsapp } from '@/composables/whatsapp'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarData, formatarDataHora } from '@/utils/datas'
 import { exibirTelefone } from '@/utils/formatos'
@@ -27,6 +28,14 @@ const naoExiste = ref(false)
 const editarAberto = ref(false)
 const linkAberto = ref(false)
 const excluindo = ref(false)
+const whatsapp = useWhatsapp()
+const podeWhatsapp = computed(
+  () => !!contato.value && sessao.pode('envios.disparar') && contato.value.ativo && !!contato.value.telefone && contato.value.situacao !== 'saiu_da_lista',
+)
+
+async function abrirWhatsapp() {
+  if (contato.value && (await whatsapp.abrir(contato.value))) carregar()
+}
 
 const id = computed(() => String(rota.params.id))
 
@@ -71,6 +80,16 @@ async function excluir() {
   }
 }
 
+/** Próximo envio em palavras simples, conforme a situação. */
+const proximoEnvio = computed(() => {
+  const c = contato.value
+  if (!c) return '—'
+  if (!c.ativo || c.situacao === 'inativo') return 'Não recebe (contato inativo)'
+  if (c.situacao === 'saiu_da_lista' || !c.recebe_pesquisas) return 'Não recebe (saiu da lista)'
+  if (c.situacao === 'na_fila') return 'Já está na fila'
+  return formatarData(c.proximo_envio)
+})
+
 function nomeFormulario(h: ItemHistorico) {
   if (!h.formulario) return null
   return typeof h.formulario === 'string' ? h.formulario : h.formulario.nome
@@ -103,11 +122,20 @@ onMounted(carregar)
           <h1 class="titulo-pagina truncate">{{ contato.nome }}</h1>
           <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-texto-suave">
             <span v-if="contato.empresa">{{ contato.empresa.nome }}</span>
-            <Etiqueta :tom="situacaoContato(contato.situacao).tom" ponto>{{ situacaoContato(contato.situacao).rotulo }}</Etiqueta>
+            <Etiqueta :tom="situacaoContato(contato.situacao, contato).tom" ponto>{{ situacaoContato(contato.situacao, contato).rotulo }}</Etiqueta>
             <Etiqueta v-if="!contato.ativo" tom="neutro">Inativo</Etiqueta>
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
+          <button
+            v-if="podeWhatsapp"
+            type="button"
+            class="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-700 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco disabled:cursor-not-allowed disabled:opacity-55"
+            :disabled="whatsapp.abrindo.value !== null"
+            @click="abrirWhatsapp"
+          >
+            <MessageCircle class="size-4" :class="{ 'animate-pulse': whatsapp.abrindo.value !== null }" aria-hidden="true" /> Enviar pelo WhatsApp
+          </button>
           <Botao v-if="sessao.pode('envios.disparar') && contato.ativo" variante="secundario" @click="linkAberto = true"><Link2 class="size-4" aria-hidden="true" /> Gerar link de pesquisa</Botao>
           <Botao v-if="sessao.pode('contatos.editar')" variante="secundario" @click="editarAberto = true"><Pencil class="size-4" aria-hidden="true" /> Editar</Botao>
           <Botao v-if="sessao.pode('contatos.excluir')" variante="perigo-suave" :carregando="excluindo" somente-icone="Excluir contato" @click="excluir">
@@ -140,9 +168,18 @@ onMounted(carregar)
             </template>
             <dt class="text-texto-fraco">Último envio</dt>
             <dd class="text-texto">{{ formatarData(contato.ultimo_envio, 'Nunca') }}</dd>
+            <dt class="text-texto-fraco">Próximo envio</dt>
+            <dd class="text-texto">{{ proximoEnvio }}</dd>
             <dt class="text-texto-fraco">Cadastrado em</dt>
             <dd class="text-texto">{{ formatarData(contato.criado_em) }}</dd>
           </dl>
+          <RouterLink
+            v-if="sessao.pode('envios.ver')"
+            :to="{ path: '/envios', query: { aba: 'historico', contato: String(contato.id), nome: contato.nome } }"
+            class="link mt-4 inline-flex items-center gap-1.5 text-sm"
+          >
+            <History class="size-4" aria-hidden="true" /> Ver pesquisas enviadas
+          </RouterLink>
         </section>
 
         <section class="cartao lg:col-span-2" aria-labelledby="titulo-historico">

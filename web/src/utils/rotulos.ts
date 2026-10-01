@@ -1,3 +1,4 @@
+import { formatarDiaMes } from './datas'
 import type { CanalResposta, Gravidade, Perfil, SituacaoContato, SituacaoUsuario, TipoFormulario } from '@/api/tipos'
 
 export type Tom = 'neutro' | 'marca' | 'sucesso' | 'atencao' | 'erro' | 'info'
@@ -47,18 +48,33 @@ export function iniciais(nome: string | null | undefined): string {
   return (primeira + ultima).toUpperCase()
 }
 
-export const SITUACOES_CONTATO: Record<SituacaoContato, { rotulo: string; tom: Tom }> = {
-  na_fila: { rotulo: 'Na fila de envio', tom: 'info' },
-  aguardando: { rotulo: 'Aguardando resposta', tom: 'atencao' },
-  respondeu: { rotulo: 'Respondeu', tom: 'sucesso' },
-  nao_saiu: { rotulo: 'Envio falhou', tom: 'erro' },
-  saiu_da_lista: { rotulo: 'Saiu da lista', tom: 'neutro' },
-  inativo: { rotulo: 'Inativo', tom: 'neutro' },
-  nunca_enviado: { rotulo: 'Nunca recebeu', tom: 'neutro' },
+/** Situação de envio do contato, em português simples (a mesma na fila de envios e em Contatos). */
+export const SITUACOES_CONTATO: Record<SituacaoContato, { rotulo: string; tom: Tom; descricao: string }> = {
+  na_fila: { rotulo: 'Na fila', tom: 'info', descricao: 'Pode receber a pesquisa agora.' },
+  enviando: { rotulo: 'Enviando...', tom: 'marca', descricao: 'A pesquisa está saindo neste momento.' },
+  aguardando: { rotulo: 'Aguardando resposta', tom: 'atencao', descricao: 'Recebeu a pesquisa e ainda não respondeu.' },
+  respondeu: { rotulo: 'Respondeu', tom: 'sucesso', descricao: 'Respondeu a última pesquisa.' },
+  nao_saiu: { rotulo: 'Não saiu', tom: 'erro', descricao: 'A última pesquisa não conseguiu ser entregue.' },
+  saiu_da_lista: { rotulo: 'Saiu da lista', tom: 'neutro', descricao: 'Pediu para não receber mais pesquisas.' },
+  inativo: { rotulo: 'Inativo', tom: 'neutro', descricao: 'Contato desativado: não recebe pesquisas.' },
+  aguardando_intervalo: { rotulo: 'Aguardando o próximo envio', tom: 'neutro', descricao: 'Já recebeu e volta para a fila na data do próximo envio.' },
 }
 
-export function situacaoContato(v: string | null | undefined): { rotulo: string; tom: Tom } {
-  return (v && SITUACOES_CONTATO[v as SituacaoContato]) || { rotulo: v || '—', tom: 'neutro' }
+/**
+ * Rótulo e cor da situação. `aguardando_intervalo` mostra a data ("Próximo envio em 12/03") quando vier.
+ * `nunca_enviado` (etapa 2) é tratado como "Na fila"; `enviando: true` vale mais que a situação.
+ */
+export function situacaoContato(
+  v: string | null | undefined,
+  extra: { proximo_envio?: string | null; enviando?: boolean } = {},
+): { rotulo: string; tom: Tom } {
+  if (extra.enviando) return SITUACOES_CONTATO.enviando
+  const chave = (v === 'nunca_enviado' ? 'na_fila' : v) as SituacaoContato | null | undefined
+  if (chave === 'aguardando_intervalo') {
+    const data = formatarDiaMes(extra.proximo_envio, '')
+    return { rotulo: data ? `Próximo envio em ${data}` : SITUACOES_CONTATO.aguardando_intervalo.rotulo, tom: 'neutro' }
+  }
+  return (chave && SITUACOES_CONTATO[chave]) || { rotulo: v || '—', tom: 'neutro' }
 }
 
 /** Cor de uma nota no estilo NPS: 0–6 vermelho, 7–8 amarelo, 9–10 verde. */

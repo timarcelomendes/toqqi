@@ -6,6 +6,8 @@ from toqqi.core.deps import Contexto, requer
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.modulos.contatos import servico
 from toqqi.modulos.contatos.esquemas import ContatoAlterarIn, ContatoIn, LinkPesquisaIn
+from toqqi.modulos.envios import servico as envios
+from toqqi.modulos.envios.esquemas import WhatsappIn
 
 router = APIRouter(prefix="/contatos", tags=["contatos"])
 
@@ -49,3 +51,8 @@ def excluir(contato_id: int, ctx: Contexto = Depends(requer("contatos.excluir"))
 @router.post("/{contato_id}/link-pesquisa", status_code=201)
 def link_pesquisa(contato_id: int, dados: LinkPesquisaIn, ctx: Contexto = Depends(requer("envios.disparar"))):
     return servico.link_pesquisa(ctx, contato_id, dados)
+
+
+@router.post("/{contato_id}/whatsapp", status_code=201)
+def whatsapp(contato_id: int, dados: WhatsappIn | None = None, ctx: Contexto = Depends(requer("envios.disparar"))):
+    return envios.whatsapp(ctx, contato_id, dados or WhatsappIn())

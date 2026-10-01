@@ -5,6 +5,7 @@ from sqlalchemy import String, cast, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from toqqi.core import relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.db import em_conta
 from toqqi.core.deps import Contexto
@@ -13,6 +14,8 @@ from toqqi.core.paginacao import Pagina
 from toqqi.core.texto import so_digitos
 from toqqi.modelos import Cargo, Contato, Empresa, Formulario, PerfilContato, Resposta
 from toqqi.modulos.empresas.servico import conferir_referencias, ref
+from toqqi.modulos.envios.configuracao import obter as obter_config_envios
+from toqqi.modulos.envios.fila import estado
 from toqqi.modulos.respostas.convites import criar_convite, link_do_convite
 
 REFERENCIAS = {
@@ -38,35 +41,30 @@ def codigo_livre(s: Session) -> str:
     return novo_codigo(set())
 
 
-def situacao(ativo: bool, respondeu: bool) -> str:
-    if not ativo:
-        return "inativo"
-    return "respondeu" if respondeu else "nunca_enviado"
-
-
-def _consulta():
-    respondeu = exists().where(Resposta.contato_id == Contato.id).correlate(Contato).label("respondeu")
-    return (
-        select(Contato, Empresa.nome, Cargo.nome, PerfilContato.nome, respondeu)
-        .outerjoin(Empresa, Empresa.id == Contato.empresa_id)
-        .outerjoin(Cargo, Cargo.id == Contato.cargo_id)
-        .outerjoin(PerfilContato, PerfilContato.id == Contato.perfil_id)
-    )
+def _consulta(s: Session):
+    """Contato + nomes das referências + situação de envio calculada (ver envios.fila)."""
+    e = estado(obter_config_envios(s, criar=False), relogio.hoje())
+    consulta = (select(Contato, Empresa.nome, Cargo.nome, PerfilContato.nome, e.situacao)
+                .select_from(Contato)
+                .outerjoin(Empresa, Empresa.id == Contato.empresa_id)
+                .outerjoin(Cargo, Cargo.id == Contato.cargo_id)
+                .outerjoin(PerfilContato, PerfilContato.id == Contato.perfil_id))
+    return e.juntar(consulta)
 
 
 def _json(linha) -> dict:
-    c, empresa, cargo, perfil, respondeu = linha
+    c, empresa, cargo, perfil, situacao = linha
     return {
         "id": c.id, "codigo": c.codigo, "nome": c.nome, "email": c.email, "telefone": c.telefone,
         "empresa": ref(c.empresa_id, empresa), "cargo": ref(c.cargo_id, cargo), "perfil": ref(c.perfil_id, perfil),
         "codigo_externo": c.codigo_externo, "recebe_pesquisas": c.recebe_pesquisas, "ativo": c.ativo,
-        "situacao": situacao(c.ativo, respondeu), "ultimo_envio": None, "proximo_envio": None,
+        "situacao": situacao, "ultimo_envio": c.ultimo_envio, "proximo_envio": c.proximo_envio,
         "ultima_nota": c.ultima_nota, "criado_em": c.criado_em,
     }
 
 
 def _um(s: Session, contato_id: int) -> dict:
-    linha = s.execute(_consulta().where(Contato.id == contato_id)).one_or_none()
+    linha = s.execute(_consulta(s).where(Contato.id == contato_id)).one_or_none()
     if linha is None:
         raise nao_encontrado("Contato não encontrado.")
     return _json(linha)
@@ -96,7 +94,7 @@ def listar(ctx: Contexto, pg: Pagina, busca: str | None, empresa_id: int | None,
     with em_conta(ctx.conta_id) as s:
         total = s.scalar(select(func.count()).select_from(Contato)
                          .outerjoin(Empresa, Empresa.id == Contato.empresa_id).where(*filtros))
-        linhas = s.execute(_consulta().where(*filtros).order_by(func.lower(Contato.nome), Contato.id)
+        linhas = s.execute(_consulta(s).where(*filtros).order_by(func.lower(Contato.nome), Contato.id)
                            .limit(pg.por_pagina).offset(pg.offset)).all()
     return pg.resultado([_json(x) for x in linhas], total)
 

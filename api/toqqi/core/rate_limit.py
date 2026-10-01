@@ -18,3 +18,4 @@ async def ao_exceder(_: Request, __: RateLimitExceeded):
 LIMITE_PUBLICO_ABRIR = "30/minute"       # abrir página pública de pesquisa
 LIMITE_RESPONDER_CONVITE = "10/minute"   # responder convite individual
 LIMITE_RESPONDER_LINK = "5/minute"       # responder link público do formulário
+LIMITE_DESCADASTRO = "20/minute"       # página pública de descadastro (abrir e confirmar)

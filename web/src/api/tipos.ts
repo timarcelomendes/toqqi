@@ -208,6 +208,7 @@ export interface DadosEmpresa {
   ativa?: boolean
 }
 
+/** Etapa 3: `nunca_enviado` deixou de existir (vira `na_fila`). */
 export type SituacaoContato =
   | 'na_fila'
   | 'aguardando'
@@ -215,7 +216,8 @@ export type SituacaoContato =
   | 'nao_saiu'
   | 'saiu_da_lista'
   | 'inativo'
-  | 'nunca_enviado'
+  | 'enviando'
+  | 'aguardando_intervalo'
 
 export interface Contato {
   id: Id
@@ -389,4 +391,129 @@ export interface Resposta {
   contexto: Contexto
   referencia: string | null
   criada_em: string
+}
+
+// ───────────────────────── Etapa 3a (docs/api-etapa-3.md) ─────────────────────────
+
+export interface ItemPreCondicao {
+  chave: 'assinatura' | 'provedor' | 'formulario' | 'envios_ativos' | (string & {})
+  ok: boolean
+  /** Vem null quando o item já está ok. */
+  mensagem: string | null
+  acao: { rotulo: string; rota: string } | null
+}
+
+export interface PreCondicoes {
+  pronto: boolean
+  itens: ItemPreCondicao[]
+}
+
+export interface Agradecimentos {
+  promotor: string
+  neutro: string
+  detrator: string
+}
+
+export interface ConfigEnvios {
+  envios_ativos: boolean
+  envio_automatico: boolean
+  formulario_id: Id | null
+  intervalo_dias: number
+  descanso_dias: number
+  lembretes: number
+  dias_lembretes: number[]
+  janela_inicio: string
+  janela_fim: string
+  so_dias_uteis: boolean
+  responder_para: string | null
+  remetente_nome: string | null
+  assunto_convite: string
+  texto_convite: string
+  assunto_lembrete: string
+  texto_lembrete: string
+  texto_whatsapp: string
+  agradecimento_ativo: boolean
+  agradecimento: Agradecimentos
+}
+
+export interface ResumoEnvios {
+  na_fila: number
+  aguardando: number
+  responderam: number
+  com_erro: number
+  saiu_da_lista: number
+  lembretes_hoje: number
+  enviados_30d: number
+}
+
+export interface ContatoEnvio {
+  id: Id
+  nome: string
+  email: string | null
+  telefone: string | null
+  empresa: Referencia | null
+  grupo: Referencia | null
+  responsavel: Referencia | null
+  ativo: boolean
+  situacao: SituacaoContato
+  ultimo_envio: string | null
+  proximo_envio: string | null
+  lembretes_enviados: number
+  proximo_lembrete: string | null
+  descanso_ate: string | null
+  ultimo_erro: string | null
+  enviando: boolean
+}
+
+export interface IgnoradoEnvio {
+  contato_id: Id
+  nome: string
+  motivo: string
+}
+
+export interface ResultadoDisparo {
+  agendados: number
+  ignorados: IgnoradoEnvio[]
+}
+
+export type CanalEnvio = 'email' | 'whatsapp'
+export type TipoEnvio = 'convite' | 'lembrete' | 'agradecimento'
+export type OrigemEnvio = 'manual' | 'automatico' | 'lembrete' | 'resposta'
+export type SituacaoEnvio = 'pendente' | 'enviado' | 'erro' | 'aberto_no_whatsapp'
+
+export interface Envio {
+  id: Id
+  criado_em: string
+  contato: Referencia | null
+  para: string
+  canal: CanalEnvio
+  tipo: TipoEnvio
+  origem: OrigemEnvio
+  situacao: SituacaoEnvio
+  erro: string | null
+  usuario: Referencia | null
+  pode_tentar_de_novo: boolean
+}
+
+export type OrigemDescadastro = 'link' | 'um_clique' | 'manual'
+
+export interface Descadastro {
+  email: string
+  contato: Referencia | null
+  motivo: string | null
+  origem: OrigemDescadastro | (string & {})
+  criado_em: string
+}
+
+export interface WhatsappContato {
+  url: string
+  mensagem: string
+  link: string
+}
+
+/** Resultado de "Enviar lembretes agora" / "Rodar envio automático agora". O contrato não fixa se ignorados é lista ou número. */
+export interface ResultadoTarefa {
+  enviados?: number
+  agendados?: number
+  ignorados?: number | unknown[]
 }

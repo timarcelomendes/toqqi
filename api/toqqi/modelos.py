@@ -1,10 +1,10 @@
 """Modelos ORM. O esquema real (incluindo RLS) é criado pelas migrações Alembic."""
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, Date, ForeignKey, Integer, Numeric, SmallInteger, Text, text
-from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
+from sqlalchemy import BigInteger, Boolean, Date, ForeignKey, Integer, Numeric, SmallInteger, Text, Time, text
+from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import DateTime
 
@@ -88,7 +88,7 @@ class DominioLiberado(Base):
 class Auditoria(Base):
     __tablename__ = "auditoria"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    conta_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("contas.id"), server_default=CONTA_ATUAL)
+    conta_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("contas.id"), server_default=CONTA_ATUAL)
     usuario_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("usuarios.id"))
     evento: Mapped[str] = mapped_column(Text)
     gravidade: Mapped[str] = mapped_column(Text)
@@ -165,6 +165,9 @@ class Contato(Base):
     recebe_pesquisas: Mapped[bool] = mapped_column(Boolean, server_default="true")
     ativo: Mapped[bool] = mapped_column(Boolean, server_default="true")
     ultima_nota: Mapped[int | None] = mapped_column(SmallInteger)
+    proximo_envio: Mapped[date | None] = mapped_column(Date)
+    ultimo_envio: Mapped[datetime | None] = mapped_column(TZ)
+    falhas: Mapped[int] = mapped_column(Integer, server_default="0")
     criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
 
 
@@ -200,6 +203,9 @@ class Convite(Base):
     contexto: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
     respondido_em: Mapped[datetime | None] = mapped_column(TZ)
+    lembretes_enviados: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    ultimo_lembrete_em: Mapped[datetime | None] = mapped_column(TZ)
+    token_semente: Mapped[str | None] = mapped_column(Text)
 
 
 class Resposta(Base):
@@ -234,3 +240,63 @@ class Importacao(Base):
     colunas: Mapped[list] = mapped_column(JSONB)
     criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
     expira_em: Mapped[datetime] = mapped_column(TZ)
+
+
+# ---- etapa 3a: envios ---------------------------------------------------------
+
+class ConfigEnvios(Base):
+    __tablename__ = "config_envios"
+    conta_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, server_default=CONTA_ATUAL)
+    envios_ativos: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    envio_automatico: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    formulario_id: Mapped[int | None] = mapped_column(BigInteger)
+    intervalo_dias: Mapped[int] = mapped_column(Integer, server_default="90")
+    descanso_dias: Mapped[int] = mapped_column(Integer, server_default="30")
+    lembretes: Mapped[int] = mapped_column(Integer, server_default="3")
+    dias_lembretes: Mapped[list[int]] = mapped_column(ARRAY(Integer))
+    janela_inicio: Mapped[time] = mapped_column(Time)
+    janela_fim: Mapped[time] = mapped_column(Time)
+    so_dias_uteis: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    responder_para: Mapped[str | None] = mapped_column(CITEXT)
+    remetente_nome: Mapped[str | None] = mapped_column(Text)
+    assunto_convite: Mapped[str] = mapped_column(Text)
+    texto_convite: Mapped[str] = mapped_column(Text)
+    assunto_lembrete: Mapped[str] = mapped_column(Text)
+    texto_lembrete: Mapped[str] = mapped_column(Text)
+    texto_whatsapp: Mapped[str] = mapped_column(Text)
+    agradecimento_ativo: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    agradecimento: Mapped[dict] = mapped_column(JSONB)
+    robo_rodou_em: Mapped[datetime | None] = mapped_column(TZ)
+    lembretes_rodou_em: Mapped[date | None] = mapped_column(Date)
+    atualizado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+class Envio(Base):
+    __tablename__ = "envios"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    contato_id: Mapped[int | None] = mapped_column(BigInteger)
+    convite_id: Mapped[int | None] = mapped_column(BigInteger)
+    resposta_id: Mapped[int | None] = mapped_column(BigInteger)
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger)
+    canal: Mapped[str] = mapped_column(Text)
+    tipo: Mapped[str] = mapped_column(Text)
+    origem: Mapped[str] = mapped_column(Text)
+    situacao: Mapped[str] = mapped_column(Text, server_default="pendente")
+    para: Mapped[str] = mapped_column(Text)
+    erro: Mapped[str | None] = mapped_column(Text)
+    lembrete: Mapped[int | None] = mapped_column(SmallInteger)
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    tentativa_em: Mapped[datetime | None] = mapped_column(TZ)
+    enviado_em: Mapped[datetime | None] = mapped_column(TZ)
+
+
+class Descadastro(Base):
+    __tablename__ = "descadastros"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    email: Mapped[str] = mapped_column(CITEXT)
+    motivo: Mapped[str | None] = mapped_column(Text)
+    origem: Mapped[str] = mapped_column(Text)
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger)
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)

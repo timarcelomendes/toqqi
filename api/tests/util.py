@@ -1,6 +1,8 @@
 """Utilitários dos testes."""
 import itertools
 import re
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from toqqi.core.email import caixa_memoria
 
@@ -141,3 +143,82 @@ def encher_contatos(dono, conta_id: int, n: int, ativo: bool = True) -> None:
         select :c, (100000000 + g)::text, 'Contato ' || g, 'lote' || g || '@c' || :c || '.com.br', :a
           from generate_series(1, :n) g
     """, c=conta_id, n=n, a=ativo)
+
+
+# ---- etapa 3a ---------------------------------------------------------------
+
+def ligar_envios(client, h: dict, **extra) -> dict:
+    r = client.put(f"{API}/envios/configuracao", headers=h, json={"envios_ativos": True, **extra})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def emails_para(para: str) -> list:
+    return [m for m in caixa_memoria if m.para == para]
+
+
+def token_do_convite(m) -> str:
+    """Token do link /r/{token} de um e-mail de pesquisa."""
+    return re.search(r"/r/([\w-]+)", m.texto).group(1)
+
+
+def token_de_saida(m) -> str:
+    return re.search(r"/sair/([\w.-]+)", m.texto).group(1)
+
+
+def disparar(client, h: dict, ids: list, **extra):
+    return client.post(f"{API}/envios/disparar", headers=h, json={"contato_ids": ids, **extra})
+
+
+def fila(client, h: dict, **filtros) -> dict:
+    """{contato_id: ContatoEnvio} da fila (com os filtros dados)."""
+    r = client.get(f"{API}/envios/contatos", headers=h, params={"por_pagina": 200, **filtros})
+    assert r.status_code == 200, r.text
+    return {c["id"]: c for c in r.json()["itens"]}
+
+
+def historico(client, h: dict, **filtros) -> list:
+    r = client.get(f"{API}/envios/historico", headers=h, params=filtros)
+    assert r.status_code == 200, r.text
+    return r.json()["itens"]
+
+
+def falhar_provedor(monkeypatch, erro, para: str | None = None) -> None:
+    """Faz o provedor em memória levantar `erro` (para `para`, ou para todos)."""
+    from toqqi.core.email import Memoria
+
+    original = Memoria.enviar
+
+    def enviar(self, m):
+        if para is None or m.para == para:
+            raise erro
+        original(self, m)
+
+    monkeypatch.setattr(Memoria, "enviar", enviar)
+
+
+def erro_http(status: int):
+    import httpx
+
+    return httpx.HTTPStatusError("falha", request=httpx.Request("POST", "https://provedor.teste"),
+                                 response=httpx.Response(status, text="detalhe técnico do provedor"))
+
+
+FUSO = ZoneInfo("America/Sao_Paulo")
+
+
+def segunda(hora: int = 11, minuto: int = 0, mais_dias: int = 0) -> datetime:
+    """Próxima segunda-feira (ou hoje, se for segunda) às `hora`, em São Paulo, + `mais_dias`."""
+    hoje = datetime.now(FUSO).date()
+    d = hoje + timedelta(days=(7 - hoje.weekday()) % 7) + timedelta(days=mais_dias)
+    return datetime.combine(d, time(hora, minuto), tzinfo=FUSO)
+
+
+def fixar_relogio(monkeypatch, momento: datetime) -> None:
+    from toqqi.core import relogio
+
+    monkeypatch.setattr(relogio, "agora", lambda: momento)
+
+
+def data_iso(d: date | datetime) -> str:
+    return (d.date() if isinstance(d, datetime) else d).isoformat()

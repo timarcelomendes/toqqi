@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ChevronRight, Clock, Globe } from 'lucide-vue-next'
+import { Clock, Globe } from 'lucide-vue-next'
 import { contaApi, mensagemDoErro, type Seguranca } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { useFormulario } from '@/composables/formulario'
@@ -10,6 +10,7 @@ import Botao from '@/components/ui/Botao.vue'
 import CampoChips from '@/components/ui/CampoChips.vue'
 import Carregando from '@/components/ui/Carregando.vue'
 import Selecao from '@/components/ui/Selecao.vue'
+import NavConfiguracoes from './NavConfiguracoes.vue'
 
 const OPCOES_BASE = [
   { valor: 30, rotulo: '30 minutos' },
@@ -102,11 +103,7 @@ onMounted(carregar)
 </script>
 
 <template>
-  <nav aria-label="Você está em" class="mb-2 flex items-center gap-1 text-sm text-texto-fraco">
-    <span>Configurações</span>
-    <ChevronRight class="size-4" aria-hidden="true" />
-    <span aria-current="page" class="font-medium text-texto-suave">Segurança</span>
-  </nav>
+  <NavConfiguracoes />
   <CabecalhoPagina titulo="Segurança" descricao="Regras de acesso que valem para todas as pessoas da sua empresa." />
 
   <Carregando v-if="carregando" :linhas="3" />

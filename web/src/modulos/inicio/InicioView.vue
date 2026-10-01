@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import { CheckCircle2, Circle, Sparkles } from 'lucide-vue-next'
 import { useSessaoStore } from '@/stores/sessao'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
-import Etiqueta from '@/components/ui/Etiqueta.vue'
 
 const sessao = useSessaoStore()
 const primeiroNome = computed(() => sessao.usuario?.nome?.split(' ')[0] ?? '')
@@ -29,7 +28,12 @@ const passos = computed(() => [
     feito: false,
     para: sessao.pode('formularios.ver') ? '/formularios' : undefined,
   },
-  { titulo: 'Enviar e ver as respostas chegando', descricao: 'Por e-mail ou WhatsApp, do jeito que seu cliente prefere.', feito: false, emBreve: true },
+  {
+    titulo: 'Enviar e ver as respostas chegando',
+    descricao: 'Por e-mail ou WhatsApp, do jeito que seu cliente prefere.',
+    feito: false,
+    para: sessao.pode('envios.ver') ? '/envios' : undefined,
+  },
 ])
 const feitos = computed(() => passos.value.filter((p) => p.feito).length)
 </script>
@@ -58,7 +62,6 @@ const feitos = computed(() => passos.value.filter((p) => p.feito).length)
             </p>
             <p class="text-sm text-texto-suave">{{ p.descricao }}</p>
           </div>
-          <Etiqueta v-if="p.emBreve" tom="neutro">em breve</Etiqueta>
         </li>
       </ol>
     </section>
@@ -68,8 +71,8 @@ const feitos = computed(() => passos.value.filter((p) => p.feito).length)
         <Sparkles class="size-7" aria-hidden="true" />
         <h2 class="mt-3 text-lg font-bold">Vem muita coisa por aí</h2>
         <p class="mt-1.5 text-sm leading-relaxed text-white/90">
-          Contatos e formulários já estão aqui. Nas próximas etapas chegam os envios automáticos de pesquisa,
-          respostas, planos de ação e relatórios, tudo aparecendo aqui no menu.
+          Contatos, formulários e envios de pesquisa já estão aqui. Nas próximas etapas chegam as respostas,
+          planos de ação e relatórios, tudo aparecendo aqui no menu.
         </p>
       </section>
       <section class="cartao p-6">

@@ -20,6 +20,7 @@ export * from './tipos'
 export { ApiError, mensagemDoErro } from './erros'
 export { API_URL, baixarArquivo, configurarCliente, salvarBlob } from './cliente'
 export * from './etapa2'
+export * from './etapa3'
 
 const publico = { autenticar: false } as const
 

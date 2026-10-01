@@ -1,0 +1,23 @@
+name: Tarefas agendadas
+# Chama a API de hora em hora para rodar o robô de envio, os lembretes e os envios pendentes.
+# Precisa dos segredos do repositório TAREFAS_TOKEN (o mesmo valor do Render) e, opcionalmente, TOQQI_API_URL.
+# Sem o segredo, a rotina não faz nada.
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Rodar robô e lembretes
+        env:
+          TOKEN: ${{ secrets.TAREFAS_TOKEN }}
+          API: ${{ secrets.TOQQI_API_URL || 'https://toqqi-api.onrender.com' }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "TAREFAS_TOKEN não configurado; nada a fazer."; exit 0; fi
+          # O plano grátis do Render dorme: a primeira chamada acorda a API.
+          curl -s -o /dev/null --max-time 90 "$API/api/v1/auth/regras-senha" || true
+          curl -sS --fail-with-body --max-time 240 -X POST -H "X-Tarefas-Token: $TOKEN" "$API/api/v1/interno/tarefas"
