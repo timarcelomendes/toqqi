@@ -19,6 +19,8 @@ os.environ.update({
     "AUTO_MIGRATE": "0",
     "RATE_LIMIT_ENABLED": "0",
     "ALLOWED_ORIGINS": "http://app.teste",
+    "IA_PROVEDOR": "memoria",
+    "OPENAI_API_KEY": "",
 })
 
 import pytest  # noqa: E402
@@ -32,7 +34,7 @@ from toqqi.core.email import caixa_memoria  # noqa: E402
 from toqqi.core.rate_limit import limiter  # noqa: E402
 from toqqi.main import create_app  # noqa: E402
 
-TABELAS = ("imagens, acoes, config_acoes, envios, descadastros, config_envios, importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
+TABELAS = ("ia_uso_mensal, alertas_pico, resumos_semanais, imagens, acoes, config_acoes, envios, descadastros, config_envios, importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
            "perfis_contato, cargos, auditoria, dominios_liberados, perfil_permissoes, tokens_uso_unico, sessoes, usuarios, contas")
 
 
@@ -84,14 +86,16 @@ def sem_rede(monkeypatch):
     """Nada sai para a rede: a Graph API e os webhooks de saída só respondem pelos dublês dos testes."""
     import httpx
 
-    from toqqi.core import rede
+    from toqqi.core import ia, rede
     from toqqi.modulos.whatsapp import graph
 
     def recusar(*_a, **_k):
         raise httpx.ConnectError("rede bloqueada nos testes")
 
     monkeypatch.setattr(graph, "transporte", httpx.MockTransport(recusar))
+    monkeypatch.setattr(ia, "transporte", httpx.MockTransport(recusar))
     monkeypatch.setattr(rede, "enviar_post", recusar)
+    ia.memoria.limpar()  # provedor de IA dos testes (IA_PROVEDOR=memoria): sem chamadas nem falhas programadas
 
 
 @pytest.fixture

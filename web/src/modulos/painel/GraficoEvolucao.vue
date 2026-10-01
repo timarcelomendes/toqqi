@@ -3,6 +3,7 @@
 // cada mês; o mesmo conteúdo existe em tabela (botão "Ver em tabela").
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { formatarNumero } from '@/utils/formatos'
+import { saiuComMouse, usarFocoGrafico } from '@/composables/focoGrafico'
 import { completarMeses, dominioNps, escala, formatarMes, formatarNps } from './logica'
 
 const props = defineProps<{ pontos: { mes: string; nps: number | null; total: number }[] }>()
@@ -98,11 +99,25 @@ function aoTeclar(e: KeyboardEvent) {
   anunciar(novo)
 }
 
-function aoFocar() {
+const foco = usarFocoGrafico()
+
+/** Só o foco do teclado mostra o último mês; com mouse ou toque, vale o mês embaixo do ponteiro. */
+function aoFocar(e: FocusEvent) {
+  if (!foco.veioDoTeclado(e)) return
   if (ativo.value === null && n.value) {
     ativo.value = n.value - 1
     anunciar(n.value - 1)
   }
+}
+
+function aoDesfocar() {
+  foco.aoSair()
+  ativo.value = null
+}
+
+/** No toque, a dica do mês tocado continua na tela depois de levantar o dedo. */
+function aoSairDoGrafico(e: PointerEvent) {
+  if (saiuComMouse(e)) ativo.value = null
 }
 
 const dica = computed(() => {
@@ -133,8 +148,9 @@ const descricao = computed(() => {
         :aria-label="`Gráfico da evolução do NPS. ${descricao} Use as setas para ver cada mês.`"
         class="rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco"
         @keydown="aoTeclar"
+        @pointerdown="foco.aoApertar"
         @focus="aoFocar"
-        @blur="ativo = null"
+        @blur="aoDesfocar"
       >
         <svg
           :viewBox="`0 0 ${largura} ${ALTURA}`"
@@ -144,7 +160,7 @@ const descricao = computed(() => {
           aria-hidden="true"
           @pointermove="aoMover"
           @pointerdown="aoMover"
-          @pointerleave="ativo = null"
+          @pointerleave="aoSairDoGrafico"
         >
           <!-- Grade (linhas finas e discretas) e o zero um pouco mais forte -->
           <g>

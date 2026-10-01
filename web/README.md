@@ -102,8 +102,8 @@ A tela **Formulários → Compartilhar** monta o código pronto, o QR Code (PNG 
 ```
 src/
   api/            cliente fetch tipado (token, erros {erro:{codigo,mensagem,campos}}, multipart, download de
-                  arquivos com token), endpoints (index.ts, etapa2.ts, etapa3.ts…, etapa4a.ts, empresa.ts,
-                  publico.ts) e tipos
+                  arquivos com token), endpoints (index.ts, etapa2.ts, etapa3.ts…, etapa4a.ts, etapa4b.ts,
+                  empresa.ts, publico.ts) e tipos
   pesquisa/       núcleo da pesquisa SEM dependências do app: tipos, lógica (nota principal, grupos,
                   condições, páginas), variáveis ({nome}, {empresa}...), validação das respostas,
                   parâmetros/links com contexto, e os componentes Pesquisa.vue + CampoPergunta.vue
@@ -115,12 +115,13 @@ src/
   layouts/        AcessoLayout (páginas públicas) e AppLayout (menu lateral, barra superior)
   components/ui/  componentes próprios: Botao, Campo, CampoSenha, Selecao, CaixaSelecao, Modal,
                   DialogoConfirmacao, Avisos (toasts), Tabela, Etiqueta, EstadoVazio, Carregando,
-                  Alerta, Abas, CampoChips, MenuSuspenso
+                  Alerta, Abas, CampoChips, MenuSuspenso, Medidor
   components/app/ marca, botão de tema, cabeçalho de página, item de menu
   composables/    avisos, confirmação, tema, foco preso (modais), formulário, regras de senha
   modulos/<área>/ telas: acesso, inicio, conta, equipe, configuracoes, auditoria, plataforma, geral,
                   contatos, importacao, formularios (editor/ com as abas e a pré-visualização), envios,
-                  integracoes, painel, respostas, acoes (cada uma com a sua logica.ts, testada à parte)
+                  integracoes, painel, respostas, acoes, relatorios (cada uma com a sua logica.ts, testada à
+                  parte)
   utils/          datas (dd/mm/aaaa, America/Sao_Paulo), períodos (7/30/90 dias, 12 meses, tudo, datas), senha,
                   rótulos, validação, imagens (conferência do logo antes de enviar, logo do formulário ou da empresa)
   styles/main.css Tailwind v4 + tokens (@theme) + modo escuro (classe .dark)
@@ -147,7 +148,7 @@ tests/            testes unitários (lógica/condições, variáveis, validaçã
   "link público" salvam na hora (não entram no rascunho).
 - **Pesquisa pública:** no modo "uma por vez", tocar numa nota avança sozinho (com teclado, as setas só trocam a
   opção; Enter avança; no NPS as teclas 0–9 marcam a nota e "1" seguido de "0" marca 10).
-- Relatórios e Assinatura ainda mostram "Em construção".
+- Assinatura ainda mostra "Em construção".
 
 ## Etapa 4a
 
@@ -312,3 +313,129 @@ puras em `src/modulos/configuracoes/empresa.ts` (testadas à parte), tela em `Em
 - Imagem que não abre (endereço errado, ou trocada sem salvar e depois descartada) ganha um aviso.
 - As cores prontas ganharam borda (a "Grafite" sumia no modo escuro) e o "Tirar logo" saiu de cima do fundo branco
   da prévia (no modo escuro, o vermelho claro do botão ficava sem contraste).
+
+## Etapa 4b
+
+Contrato: [`../docs/api-etapa-4b.md`](../docs/api-etapa-4b.md) (§8, telas). Endpoints em `src/api/etapa4b.ts`
+(`relatoriosApi`: as 7 abas, os CSV e as empresas de uma carteira; `iaApi`: `GET`/`PUT /conta/ia` e
+`POST /conta/ia/analisar-recentes`). Os filtros novos de Respostas e os picos do painel usam `respostasApi` e `painelApi`;
+`euApi.atualizar` aceita `recebe_resumo_semanal` e `recebe_alertas`. Tipos no fim de `src/api/tipos.ts` (valores em reais
+podem chegar como número ou texto: `ValorDecimal`).
+
+### Relatórios (`/relatorios/:aba`, `relatorios.ver`)
+
+Uma tela (`src/modulos/relatorios/RelatoriosView.vue`) com 7 abas. Regras puras em `logica.ts` (testadas à parte); a
+carga de cada aba em `usarRelatorio.ts` (espera 200 ms, cancela o pedido anterior e deixa os números na tela, mais
+apagados, até chegar o novo).
+
+- **Endereço:** `/relatorios` abre `/relatorios/empresas`; aba que não existe volta para Empresas. Filtros comuns:
+  `periodo` (`7`, `30`, `90`, `365`, `tudo`, `personalizado`; padrão 90 dias e, no histórico, todo o período) ou
+  `de`/`ate`, `grupo_id` e `so_ativos=false` (padrão: só empresas ativas). Cada aba lê e escreve só os filtros dela:
+
+  | Aba | Parâmetros |
+  |---|---|
+  | `empresas` | `segmento_id` e `responsavel_id` (`0` = sem), `faixa_valor`, `tempo_cliente`, `busca`, `respostas` (`com`/`sem`), `quadrante`, `ordem`, `pagina` |
+  | `grupos` | `segmento_id`, `faixa_valor`, `tempo_cliente` |
+  | `entregas` | `dimensao` (`motorista`, padrão, `rota`, `filial`, `transportadora`), `busca`, `ordem`, `pagina` |
+  | `historico` | `empresa_id` |
+
+  Trocar de aba leva o grupo e "só ativas"; o período só vai junto se a pessoa escolheu um. Filtro novo volta para a
+  página 1. A troca de aba entra no histórico do navegador; mudar um filtro, não. O título da aba do navegador acompanha
+  a aba ("Temas · Relatórios · Toqqi").
+- **Exportar CSV** (`painel.exportar`): Empresas, Entregas e Responsáveis com os filtros da tela (sem a página);
+  Operação exporta os contatos sem resposta ("Exportar contatos sem resposta (CSV)"); Histórico, com a empresa
+  escolhida e o período.
+- **Rolagem:** mudar filtro, ordem, busca ou quadrante não mexe na rolagem (a URL muda só na query); trocar de página
+  leva a tela ao começo da lista; outra aba ou outra página vai para o topo; voltar e avançar devolvem a posição (mesmo
+  com os dados chegando depois da navegação).
+- **Empresas:** cartões (empresas com respostas, cobertura, receita em risco — número curto no cartão, valor exato na
+  dica e para leitor de tela —, empresas por faixa de NPS); **matriz NPS × valor** em SVG (valor em escala logarítmica
+  1-2-5, NPS de −100 a 100, linhas na mediana e no 0, nome dos quadrantes por cima dos pontos; dica no ponto mais perto
+  do mouse, até 24 px; setas, Home e End no teclado, com leitura para leitor de tela). Clique ou toque abre o histórico
+  da empresa **embaixo do ponteiro** (num espaço vazio, nada); Enter abre a escolhida pelas setas. Só o foco que vem do
+  teclado escolhe a primeira empresa sozinho (`composables/focoGrafico.ts`, usado também nos outros gráficos; no toque,
+  a dica fica na tela depois de levantar o dedo). A contagem por quadrante é a alternativa em texto e filtra a tabela
+  (`aria-pressed`). Tabela a partir de 1280 px (`Tabela densa`), cartões abaixo. Sem responsável ou sem valor, a tabela
+  e o cartão dizem isso ("Sem responsável", "sem valor").
+- **Grupos de clientes:** barras detratores/neutros/promotores por segmento, grupo, tempo como cliente e valor ("Ver em
+  tabela" em cada uma; na tabela, a primeira coluna tem o nome do recorte) e **O que resolver primeiro** (dispersão
+  menções × nota média, com os nomes posicionados para não se cobrirem, e a lista em ordem, com o nome inteiro do tema
+  e link para Respostas com `tema` e `tipo_nota=nps`).
+- **Temas:** de onde vêm os temas ("X de Y comentários analisados pela IA"; os outros usam as palavras-chave — na fila,
+  importados, curtos demais ou que não deu para analisar —, e o admin vê como pedir a análise dos últimos 90 dias; sem
+  IA, "Temas por palavras-chave"), picos, sentimento dos comentários (só com análises), gráfico semanal (uma linha por
+  tema, menções ou reclamações em `BotoesSegmentados`; a legenda destaca a linha; a dica lista os 6 temas da semana;
+  "Ver em tabela") e os 6 temas (tabela a partir de 1280 px, cartões abaixo; as reclamações levam a
+  `/respostas?tema=…&reclamacao=true`; a coluna de sentimento só aparece com IA).
+- **Entregas:** escolha da dimensão (`BotoesSegmentados`), tabela com NPS, CSAT, reclamações, principais temas, "Amostra pequena" (menos de 5
+  respostas) e "Ver respostas" (`/respostas?motorista=…` com o período, o grupo e "só ativas"). Sem dados, explica como
+  mandar essas informações: o campo `contexto` da integração ou o link da pesquisa com `?motorista=…&rota=…` (a
+  importação de respostas não traz o contexto, então a planilha não entra na explicação).
+- **Responsáveis:** tabela das carteiras a partir de 1280 px (cartões abaixo disso; se faltar espaço, a tabela rola
+  dentro do cartão, nunca a página). Abrir uma linha busca `GET /relatorios/responsaveis/{id}/empresas` (0 = sem
+  responsável) e guarda o resultado com os filtros do pedido. Mudar período, grupo ou "só ativas" busca de novo as
+  carteiras abertas (as fechadas, ao abrir); um pedido novo cancela o anterior e resposta atrasada é ignorada. O nome da
+  empresa abre o histórico.
+- **Operação:** taxa de resposta (contatos que receberam a pesquisa no período e, desses, os que responderam no
+  período), convites por canal, ações (concluídas, tempo médio e % no prazo no período; abertas e vencidas de agora) e os
+  contatos sem resposta (até 1.000 da API, de 50 em 50 na tela, atrasados em destaque; essa lista não depende do
+  período).
+- **Histórico de uma empresa:** busca da empresa na linha dos filtros (sem `contatos.ver`, a busca usa o próprio
+  relatório de empresas); cabeçalho com os dados do cadastro, NPS, CSAT, cobertura e ações; evolução mensal (o gráfico
+  do painel, com "Ver em tabela") e a linha do tempo por mês (nota, contato com cargo e perfil, canal, origem,
+  comentário, temas, sentimento e resumo da IA, ação e "Abrir a resposta"). A API manda até 500 respostas; a tela avisa quando
+  há mais. Empresa de outra conta (404): "Empresa não encontrada".
+- **Cores:** grupos da nota com `grafico-promotor`/`-neutro`/`-detrator`, série única com `grafico-serie` e temas com
+  `grafico-tema-1…6` (cor fixa por tema, nos dois modos; ver `design-system/README.md`). Sentimento igual em todas as
+  telas (selos e barras): positivo verde, neutro cinza (`grafico-cinza`), misto âmbar e negativo vermelho. A cor nunca
+  aparece sem o nome.
+
+### IA nas Respostas
+
+- `conta.ia_ativa` (sessão, vinda de `GET /eu` e do login) liga as partes de IA. Os filtros "Sentimento (IA)"
+  (`sentimento`) e "Só reclamações" (`reclamacao=true`) aparecem com a IA ativa, quando a lista já tem respostas
+  analisadas ou quando já vieram no endereço.
+- Selo do sentimento do comentário na lista (positivo, neutro, misto ou negativo, sempre escrito). No Analisar, a caixa
+  "Análise da IA" (com a IA ativa na conta ou quando a análise já está pronta): resumo, sentimento, temas com
+  "elogio"/"reclamação" e a data, ou a situação ("Aguardando análise", "Não foi possível analisar", "Limite do mês
+  atingido").
+- Filtros de contexto vindos de Entregas (`motorista`, `rota`, `filial`, `transportadora`, até 120 caracteres) viram
+  chips em "Mostrando", com X para tirar; "Limpar filtros" não mexe neles.
+
+### Painel
+
+- Faixa de picos acima dos cartões ("Pico de reclamações em Prazo e entrega: 7 nos últimos 7 dias; a média era 1,5 por
+  semana." e "Ver respostas", que abre as reclamações do tema nos 7 dias, de empresas ativas). Não depende dos filtros
+  da tela. A mesma faixa aparece em Relatórios › Temas.
+- Assuntos mais citados: as reclamações e a variação das menções contra o período anterior (seta e "+9 em relação ao
+  período anterior").
+
+### Minha conta e Configurações
+
+- **Minha conta › E-mails do Toqqi** (só com `painel.ver`): "Resumo semanal" e "Alerta de pico de reclamações", salvos
+  na hora (`PATCH /eu`); se não salvar, voltam como estavam e avisam.
+- **Configurações › IA** (`/configuracoes/ia`, `configuracoes.gerenciar`): situação na plataforma, "Analisar comentários
+  com IA" (desligar com comentários na fila pede confirmação; depois de mudar, a sessão é buscada de novo para atualizar
+  `ia_ativa`), uso do mês (`Medidor`, X de Y), fila, falhas e quanto ainda dá para analisar, "Analisar comentários dos
+  últimos 90 dias" (com confirmação; o 409 mostra a mensagem do servidor; no celular, o botão ocupa a largura e quebra
+  linha) e o que é enviado à IA.
+- Menu: Relatórios deixou de ser "em breve". Contatos › Empresas: "Ver histórico" no menu de cada empresa
+  (`relatorios.ver`).
+
+### Componentes que mudaram
+
+- `Tabela`: `densa` (células mais justas e títulos que quebram linha), para as tabelas largas caberem em 1280 px.
+- `Paginacao`: trocar de página leva a tela ao começo da lista (o bloco onde a paginação está), não ao topo da página;
+  numa caixa com rolagem própria (a janela "Ações concluídas"), é a caixa que volta ao começo. O `html` tem
+  `scroll-padding-top` (o topo fixo do app não cobre o que é trazido à vista).
+- Rolagem do roteador (`rolagemAoNavegar` em `src/router/index.ts`): voltar/avançar → posição salva; só a query mudou
+  (filtros, página, "Analisar") → não rola; outra página → topo. Rotas com `meta.manterRolagem` (Planos de ação) também
+  não rolam ao trocar só o parâmetro (abrir e fechar o painel de uma ação). Ao voltar, `quandoCouber` espera a página
+  crescer até caber a posição salva (até 2 s; se a pessoa rolar ou tocar antes, desiste).
+- `BotoesSegmentados` (novo, em `ui/`): rádios nativos com cara de botões lado a lado (setas trocam a opção).
+- Gráficos (`GraficoEvolucao` do painel e os dos relatórios): clique e toque valem pelo ponto embaixo do ponteiro; só o
+  foco do teclado escolhe um ponto sozinho (`composables/focoGrafico.ts`).
+- `Abas`: quando as abas não cabem, a borda do lado que tem mais esmaece; a aba ativa fica sempre à vista (rola só a lista).
+- `Medidor` (novo, em `ui/`): quanto de um limite já foi usado (`role="meter"`).
+- `BarraGrupos`: `legenda="nenhuma"` e `fina` (linhas de tabela). `CampoEmpresa`: `fonte` opcional (outra origem para a
+  busca). Tokens `--color-grafico-tema-1…6` e `--color-grafico-cinza`, documentados no design system.

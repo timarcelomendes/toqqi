@@ -20,8 +20,9 @@ from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError
 from toqqi.core.relogio import FUSO_NOME
 from toqqi.core.texto import interpretar_data
-from toqqi.modelos import Contato, Empresa, Formulario, Importacao, Resposta
+from toqqi.modelos import Conta, Contato, Empresa, Formulario, Importacao, Resposta
 from toqqi.modulos.formularios.validacao import grupo_da_nota, pergunta_principal
+from toqqi.modulos.ia.regras import ia_ativa, texto_qualifica
 from toqqi.modulos.importacao.planilha import (
     CHAVES_RESPOSTAS,
     OBRIGATORIOS_RESPOSTAS,
@@ -234,22 +235,29 @@ def _inserir(s: Session, conta_id: int, formulario_id: int, pergunta_id: str, li
     })
 
 
-def _atualizar(s: Session, linhas: list[LinhaResposta], pergunta_id: str) -> None:
+def _atualizar(s: Session, linhas: list[LinhaResposta], pergunta_id: str, ia_ligada: bool) -> None:
     """Respostas importadas que já existiam: a nota muda (e o grupo e a nota guardada nas respostas); o comentário
-    só muda se a planilha trouxer um (ao atualizar, só campos preenchidos mudam), e com ele os temas, salvo
-    `temas_manuais`."""
+    só muda se a planilha trouxer um diferente (ao atualizar, só campos preenchidos mudam), e com ele os temas, salvo
+    `temas_manuais`, e a análise da IA, que descrevia o texto antigo. Como na edição do comentário: a resposta que já
+    tinha passado pela IA (pelo "analisar os últimos 90 dias") volta para pendente, com as tentativas zeradas, se a
+    IA da conta está ativa e o texto novo tem 3+ letras; senão a análise é apagada (situação nula)."""
     atuais = {r.id: r for r in s.execute(
-        select(Resposta.id, Resposta.respostas, Resposta.temas_manuais, Resposta.o_que_faltou)
+        select(Resposta.id, Resposta.respostas, Resposta.temas_manuais, Resposta.o_que_faltou,
+               Resposta.comentario_cliente, Resposta.ia_situacao)
         .where(Resposta.id.in_([x.existente_id for x in linhas])))}
     lotes: dict[tuple, list[dict]] = {}
     for x in linhas:
         atual = atuais[x.existente_id]
         mudanca = {"id": x.existente_id, "nota": x.nota, "grupo": grupo_da_nota("nps", x.nota),
                    "respostas": {k: x.nota for k in (atual.respostas or {})} or {pergunta_id: x.nota}}
-        if x.comentario is not None:
+        if x.comentario is not None and x.comentario != (atual.comentario_cliente or ""):
             mudanca.update(comentario=x.comentario, comentario_cliente=x.comentario)
             if not atual.temas_manuais:
                 mudanca["temas"] = temas_da_resposta(x.comentario, atual.o_que_faltou)
+            if atual.ia_situacao is not None:
+                pendente = ia_ligada and texto_qualifica(x.comentario)
+                mudanca.update(ia_situacao="pendente" if pendente else None, ia_tentativas=0, ia_temas=None,
+                               ia_sentimento=None, ia_resumo=None, ia_modelo=None, ia_em=None)
         lotes.setdefault(tuple(sorted(mudanca)), []).append(mudanca)
     for lote in lotes.values():  # cada UPDATE em lote leva os mesmos campos em todas as linhas
         s.execute(update(Resposta), lote)
@@ -269,7 +277,7 @@ def importar(s: Session, ctx: Contexto, imp: Importacao, corpo) -> dict:
     if plano.novos:
         _inserir(s, ctx.conta_id, f.id, principal["id"], plano.novos)
     if plano.atualizar:
-        _atualizar(s, plano.atualizar, principal["id"])
+        _atualizar(s, plano.atualizar, principal["id"], ia_ativa(s.get(Conta, ctx.conta_id)))
     contatos = sorted({x.contato_id for x in plano.novos + plano.atualizar})
     if contatos:  # última nota = a da resposta mais recente de cada contato
         s.execute(text("""

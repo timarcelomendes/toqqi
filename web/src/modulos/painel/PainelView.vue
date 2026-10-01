@@ -23,6 +23,7 @@ import BlocoTemas from './BlocoTemas.vue'
 import CartaoMovimentacao from './CartaoMovimentacao.vue'
 import CartaoNps from './CartaoNps.vue'
 import CartoesIndicadores from './CartoesIndicadores.vue'
+import FaixaPicos from './FaixaPicos.vue'
 import GraficoEvolucao from './GraficoEvolucao.vue'
 import PrimeirosPassos from './PrimeirosPassos.vue'
 import { montarPassos, mostrarPassos, ocultarPassos, passosOcultos } from './logica'
@@ -236,6 +237,9 @@ onBeforeUnmount(() => {
     <Alerta v-if="erro" tom="erro">
       Não deu para atualizar com os filtros novos: {{ erro }} <button type="button" class="link ml-1" @click="carregar">Tentar de novo</button>
     </Alerta>
+
+    <!-- Picos de reclamação dos últimos 7 dias (não dependem dos filtros da tela) -->
+    <FaixaPicos :picos="dados.picos ?? []" :pode-ver-respostas="podeVerRespostas" />
 
     <PrimeirosPassos v-if="verPassos" :passos="passos" @ocultar="esconderPassos" />
 

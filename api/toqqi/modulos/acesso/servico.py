@@ -161,7 +161,7 @@ def entrar(dados, ip: str | None, agente: str | None) -> dict:
         return {
             "token": criar_token_acesso(u.id, u.conta_id, sessao.id, sessao.expira_em),
             "expira_em": sessao.expira_em,
-            "usuario": usuario_json(usuario),
+            "usuario": usuario_json(usuario, preferencias=True),
             "conta": {**conta_json(conta), "logo_url": logo_da_conta(s, u.conta_id)},
             "permissoes": permissoes,
         }
@@ -309,8 +309,11 @@ def alterar_eu(ctx: Contexto, dados) -> dict:
             u.nome = dados.nome
         if "cargo" in dados.model_fields_set:
             u.cargo = dados.cargo or None
+        for campo in ("recebe_resumo_semanal", "recebe_alertas"):  # e-mails do Toqqi (Minha conta)
+            if campo in dados.model_fields_set and getattr(dados, campo) is not None:
+                setattr(u, campo, getattr(dados, campo))
         s.flush()
-        return usuario_json(u)
+        return usuario_json(u, preferencias=True)
 
 
 def trocar_senha(ctx: Contexto, dados) -> str:

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { Building2, MoreHorizontal, Pencil, Search, Trash2 } from 'lucide-vue-next'
+import { Building2, History, MoreHorizontal, Pencil, Search, Trash2 } from 'lucide-vue-next'
 import { empresasApi, mensagemDoErro, type Empresa, type Id } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
@@ -42,6 +42,8 @@ const emEdicao = ref<Empresa | null>(null)
 const podeEditar = computed(() => sessao.pode('contatos.editar'))
 // A API exige contatos.excluir E perfil admin para excluir empresa.
 const podeExcluir = computed(() => sessao.pode('contatos.excluir') && sessao.usuario?.perfil === 'admin')
+// Etapa 4b: atalho para o histórico da empresa em Relatórios.
+const podeVerHistorico = computed(() => sessao.pode('relatorios.ver'))
 
 const colunas: Coluna[] = [
   { chave: 'nome', rotulo: 'Empresa' },
@@ -207,12 +209,13 @@ defineExpose({ novo })
         <Etiqueta :tom="e.ativa ? 'sucesso' : 'neutro'" ponto>{{ e.ativa ? 'Ativa' : 'Inativa' }}</Etiqueta>
       </template>
       <template #cel-acoes="{ linha: e }">
-        <MenuSuspenso v-if="podeEditar || podeExcluir" :rotulo="`Ações para ${e.nome}`" fixo>
+        <MenuSuspenso v-if="podeEditar || podeExcluir || podeVerHistorico" :rotulo="`Ações para ${e.nome}`" fixo>
           <template #gatilho="{ props }">
             <button v-bind="props" type="button" class="flex size-9 items-center justify-center rounded-lg text-texto-fraco hover:bg-superficie-2 hover:text-texto disabled:opacity-50" :disabled="ocupado === e.id">
               <MoreHorizontal class="size-5" aria-hidden="true" />
             </button>
           </template>
+          <ItemMenu v-if="podeVerHistorico" :icone="History" :para="{ path: '/relatorios/historico', query: { empresa_id: String(e.id) } }">Ver histórico</ItemMenu>
           <ItemMenu v-if="podeEditar" :icone="Pencil" @click="editar(e)">Editar</ItemMenu>
           <ItemMenu v-if="podeExcluir" :icone="Trash2" perigo @click="excluir(e)">Excluir</ItemMenu>
         </MenuSuspenso>

@@ -1,6 +1,6 @@
 // Regras puras do Painel (sem Vue): faixas e cores do NPS, números com sinal, meses,
 // primeiros passos (com "ocultar" guardado no navegador) e a escala do gráfico de evolução.
-import type { FaixaNps, Painel, Permissao } from '@/api/tipos'
+import type { FaixaNps, Painel, Permissao, Pico } from '@/api/tipos'
 import type { Tom } from '@/utils/rotulos'
 
 // ── NPS ─────────────────────────────────────────────────────────────────────
@@ -245,4 +245,36 @@ export function ocultarPassos(contaId: string | number | null | undefined, ocult
 /** Mostra o bloco enquanto falta algum passo e a pessoa não escondeu. */
 export function mostrarPassos(passos: PassoInicial[], ocultos: boolean): boolean {
   return !ocultos && passos.some((p) => !p.feito)
+}
+
+// ── Picos de reclamação (etapa 4b) ──────────────────────────────────────────
+
+const fmtMediaPico = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 })
+
+/** As duas partes do aviso de pico: "Pico de reclamações em Prazo e entrega" e "7 nos últimos 7 dias; a média era 1,5 por semana". */
+export function partesPico(p: Pick<Pico, 'rotulo' | 'reclamacoes' | 'media_anterior'>): { titulo: string; detalhe: string } {
+  const media = Number(p.media_anterior)
+  const antes = Number.isFinite(media) && media > 0 ? `a média era ${fmtMediaPico.format(media)} por semana` : 'antes, não havia nenhuma'
+  return { titulo: `Pico de reclamações em ${p.rotulo}`, detalhe: `${p.reclamacoes} nos últimos 7 dias; ${antes}` }
+}
+
+/** "Pico de reclamações em Prazo e entrega: 7 nos últimos 7 dias; a média era 1,5 por semana". */
+export function textoPico(p: Pick<Pico, 'rotulo' | 'reclamacoes' | 'media_anterior'>): string {
+  const { titulo, detalhe } = partesPico(p)
+  return `${titulo}: ${detalhe}`
+}
+
+/** Respostas do pico: as reclamações do tema nos 7 dias, de empresas ativas (como no e-mail de alerta). */
+export function consultaPico(p: Pick<Pico, 'tema' | 'de' | 'ate'>): Record<string, string> {
+  return { tema: p.tema, reclamacao: 'true', so_ativos: 'true', ...(p.de ? { de: p.de } : {}), ...(p.ate ? { ate: p.ate } : {}) }
+}
+
+/** Variação das menções de um tema contra o período anterior: "+3", "−2", "0" e a frase para leitor de tela. */
+export function variacaoMencoes(v: number | null | undefined): { texto: string; direcao: 'sobe' | 'desce' | 'igual'; descricao: string } | null {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return null
+  const n = Math.round(v)
+  const qtd = Math.abs(n) === 1 ? 'menção' : 'menções'
+  if (n > 0) return { texto: formatarVariacao(n), direcao: 'sobe', descricao: `${n} ${qtd} a mais que no período anterior` }
+  if (n < 0) return { texto: formatarVariacao(n), direcao: 'desce', descricao: `${Math.abs(n)} ${qtd} a menos que no período anterior` }
+  return { texto: '0', direcao: 'igual', descricao: 'o mesmo número de menções do período anterior' }
 }

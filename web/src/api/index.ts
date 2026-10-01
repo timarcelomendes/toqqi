@@ -23,6 +23,7 @@ export * from './etapa2'
 export * from './etapa3'
 export * from './etapa3b'
 export * from './etapa4a'
+export * from './etapa4b'
 export * from './empresa'
 
 const publico = { autenticar: false } as const
@@ -52,7 +53,9 @@ export const authApi = {
 
 export const euApi = {
   obter: () => api.get<DadosSessao>('/eu'),
-  atualizar: (dados: { nome?: string; cargo?: string | null }) => api.patch<Usuario>('/eu', dados),
+  /** Etapa 4b: também as preferências de e-mail (resumo semanal e alerta de pico). */
+  atualizar: (dados: { nome?: string; cargo?: string | null; recebe_resumo_semanal?: boolean; recebe_alertas?: boolean }) =>
+    api.patch<Usuario>('/eu', dados),
   trocarSenha: (senha_atual: string, senha_nova: string) =>
     api.post<Mensagem | undefined>('/eu/senha', { senha_atual, senha_nova }),
   sessoes: () => api.get<SessaoAparelho[]>('/eu/sessoes'),

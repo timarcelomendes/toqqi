@@ -66,6 +66,13 @@
   --color-grafico-promotor: var(--t-grafico-promotor);
   --color-grafico-neutro: var(--t-grafico-neutro);
   --color-grafico-detrator: var(--t-grafico-detrator);
+  --color-grafico-tema-1: var(--t-grafico-tema-1);
+  --color-grafico-tema-2: var(--t-grafico-tema-2);
+  --color-grafico-tema-3: var(--t-grafico-tema-3);
+  --color-grafico-tema-4: var(--t-grafico-tema-4);
+  --color-grafico-tema-5: var(--t-grafico-tema-5);
+  --color-grafico-tema-6: var(--t-grafico-tema-6);
+  --color-grafico-cinza: var(--t-grafico-cinza);
 }
 
 :root {
@@ -98,6 +105,19 @@
   --t-grafico-promotor: #059669;
   --t-grafico-neutro: #f59e0b;
   --t-grafico-detrator: #dc2626;
+  /* Seis cores categóricas, uma por tema (na ordem da tabela de temas: prazo e entrega, produto e avarias,
+     atendimento, preço e condições, comunicação, sistema e pedidos). Conferidas com o validador de paleta sobre a
+     superfície (#fff no claro, #111827 no escuro): separação para daltonismo entre vizinhas e brilho dentro da
+     faixa. No claro, a 3, a 4 e a 5 ficam abaixo de 3:1: todo gráfico com elas tem legenda escrita e tabela. */
+  --t-grafico-tema-1: #2a78d6;
+  --t-grafico-tema-2: #eb6834;
+  --t-grafico-tema-3: #1baf7a;
+  --t-grafico-tema-4: #eda100;
+  --t-grafico-tema-5: #e87ba4;
+  --t-grafico-tema-6: #008300;
+  /* Cinza do "neutro" no sentimento (positivo verde, neutro cinza, misto âmbar, negativo vermelho). Cinza de propósito
+     (é o meio da escala), separado do verde e do âmbar vizinhos no validador; sempre com o nome escrito ao lado. */
+  --t-grafico-cinza: #94a3b8;
   color-scheme: light;
 }
 
@@ -128,12 +148,21 @@
   --t-grafico-promotor: #059669;
   --t-grafico-neutro: #f59e0b;
   --t-grafico-detrator: #ef4444;
+  --t-grafico-tema-1: #3987e5;
+  --t-grafico-tema-2: #d95926;
+  --t-grafico-tema-3: #199e70;
+  --t-grafico-tema-4: #c98500;
+  --t-grafico-tema-5: #d55181;
+  --t-grafico-tema-6: #008300;
+  --t-grafico-cinza: #8b95a5;
   color-scheme: dark;
 }
 
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* O topo do app é fixo (64 px): o que for trazido à vista (foco, âncora, começo de uma lista) fica abaixo dele. */
+    scroll-padding-top: 5rem;
   }
   body {
     @apply bg-fundo text-texto font-sans antialiased;

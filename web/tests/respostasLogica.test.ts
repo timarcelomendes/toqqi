@@ -93,6 +93,12 @@ describe('filtros ↔ endereço (URL)', () => {
       arquivadas: 'todas',
       so_ativos: true,
       contato_id: '101',
+      sentimento: '',
+      reclamacao: false,
+      motorista: '',
+      rota: '',
+      filial: '',
+      transportadora: '',
       pagina: 3,
     })
   })

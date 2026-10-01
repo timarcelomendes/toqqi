@@ -12,7 +12,7 @@ do painel (compilar as consultas custava mais que executá-las).
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from sqlalchemy import String, and_, case, cast, func, or_, select
+from sqlalchemy import String, and_, any_, case, cast, func, or_, select
 from sqlalchemy.orm import Session
 
 from toqqi.core import relogio
@@ -35,6 +35,7 @@ from toqqi.modelos import (
 from toqqi.modulos.acoes.regras import aberta, ordem_urgencia
 from toqqi.modulos.empresas.servico import ref
 from toqqi.modulos.painel.palavras import contar
+from toqqi.modulos.relatorios import picos as picos_mod
 from toqqi.modulos.respostas import indicadores as ind
 from toqqi.modulos.respostas.servico import gerar_csv
 from toqqi.modulos.respostas.temas import CHAVES, ROTULOS
@@ -122,13 +123,16 @@ def _nps_de(s: Session, conds: list) -> int | None:
     return ind.nps(p, d, p + n + d)
 
 
-def _taxa_resposta(s: Session, f: Filtro) -> dict:
+def _taxa_resposta(s: Session, f: Filtro, canal: str | None = None) -> dict:
+    """Convidados = contatos ativos com convite que saiu no período; responderam = os que responderam no período.
+    `canal` (relatório de operação) conta só os convites daquele canal."""
     saiu = (select(Envio.id).where(Envio.conta_id == f.conta_id, Envio.convite_id == Convite.id,
                                    Envio.tipo == "convite", Envio.situacao.in_(SAIU_CONVITE)).exists())
+    do_canal = [Convite.canal == canal] if canal else []
     convidados = (select(Convite.contato_id).distinct()
                   .join(Contato, Contato.id == Convite.contato_id)
                   .outerjoin(Empresa, Empresa.id == Contato.empresa_id)
-                  .where(Convite.conta_id == f.conta_id, Contato.ativo.is_(True),
+                  .where(Convite.conta_id == f.conta_id, Contato.ativo.is_(True), *do_canal,
                          *entre_datas(Convite.criado_em, f.de, f.ate), saiu, *f.empresa(Contato.empresa_id))
                   .subquery())
     responderam_ = (select(Resposta.contato_id).distinct()
@@ -233,15 +237,26 @@ def _atencao(s: Session, f: Filtro, conds: list, hoje: date) -> dict:
     }
 
 
-def _temas(s: Session, conds: list) -> list[dict]:
-    """Só respostas NPS: menções por tema e nota média; os mais citados (empate: ordem da tabela)."""
-    sq = (_com_empresa(select(func.unnest(Resposta.temas).label("tema"), Resposta.nota.label("nota"))
-                       .select_from(Resposta)).where(*conds, NPS).subquery())
-    contagem = {t: (n, soma) for t, n, soma in s.execute(
-        select(sq.c.tema, func.count(), func.sum(sq.c.nota)).group_by(sq.c.tema))}
-    citados = sorted((t for t in CHAVES if t in contagem), key=lambda t: (-contagem[t][0], CHAVES.index(t)))
+def _mencoes(s: Session, conds: list):
+    """(tema, menções, soma das notas, reclamações) das respostas NPS das condições."""
+    sq = (_com_empresa(select(func.unnest(Resposta.temas).label("tema"), Resposta.nota.label("nota"),
+                              Resposta.temas_reclamacao.label("reclamacao")).select_from(Resposta))
+          .where(*conds, NPS).subquery())
+    return s.execute(select(sq.c.tema, func.count(), func.sum(sq.c.nota),
+                            func.count().filter(sq.c.tema == any_(sq.c.reclamacao))).group_by(sq.c.tema)).all()
+
+
+def _temas(s: Session, conds: list, conds_anterior: list | None = None) -> list[dict]:
+    """Só respostas NPS: menções por tema, nota média e reclamações; os mais citados (empate: ordem da tabela).
+    `variacao` = menções no período − menções no período anterior de mesmo tamanho (null sem `de`/`ate`)."""
+    contagem = {t: (n, soma, reclamacoes) for t, n, soma, reclamacoes in _mencoes(s, conds)}
+    citados = sorted((t for t in CHAVES if t in contagem), key=lambda t: (-contagem[t][0], CHAVES.index(t)))[:MAX_TEMAS]
+    anterior = None
+    if conds_anterior is not None and citados:
+        anterior = {t: n for t, n, _, _ in _mencoes(s, conds_anterior)}
     return [{"chave": t, "rotulo": ROTULOS[t], "mencoes": contagem[t][0],
-             "nota_media": ind.media(contagem[t][1], contagem[t][0], 1)} for t in citados[:MAX_TEMAS]]
+             "nota_media": ind.media(contagem[t][1], contagem[t][0], 1), "reclamacoes": contagem[t][2],
+             "variacao": None if anterior is None else contagem[t][0] - anterior.get(t, 0)} for t in citados]
 
 
 def _comentarios(s: Session, conds: list) -> list[dict]:
@@ -338,12 +353,13 @@ def painel(ctx: Contexto, de: date | None, ate: date | None, grupo_id: int | Non
             "taxa_resposta": _taxa_resposta(s, f),
             "movimentacao": _movimentacao(s, f),
             "atencao": _atencao(s, f, conds, hoje),
-            "temas": _temas(s, conds),
+            "temas": _temas(s, conds, f.respostas(*anterior) if anterior else None),
             "comentarios": _comentarios(s, conds),
             "evolucao": _evolucao(s, f, conds),
             "empresas": _empresas(s, conds),
             "palavras": _palavras(s, conds),
             "primeiros_passos": _primeiros_passos(s),
+            "picos": picos_mod.calcular(s, ctx.conta_id, hoje),
         }
 
 

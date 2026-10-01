@@ -5,10 +5,10 @@ import { router } from '@/router'
 const item = (rotulo: string) => navegacaoPrincipal.find((i) => i.rotulo === rotulo)!
 
 describe('menu e rotas da etapa 4a', () => {
-  it('Respostas e Planos de ação saíram do "em breve"; Relatórios continua', () => {
+  it('Respostas e Planos de ação saíram do "em breve" (Relatórios saiu na 4b)', () => {
     expect(item('Respostas').emBreve).toBeFalsy()
     expect(item('Planos de ação').emBreve).toBeFalsy()
-    expect(item('Relatórios').emBreve).toBe(true)
+    expect(item('Relatórios').emBreve).toBeFalsy()
   })
 
   it('cada rota nova pede a permissão certa', () => {

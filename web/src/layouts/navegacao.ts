@@ -36,7 +36,7 @@ export const navegacaoPrincipal: ItemNavegacao[] = [
   { rotulo: 'Formulários', para: '/formularios', icone: FileText, permissao: 'formularios.ver' },
   { rotulo: 'Respostas', para: '/respostas', icone: MessageSquareText, permissao: 'respostas.ver' },
   { rotulo: 'Planos de ação', para: '/planos-de-acao', icone: ClipboardList, permissao: 'acoes.ver' },
-  { rotulo: 'Relatórios', para: '/relatorios', icone: BarChart3, permissao: 'relatorios.ver', emBreve: true },
+  { rotulo: 'Relatórios', para: '/relatorios/empresas', prefixo: '/relatorios', icone: BarChart3, permissao: 'relatorios.ver' },
 ]
 
 export const navegacaoAdministracao: ItemNavegacao[] = [

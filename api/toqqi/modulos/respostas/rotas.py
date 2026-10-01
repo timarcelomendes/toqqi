@@ -5,6 +5,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response
 from toqqi.core.deps import Contexto, requer, requer_admin
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.modulos.acoes.automatica import coletar_alertas, enviar_alertas
+from toqqi.modulos.ia.servico import analisar as analisar_com_ia
+from toqqi.modulos.ia.servico import coletar_analises
 from toqqi.modulos.integracoes.webhooks import coletar_entregas, entregar_lista
 from toqqi.modulos.respostas import servico, temas
 from toqqi.modulos.respostas.esquemas import AnaliseIn, FiltrosRespostas, RespostaManualIn
@@ -36,10 +38,11 @@ def listar(filtros: Annotated[FiltrosRespostas, Query()], pg: Pagina = Depends(p
 
 @router.post("/respostas", status_code=201)
 def registrar(dados: RespostaManualIn, tarefas: BackgroundTasks, ctx: Contexto = Depends(EDITAR)):
-    with coletar_entregas() as entregas, coletar_alertas() as alertas:
+    with coletar_entregas() as entregas, coletar_alertas() as alertas, coletar_analises() as analises:
         resultado = servico.registrar_manual(ctx, dados)
     tarefas.add_task(entregar_lista, entregas)  # webhooks de saída (resposta.criada), depois do commit
     tarefas.add_task(enviar_alertas, alertas)   # "Alerta de risco" ao responsável
+    tarefas.add_task(analisar_com_ia, analises)  # análise do comentário pela IA
     return resultado
 
 
@@ -49,8 +52,11 @@ def obter(resposta_id: int, ctx: Contexto = Depends(VER)):
 
 
 @router.patch("/respostas/{resposta_id}")
-def analisar(resposta_id: int, dados: AnaliseIn, ctx: Contexto = Depends(EDITAR)):
-    return servico.analisar(ctx, resposta_id, dados)
+def analisar(resposta_id: int, dados: AnaliseIn, tarefas: BackgroundTasks, ctx: Contexto = Depends(EDITAR)):
+    with coletar_analises() as analises:
+        resultado = servico.analisar(ctx, resposta_id, dados)
+    tarefas.add_task(analisar_com_ia, analises)  # comentário editado: a IA analisa de novo
+    return resultado
 
 
 @router.post("/respostas/{resposta_id}/arquivar")

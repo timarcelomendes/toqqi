@@ -1,4 +1,4 @@
-# Toqqi API · etapas 1, 2, 3a, 3b e 4a + dados da empresa
+# Toqqi API · etapas 1, 2, 3a, 3b, 4a e 4b + dados da empresa
 
 FastAPI + SQLAlchemy 2 (psycopg 3) + Alembic + PostgreSQL 16.
 Contratos implementados (base `/api/v1`):
@@ -11,7 +11,9 @@ Contratos implementados (base `/api/v1`):
 - `../docs/api-etapa-4a.md`: respostas (lista, análise, registro à mão, arquivar, excluir, CSV), temas por
   palavras-chave, planos de ação (quadro, ação automática, alerta de risco), painel e importação de respostas antigas;
 - `../docs/api-dados-empresa.md`: dados da empresa (Configurações › Empresa) e imagens (logo da conta e dos
-  formulários) nas pesquisas e nos e-mails.
+  formulários) nas pesquisas e nos e-mails;
+- `../docs/api-etapa-4b.md`: IA por resposta (OpenAI), reclamações e picos por tema, relatórios (empresas, grupos de
+  clientes, temas, entregas, responsáveis, operação, histórico de uma empresa) e resumo semanal por e-mail.
 
 ## Isolamento entre contas (RLS)
 O isolamento é garantido pelo próprio PostgreSQL:
@@ -77,6 +79,11 @@ para que o IP real do cliente seja usado no limite de tentativas, nas sessões e
 | `WHATSAPP_GRAPH_VERSION` | Versão da Graph API da Meta (padrão `v23.0`); `WHATSAPP_GRAPH_URL` muda o endereço base |
 | `WHATSAPP_VERIFY_TOKEN` | Token de verificação do webhook da Meta (`GET /api/v1/publico/whatsapp/webhook`) |
 | `WHATSAPP_APP_SECRET` | App Secret do app da Meta: confere `X-Hub-Signature-256` dos avisos |
+| `OPENAI_API_KEY` | Chave da OpenAI (da plataforma) para a análise dos comentários. Vazia = sem IA (temas por palavras-chave) |
+| `IA_PROVEDOR` | `openai` (padrão), `memoria` (testes) ou `desligado` |
+| `IA_MODELO` | Modelo da OpenAI (padrão `gpt-5-mini`) |
+| `IA_ESFORCO` | `reasoning.effort` enviado (padrão `minimal`; vazio = não manda `reasoning`) |
+| `IA_BASE_URL` | Endereço base da API da OpenAI (padrão `https://api.openai.com`) |
 
 A etapa 2 não criou variáveis novas. `FRONTEND_URL` também é a base dos links de convite (`/r/{token}`)
 e `JWT_SECRET` entra no sal diário do hash de IP das respostas públicas.
@@ -112,7 +119,7 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
   que já existiam.
 
 ## Etapa 3a: envios
-- **Tarefas periódicas**: `python -m toqqi.tarefas [robo|lembretes|pendentes|webhooks|tudo]` ou
+- **Tarefas periódicas**: `python -m toqqi.tarefas [robo|lembretes|pendentes|webhooks|ia|picos|resumo|tudo]` ou
   `POST /api/v1/interno/tarefas` com `X-Tarefas-Token` (comparação em tempo constante). Em produção, o Cron Job
   `toqqi-tarefas` do Render roda o comando a cada 15 minutos; cada conta decide se é hora (janela, dias úteis, 6 h entre rodadas do robô, lembretes uma vez
   por dia a partir das 10:00). A lista de contas sai do modo sistema (só ids); o trabalho de cada conta roda em
@@ -255,6 +262,62 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
 - **E-mails**: cabeçalho com `<img height="48">` (o Outlook ignora `max-height`) e `alt` = nome da conta; sem logo, o
   HTML é o mesmo de antes, e o texto puro não muda. A exclusão de conta pela plataforma apaga as imagens junto.
 
+## Etapa 4b: IA por resposta, relatórios, picos e resumo semanal
+- **Chave da OpenAI no Render**: `OPENAI_API_KEY` vai no painel do Render (Environment) dos dois serviços,
+  **toqqi-api** (análise logo depois de gravar a resposta) **e toqqi-tarefas** (tarefa `ia`: fila, novas tentativas e
+  "analisar os últimos 90 dias"), e não no `render.yaml` (o Blueprint não apaga variáveis que ele não declara).
+  `IA_MODELO` e `IA_ESFORCO` só se quiser trocar o padrão. Sem a chave, tudo funciona como antes (temas por
+  palavras-chave) e `conta.ia_ativa` sai `false` para a tela esconder as partes de IA.
+- **Migração `0007_ia_relatorios`**: colunas `ia_*` em `respostas`, `contas.ia_analise_respostas`, as preferências de
+  e-mail em `usuarios` e as tabelas `ia_uso_mensal`, `alertas_pico` e `resumos_semanais` (RLS com FORCE, grants
+  condicionais, `ON DELETE CASCADE` na conta; a exclusão de conta pela plataforma também as apaga). `temas_reclamacao`
+  e `temas_elogio` são colunas geradas (`STORED`) por funções SQL `IMMUTABLE` com corpo padrão (`RETURN`: referências
+  resolvidas na criação, sem depender do `search_path` numa restauração): `classe_tema` aplica a regra do §3 tema a
+  tema quando a IA analisou; sem análise, um atalho usa só o grupo da nota (importar 20.000 respostas passou de
+  ~1,1–1,2 s para ~1,35 s nos testes). Índices: fila da IA (parcial, pendentes) e `(conta_id, empresa_id,
+  data_resposta DESC) WHERE NOT arquivada` para os relatórios por empresa.
+- **Adaptador** (`core/ia.py`): Responses API por httpx (sem SDK), 30 s, sem redirecionamento; os testes trocam
+  `ia.transporte` por um `httpx.MockTransport` e o `conftest` usa `IA_PROVEDOR=memoria` (rede bloqueada). Falhas:
+  `configuracao` (401, 403, 404 e os demais 4xx, menos 408/409/429: chave, modelo ou parâmetro recusados) não conta
+  tentativa, deixa pendente e para a rodada com um `log.error`; `transitoria` (429, 5xx, 408/409, tempo, rede, JSON
+  inválido, `incomplete`, formato fora do esquema) conta tentativa; `definitiva` (`refusal` ou 400 `invalid_prompt`)
+  vira `falhou` na hora. O log leva só o status HTTP e o código do erro, nunca a chave nem o texto do cliente.
+- **Fila** (`modulos/ia/servico.py`): o gancho de `ao_registrar_resposta` marca `pendente`; POST /respostas, PATCH
+  /respostas/{id} e as rotas públicas juntam as pendentes com `coletar_analises()` e chamam `analisar` por
+  `BackgroundTasks` depois do commit (como o "Alerta de risco"); o resto fica para a tarefa `ia`. Reserva com
+  `FOR UPDATE SKIP LOCKED` + `ia_reservada_em` (5 min), teto do mês por `INSERT ... ON CONFLICT DO UPDATE ... WHERE
+  analises < teto` (sem saldo = `limite`), chamada fora da transação e gravação só se o sha256 do texto enviado
+  (`ia_texto_hash`) ainda é o do texto atual. Falha devolve o saldo. Tokens somados em `ia_uso_mensal`.
+- **Reclamação e pico** (`modulos/relatorios/picos.py`): contagem no banco por `unnest(temas_reclamacao)`; o painel,
+  o relatório de temas, o alerta e o resumo usam a mesma função. Alerta de pico: trava consultiva por conta e tema +
+  conferência dos últimos 7 dias na mesma transação; grava `alertas_pico` e manda depois do commit. Resumo semanal:
+  `INSERT ... ON CONFLICT DO NOTHING RETURNING` em `resumos_semanais` antes de mandar. As duas tarefas pegam as contas
+  em modo sistema (só ids) e trabalham em `em_conta`; uma conta com erro não derruba as outras
+  (`modulos/relatorios/emails.py`, visual do "Alerta de risco": `core.email.enviar` ganhou subtítulos, links e
+  rodapé).
+- **Relatórios** (`modulos/relatorios/`): poucas consultas agregadas no banco (por empresa, tema, semana ou valor do
+  contexto), com `conta_id` explícito e `sem_jit`, como no painel; o que é por empresa (até alguns milhares de linhas)
+  é montado em Python. CSV como os da 4a (`gerar_csv`: `;`, BOM, células protegidas; número negativo sai como número).
+  Medido no teste de desempenho (5.000 contatos, 1.000 empresas, 50.000 respostas, 8.000 convites, 3.000 ações):
+  empresas ~110–210 ms, grupos ~50 ms, temas ~145 ms (todo o histórico ~300 ms), entregas ~60 ms, responsáveis
+  ~40 ms, operação ~120 ms, histórico ~50 ms, painel ~270 ms.
+
+### Etapa 4b: decisões tomadas aqui (além da seção 0 do contrato)
+- Temas depois da análise (sem `temas_manuais`) = temas da IA + os de "o que faltou" por palavra-chave (escrito pela
+  equipe na análise, a IA não vê). Comentário editado numa resposta que já tinha passado pela IA (inclusive importada
+  marcada por "analisar os últimos 90 dias") volta para `pendente`; se não passa mais, a análise antiga é apagada.
+- Filtro `sentimento=sem_analise` = respostas com texto do cliente e sem análise concluída. `ia_em` também é gravado em
+  `falhou` e `limite` (é o que conta em `falharam_no_mes`). `POST /conta/ia/analisar-recentes` também responde 409
+  `ia_indisponivel` com a assinatura vencida. `provedor` é "Memória" com `IA_PROVEDOR=memoria` (só testes).
+- O alerta de pico é gravado mesmo sem destinatários (`destinatarios = 0`) e conta para a janela de 7 dias.
+- Preferências de e-mail só em `/eu` e no login (a lista da equipe não mostra).
+- Relatórios: percentuais inteiros (como no painel); em Empresas, `busca`, `respostas` e `quadrante` mexem só na tabela
+  (resumo e matriz seguem os filtros de empresa); ordens `valor` e `respostas` = maior primeiro, `cobertura` = menor
+  primeiro. Grupos de clientes: `empresas` = empresas com respostas NPS no período. Entregas: respostas NPS e CSAT;
+  `reclamacoes` = respostas com alguma reclamação; `ultima_resposta` = data e hora (ISO). Responsáveis: ações abertas e
+  vencidas das empresas da carteira. Histórico: `acoes.concluidas` = concluídas no período. Operação: "último convite
+  que saiu" = `contatos.ultimo_envio`.
+
 ## Estrutura
 ```
 toqqi/
@@ -263,7 +326,8 @@ toqqi/
   apresentacao.py         formato JSON de Usuario e Conta
   core/                   config, db (em_conta / modo_sistema), security (argon2id, JWT, tokens), relogio,
                           errors, validacao, email, rate_limit, auditoria, permissoes, deps (requer),
-                          texto (telefone, CNPJ/CPF, valores, datas), planos, paginacao, filtros, rede
+                          texto (telefone, CNPJ/CPF, valores, datas), planos, paginacao, filtros, rede,
+                          ia (adaptador da OpenAI e provedor de testes)
   modulos/acesso/         cadastro, entrar, sair, confirmar, reenviar, esqueci, redefinir, pedir-acesso, /eu
   modulos/equipe/         usuários da conta e matriz de permissões
   modulos/conta/          segurança (duração da sessão, domínios liberados), dados da empresa e logo da conta
@@ -279,6 +343,8 @@ toqqi/
                           temas (palavras-chave), indicadores (NPS/CSAT), tela Respostas (lista, análise, CSV)
   modulos/acoes/          planos de ação: quadro, regras (selo, urgência), ação automática + alerta, prazos
   modulos/painel/         painel (visão geral) e palavras mais citadas
+  modulos/ia/             IA por resposta: quem passa, fila, reserva, teto do mês, configuração da conta
+  modulos/relatorios/     relatórios, picos de reclamação, alerta de pico e resumo semanal por e-mail
   modulos/publico/        páginas públicas (convite, link público e descadastro)
   modulos/envios/         configuração e pré-condições, fila/situação, disparo, histórico, WhatsApp,
                           robô/lembretes/pendentes, agradecimento, descadastro, modelos de e-mail
@@ -291,6 +357,7 @@ alembic/versions/0003_envios.py    config_envios, envios, descadastros + colunas
 alembic/versions/0004_integracoes.py   chaves, webhooks, entregas, WhatsApp, franquia, idempotência + RLS
 alembic/versions/0005_respostas_acoes.py   data/origem/temas/análise das respostas, ações, prazos, tipo da importação
 alembic/versions/0006_dados_empresa.py   dados da empresa em `contas` e tabela `imagens` (logos) + RLS
+alembic/versions/0007_ia_relatorios.py   IA por resposta, reclamação/elogio por tema, uso da IA, picos, resumos + RLS
 tests/                             pytest
 ```
 

@@ -23,8 +23,10 @@ import PainelLateral from '@/components/ui/PainelLateral.vue'
 import ModalNovaAcao, { type InicioAcao } from '@/modulos/acoes/ModalNovaAcao.vue'
 import SeloAcao from '@/modulos/acoes/SeloAcao.vue'
 import { prioridadeSugerida, tituloSugerido } from '@/modulos/acoes/logica'
+import AnaliseIa from './AnaliseIa.vue'
 import SeletorNota from './SeletorNota.vue'
 import SeloNota from './SeloNota.vue'
+import { analisada } from './ia'
 import {
   LIMITE_ANALISE,
   LIMITE_COMENTARIO,
@@ -299,6 +301,9 @@ function aoCriarAcao(a: Acao) {
         <p v-else class="text-sm text-texto-fraco">Esta resposta não tem perguntas guardadas (foi registrada à mão ou importada).</p>
       </section>
 
+      <!-- Etapa 4b: resumo, tom e temas pela IA (ou em que pé está a análise, com a IA ativa na conta) -->
+      <AnaliseIa v-if="detalhe.ia && (sessao.conta?.ia_ativa || analisada(detalhe.ia))" :ia="detalhe.ia" :temas="temas" />
+
       <!-- Contexto do pedido -->
       <section v-if="contexto.length" aria-labelledby="t-contexto">
         <h3 id="t-contexto" class="mb-2 text-sm font-bold uppercase tracking-wide text-texto-fraco">Sobre o pedido ou a entrega</h3>
@@ -365,7 +370,9 @@ function aoCriarAcao(a: Acao) {
               {{
                 detalhe.temas_manuais
                   ? 'Escolhidos por alguém da equipe: não mudam sozinhos se o comentário mudar.'
-                  : 'Marcados sozinhos pelas palavras do comentário. Se você mudar, a escolha passa a ser sua.'
+                  : analisada(detalhe.ia)
+                    ? 'Marcados pela IA a partir do comentário. Se você mudar, a escolha passa a ser sua.'
+                    : 'Marcados sozinhos pelas palavras do comentário. Se você mudar, a escolha passa a ser sua.'
               }}
             </p>
           </fieldset>

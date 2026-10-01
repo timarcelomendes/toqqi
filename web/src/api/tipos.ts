@@ -1,4 +1,4 @@
-// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b e -4a).
+// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a e -4b).
 import type { Contexto, GrupoNota, Pergunta, Tema } from '@/pesquisa/tipos'
 
 export type Perfil = 'admin' | 'gestor' | 'consulta'
@@ -39,6 +39,9 @@ export interface Usuario {
   email_confirmado: boolean
   ultimo_acesso: string | null
   superadmin: boolean
+  /** Etapa 4b (só no próprio usuário, em /eu e no login): e-mails do Toqqi que ele recebe. */
+  recebe_resumo_semanal?: boolean
+  recebe_alertas?: boolean
 }
 
 export interface Conta {
@@ -49,6 +52,8 @@ export interface Conta {
   teste_ate: string | null
   /** Logo da empresa (vem de GET /eu); aparece nas pesquisas e nos e-mails quando o formulário não tem logo. */
   logo_url?: string | null
+  /** Etapa 4b: IA disponível na plataforma + análise ligada na conta + assinatura em dia (GET /eu e login). */
+  ia_ativa?: boolean
 }
 
 // ───────────────────── Dados da empresa e logo (docs/api-dados-empresa.md) ─────────────────────
@@ -711,6 +716,8 @@ export interface RespostaItem extends Omit<Resposta, 'contato' | 'empresa' | 'gr
   contato: { id: Id; nome: string; email: string | null; perfil: Referencia | null } | null
   empresa: { id: Id; nome: string; grupo: Referencia | null } | null
   acao: AcaoDaResposta | null
+  /** Etapa 4b: análise da IA (null quando a resposta não passa pela IA; pode faltar no servidor antigo). */
+  ia?: AnaliseIa | null
 }
 
 /** Pergunta com a resposta já em texto (ex.: "Sim", "31/12/2025"). */
@@ -768,6 +775,15 @@ export interface FiltrosRespostas {
   arquivadas?: 'false' | 'true' | 'todas'
   /** Tira as respostas de empresas desativadas (as sem empresa continuam), como no painel. */
   so_ativos?: boolean
+  /** Etapa 4b: sentimento da IA ("sem_analise" = com texto do cliente e ainda sem análise). */
+  sentimento?: FiltroSentimento | ''
+  /** Etapa 4b: só reclamações (com `tema`, reclamações daquele tema). */
+  reclamacao?: boolean
+  /** Etapa 4b: valor do contexto do pedido (sem diferenciar maiúsculas e espaços nas pontas). */
+  motorista?: string
+  rota?: string
+  filial?: string
+  transportadora?: string
   pagina?: number
   por_pagina?: number
 }
@@ -936,7 +952,11 @@ export interface Painel {
     empresas: EmpresaAtencao[]
     receita_em_risco: { valor: number | string; empresas: number; sem_valor: number }
   }
-  temas: { chave: string; rotulo: string; mencoes: number; nota_media: number | null }[]
+  /**
+   * Etapa 4b: `reclamacoes` (menções que contam como reclamação) e `variacao` (menções no período − no período
+   * anterior de mesmo tamanho; null sem período). Podem faltar no servidor antigo.
+   */
+  temas: { chave: string; rotulo: string; mencoes: number; nota_media: number | null; reclamacoes?: number; variacao?: number | null }[]
   comentarios: {
     resposta_id: Id
     data: string
@@ -958,4 +978,329 @@ export interface Painel {
     primeiro_envio: boolean | number
     primeira_resposta: boolean | number
   }
+  /** Etapa 4b: temas com pico de reclamações nos últimos 7 dias (sem os filtros da tela). */
+  picos?: Pico[]
+}
+
+// ───────────────────────── Etapa 4b (docs/api-etapa-4b.md) ─────────────────────────
+
+export type Sentimento = 'positivo' | 'neutro' | 'negativo'
+/** Tom geral do comentário: "misto" quando há elogio e reclamação. */
+export type SentimentoGeral = Sentimento | 'misto'
+export type FiltroSentimento = SentimentoGeral | 'sem_analise'
+export type SituacaoIa = 'pendente' | 'analisada' | 'falhou' | 'limite'
+
+/** Análise da IA de uma resposta (`ia` na lista e no detalhe). */
+export interface AnaliseIa {
+  situacao: SituacaoIa
+  sentimento: SentimentoGeral | null
+  /** Uma frase curta (até 160 caracteres). */
+  resumo: string | null
+  /** Temas citados, com o sentimento do cliente sobre cada um. */
+  temas: { tema: string; sentimento: Sentimento }[] | null
+  /** Quando foi analisada. */
+  em: string | null
+}
+
+/** Tema com 3+ reclamações nos últimos 7 dias e pelo menos o dobro da média semanal das 4 semanas antes. */
+export interface Pico {
+  tema: string
+  rotulo: string
+  reclamacoes: number
+  /** Média semanal das 4 semanas anteriores (uma casa). */
+  media_anterior: number
+  /** Os 7 dias (AAAA-MM-DD). */
+  de: string
+  ate: string
+}
+
+/** Configurações › IA (GET/PUT /conta/ia). */
+export interface ConfigIa {
+  /** A IA está ligada na plataforma (chave configurada). */
+  disponivel: boolean
+  provedor: string | null
+  /** A chave da conta: "Analisar comentários com IA". */
+  analise_respostas: boolean
+  /** AAAA-MM */
+  mes: string
+  analises: number
+  /** Teto de segurança do mês (pelo plano). */
+  limite: number
+  pendentes: number
+  falharam_no_mes: number
+}
+
+export interface ResultadoAnalisarRecentes {
+  marcadas: number
+  restantes_no_mes: number
+}
+
+/** Valor decimal da API (reais): pode chegar como número ou como texto ("1250.00"). */
+export type ValorDecimal = number | string
+
+export type FaixaValor = 'ate_2k' | '2k_10k' | '10k_50k' | 'acima_50k' | 'sem_valor'
+export type TempoCliente = 'ate_3m' | '3_6m' | '6_12m' | 'mais_1a' | 'sem_data'
+export type Quadrante = 'proteger' | 'manter' | 'corrigir' | 'crescer'
+export type DimensaoEntrega = 'motorista' | 'rota' | 'filial' | 'transportadora'
+export type OrdemEmpresas = 'prioridade' | 'nps' | 'valor' | 'cobertura' | 'respostas' | 'nome'
+export type OrdemEntregas = 'respostas' | 'nps' | 'csat' | 'reclamacoes' | 'valor'
+
+/** Filtros comuns dos relatórios. Sem `de`/`ate` = todo o histórico; `so_ativos` padrão true. */
+export interface FiltrosRelatorio {
+  de?: string
+  ate?: string
+  /** Grupo de empresas. */
+  grupo_id?: Id | ''
+  so_ativos?: boolean
+}
+
+/** Filtros de empresa (0 = sem segmento / sem responsável). */
+export interface FiltrosEmpresaRelatorio extends FiltrosRelatorio {
+  segmento_id?: Id | ''
+  responsavel_id?: Id | ''
+  faixa_valor?: FaixaValor | ''
+  tempo_cliente?: TempoCliente | ''
+}
+
+export interface FiltrosRelatorioEmpresas extends FiltrosEmpresaRelatorio {
+  busca?: string
+  respostas?: 'com' | 'sem' | ''
+  quadrante?: Quadrante | ''
+  ordem?: OrdemEmpresas
+  pagina?: number
+  por_pagina?: number
+}
+
+export type FiltrosRelatorioGrupos = Omit<FiltrosEmpresaRelatorio, 'responsavel_id'>
+
+export interface FiltrosRelatorioEntregas extends FiltrosRelatorio {
+  dimensao?: DimensaoEntrega
+  busca?: string
+  ordem?: OrdemEntregas
+  pagina?: number
+  por_pagina?: number
+}
+
+export interface CsatResumo {
+  percentual: number | null
+  media: number | null
+  total: number
+}
+
+/** Contatos ativos que responderam (NPS) no período ÷ contatos ativos. */
+export interface Cobertura {
+  contatos_ativos: number
+  responderam: number
+  percentual: number | null
+}
+
+export interface UltimaResposta {
+  data: string
+  nota: number | null
+  tipo_nota: TipoNota | null
+}
+
+export interface PontoMatriz {
+  empresa: Referencia
+  nps: number
+  valor_mensal: ValorDecimal
+  respostas: number
+  quadrante: Quadrante
+}
+
+export interface ItemRelatorioEmpresa {
+  empresa: { id: Id; nome: string; ativa: boolean }
+  grupo: Referencia | null
+  segmento: Referencia | null
+  responsavel: Referencia | null
+  valor_mensal: ValorDecimal | null
+  cliente_desde: string | null
+  nps: NpsResumo
+  cobertura: Cobertura
+  /** A mais recente, de qualquer data. */
+  ultima_resposta: UltimaResposta | null
+  /** Teve detrator no período. */
+  em_risco: boolean
+  quadrante: Quadrante | null
+  /** Agora (sem o período). */
+  acoes_abertas: number
+}
+
+export interface RelatorioEmpresas extends Pagina<ItemRelatorioEmpresa> {
+  resumo: {
+    empresas: number
+    com_respostas: number
+    cobertura: Cobertura
+    receita: { total: ValorDecimal; em_risco: ValorDecimal; empresas_em_risco: number; sem_valor: number; percentual: number | null }
+    por_faixa: Record<FaixaNps | 'sem_respostas', number>
+  }
+  matriz: {
+    mediana_valor: ValorDecimal | null
+    quadrantes: Record<Quadrante, number>
+    /** Até 1.000, maiores valores primeiro. */
+    pontos: PontoMatriz[]
+    /** Empresas com NPS e sem valor cadastrado (fora do gráfico). */
+    sem_valor: number
+  }
+}
+
+export interface LinhaGrupoNps {
+  empresas: number
+  nps: NpsResumo
+}
+
+export interface PrioridadeTema {
+  tema: string
+  rotulo: string
+  mencoes: number
+  nota_media: number | null
+  reclamacoes: number
+}
+
+export interface RelatorioGrupos {
+  segmentos: (LinhaGrupoNps & { segmento: Referencia | null })[]
+  grupos: (LinhaGrupoNps & { grupo: Referencia | null })[]
+  tempo_cliente: (LinhaGrupoNps & { faixa: TempoCliente; rotulo: string })[]
+  valor: (LinhaGrupoNps & { faixa: FaixaValor; rotulo: string })[]
+  /** "O que resolver primeiro": mais citados e com nota mais baixa primeiro. */
+  prioridades: PrioridadeTema[]
+}
+
+export interface ContagemSentimento {
+  positivo: number
+  neutro: number
+  negativo: number
+  sem_analise: number
+}
+
+export interface TemaRelatorio {
+  tema: string
+  rotulo: string
+  mencoes: number
+  reclamacoes: number
+  elogios: number
+  nota_media: number | null
+  variacao: number | null
+  /** Menções de respostas analisadas pela IA, pelo sentimento sobre o tema. */
+  sentimento: ContagemSentimento
+}
+
+export interface SemanaTemas {
+  /** Segunda-feira (AAAA-MM-DD). */
+  inicio: string
+  /** Domingo. */
+  fim: string
+  respostas: number
+  temas: Record<string, { mencoes: number; reclamacoes: number }>
+}
+
+export interface RelatorioTemas {
+  ia: { ativa: boolean; analisadas: number; com_comentario: number }
+  /** Respostas com texto do cliente, pelo sentimento geral. */
+  sentimento: ContagemSentimento & { misto: number }
+  /** Os 6 temas, na ordem da tabela de temas. */
+  temas: TemaRelatorio[]
+  /** Em ordem cronológica, com as semanas vazias. */
+  semanas: SemanaTemas[]
+  picos: Pico[]
+}
+
+export interface ItemEntrega {
+  /** Motorista, rota, filial ou transportadora (a forma mais frequente). */
+  valor: string
+  respostas: number
+  nps: NpsResumo
+  csat: CsatResumo
+  reclamacoes: number
+  /** Até 2. */
+  temas: { tema: string; rotulo: string; mencoes: number }[]
+  ultima_resposta: string | null
+  /** Menos de 5 respostas. */
+  amostra_pequena: boolean
+}
+
+export interface RelatorioEntregas extends Pagina<ItemEntrega> {
+  dimensao: DimensaoEntrega
+  /** Respostas do filtro sem essa informação. */
+  sem_valor: number
+}
+
+export interface ItemResponsavelRelatorio {
+  /** null = "Sem responsável". */
+  responsavel: { id: Id; nome: string; foto_url: string | null } | null
+  empresas: number
+  empresas_com_respostas: number
+  nps: NpsResumo
+  receita: ValorDecimal
+  receita_em_risco: ValorDecimal
+  acoes_abertas: number
+  acoes_vencidas: number
+}
+
+export interface RelatorioResponsaveis {
+  itens: ItemResponsavelRelatorio[]
+}
+
+export interface EmpresaDaCarteira {
+  empresa: Referencia
+  nps: NpsResumo
+  nota_media: number | null
+  valor_mensal: ValorDecimal | null
+  ultima_resposta: UltimaResposta | null
+  acoes_abertas: number
+}
+
+export interface ContatoSemResposta {
+  contato: { id: Id; nome: string; email: string | null }
+  empresa: Referencia | null
+  ultimo_envio: string
+  dias: number
+  /** Mais dias que o intervalo entre envios. */
+  atrasado: boolean
+}
+
+export interface RelatorioOperacao {
+  taxa_resposta: Painel['taxa_resposta']
+  canais: { canal: CanalEnvio; convidados: number; responderam: number; percentual: number | null }[]
+  acoes: { concluidas: number; tempo_medio_dias: number | null; no_prazo_percentual: number | null; abertas: number; vencidas: number }
+  sem_resposta: { total: number; atrasados: number; intervalo_dias: number; itens: ContatoSemResposta[] }
+}
+
+export interface ItemLinhaDoTempo {
+  resposta_id: Id
+  data: string
+  nota: number | null
+  tipo_nota: TipoNota | null
+  grupo: GrupoNota | null
+  /** `cargo` e `perfil` vêm como nome (o contrato não fixa; aceitamos também {id, nome}). */
+  contato: { id: Id; nome: string; cargo: string | Referencia | null; perfil: string | Referencia | null } | null
+  canal: CanalResposta
+  origem: OrigemResposta
+  comentario: string | null
+  temas: string[]
+  ia: { sentimento: SentimentoGeral | null; resumo: string | null } | null
+  acao: { id: Id; situacao: SituacaoAcao } | null
+}
+
+export interface HistoricoEmpresa {
+  empresa: {
+    id: Id
+    nome: string
+    ativa: boolean
+    grupo: Referencia | null
+    segmento: Referencia | null
+    responsavel: Referencia | null
+    valor_mensal: ValorDecimal | null
+    cliente_desde: string | null
+  }
+  nps: NpsResumo
+  csat: CsatResumo | null
+  cobertura: Cobertura
+  acoes: { abertas: number; vencidas: number; concluidas: number }
+  /** Meses com dados, até os 24 mais recentes, em ordem cronológica. */
+  evolucao: { mes: string; nps: number | null; total: number }[]
+  /** Até 500, mais recentes primeiro. */
+  linha_do_tempo: ItemLinhaDoTempo[]
+  /** Respostas da empresa no período (todas, não só as da linha do tempo). */
+  total: number
 }

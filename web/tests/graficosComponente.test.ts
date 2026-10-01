@@ -74,7 +74,10 @@ describe('gráfico da evolução do NPS', () => {
   it('pelo teclado: as setas mostram cada mês e o leitor de tela ouve o valor', async () => {
     const w = mount(GraficoEvolucao, { props: { pontos }, attachTo: document.body })
     const grupo = w.find('[role="group"]')
-    await grupo.trigger('focus')
+    // Foco de verdade pelo teclado (como o Tab): só ele escolhe o último mês sozinho.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+    ;(grupo.element as HTMLElement).focus()
+    await nextTick()
     expect(w.find('[aria-live="polite"]').text()).toBe('setembro de 2026: NPS −4, 50 respostas.')
     await grupo.trigger('keydown', { key: 'ArrowLeft' })
     expect(w.find('[aria-live="polite"]').text()).toBe('agosto de 2026: NPS 36, 35 respostas.')

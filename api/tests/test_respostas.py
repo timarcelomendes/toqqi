@@ -467,14 +467,15 @@ def test_csv(client, base, admin):
     assert linhas[0] == ["Data", "Contato", "E-mail", "Empresa", "Grupo de empresas", "Perfil", "Tipo", "Nota",
                          "Categoria", "Temas", "Comentário", "O que faltou", "O que combinamos", "Canal", "Origem",
                          "Referência", "Pedido", "Nota fiscal", "Rota", "Motorista", "Filial", "Transportadora",
-                         "Arquivada"]
+                         "Arquivada", "Sentimento", "Resumo da IA"]
     assert len(linhas) == 4
     marcos = next(x for x in linhas[1:] if x[1] == "Marcos Reis")
     assert marcos == ["20/03/2025 12:00", "Marcos Reis", "marcos@sul.com.br", "Mercado Sul", "Rede Oeste", "",
                       "NPS", "3", "Detrator", "Prazo e entrega, Preço e condições", "Frete caro e atrasou", "'=1+1",
-                      "Desconto no próximo pedido", "Reunião", "Registrada à mão", "", "", "", "", "", "", "", "Não"]
+                      "Desconto no próximo pedido", "Reunião", "Registrada à mão", "", "", "", "", "", "", "", "Não",
+                      "Negativo", "Frete caro e atrasou"]  # análise da IA (provedor de testes)
     paula = next(x for x in linhas[1:] if x[1] == "Paula Lima")
-    assert paula[5] == "Decisor" and paula[-1] == "Sim"
+    assert paula[5] == "Decisor" and paula[22] == "Sim"
     so_padrao = client.get(f"{API}/respostas.csv", headers=h).content.decode("utf-8-sig")
     assert "Paula Lima;" in so_padrao and so_padrao.count("\r\n") == 4  # arquivada fora; CSAT da Paula entra
 

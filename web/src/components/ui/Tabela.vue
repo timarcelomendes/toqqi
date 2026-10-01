@@ -15,6 +15,8 @@ defineProps<{
   chave: (linha: L) => string | number
   carregando?: boolean
   legenda?: string
+  /** Tabela com muitas colunas (relatórios): células mais justas e títulos que quebram linha. */
+  densa?: boolean
 }>()
 
 defineSlots<
@@ -36,8 +38,8 @@ const alinhamento = { esquerda: 'text-left', direita: 'text-right', centro: 'tex
             v-for="c in colunas"
             :key="c.chave"
             scope="col"
-            class="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-texto-fraco first:pl-5 last:pr-5"
-            :class="[alinhamento[c.alinhar ?? 'esquerda'], c.classe]"
+            class="text-xs font-semibold uppercase tracking-wide text-texto-fraco first:pl-5 last:pr-5"
+            :class="[densa ? 'px-3 py-2.5 align-bottom' : 'whitespace-nowrap px-4 py-3', alinhamento[c.alinhar ?? 'esquerda'], c.classe]"
           >
             <span :class="{ 'sr-only': c.rotuloOculto }">{{ c.rotulo }}</span>
           </th>
@@ -55,8 +57,8 @@ const alinhamento = { esquerda: 'text-left', direita: 'text-right', centro: 'tex
           <td
             v-for="c in colunas"
             :key="c.chave"
-            class="px-4 py-3.5 align-middle first:pl-5 last:pr-5"
-            :class="[alinhamento[c.alinhar ?? 'esquerda'], c.classe]"
+            class="align-middle first:pl-5 last:pr-5"
+            :class="[densa ? 'px-3 py-3' : 'px-4 py-3.5', alinhamento[c.alinhar ?? 'esquerda'], c.classe]"
           >
             <slot :name="`cel-${c.chave}`" :linha="linha">{{ (linha as Record<string, unknown>)[c.chave] ?? '—' }}</slot>
           </td>

@@ -31,7 +31,7 @@ Os testes rodam no GitHub a cada envio (`.github/workflows/testes.yml`).
 | 3b. Integrações: chave da conta, disparo por evento, webhooks, WhatsApp automático | pronta | `docs/api-etapa-3b.md` |
 | 4a. Respostas, planos de ação e painel | pronta | `docs/api-etapa-4a.md` |
 | Extra: dados da empresa e logo (Configurações › Empresa) | pronta | `docs/api-dados-empresa.md` |
-| 4b. Relatórios, IA por resposta e resumo semanal | próxima | — |
+| 4b. Relatórios, IA por resposta, picos de reclamação e resumo semanal | pronta | `docs/api-etapa-4b.md` |
 | 5. Conta e extras · 6. Troca | depois | — |
 
 ## Publicação (Render)
@@ -46,8 +46,13 @@ Dois serviços apontando para este mesmo repositório:
 Assim, um commit que só mexe no backend republica só a API, e vice-versa. Os testes no GitHub seguem a mesma regra.
 
 Um terceiro serviço, **toqqi-tarefas** (Cron Job), roda `python -m toqqi.tarefas` a cada 15 minutos: robô de envio,
-lembretes, envios pendentes e webhooks. Ele conecta direto no banco (não acorda a API) e recebe as variáveis da API por
+lembretes, envios pendentes, webhooks, análise de comentários com IA, alerta de pico de reclamações e o resumo semanal
+(segundas, a partir das 8h). Ele conecta direto no banco (não acorda a API) e recebe as variáveis da API por
 `fromService`. Custa por segundo de execução, com mínimo de US$ 1 por mês.
+
+**IA (OpenAI)**: a chave `OPENAI_API_KEY` vai no painel do Render, em *Environment*, nos **dois** serviços (toqqi-api e
+toqqi-tarefas), e não no `render.yaml`. Sem ela, tudo funciona e os temas seguem por palavras-chave. Detalhes em
+`docs/api-etapa-4b.md` e `api/README.md`.
 
 Variáveis com `value:` no `render.yaml` são reaplicadas a cada sincronização do Blueprint. Para trocar o
 `EMAIL_PROVIDER` (ex.: ZeptoMail), altere o arquivo, não o painel do Render, e acrescente `EMAIL_FROM` e

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// Seções de Configurações (Empresa, Segurança, Envios, Planos de ação), mostradas conforme o perfil.
+// Seções de Configurações (Empresa, Segurança, Envios, Planos de ação, IA), mostradas conforme o perfil.
 import { computed } from 'vue'
-import { Building2, ClipboardList, Send, ShieldCheck } from 'lucide-vue-next'
+import { Building2, ClipboardList, Send, ShieldCheck, Sparkles } from 'lucide-vue-next'
 import { useSessaoStore } from '@/stores/sessao'
 
 const sessao = useSessaoStore()
@@ -11,6 +11,7 @@ const secoes = computed(() =>
     { rotulo: 'Segurança', para: '/configuracoes/seguranca', icone: ShieldCheck, pode: sessao.pode('configuracoes.gerenciar') },
     { rotulo: 'Envios', para: '/configuracoes/envios', icone: Send, pode: sessao.pode('envios.ver') },
     { rotulo: 'Planos de ação', para: '/configuracoes/acoes', icone: ClipboardList, pode: sessao.pode('acoes.ver') },
+    { rotulo: 'IA', para: '/configuracoes/ia', icone: Sparkles, pode: sessao.pode('configuracoes.gerenciar') },
   ].filter((s) => s.pode),
 )
 </script>

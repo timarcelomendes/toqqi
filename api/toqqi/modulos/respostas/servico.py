@@ -30,6 +30,9 @@ from toqqi.modulos.acoes.regras import prazo_selo
 from toqqi.modulos.empresas.servico import ref
 from toqqi.modulos.formularios.servico import ROTULOS_CONTEXTO, _celula
 from toqqi.modulos.formularios.validacao import grupo_da_nota, pergunta_principal
+from toqqi.modulos.ia.regras import ORIGENS as ORIGENS_IA
+from toqqi.modulos.ia.regras import ia_ativa, texto_qualifica
+from toqqi.modulos.ia.servico import limpar_analise, marcar_pendente, temas_automaticos
 from toqqi.modulos.respostas import temas as temas_mod
 from toqqi.modulos.respostas.convites import CHAVES_CONTEXTO
 from toqqi.modulos.respostas.indicadores import ROTULOS_GRUPO, ROTULOS_TIPO, bloco_nps, media, percentual
@@ -38,7 +41,6 @@ from toqqi.modulos.respostas.registro import (
     formatar_valor,
     gravar_resposta,
     renderizar,
-    temas_da_resposta,
     variaveis,
 )
 
@@ -51,7 +53,9 @@ ROTULOS_CANAL = {"email": "E-mail", "whatsapp": "WhatsApp", "link": "Link", "qr"
 ROTULOS_ORIGEM = {"pesquisa": "Pesquisa", "manual": "Registrada à mão", "importacao": "Importação"}
 CABECALHO_CSV = ["Data", "Contato", "E-mail", "Empresa", "Grupo de empresas", "Perfil", "Tipo", "Nota", "Categoria",
                  "Temas", "Comentário", "O que faltou", "O que combinamos", "Canal", "Origem", "Referência",
-                 *[ROTULOS_CONTEXTO[k] for k in CHAVES_CONTEXTO], "Arquivada"]
+                 *[ROTULOS_CONTEXTO[k] for k in CHAVES_CONTEXTO], "Arquivada", "Sentimento", "Resumo da IA"]
+ROTULOS_SENTIMENTO = {"positivo": "Positivo", "neutro": "Neutro", "negativo": "Negativo", "misto": "Misto"}
+CONTEXTOS_FILTRO = ("motorista", "rota", "filial", "transportadora")
 
 
 def data_informada(d: date) -> datetime:
@@ -106,7 +110,21 @@ def resposta_json(x, hoje: date) -> dict:
         "arquivada_em": r.arquivada_em,
         "acao": ({"id": x.acao_id, "situacao": x.acao_situacao, "prazo": x.acao_prazo,
                   "prazo_selo": prazo_selo(x.acao_situacao, x.acao_prazo, hoje)} if x.acao_id else None),
+        "ia": ia_json(r),
     }
+
+
+def ia_json(r: Resposta) -> dict | None:
+    """Análise da IA (null quando a resposta não passa pela IA)."""
+    if r.ia_situacao is None:
+        return None
+    return {"situacao": r.ia_situacao, "sentimento": r.ia_sentimento, "resumo": r.ia_resumo,
+            "temas": r.ia_temas, "em": r.ia_em}
+
+
+def valor_contexto(chave: str):
+    """Valor do contexto do pedido para agrupar e filtrar: sem diferenciar maiúsculas nem espaços nas pontas."""
+    return func.lower(func.btrim(Resposta.contexto[chave].astext))
 
 
 def _linha(s: Session, resposta_id: int):
@@ -149,6 +167,17 @@ def condicoes(f) -> list:
             conds.append(coluna == valor)
     if f.tema:
         conds.append(Resposta.temas.any(f.tema))
+    if f.reclamacao:  # com tema: reclamação daquele tema; sem tema: qualquer reclamação
+        conds.append(Resposta.temas_reclamacao.any(f.tema) if f.tema
+                     else func.cardinality(Resposta.temas_reclamacao) > 0)
+    if f.sentimento == "sem_analise":  # respostas com texto do cliente ainda sem análise da IA
+        conds += [Resposta.comentario_cliente != "", Resposta.ia_situacao.is_distinct_from("analisada")]
+    elif f.sentimento:
+        conds += [Resposta.ia_situacao == "analisada", Resposta.ia_sentimento == f.sentimento]
+    for chave in CONTEXTOS_FILTRO:
+        valor = getattr(f, chave)
+        if valor and valor.strip():
+            conds.append(valor_contexto(chave) == valor.strip().lower())
     if f.so_ativos:  # como no painel: respostas sem empresa sempre contam
         conds.append(or_(Resposta.empresa_id.is_(None), Empresa.ativa.is_(True)))
     coluna_data = Resposta.criada_em if f.data_por == "entrada" else Resposta.data_resposta
@@ -284,6 +313,17 @@ def _erro(campo: str, msg: str) -> AppError:
     return AppError(422, "dados_invalidos", "Confira os campos destacados.", {campo: msg})
 
 
+def _comentario_editado(s: Session, conta_id: int, r: Resposta) -> None:
+    """Comentário novo: a análise anterior da IA não vale mais. Se a resposta passa pela IA (ou já tinha passado,
+    pelo "analisar os últimos 90 dias"), volta para pendente; senão fica sem análise."""
+    conta = s.get(Conta, conta_id)
+    if ((r.origem in ORIGENS_IA or r.ia_situacao is not None) and texto_qualifica(r.comentario_cliente)
+            and ia_ativa(conta)):
+        marcar_pendente(s, r)
+    elif r.ia_situacao is not None:
+        limpar_analise(r, None)
+
+
 def analisar(ctx: Contexto, resposta_id: int, dados) -> dict:
     campos = dados.model_fields_set
     with em_conta(ctx.conta_id) as s:
@@ -307,6 +347,7 @@ def analisar(ctx: Contexto, resposta_id: int, dados) -> dict:
             # editado na análise: o texto como ficou passa a ser o comentário do cliente (painel, palavras, temas)
             r.comentario = dados.comentario or ""
             r.comentario_cliente = r.comentario
+            _comentario_editado(s, ctx.conta_id, r)
         for campo in ("o_que_faltou", "o_que_combinamos"):
             if campo in campos:
                 setattr(r, campo, getattr(dados, campo))
@@ -314,7 +355,7 @@ def analisar(ctx: Contexto, resposta_id: int, dados) -> dict:
             r.temas = temas_mod.ordenar(dados.temas)
             r.temas_manuais = True
         elif not r.temas_manuais and {"comentario", "o_que_faltou"} & campos:
-            r.temas = temas_da_resposta(r.comentario_cliente, r.o_que_faltou, perguntas, r.respostas)
+            r.temas = temas_automaticos(r, perguntas)
         r.analisada_em = relogio.agora()
         r.analisada_por = ctx.usuario_id
         s.flush()
@@ -364,6 +405,7 @@ def gerar_csv(s: Session, conds: list) -> str:
         Grupo.nome.label("grupo_empresas"), PerfilContato.nome.label("perfil"), Resposta.tipo_nota, Resposta.nota,
         Resposta.grupo, Resposta.temas, Resposta.comentario, Resposta.o_que_faltou, Resposta.o_que_combinamos,
         Resposta.canal, Resposta.origem, Resposta.referencia, Resposta.contexto, Resposta.arquivada,
+        Resposta.ia_situacao, Resposta.ia_sentimento, Resposta.ia_resumo,
     ).select_from(Resposta)).where(*conds).order_by(Resposta.data_resposta.desc(), Resposta.id.desc())
     buf = io.StringIO()
     buf.write("﻿")
@@ -380,6 +422,8 @@ def gerar_csv(s: Session, conds: list) -> str:
             ROTULOS_CANAL.get(x.canal, x.canal), ROTULOS_ORIGEM.get(x.origem, x.origem), _celula(x.referencia),
             *[_celula(contexto.get(k)) for k in CHAVES_CONTEXTO],
             "Sim" if x.arquivada else "Não",
+            ROTULOS_SENTIMENTO.get(x.ia_sentimento, "") if x.ia_situacao == "analisada" else "",
+            _celula(x.ia_resumo) if x.ia_situacao == "analisada" else "",
         ])
     return buf.getvalue()
 

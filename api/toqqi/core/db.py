@@ -7,6 +7,9 @@ Toda transação da aplicação define, com set_config(..., true) (vale só na t
   (login por e-mail, tokens de uso único, cadastro, pedido de acesso, plataforma).
 
 Sem nenhum dos dois, o papel da aplicação não enxerga nenhuma linha.
+
+Erros de SQL não levam dados de clientes ao log: o engine esconde os parâmetros (`hide_parameters`) e
+`core.log_seguro` troca a mensagem dos erros do banco (que pode trazer valores das linhas) por um resumo sem dados.
 """
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -16,7 +19,10 @@ from pathlib import Path
 from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
+from toqqi.core import log_seguro
 from toqqi.core.config import config
+
+log_seguro.instalar()
 
 RAIZ_API = Path(__file__).resolve().parents[2]
 
@@ -34,7 +40,8 @@ def usar_url_app(url: str) -> None:
 
 @lru_cache
 def engine() -> Engine:
-    return create_engine(_url_app_forcada or config().url_app, pool_pre_ping=True, future=True)
+    return create_engine(_url_app_forcada or config().url_app, pool_pre_ping=True, future=True,
+                         hide_parameters=True)
 
 
 @lru_cache

@@ -56,6 +56,8 @@ class Conta(Base):
     cidade: Mapped[str | None] = mapped_column(Text)
     uf: Mapped[str | None] = mapped_column(Text)
     dados_atualizados_em: Mapped[datetime | None] = mapped_column(TZ)
+    # etapa 4b: análise de comentários pela IA (chave da conta, ligada por padrão)
+    ia_analise_respostas: Mapped[bool] = mapped_column(Boolean, server_default="true")
 
 
 class Usuario(Base):
@@ -72,6 +74,9 @@ class Usuario(Base):
     email_confirmado: Mapped[bool] = mapped_column(Boolean, server_default="false")
     ultimo_acesso: Mapped[datetime | None] = mapped_column(TZ)
     criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    # etapa 4b: e-mails do Toqqi (Minha conta)
+    recebe_resumo_semanal: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    recebe_alertas: Mapped[bool] = mapped_column(Boolean, server_default="true")
 
 
 class Sessao(Base):
@@ -269,6 +274,21 @@ class Resposta(Base):
     arquivada_em: Mapped[datetime | None] = mapped_column(TZ)
     # só o que o cliente escreveu (painel, palavras, temas); `comentario` segue sendo o resumo da etapa 2
     comentario_cliente: Mapped[str] = mapped_column(Text, server_default="")
+    # etapa 4b: análise pela IA (null = não passa pela IA)
+    ia_situacao: Mapped[str | None] = mapped_column(Text)  # pendente | analisada | falhou | limite
+    ia_temas: Mapped[list | None] = mapped_column(JSONB(none_as_null=True))  # [{tema, sentimento}]
+    ia_sentimento: Mapped[str | None] = mapped_column(Text)
+    ia_resumo: Mapped[str | None] = mapped_column(Text)
+    ia_modelo: Mapped[str | None] = mapped_column(Text)
+    ia_em: Mapped[datetime | None] = mapped_column(TZ)
+    ia_tentativas: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    ia_reservada_em: Mapped[datetime | None] = mapped_column(TZ)
+    ia_texto_hash: Mapped[str | None] = mapped_column(Text)
+    # colunas geradas (regra em classe_tema, migração 0007)
+    temas_reclamacao: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), Computed("temas_reclamacao(temas, ia_temas, ia_situacao, grupo)", persisted=True))
+    temas_elogio: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), Computed("temas_elogio(temas, ia_temas, ia_situacao, grupo)", persisted=True))
 
 
 class Importacao(Base):
@@ -480,3 +500,35 @@ class Imagem(Base):
     tamanho: Mapped[int] = mapped_column(Integer)
     sha256: Mapped[str] = mapped_column(Text)
     criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+# ---- etapa 4b: IA, picos e resumo semanal ----------------------------------------
+
+class IaUsoMensal(Base):
+    __tablename__ = "ia_uso_mensal"
+    conta_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, server_default=CONTA_ATUAL)
+    mes: Mapped[date] = mapped_column(Date, primary_key=True)  # dia 1 do mês (São Paulo)
+    analises: Mapped[int] = mapped_column(Integer, server_default="0")
+    tokens_entrada: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    tokens_saida: Mapped[int] = mapped_column(BigInteger, server_default="0")
+
+
+class AlertaPico(Base):
+    __tablename__ = "alertas_pico"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    tema: Mapped[str] = mapped_column(Text)
+    reclamacoes: Mapped[int] = mapped_column(Integer)
+    media_anterior: Mapped[Decimal] = mapped_column(Numeric(6, 1))
+    detectado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    enviado_em: Mapped[datetime | None] = mapped_column(TZ)
+    destinatarios: Mapped[int] = mapped_column(Integer, server_default="0")
+
+
+class ResumoSemanal(Base):
+    __tablename__ = "resumos_semanais"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    semana: Mapped[date] = mapped_column(Date)  # a segunda-feira da semana resumida
+    enviado_em: Mapped[datetime | None] = mapped_column(TZ)
+    destinatarios: Mapped[int] = mapped_column(Integer, server_default="0")

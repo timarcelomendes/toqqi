@@ -8,6 +8,10 @@ from pydantic_core import PydanticCustomError
 from toqqi.core.validacao import Documento, EmailOpcional, Telefone, TextoAte, dominio_valido
 
 
+class IaIn(BaseModel):
+    analise_respostas: bool
+
+
 class SegurancaIn(BaseModel):
     sessao_minutos: Annotated[int, Field(ge=30, le=1440)]
     dominios: list[Annotated[str, Field(max_length=253)]] = Field(default_factory=list, max_length=50)

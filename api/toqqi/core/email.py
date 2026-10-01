@@ -145,25 +145,71 @@ def enviar_mensagem(m: Mensagem) -> None:
         raise FalhaEnvio(traduzir_falha(e)) from e
 
 
-def _html(paragrafos: list[str], botao: tuple[str, str] | None) -> str:
-    partes = [f"<p>{html_lib.escape(p)}</p>" for p in paragrafos]
+@dataclass(frozen=True)
+class Titulo:
+    """Título de seção num e-mail do sistema (ex.: resumo semanal)."""
+    texto: str
+
+
+@dataclass(frozen=True)
+class Link:
+    """Parágrafo que é um link (ex.: uma ação do plano, no resumo semanal)."""
+    texto: str
+    url: str
+
+
+Paragrafo = str | Titulo | Link
+
+
+def _parte_html(p: Paragrafo) -> str:
+    if isinstance(p, Titulo):
+        return f'<p style="margin:20px 0 6px;font-size:16px;font-weight:bold">{html_lib.escape(p.texto)}</p>'
+    if isinstance(p, Link):
+        return f'<p><a href="{html_lib.escape(p.url)}" style="color:#1f6feb">{html_lib.escape(p.texto)}</a></p>'
+    return f"<p>{html_lib.escape(p)}</p>"
+
+
+def _parte_texto(p: Paragrafo) -> str:
+    if isinstance(p, Titulo):
+        return p.texto.upper()
+    if isinstance(p, Link):
+        return f"{p.texto}: {p.url}"
+    return p
+
+
+def _html(paragrafos: list[Paragrafo], botao: tuple[str, str] | None,
+          rodape: tuple[str, str, str] | None = None) -> str:
+    partes = [_parte_html(p) for p in paragrafos]
     if botao:
         rotulo, link = botao
         partes.append(
             f'<p><a href="{html_lib.escape(link)}" style="background:#1f6feb;color:#fff;'
             f'padding:10px 16px;border-radius:6px;text-decoration:none">{html_lib.escape(rotulo)}</a></p>'
-            f'<p style="color:#666;font-size:13px">Se o botão não funcionar, copie este endereço: '
+            # o endereço quebra em qualquer ponto: links longos (com filtros) não alargam o e-mail no celular
+            f'<p style="color:#666;font-size:13px;overflow-wrap:anywhere;word-break:break-all">'
+            f'Se o botão não funcionar, copie este endereço: '
             f"{html_lib.escape(link)}</p>"
         )
+    if rodape:
+        texto, rotulo, link = rodape
+        ancora = f'<a href="{html_lib.escape(link)}" style="color:#666">{html_lib.escape(rotulo)}</a>'
+        corpo = html_lib.escape(texto)
+        corpo = corpo.replace(html_lib.escape(rotulo), ancora, 1) if rotulo in texto else f"{corpo} {ancora}"
+        partes.append(f'<p style="color:#666;font-size:12px;border-top:1px solid #e5e7eb;padding-top:12px">{corpo}</p>')
     return '<div style="font-family:Arial,sans-serif;font-size:15px;color:#222">' + "".join(partes) + "</div>"
 
 
-def enviar(para: str, assunto: str, paragrafos: list[str], botao: tuple[str, str] | None = None) -> None:
-    texto = "\n\n".join(paragrafos)
+def enviar(para: str, assunto: str, paragrafos: list[Paragrafo], botao: tuple[str, str] | None = None,
+           rodape: tuple[str, str, str] | None = None) -> None:
+    """E-mail do sistema. `paragrafos`: textos (ou Titulo/Link); `botao` = (rótulo, link); `rodape` = (texto,
+    trecho do texto que vira link, link), ex.: o "Minha conta" dos e-mails do painel."""
+    texto = "\n\n".join(_parte_texto(p) for p in paragrafos)
     if botao:
         texto += f"\n\n{botao[0]}: {botao[1]}"
     texto += "\n\nEquipe Toqqi"
-    m = Mensagem(para=para, assunto=assunto, texto=texto, html=_html(paragrafos, botao))
+    if rodape:
+        texto += f"\n\n{rodape[0]} {rodape[2]}"
+    m = Mensagem(para=para, assunto=assunto, texto=texto, html=_html(paragrafos, botao, rodape))
     try:
         provedor().enviar(m)
     except Exception:  # noqa: BLE001 - e-mail não pode derrubar o fluxo

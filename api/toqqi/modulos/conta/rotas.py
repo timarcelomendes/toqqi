@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, File, Response, UploadFile
 from toqqi.core.deps import Contexto, requer
 from toqqi.modulos.conta import dados as dados_empresa
 from toqqi.modulos.conta import servico
-from toqqi.modulos.conta.esquemas import DadosEmpresaIn, SegurancaIn
+from toqqi.modulos.conta.esquemas import DadosEmpresaIn, IaIn, SegurancaIn
+from toqqi.modulos.ia import servico as ia
 from toqqi.modulos.imagens.servico import ler_envio
 
 router = APIRouter(prefix="/conta", tags=["conta"])
@@ -42,3 +43,20 @@ def trocar_logo(arquivo: UploadFile = File(...), ctx: Contexto = Depends(GERENCI
 def remover_logo(ctx: Contexto = Depends(GERENCIAR)):
     dados_empresa.remover_logo(ctx)
     return Response(status_code=204)
+
+
+# ---- IA (Configurações › IA) --------------------------------------------------------
+
+@router.get("/ia")
+def obter_ia(ctx: Contexto = Depends(GERENCIAR)):
+    return ia.obter(ctx)
+
+
+@router.put("/ia")
+def salvar_ia(dados: IaIn, ctx: Contexto = Depends(GERENCIAR)):
+    return ia.salvar(ctx, dados.analise_respostas)
+
+
+@router.post("/ia/analisar-recentes")
+def analisar_recentes(ctx: Contexto = Depends(GERENCIAR)):
+    return ia.analisar_recentes(ctx)

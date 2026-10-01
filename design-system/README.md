@@ -96,6 +96,30 @@ Use sempre estes nomes no código (`bg-superficie`, `text-texto-suave`…), nunc
 
 O modo escuro é ligado pela classe `.dark` no `<html>`.
 
+### Cores de gráfico
+
+Só para as marcas dos gráficos (barras, linhas, pontos), nunca para texto: valores e nomes ficam nas cores de texto, ao lado de uma marca colorida.
+
+| Token | Claro | Escuro | Uso |
+|---|---|---|---|
+| `grafico-serie` | `#2A78D6` | `#3987E5` | Série única (evolução do NPS, barras de um valor) |
+| `grafico-promotor` | `#059669` | `#059669` | Promotores e positivo |
+| `grafico-neutro` | `#F59E0B` | `#F59E0B` | Neutros |
+| `grafico-detrator` | `#DC2626` | `#EF4444` | Detratores e negativo |
+| `grafico-tema-1` | `#2A78D6` | `#3987E5` | Tema Prazo e entrega |
+| `grafico-tema-2` | `#EB6834` | `#D95926` | Tema Produto e avarias |
+| `grafico-tema-3` | `#1BAF7A` | `#199E70` | Tema Atendimento |
+| `grafico-tema-4` | `#EDA100` | `#C98500` | Tema Preço e condições |
+| `grafico-tema-5` | `#E87BA4` | `#D55181` | Tema Comunicação |
+| `grafico-tema-6` | `#008300` | `#008300` | Tema Sistema e pedidos |
+| `grafico-cinza` | `#94A3B8` | `#8B95A5` | Neutro do sentimento (nem elogio nem reclamação) |
+
+- **A cor segue o tema (ou o grupo da nota), nunca a posição**: filtrar ou reordenar não troca a cor de ninguém.
+- **Sentimento** (análise da IA), igual nos selos e nas barras: positivo verde (`grafico-promotor`), neutro cinza
+  (`grafico-cinza`), misto âmbar (`grafico-neutro`) e negativo vermelho (`grafico-detrator`), sempre com o nome escrito.
+  O cinza é de propósito (o meio da escala) e fica separado do verde e do âmbar vizinhos no validador.
+- As seis cores dos temas foram conferidas com o validador de paleta nos dois modos (separação para daltonismo entre vizinhas e brilho). No claro, as dos temas 3, 4 e 5 ficam abaixo de 3:1 com a superfície: todo gráfico que as usa tem legenda escrita e a mesma informação em tabela.
+
 ---
 
 ## 3. Tipografia
@@ -144,15 +168,17 @@ Quem pede movimento reduzido no sistema operacional tem todas as animações pra
 | `Selecao` | Escolher um valor numa lista. |
 | `CaixaSelecao` | Marcar/desmarcar uma opção (aceite, filtros). |
 | `Interruptor` | Liga/desliga com efeito imediato (configurações). |
-| `Abas` | Alternar entre seções da mesma tela. |
+| `BotoesSegmentados` | Escolher uma opção entre poucas, todas à vista, com cara de botões lado a lado (ex.: Motorista / Rota / Filial). São rádios nativos: o Tab entra na opção escolhida e as setas trocam a opção. |
+| `Abas` | Alternar entre seções da mesma tela. Com muitas abas, a lista rola de lado (celular) e a borda esmaece onde há mais abas. |
 | `MenuSuspenso` | Ações secundárias agrupadas (menu "⋯"). |
 | `Modal` | Tarefa curta que bloqueia a tela. Tamanhos `sm`, `md`, `lg`. |
 | `DialogoConfirmacao` | Confirmar ações, sobretudo as destrutivas. |
 | `Alerta` | Mensagem fixa na página. Tons: `info`, `sucesso`, `atencao`, `erro`. |
 | `Avisos` | Avisos temporários (toasts) depois de uma ação. |
 | `Etiqueta` | Status curto (ativa, pausada, rascunho), com ponto opcional. |
-| `Tabela` | Listas de registros. |
-| `Paginacao` | Navegar entre páginas de uma lista. |
+| `Tabela` | Listas de registros. Com `densa`, células mais justas e títulos que quebram linha (tabelas com muitas colunas, como as dos relatórios). |
+| `Paginacao` | Navegar entre páginas de uma lista. Trocar de página leva a tela ao começo da lista (o bloco onde a paginação está), não ao topo da página; dentro de uma caixa com rolagem própria (corpo de uma janela modal), a caixa volta ao começo. |
+| `Medidor` | Quanto de um limite já foi usado (X de Y), como as análises de IA do mês. `role="meter"`; fica âmbar perto do limite e vermelho no limite. Os números ficam escritos ao lado. |
 | `Carregando` | Esqueleto enquanto os dados chegam. |
 | `EstadoVazio` | Lista sem itens: título, descrição, ícone e ação. |
 

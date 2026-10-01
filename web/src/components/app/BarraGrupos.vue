@@ -16,11 +16,14 @@ const props = withDefaults(
     promotores: number
     /** Porcentagens prontas da API (uma casa). Sem elas, calculamos pelas quantidades. */
     pct?: { detratores: number; neutros: number; promotores: number } | null
-    legenda?: 'completa' | 'compacta'
+    /** "nenhuma": só a barra (tabelas e listas; os números ficam na linha e na dica). */
+    legenda?: 'completa' | 'compacta' | 'nenhuma'
+    /** Barra mais fina (linhas de tabela). */
+    fina?: boolean
     /** Link de cada grupo (ex.: lista de respostas filtrada). */
     linkGrupo?: (g: GrupoNota) => RouteLocationRaw | undefined
   }>(),
-  { tipo: 'nps', legenda: 'completa', pct: null, linkGrupo: undefined },
+  { tipo: 'nps', legenda: 'completa', pct: null, linkGrupo: undefined, fina: false },
 )
 
 const ROTULOS: Record<'nps' | 'csat', Record<Chave, { nome: string; um: string; notas: string; grupo: GrupoNota }>> = {
@@ -89,7 +92,7 @@ const dica = computed(() => grupos.value.find((g) => g.chave === ativo.value) ??
 <template>
   <div class="flex flex-col gap-3">
     <div ref="barra" class="relative" @pointerleave="ativo = null">
-      <div class="flex h-3.5 w-full gap-0.5" role="img" :aria-label="resumo">
+      <div class="flex w-full gap-0.5" :class="fina ? 'h-2' : 'h-3.5'" role="img" :aria-label="resumo">
         <template v-if="total">
           <div
             v-for="(g, i) in visiveis"
@@ -134,7 +137,7 @@ const dica = computed(() => grupos.value.find((g) => g.chave === ativo.value) ??
         </li>
       </ul>
     </div>
-    <ul v-else class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+    <ul v-else-if="legenda === 'compacta'" class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
       <li v-for="g in grupos" :key="g.chave">
         <component
           :is="g.link ? RouterLink : 'span'"

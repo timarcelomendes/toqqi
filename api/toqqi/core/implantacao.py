@@ -22,7 +22,7 @@ def garantir_papel_app() -> None:
     if not cfg.APP_DB_PASSWORD:
         return
     papel = cfg.APP_DB_ROLE  # já validado no config (só [a-z0-9_])
-    dono = create_engine(cfg.url_migracao, future=True)
+    dono = create_engine(cfg.url_migracao, future=True, hide_parameters=True)
     try:
         with dono.begin() as c:
             existe = c.scalar(text("select 1 from pg_roles where rolname = :p"), {"p": papel})

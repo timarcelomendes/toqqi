@@ -62,10 +62,11 @@ describe('menu lateral recolhível', () => {
     const respostas = w.findAll('a').find((a) => a.text().includes('Respostas'))!
     expect(respostas.find('.sr-only').text()).toBe('Respostas')
     expect(respostas.find('[aria-hidden="true"].pointer-events-none').text()).toBe('Respostas')
-    // "em breve" vira parte do nome, sem o selo
+    // Relatórios ficou pronto na 4b: sem "em breve" no nome nem no selo
     const relatorios = w.findAll('a').find((a) => a.text().includes('Relatórios'))!
-    expect(relatorios.find('.sr-only').text()).toBe('Relatórios (em breve)')
-    expect(relatorios.text()).not.toContain('em breve Relatórios')
+    expect(relatorios.find('.sr-only').text()).toBe('Relatórios')
+    expect(relatorios.text()).not.toContain('em breve')
+    expect(relatorios.attributes('href')).toBe('/relatorios/empresas')
     // o título "Administração" some da tela, mas fica para leitores de tela
     expect(w.find('p.sr-only').text()).toBe('Administração')
     // logo compacto

@@ -49,6 +49,8 @@ class PedirAcessoIn(BaseModel):
 class EuAlterarIn(BaseModel):
     nome: Annotated[Texto, Field(min_length=2, max_length=120)] | None = None
     cargo: Annotated[Texto, Field(max_length=80)] | None = None
+    recebe_resumo_semanal: bool | None = None
+    recebe_alertas: bool | None = None
 
 
 class TrocarSenhaIn(BaseModel):

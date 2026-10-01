@@ -7,16 +7,25 @@ import { ApiError, empresasApi, mensagemDoErro, type Empresa, type Referencia } 
 import { useSessaoStore } from '@/stores/sessao'
 
 const props = withDefaults(
-  defineProps<{ rotulo: string; podeCriar?: boolean; erro?: string | null; placeholder?: string; rotuloOculto?: boolean; opcional?: boolean }>(),
-  { placeholder: 'Digite para buscar' },
+  defineProps<{
+    rotulo: string
+    podeCriar?: boolean
+    erro?: string | null
+    placeholder?: string
+    rotuloOculto?: boolean
+    opcional?: boolean
+    /** Outra fonte para a busca (ex.: Relatórios, para quem não vê os contatos). Sem ela, usa a lista de empresas. */
+    fonte?: (termo: string, sinal: AbortSignal) => Promise<Referencia[]>
+  }>(),
+  { placeholder: 'Digite para buscar', fonte: undefined },
 )
 const modelo = defineModel<Referencia | null>({ required: true })
 const emit = defineEmits<{ criada: [Empresa] }>()
 
 const id = `empresa-${useId()}`
 const sessao = useSessaoStore()
-/** A lista de empresas pede contatos.ver: sem ela, o campo só mostra o valor (e deixa limpar). */
-const podeBuscar = computed(() => sessao.pode('contatos.ver'))
+/** A lista de empresas pede contatos.ver: sem ela (e sem outra fonte), o campo só mostra o valor (e deixa limpar). */
+const podeBuscar = computed(() => !!props.fonte || sessao.pode('contatos.ver'))
 /** Texto quando não há empresa: nos filtros ("Todas") vale o próprio placeholder. */
 const textoVazio = computed(() => (props.placeholder === 'Todas' ? 'Todas' : 'Nenhuma'))
 const texto = ref(modelo.value?.nome ?? '')
@@ -52,8 +61,9 @@ async function buscar() {
   controle = new AbortController()
   buscando.value = true
   try {
-    const r = await empresasApi.listar({ busca: termo.value, por_pagina: 8, ativa: 'todas' }, controle.signal)
-    resultados.value = r.itens.map((e) => ({ id: e.id, nome: e.nome }))
+    resultados.value = props.fonte
+      ? await props.fonte(termo.value, controle.signal)
+      : (await empresasApi.listar({ busca: termo.value, por_pagina: 8, ativa: 'todas' }, controle.signal)).itens.map((e) => ({ id: e.id, nome: e.nome }))
     ativo.value = resultados.value.length ? 0 : podeOferecerCriar.value ? 0 : -1
   } catch (e) {
     if (!(e instanceof DOMException)) resultados.value = []

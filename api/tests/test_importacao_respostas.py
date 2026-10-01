@@ -23,6 +23,7 @@ from util import (
     sql,
 )
 
+from toqqi import tarefas
 from toqqi.core import relogio
 from toqqi.modulos.importacao.respostas import interpretar_nota
 
@@ -387,3 +388,38 @@ def test_duas_importacoes_ao_mesmo_tempo_nao_duplicam(client, admin, monkeypatch
     assert [r.status_code for r in resultados] == [200, 200], [r.text for r in resultados]
     assert sorted((r.json()["novos"], r.json()["ignorados"]) for r in resultados) == [(0, 2), (2, 0)]
     assert lista_respostas(client, h)["total"] == 2
+
+
+
+def test_reimportar_com_comentario_novo_refaz_a_analise_da_ia(client, admin):
+    """A análise da IA descrevia o comentário antigo: com comentário novo na reimportação, volta para pendente (IA da
+    conta ativa) ou é apagada (IA desligada)."""
+    h = admin["h"]
+    criar_contato(client, h, nome="Paula", email="paula@x.com.br")
+    cab = ["email", "data", "nota", "comentario"]
+    dia = (relogio.hoje() - timedelta(days=5)).strftime("%d/%m/%Y")
+    _importar(client, h, [cab, ["paula@x.com.br", dia, "2", "O frete ficou caro demais"]])
+    rid = lista_respostas(client, h)["itens"][0]["id"]
+    assert client.post(f"{API}/conta/ia/analisar-recentes", headers=h).json()["marcadas"] == 1
+    assert tarefas.executar("ia")["ia"]["analisadas"] == 1
+
+    def ver() -> dict:
+        return client.get(f"{API}/respostas/{rid}", headers=h).json()
+
+    assert (ver()["ia"]["situacao"], ver()["ia"]["sentimento"]) == ("analisada", "negativo")
+    # mesmo comentário: a análise fica
+    _importar(client, h, [cab, ["paula@x.com.br", dia, "3", "O frete ficou caro demais"]], atualizar_existentes=True)
+    assert ver()["ia"]["situacao"] == "analisada"
+    # comentário novo: volta para a fila, sem a análise antiga
+    _importar(client, h, [cab, ["paula@x.com.br", dia, "10", "Vendedor muito atencioso, adorei"]],
+              atualizar_existentes=True)
+    x = ver()
+    assert (x["ia"]["situacao"], x["ia"]["sentimento"], x["ia"]["resumo"], x["ia"]["temas"]) == (
+        "pendente", None, None, None)
+    assert x["temas"] == ["atendimento"]
+    assert tarefas.executar("ia")["ia"]["analisadas"] == 1
+    assert (ver()["ia"]["sentimento"], ver()["ia"]["resumo"]) == ("positivo", "Vendedor muito atencioso, adorei")
+    # IA desligada na conta: o comentário novo apaga a análise
+    assert client.put(f"{API}/conta/ia", headers=h, json={"analise_respostas": False}).status_code == 200
+    _importar(client, h, [cab, ["paula@x.com.br", dia, "4", "Atrasou"]], atualizar_existentes=True)
+    assert ver()["ia"] is None

@@ -3,6 +3,7 @@
 import type {
   CanalManual,
   DadosAnaliseResposta,
+  FiltroSentimento,
   FiltrosRespostas,
   GrupoNota,
   Id,
@@ -14,6 +15,7 @@ import type {
 import { formatarData, formatarDataHora, hojeIso } from '@/utils/datas'
 import { dataIsoValida, ehPreset, intervaloDoPeriodo, type PresetPeriodo } from '@/utils/periodo'
 import type { Tom } from '@/utils/rotulos'
+import { ehFiltroSentimento } from './ia'
 
 // ── Categorias (grupo da nota) ──────────────────────────────────────────────
 
@@ -139,8 +141,28 @@ export interface FiltrosTela {
   /** Só respostas de empresas ativas (as sem empresa continuam), como o "Só empresas ativas" do painel. */
   so_ativos: boolean
   contato_id: Id | ''
+  /** Etapa 4b: sentimento da IA e "só reclamações". */
+  sentimento: FiltroSentimento | ''
+  reclamacao: boolean
+  /** Etapa 4b: contexto da entrega (vem de Relatórios › Entregas). */
+  motorista: string
+  rota: string
+  filial: string
+  transportadora: string
   pagina: number
 }
+
+/** Campos do contexto da entrega que filtram as respostas (Relatórios › Entregas → "Ver respostas"). */
+export const CAMPOS_CONTEXTO_FILTRO = ['motorista', 'rota', 'filial', 'transportadora'] as const
+export type CampoContextoFiltro = (typeof CAMPOS_CONTEXTO_FILTRO)[number]
+export const ROTULOS_CONTEXTO_FILTRO: Record<CampoContextoFiltro, string> = {
+  motorista: 'Motorista',
+  rota: 'Rota',
+  filial: 'Filial',
+  transportadora: 'Transportadora',
+}
+/** A API aceita até 120 caracteres em cada um. */
+export const LIMITE_CONTEXTO = 120
 
 export const FILTROS_PADRAO: Readonly<FiltrosTela> = Object.freeze<FiltrosTela>({
   busca: '',
@@ -157,6 +179,12 @@ export const FILTROS_PADRAO: Readonly<FiltrosTela> = Object.freeze<FiltrosTela>(
   arquivadas: 'false',
   so_ativos: false,
   contato_id: '',
+  sentimento: '',
+  reclamacao: false,
+  motorista: '',
+  rota: '',
+  filial: '',
+  transportadora: '',
   pagina: 1,
 })
 
@@ -200,6 +228,12 @@ export function filtrosDaQuery(q: Consulta): FiltrosTela {
     arquivadas: arquivadas === 'true' || arquivadas === 'todas' ? arquivadas : 'false',
     so_ativos: um(q, 'so_ativos') === 'true',
     contato_id: id(um(q, 'contato_id')),
+    sentimento: ehFiltroSentimento(um(q, 'sentimento')) ? (um(q, 'sentimento') as FiltroSentimento) : '',
+    reclamacao: um(q, 'reclamacao') === 'true',
+    motorista: um(q, 'motorista').slice(0, LIMITE_CONTEXTO),
+    rota: um(q, 'rota').slice(0, LIMITE_CONTEXTO),
+    filial: um(q, 'filial').slice(0, LIMITE_CONTEXTO),
+    transportadora: um(q, 'transportadora').slice(0, LIMITE_CONTEXTO),
     pagina: Number.isFinite(pagina) && pagina > 1 ? pagina : 1,
   }
 }
@@ -223,6 +257,9 @@ export function queryDosFiltros(f: FiltrosTela): Record<string, string> {
   if (f.arquivadas !== 'false') q.arquivadas = f.arquivadas
   if (f.so_ativos) q.so_ativos = 'true'
   if (f.contato_id !== '') q.contato_id = String(f.contato_id)
+  if (f.sentimento) q.sentimento = f.sentimento
+  if (f.reclamacao) q.reclamacao = 'true'
+  for (const c of CAMPOS_CONTEXTO_FILTRO) if (f[c].trim()) q[c] = f[c].trim()
   if (f.pagina > 1) q.pagina = String(f.pagina)
   return q
 }
@@ -243,16 +280,28 @@ export function filtrosParaApi(f: FiltrosTela, hoje: string = hojeIso()): Filtro
   if (f.perfil_id !== '') r.perfil_id = f.perfil_id
   if (f.contato_id !== '') r.contato_id = f.contato_id
   if (f.so_ativos) r.so_ativos = true
+  if (f.sentimento) r.sentimento = f.sentimento
+  if (f.reclamacao) r.reclamacao = true
+  for (const c of CAMPOS_CONTEXTO_FILTRO) if (f[c].trim()) r[c] = f[c].trim().slice(0, LIMITE_CONTEXTO)
   return r
 }
 
-/** Quantos filtros da área "Filtros" estão ligados (busca, período e contato ficam de fora: aparecem na tela). */
+/**
+ * Quantos filtros da área "Filtros" estão ligados (busca, período, contato e contexto da entrega ficam de fora:
+ * aparecem na tela, em "Mostrando").
+ */
 export function contarFiltrosAtivos(f: FiltrosTela): number {
   return (
-    [f.categoria, f.tipo_nota, f.grupo_id, f.empresa_id, f.tema, f.perfil_id].filter((v) => v !== '').length +
+    [f.categoria, f.tipo_nota, f.grupo_id, f.empresa_id, f.tema, f.perfil_id, f.sentimento].filter((v) => v !== '').length +
     (f.arquivadas !== 'false' ? 1 : 0) +
-    (f.so_ativos ? 1 : 0)
+    (f.so_ativos ? 1 : 0) +
+    (f.reclamacao ? 1 : 0)
   )
+}
+
+/** Os filtros de contexto da entrega ligados (para os chips de "Mostrando"). */
+export function contextoNoFiltro(f: Pick<FiltrosTela, CampoContextoFiltro>): { campo: CampoContextoFiltro; rotulo: string; valor: string }[] {
+  return CAMPOS_CONTEXTO_FILTRO.filter((c) => f[c].trim()).map((c) => ({ campo: c, rotulo: ROTULOS_CONTEXTO_FILTRO[c], valor: f[c].trim() }))
 }
 
 /** Os mesmos filtros (comparando como ficam no endereço, então 1 e "1" são iguais). */

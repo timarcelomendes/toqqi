@@ -23,6 +23,8 @@ def _vazio_none(v):
 Opcional = BeforeValidator(_vazio_none)
 Busca = Annotated[Annotated[str, Field(max_length=100)] | None, Opcional]
 Id = Annotated[int | None, Opcional]
+Contexto = Annotated[Annotated[str, Field(max_length=120)] | None, Opcional]  # valor do contexto do pedido
+SENTIMENTOS_FILTRO = ("positivo", "neutro", "negativo", "misto", "sem_analise")
 
 
 class FiltrosRespostas(BaseModel):
@@ -43,6 +45,13 @@ class FiltrosRespostas(BaseModel):
     arquivadas: Annotated[Literal["false", "true", "todas"] | None, Opcional] = None  # vazio = false
     # como no painel: tira respostas de empresas inativas (respostas sem empresa sempre contam)
     so_ativos: Annotated[bool | None, Opcional] = None  # vazio = false
+    # etapa 4b
+    sentimento: Annotated[Literal[SENTIMENTOS_FILTRO] | None, Opcional] = None  # type: ignore[valid-type]
+    reclamacao: Annotated[bool | None, Opcional] = None
+    motorista: Contexto = None
+    rota: Contexto = None
+    filial: Contexto = None
+    transportadora: Contexto = None
 
 
 def _nota_nps(v: int) -> int:

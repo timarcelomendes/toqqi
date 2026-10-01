@@ -81,7 +81,7 @@ def contexto_atual(
             perfil=usuario.perfil,
             superadmin=eh_superadmin(usuario.email) and bool(usuario.email_confirmado),
             permissoes=permissoes,
-            usuario=usuario_json(usuario),
+            usuario=usuario_json(usuario, preferencias=True),
             conta=conta_json(conta),
         )
 

@@ -56,6 +56,8 @@ import { faixaNps, formatarMedia2, formatarNps } from '@/modulos/painel/logica'
 import ModalRegistrarResposta from './ModalRegistrarResposta.vue'
 import PainelAnalise from './PainelAnalise.vue'
 import SeloNota from './SeloNota.vue'
+import SeloSentimento from './SeloSentimento.vue'
+import { OPCOES_SENTIMENTO, analisada, mostrarFiltrosIa } from './ia'
 import {
   CATEGORIAS,
   FILTROS_PADRAO,
@@ -63,6 +65,7 @@ import {
   TEMAS_PADRAO,
   categoriasDoTipo,
   contarFiltrosAtivos,
+  contextoNoFiltro,
   filtrosDaQuery,
   filtrosParaApi,
   mesmaBusca,
@@ -150,10 +153,25 @@ watch(
 // Datas escolhidas à mão: as duas, válidas e na ordem; senão, avisa no campo e não busca de novo.
 const erroDatas = computed(() => (filtros.periodo === 'personalizado' ? erroPeriodoEscolhido(filtros.de, filtros.ate) : null))
 const qtdFiltros = computed(() => contarFiltrosAtivos(filtros))
-const temFiltro = computed(() => qtdFiltros.value > 0 || !!filtros.busca || filtros.periodo !== FILTROS_PADRAO.periodo || filtros.contato_id !== '')
+/** Contexto da entrega no filtro (vem de Relatórios › Entregas): aparece em "Mostrando", como o contato. */
+const contexto = computed(() => contextoNoFiltro(filtros))
+const temFiltro = computed(
+  () => qtdFiltros.value > 0 || !!filtros.busca || filtros.periodo !== FILTROS_PADRAO.periodo || filtros.contato_id !== '' || contexto.value.length > 0,
+)
 
 function limparFiltros() {
-  Object.assign(filtros, { ...FILTROS_PADRAO, busca: filtros.busca, periodo: filtros.periodo, de: filtros.de, ate: filtros.ate, contato_id: filtros.contato_id })
+  Object.assign(filtros, {
+    ...FILTROS_PADRAO,
+    busca: filtros.busca,
+    periodo: filtros.periodo,
+    de: filtros.de,
+    ate: filtros.ate,
+    contato_id: filtros.contato_id,
+    motorista: filtros.motorista,
+    rota: filtros.rota,
+    filial: filtros.filial,
+    transportadora: filtros.transportadora,
+  })
 }
 function limparTudo() {
   busca.value = ''
@@ -258,6 +276,15 @@ const faixa = computed(() => (nps.value ? faixaNps(nps.value.faixa, nps.value.va
 function linkCategoria(g: GrupoNota) {
   return { path: '/respostas', query: { ...queryDosFiltros({ ...filtros, categoria: g, pagina: 1 }) } }
 }
+
+// ── IA (etapa 4b): "Sentimento" e "Só reclamações" com a IA ativa, com análises na lista ou já no endereço ──
+const mostrarIa = computed(() =>
+  mostrarFiltrosIa({
+    iaAtiva: sessao.conta?.ia_ativa,
+    temAnalise: lista.value.some((r) => analisada(r.ia)),
+    filtroLigado: !!filtros.sentimento || filtros.reclamacao,
+  }),
+)
 
 // ── Opções dos filtros ──────────────────────────────────────────────────────
 const opcoesCategoria = computed(() => categoriasDoTipo(filtros.tipo_nota).map((g) => ({ valor: g, rotulo: CATEGORIAS[g].plural })))
@@ -488,16 +515,24 @@ onBeforeUnmount(() => {
           :dica="podeVerCadastros ? undefined : 'Seu perfil não tem acesso à lista de perfis.'"
         />
         <Selecao v-model="filtros.data_por" rotulo="Contar o período pela" :opcoes="opcoesDataPor" :desabilitado="filtros.periodo === 'tudo'" :dica="dicaDataPor" />
+        <Selecao v-if="mostrarIa" v-model="filtros.sentimento" rotulo="Sentimento (IA)" :opcoes="OPCOES_SENTIMENTO" vazio="Todos" />
         <!-- Como no painel: tira as respostas de empresas desativadas (as sem empresa continuam). -->
-        <div class="flex min-h-11 items-center sm:col-span-2 lg:col-span-4">
+        <div class="flex min-h-11 flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:gap-8 lg:col-span-4">
           <Interruptor v-model="filtros.so_ativos" rotulo="Só empresas ativas" class="w-full sm:w-fit sm:items-center" />
+          <Interruptor
+            v-if="mostrarIa"
+            v-model="filtros.reclamacao"
+            rotulo="Só reclamações"
+            class="w-full sm:w-fit sm:items-center"
+            :descricao="filtros.tema ? 'Reclamações do tema escolhido.' : undefined"
+          />
         </div>
         <div v-if="qtdFiltros" class="sm:col-span-2 lg:col-span-4">
           <Botao variante="fantasma" tamanho="sm" class="!h-10" @click="limparFiltros">Limpar filtros</Botao>
         </div>
       </div>
 
-      <div v-if="filtros.contato_id !== '' || filtros.categoria" class="flex flex-wrap items-center gap-2 text-sm">
+      <div v-if="filtros.contato_id !== '' || filtros.categoria || contexto.length" class="flex flex-wrap items-center gap-2 text-sm">
         <span class="text-texto-fraco">Mostrando:</span>
         <span v-if="filtros.contato_id !== ''" class="inline-flex min-h-9 items-center gap-1 rounded-xl bg-marca-suave pl-3 pr-1 font-semibold text-marca-texto">
           Respostas de {{ nomeContato }}
@@ -508,6 +543,18 @@ onBeforeUnmount(() => {
         <span v-if="filtros.categoria" class="inline-flex min-h-9 items-center gap-1 rounded-xl bg-superficie-2 pl-3 pr-1 font-semibold text-texto">
           {{ CATEGORIAS[filtros.categoria].plural }}
           <button type="button" class="flex size-8 items-center justify-center rounded-lg hover:bg-borda" aria-label="Tirar o filtro de categoria" @click="filtros.categoria = ''">
+            <X class="size-4" aria-hidden="true" />
+          </button>
+        </span>
+        <!-- Contexto da entrega (de Relatórios › Entregas) -->
+        <span v-for="c in contexto" :key="c.campo" class="inline-flex min-h-9 max-w-full items-center gap-1 rounded-xl bg-superficie-2 pl-3 pr-1 font-semibold text-texto" data-chip-contexto>
+          <span class="min-w-0 truncate"><span class="font-normal text-texto-suave">{{ c.rotulo }}:</span> {{ c.valor }}</span>
+          <button
+            type="button"
+            class="flex size-8 shrink-0 items-center justify-center rounded-lg hover:bg-borda"
+            :aria-label="`Tirar o filtro de ${c.rotulo.toLowerCase()} (${c.valor})`"
+            @click="filtros[c.campo] = ''"
+          >
             <X class="size-4" aria-hidden="true" />
           </button>
         </span>
@@ -542,7 +589,8 @@ onBeforeUnmount(() => {
             <template #cel-comentario="{ linha: r }">
               <p v-if="r.comentario" class="line-clamp-2 text-texto">{{ r.comentario }}</p>
               <p v-else class="text-texto-fraco">Sem comentário</p>
-              <div v-if="r.temas?.length" class="mt-1.5 flex flex-wrap gap-1">
+              <div v-if="r.temas?.length || analisada(r.ia)" class="mt-1.5 flex flex-wrap gap-1">
+                <SeloSentimento :ia="r.ia" />
                 <Etiqueta v-for="t in r.temas" :key="t" tom="info">{{ rotuloTema(t, temas) }}</Etiqueta>
               </div>
             </template>
@@ -599,8 +647,9 @@ onBeforeUnmount(() => {
               </MenuSuspenso>
             </div>
             <p v-if="r.comentario" class="line-clamp-3 text-sm text-texto">{{ r.comentario }}</p>
-            <div v-if="r.temas?.length || r.arquivada" class="flex flex-wrap gap-1">
+            <div v-if="r.temas?.length || r.arquivada || analisada(r.ia)" class="flex flex-wrap gap-1">
               <Etiqueta v-if="r.arquivada" tom="neutro">Arquivada</Etiqueta>
+              <SeloSentimento :ia="r.ia" />
               <Etiqueta v-for="t in r.temas" :key="t" tom="info">{{ rotuloTema(t, temas) }}</Etiqueta>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-2">

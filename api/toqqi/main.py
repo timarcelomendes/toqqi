@@ -1,5 +1,5 @@
-"""Aplicação FastAPI do Toqqi (etapas 1 a 4a: acesso, equipe, cadastros, formulários, páginas públicas, envios,
-integrações, WhatsApp automático, respostas, planos de ação e painel)."""
+"""Aplicação FastAPI do Toqqi (etapas 1 a 4b: acesso, equipe, cadastros, formulários, páginas públicas, envios,
+integrações, WhatsApp automático, respostas, planos de ação, painel, IA por resposta e relatórios)."""
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -30,6 +30,7 @@ from toqqi.modulos.integracoes.rotas import router_chave as integracao
 from toqqi.modulos.painel.rotas import router as painel
 from toqqi.modulos.plataforma.rotas import router as plataforma
 from toqqi.modulos.publico.rotas import router as publico
+from toqqi.modulos.relatorios.rotas import router as relatorios
 from toqqi.modulos.respostas.rotas import router as respostas
 from toqqi.modulos.whatsapp.rotas import router as whatsapp
 from toqqi.modulos.whatsapp.rotas import router_publico as whatsapp_publico
@@ -89,7 +90,7 @@ def create_app() -> FastAPI:
 
     for r in (acesso, equipe, conta, auditoria, plataforma, cadastros, empresas, contatos, importacao,
               formularios, publico, envios, interno, integracoes, whatsapp, integracao, whatsapp_publico,
-              respostas, acoes, painel):
+              respostas, acoes, painel, relatorios):
         app.include_router(r, prefix=PREFIXO)
 
     @app.get(f"{PREFIXO}/saude", tags=["infra"])

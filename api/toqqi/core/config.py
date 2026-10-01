@@ -33,6 +33,13 @@ class Config(BaseSettings):
     WHATSAPP_GRAPH_VERSION: str = "v23.0"
     WHATSAPP_VERIFY_TOKEN: str = ""
     WHATSAPP_APP_SECRET: str = ""
+    # IA por resposta (OpenAI, Responses API). A chave é da plataforma: só no painel do Render (toqqi-api e
+    # toqqi-tarefas). Sem chave, a análise por IA fica desligada e os temas seguem por palavras-chave.
+    OPENAI_API_KEY: str = ""
+    IA_PROVEDOR: Literal["openai", "memoria", "desligado"] = "openai"
+    IA_MODELO: str = "gpt-5-mini"
+    IA_ESFORCO: str = "minimal"  # vazio = não manda `reasoning`
+    IA_BASE_URL: str = "https://api.openai.com"
     ALLOWED_ORIGINS: str = "http://localhost:5173"
     AUTO_MIGRATE: bool = True
     RATE_LIMIT_ENABLED: bool = True

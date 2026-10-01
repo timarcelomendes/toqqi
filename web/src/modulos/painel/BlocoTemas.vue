@@ -1,15 +1,18 @@
 <script setup lang="ts">
 // Assuntos mais citados nos comentários de NPS: barra = quantas vezes aparece; ao lado, a nota média de quem citou.
+// Etapa 4b: embaixo, quantas menções são reclamação e a variação das menções contra o período anterior (com seta,
+// por extenso).
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Tags } from 'lucide-vue-next'
+import { ArrowDownRight, ArrowUpRight, Minus, Tags } from 'lucide-vue-next'
 import type { Painel } from '@/api/tipos'
 import { formatarNumero } from '@/utils/formatos'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
-import { formatarMedia1, tomNotaMedia } from './logica'
+import { formatarMedia1, tomNotaMedia, variacaoMencoes } from './logica'
 
 const props = defineProps<{ temas: Painel['temas']; consulta: Record<string, string>; podeVerRespostas: boolean }>()
 const maior = computed(() => Math.max(1, ...props.temas.map((t) => t.mencoes)))
+const SETAS = { sobe: ArrowUpRight, desce: ArrowDownRight, igual: Minus }
 </script>
 
 <template>
@@ -39,6 +42,16 @@ const maior = computed(() => Math.max(1, ...props.temas.map((t) => t.mencoes)))
             <span class="w-10 shrink-0 text-right text-xs font-semibold tabular-nums text-texto-suave">{{ formatarNumero(t.mencoes) }}</span>
           </span>
           <span class="sr-only">{{ formatarNumero(t.mencoes) }} {{ t.mencoes === 1 ? 'menção' : 'menções' }}</span>
+          <span v-if="typeof t.reclamacoes === 'number' || variacaoMencoes(t.variacao)" class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-texto-fraco">
+            <span v-if="typeof t.reclamacoes === 'number'">
+              {{ formatarNumero(t.reclamacoes) }} {{ t.reclamacoes === 1 ? 'reclamação' : 'reclamações' }}
+            </span>
+            <span v-if="variacaoMencoes(t.variacao)" class="inline-flex items-center gap-0.5">
+              <component :is="SETAS[variacaoMencoes(t.variacao)!.direcao]" class="size-3.5" aria-hidden="true" />
+              <!-- por extenso: "+9" ao lado de "17 reclamações" parecia falar de reclamações, mas conta menções -->
+              <span>{{ variacaoMencoes(t.variacao)!.descricao }}</span>
+            </span>
+          </span>
         </component>
       </li>
     </ol>

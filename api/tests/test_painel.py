@@ -209,12 +209,19 @@ def test_painel_marco(client, cenario):
     assert at["receita_em_risco"] == {"valor": 1000.0, "empresas": 2, "sem_valor": 1}
 
     # temas (só NPS): prazo 3 (3, 8, 6 → 5,7); atendimento 2 (9,5); preço 2 (5,5); produto 1; sistema 1
+    # reclamações (sem IA: tema de detrator): prazo (3 e 6), preço (3), produto (0)
+    # variação: no período anterior (29/01–28/02) só "Demorou" (prazo, nota 3)
     assert p["temas"] == [
-        {"chave": "prazo_entrega", "rotulo": "Prazo e entrega", "mencoes": 3, "nota_media": 5.7},
-        {"chave": "atendimento", "rotulo": "Atendimento", "mencoes": 2, "nota_media": 9.5},
-        {"chave": "preco_condicoes", "rotulo": "Preço e condições", "mencoes": 2, "nota_media": 5.5},
-        {"chave": "produto_avarias", "rotulo": "Produto e avarias", "mencoes": 1, "nota_media": 0.0},
-        {"chave": "sistema_pedidos", "rotulo": "Sistema e pedidos", "mencoes": 1, "nota_media": 7.0},
+        {"chave": "prazo_entrega", "rotulo": "Prazo e entrega", "mencoes": 3, "nota_media": 5.7, "reclamacoes": 2,
+         "variacao": 2},
+        {"chave": "atendimento", "rotulo": "Atendimento", "mencoes": 2, "nota_media": 9.5, "reclamacoes": 0,
+         "variacao": 2},
+        {"chave": "preco_condicoes", "rotulo": "Preço e condições", "mencoes": 2, "nota_media": 5.5,
+         "reclamacoes": 1, "variacao": 2},
+        {"chave": "produto_avarias", "rotulo": "Produto e avarias", "mencoes": 1, "nota_media": 0.0,
+         "reclamacoes": 1, "variacao": 1},
+        {"chave": "sistema_pedidos", "rotulo": "Sistema e pedidos", "mencoes": 1, "nota_media": 7.0,
+         "reclamacoes": 0, "variacao": 1},
     ]
     assert [x["comentario"] for x in p["comentarios"]] == [
         "Motorista grosseiro", "Site lento", "Vendedor atencioso", "Atrasou de novo", "Produto quebrado",
@@ -249,7 +256,8 @@ def test_so_ativos_desligado(client, cenario):
     assert (p["atencao"]["acoes_abertas"], p["atencao"]["acoes_vencidas"]) == (6, 3)
     assert [x["empresa"]["nome"] for x in p["atencao"]["empresas"]] == [
         "Padaria Leste", "Atacado Norte", "Mercado Sul", "Loja Oeste"]
-    assert p["temas"][0] == {"chave": "prazo_entrega", "rotulo": "Prazo e entrega", "mencoes": 6, "nota_media": 7.8}
+    assert p["temas"][0] == {"chave": "prazo_entrega", "rotulo": "Prazo e entrega", "mencoes": 6, "nota_media": 7.8,
+                             "reclamacoes": 2, "variacao": 5}
     # 3 empresas: as 2 piores em "menor", a melhor em "maior", sem repetir
     assert [x["empresa"]["nome"] for x in p["empresas"]["menor"]] == ["Mercado Sul", "Atacado Norte"]
     assert [(x["empresa"]["nome"], x["nps"]) for x in p["empresas"]["maior"]] == [("Padaria Leste", 100)]
@@ -390,9 +398,9 @@ def test_permissoes_validacao_e_exportacao(client, cenario):
     r = client.get(f"{API}/painel/exportar.csv", headers=h, params=MARCO)
     assert r.status_code == 200 and r.content.startswith(b"\xef\xbb\xbf")
     linhas = list(csv.reader(io.StringIO(r.content.decode("utf-8-sig")), delimiter=";"))
-    assert linhas[0][0] == "Data" and linhas[0][-1] == "Arquivada"
+    assert linhas[0][0] == "Data" and linhas[0][-3:] == ["Arquivada", "Sentimento", "Resumo da IA"]
     assert len(linhas) == 1 + 9 + 4  # NPS e CSAT de março, só ativos, sem a arquivada
-    assert all(x[-1] == "Não" for x in linhas[1:]) and "Padaria Leste" not in r.content.decode("utf-8-sig")
+    assert all(x[-3] == "Não" for x in linhas[1:]) and "Padaria Leste" not in r.content.decode("utf-8-sig")
     todas = client.get(f"{API}/painel/exportar.csv", headers=h, params={**MARCO, "so_ativos": "false"})
     assert todas.content.decode("utf-8-sig").count("Padaria Leste") == 4
 

@@ -19,6 +19,8 @@ from toqqi.modulos.envios import descadastro
 from toqqi.modulos.envios.agradecimento import coletar_envios
 from toqqi.modulos.envios.esquemas import DescadastroPublicoIn
 from toqqi.modulos.envios.processamento import processar_lista
+from toqqi.modulos.ia.servico import analisar as analisar_com_ia
+from toqqi.modulos.ia.servico import coletar_analises
 from toqqi.modulos.imagens import servico as imagens
 from toqqi.modulos.integracoes.webhooks import coletar_entregas, entregar_lista
 from toqqi.modulos.publico import servico
@@ -40,11 +42,13 @@ def abrir_convite(request: Request, token: str):
 @router.post("/convites/{token}/responder", status_code=201)
 @limiter.limit(LIMITE_RESPONDER_CONVITE)
 def responder_convite(request: Request, token: str, dados: ResponderIn, tarefas: BackgroundTasks):
-    with coletar_envios() as envios, coletar_entregas() as entregas, coletar_alertas() as alertas:
+    with (coletar_envios() as envios, coletar_entregas() as entregas, coletar_alertas() as alertas,
+          coletar_analises() as analises):
         resultado = servico.responder_convite(token, dados.respostas, _ip(request))
     tarefas.add_task(processar_lista, envios)  # agradecimento, depois do commit
     tarefas.add_task(entregar_lista, entregas)  # webhooks de saída (resposta.criada)
     tarefas.add_task(enviar_alertas, alertas)  # "Alerta de risco" ao responsável (ação alta)
+    tarefas.add_task(analisar_com_ia, analises)  # análise do comentário pela IA
     return resultado
 
 
@@ -58,11 +62,13 @@ def abrir_formulario(request: Request, codigo: str,
 @router.post("/formularios/{codigo}/responder", status_code=201)
 @limiter.limit(LIMITE_RESPONDER_LINK)
 def responder_formulario(request: Request, codigo: str, dados: ResponderLinkIn, tarefas: BackgroundTasks):
-    with coletar_envios() as envios, coletar_entregas() as entregas, coletar_alertas() as alertas:
+    with (coletar_envios() as envios, coletar_entregas() as entregas, coletar_alertas() as alertas,
+          coletar_analises() as analises):
         resultado = servico.responder_formulario(codigo, dados, _ip(request))
     tarefas.add_task(processar_lista, envios)
     tarefas.add_task(entregar_lista, entregas)
     tarefas.add_task(enviar_alertas, alertas)
+    tarefas.add_task(analisar_com_ia, analises)
     return resultado
 
 
