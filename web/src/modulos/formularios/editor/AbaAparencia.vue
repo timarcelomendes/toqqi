@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Check, ImagePlus, Trash2 } from 'lucide-vue-next'
-import type { Tema } from '@/api/tipos'
+import { ApiError, logoFormularioApi, mensagemDoErro } from '@/api'
+import type { Id, Tema } from '@/api/tipos'
+import { avisar } from '@/composables/avisos'
 import { corValida } from '@/pesquisa/cor'
+import { useSessaoStore } from '@/stores/sessao'
+import { ACEITA_LOGO, conferirLogo, ehImagemDaPlataforma } from '@/utils/imagens'
 import AreaTexto from '@/components/ui/AreaTexto.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Campo from '@/components/ui/Campo.vue'
 import CampoVariaveis from './CampoVariaveis.vue'
 
-const props = defineProps<{ erros: Record<string, string> }>()
+const props = defineProps<{ erros: Record<string, string>; formularioId: Id }>()
 const tema = defineModel<Tema>('tema', { required: true })
 const descricao = defineModel<string | null>('descricao', { default: '' })
+const sessao = useSessaoStore()
 
 const PRESETS = [
   { cor: '#d63a18', nome: 'Coral' },
@@ -22,8 +27,6 @@ const PRESETS = [
   { cor: '#ea580c', nome: 'Laranja' },
   { cor: '#0f172a', nome: 'Grafite' },
 ]
-const LIMITE_LOGO = 300 * 1024
-
 const corTexto = ref(tema.value.cor)
 const erroCor = ref<string | null>(null)
 // Descartar alterações muda a cor por fora: acompanha.
@@ -37,8 +40,30 @@ watch(
   },
 )
 const erroLogo = ref<string | null>(null)
+const enviandoLogo = ref(false)
 const entrada = ref<HTMLInputElement | null>(null)
-const logoEhArquivo = computed(() => tema.value.logo_url?.startsWith('data:') ?? false)
+// Logo enviado como arquivo: fica guardado na plataforma e o tema leva só a URL dele (nunca a imagem em `data:`).
+const logoEnviado = computed(() => ehImagemDaPlataforma(tema.value.logo_url))
+// Sem logo próprio, a pesquisa e os e-mails usam o logo da empresa (Configurações › Empresa).
+const logoEmpresa = computed(() => sessao.conta?.logo_url || null)
+const podeMudarEmpresa = computed(() => sessao.pode('configuracoes.gerenciar'))
+// Imagem que não abre (endereço errado, ou trocada sem salvar e depois descartada): avisa. Espera um pouco para não
+// piscar enquanto a pessoa digita o endereço (cada letra é um endereço novo que ainda não abre).
+const imagemQuebrada = ref(false)
+let esperaQuebrada: ReturnType<typeof setTimeout> | undefined
+function aoFalharImagem() {
+  clearTimeout(esperaQuebrada)
+  esperaQuebrada = setTimeout(() => (imagemQuebrada.value = true), 800)
+}
+watch(
+  () => tema.value.logo_url,
+  () => {
+    clearTimeout(esperaQuebrada)
+    imagemQuebrada.value = false
+    erroLogo.value = null
+  },
+)
+onBeforeUnmount(() => clearTimeout(esperaQuebrada))
 const erro = (c: string) => props.erros[`tema.${c}`] ?? null
 
 function definirCor(c: string) {
@@ -56,23 +81,28 @@ function aoDigitarCor(v: string) {
   } else erroCor.value = 'Use o formato #RRGGBB, ex.: #d63a18.'
 }
 
-function enviarLogo(f: File | undefined) {
+/**
+ * Envia o arquivo (POST /formularios/{id}/logo) e põe a URL devolvida no tema. A pesquisa só passa a usar o logo
+ * novo quando o formulário é salvo; até lá, ele aparece só na pré-visualização.
+ */
+async function enviarLogo(f: File | undefined) {
   erroLogo.value = null
-  if (!f) return
-  if (!/^image\/(png|jpeg|svg\+xml|webp|gif)$/.test(f.type)) {
-    erroLogo.value = 'Use uma imagem PNG, JPG, SVG ou WebP.'
+  if (!f || enviandoLogo.value) return
+  const problema = await conferirLogo(f)
+  if (problema) {
+    erroLogo.value = problema
     return
   }
-  if (f.size > LIMITE_LOGO) {
-    erroLogo.value = 'A imagem passa de 300 KB. Diminua o tamanho ou use um endereço (URL).'
-    return
+  enviandoLogo.value = true
+  try {
+    const r = await logoFormularioApi.enviar(props.formularioId, f)
+    tema.value.logo_url = r.logo_url
+    avisar.sucesso('Imagem enviada. Salve o formulário para ela aparecer na pesquisa.')
+  } catch (e) {
+    erroLogo.value = e instanceof ApiError ? (e.campo('arquivo') ?? e.mensagem) : mensagemDoErro(e)
+  } finally {
+    enviandoLogo.value = false
   }
-  const leitor = new FileReader()
-  leitor.onload = () => {
-    tema.value.logo_url = String(leitor.result)
-  }
-  leitor.onerror = () => (erroLogo.value = 'Não conseguimos ler a imagem. Tente outra.')
-  leitor.readAsDataURL(f)
 }
 </script>
 
@@ -87,7 +117,7 @@ function enviarLogo(f: File | undefined) {
             v-for="p in PRESETS"
             :key="p.cor"
             type="button"
-            class="flex size-9 items-center justify-center rounded-full ring-offset-2 ring-offset-superficie transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foco"
+            class="flex size-9 items-center justify-center rounded-full border border-black/10 ring-offset-2 ring-offset-superficie transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foco dark:border-white/25"
             :class="tema.cor === p.cor ? 'ring-2 ring-texto' : ''"
             :style="{ backgroundColor: p.cor }"
             :aria-label="p.nome"
@@ -108,13 +138,27 @@ function enviarLogo(f: File | undefined) {
 
       <div class="flex flex-col gap-2">
         <p class="text-sm font-semibold text-texto">Logo <span class="font-normal text-texto-fraco">(opcional)</span></p>
-        <div v-if="tema.logo_url" class="flex items-center gap-3 rounded-xl border border-borda bg-white p-3">
-          <img :src="tema.logo_url" alt="Logo atual" class="max-h-12 max-w-48 object-contain" />
-          <Botao variante="perigo-suave" tamanho="sm" class="ml-auto" @click="tema.logo_url = null"><Trash2 class="size-4" aria-hidden="true" /> Tirar logo</Botao>
+        <!-- O fundo branco é o da pesquisa: mostra o logo como o cliente vê (o botão fica fora dele, com o contraste do tema). -->
+        <div v-if="tema.logo_url" class="flex flex-wrap items-center gap-3">
+          <div class="flex h-16 min-w-0 max-w-full items-center rounded-xl border border-slate-200 bg-white px-3">
+            <img :src="tema.logo_url" alt="Logo do formulário" class="max-h-12 max-w-48 min-w-0 object-contain" @error="aoFalharImagem" />
+          </div>
+          <Botao variante="perigo-suave" tamanho="sm" @click="tema.logo_url = null"><Trash2 class="size-4" aria-hidden="true" /> Tirar logo</Botao>
         </div>
+        <div v-else-if="logoEmpresa" class="flex flex-col gap-2 rounded-xl border border-dashed border-borda-forte p-3 sm:flex-row sm:items-center sm:gap-3" data-logo-empresa>
+          <div class="flex h-14 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 sm:w-40">
+            <img :src="logoEmpresa" alt="Logo da empresa" class="max-h-10 max-w-full object-contain" />
+          </div>
+          <p class="text-sm text-texto-suave">
+            <span class="font-semibold text-texto">Usando o logo da empresa.</span>
+            Para usar outro só neste formulário, envie uma imagem ou informe o endereço.
+            <RouterLink v-if="podeMudarEmpresa" to="/configuracoes/empresa" class="link">Trocar o logo da empresa</RouterLink>
+          </p>
+        </div>
+        <p v-if="imagemQuebrada" class="text-sm font-medium text-atencao" role="status">Não conseguimos mostrar esta imagem. Confira o endereço ou envie o arquivo.</p>
         <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
           <Campo
-            v-if="!logoEhArquivo"
+            v-if="!logoEnviado"
             :model-value="tema.logo_url ?? ''"
             rotulo="Endereço da imagem"
             tipo="url"
@@ -123,11 +167,27 @@ function enviarLogo(f: File | undefined) {
             :erro="erro('logo_url')"
             @update:model-value="(v: string) => (tema.logo_url = v.trim() || null)"
           />
-          <Botao variante="secundario" @click="entrada?.click()"><ImagePlus class="size-4" aria-hidden="true" /> Enviar imagem</Botao>
-          <input ref="entrada" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif" class="sr-only" tabindex="-1" aria-hidden="true" @change="enviarLogo(($event.target as HTMLInputElement).files?.[0]); ($event.target as HTMLInputElement).value = ''" />
+          <Botao variante="secundario" :carregando="enviandoLogo" @click="entrada?.click()">
+            <ImagePlus v-if="!enviandoLogo" class="size-4" aria-hidden="true" /> {{ logoEnviado ? 'Trocar imagem' : 'Enviar imagem' }}
+          </Botao>
+          <input
+            ref="entrada"
+            type="file"
+            :accept="ACEITA_LOGO"
+            class="sr-only"
+            tabindex="-1"
+            aria-hidden="true"
+            @change="enviarLogo(($event.target as HTMLInputElement).files?.[0]); ($event.target as HTMLInputElement).value = ''"
+          />
         </div>
-        <p class="text-sm text-texto-fraco">Imagem até 300 KB. Fundo transparente fica melhor.</p>
+        <p class="text-sm text-texto-fraco">
+          PNG ou JPG de até 300 KB. Fundo transparente fica melhor.
+          <template v-if="!tema.logo_url && !logoEmpresa">
+            Sem logo aqui, vale o logo da empresa<template v-if="podeMudarEmpresa">, que você cadastra em <RouterLink to="/configuracoes/empresa" class="link">Configurações › Empresa</RouterLink></template>.
+          </template>
+        </p>
         <p v-if="erroLogo" class="text-sm font-medium text-erro" role="alert">{{ erroLogo }}</p>
+        <p v-else-if="logoEnviado && erro('logo_url')" class="text-sm font-medium text-erro" role="alert">{{ erro('logo_url') }}</p>
       </div>
     </section>
 

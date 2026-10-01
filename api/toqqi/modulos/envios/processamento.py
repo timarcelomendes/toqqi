@@ -25,6 +25,7 @@ from toqqi.modelos import ConfigEnvios, Conta, Contato, Convite, Empresa, Envio,
 from toqqi.modulos.envios import mensagens
 from toqqi.modulos.envios.configuracao import obter, provedor_ok
 from toqqi.modulos.envios.descadastro import esta_descadastrado
+from toqqi.modulos.imagens.servico import logo_para_cliente
 from toqqi.modulos.respostas.convites import link_do_convite, novo_convite, token_do_convite
 from toqqi.modulos.whatsapp import franquia, graph, modelo
 
@@ -119,7 +120,10 @@ def _montar(s: Session, e: Envio) -> Mensagem | MensagemWhatsapp:
         if r is None or r.grupo is None:
             raise NaoEnviar("A resposta foi excluída antes do envio.")
         v["nota"] = str(r.nota)
-        return mensagens.email_agradecimento(texto=cfg.agradecimento[TEXTO_AGRADECIMENTO[r.grupo]], v=v, **comum)
+        f = s.get(Formulario, r.formulario_id)  # o formulário respondido
+        logo = logo_para_cliente(s, e.conta_id, (f.tema or {}).get("logo_url") if f else None)
+        return mensagens.email_agradecimento(texto=cfg.agradecimento[TEXTO_AGRADECIMENTO[r.grupo]], v=v,
+                                             logo_url=logo, **comum)
     convite = s.get(Convite, e.convite_id) if e.convite_id else None
     if convite is None or convite.token_semente is None:
         raise NaoEnviar("O convite foi excluído antes do envio.")
@@ -142,7 +146,8 @@ def _montar(s: Session, e: Envio) -> Mensagem | MensagemWhatsapp:
     return mensagens.email_pesquisa(
         assunto=cfg.assunto_lembrete if lembrete else cfg.assunto_convite,
         texto=cfg.texto_lembrete if lembrete else cfg.texto_convite,
-        perguntas=f.perguntas, link=link_do_convite(token), v=v, **comum)
+        perguntas=f.perguntas, link=link_do_convite(token), v=v,
+        logo_url=logo_para_cliente(s, e.conta_id, (f.tema or {}).get("logo_url")), **comum)
 
 
 # ---- resultado --------------------------------------------------------------

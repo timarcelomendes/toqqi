@@ -1,11 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 
 from toqqi.core.deps import Contexto, requer
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.modulos.formularios import servico
 from toqqi.modulos.formularios.esquemas import FormularioAlterarIn, FormularioIn, PadraoIn
+from toqqi.modulos.imagens.servico import ler_envio
 
 router = APIRouter(prefix="/formularios", tags=["formularios"])
 VER = requer("formularios.ver")
@@ -52,6 +53,13 @@ def duplicar(formulario_id: int, ctx: Contexto = Depends(EDITAR)):
 @router.post("/{formulario_id}/padrao")
 def padrao(formulario_id: int, dados: PadraoIn, ctx: Contexto = Depends(EDITAR)):
     return servico.definir_padrao(ctx, formulario_id, dados.uso)
+
+
+@router.post("/{formulario_id}/logo")
+def enviar_logo(formulario_id: int, arquivo: UploadFile = File(...), ctx: Contexto = Depends(EDITAR)):
+    """Guarda o logo do formulário (troca o anterior) e devolve a URL; o tema só muda quando o formulário é salvo."""
+    conteudo, tipo = ler_envio(arquivo)
+    return servico.enviar_logo(ctx, formulario_id, conteudo, tipo)
 
 
 @router.post("/{formulario_id}/novo-codigo")

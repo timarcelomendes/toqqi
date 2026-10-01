@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { RotateCcw } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
+import { ImageIcon, RotateCcw } from 'lucide-vue-next'
 import type { Pergunta, Tema } from '@/api/tipos'
+import { useSessaoStore } from '@/stores/sessao'
+import { logoParaCliente } from '@/utils/imagens'
 import Pesquisa from '@/pesquisa/Pesquisa.vue'
 
-defineProps<{ nome: string; perguntas: Pergunta[]; tema: Tema; nomeEmpresa: string }>()
+const props = defineProps<{ nome: string; perguntas: Pergunta[]; tema: Tema; nomeEmpresa: string }>()
+const sessao = useSessaoStore()
 const chave = ref(0)
+// Sem logo no formulário, o cliente vê o logo da empresa (a API faz o mesmo na página pública e nos e-mails).
+const logo = computed(() => logoParaCliente(props.tema.logo_url, sessao.conta?.logo_url))
+const temaPrevia = computed<Tema>(() => ({ ...props.tema, logo_url: logo.value.url }))
 </script>
 
 <template>
@@ -19,13 +25,16 @@ const chave = ref(0)
     <div class="flex-1 overflow-y-auto">
       <Pesquisa
         :key="chave"
-        :formulario="{ nome, perguntas, tema }"
+        :formulario="{ nome, perguntas, tema: temaPrevia }"
         :variaveis="{ empresa: nomeEmpresa, nome: 'Maria Souza', assunto: '', referencia: 'Pedido 12345' }"
         previa
       />
     </div>
-    <p class="border-t border-borda bg-superficie px-3 py-2 text-xs text-texto-fraco">
-      Exemplo com cliente “Maria” e referência “Pedido 12345”. Nada é gravado aqui.
-    </p>
+    <div class="flex flex-col gap-0.5 border-t border-borda bg-superficie px-3 py-2 text-xs text-texto-fraco">
+      <p v-if="logo.daEmpresa" class="flex items-center gap-1.5 font-semibold text-texto-suave" data-aviso-logo>
+        <ImageIcon class="size-3.5 shrink-0" aria-hidden="true" /> Usando o logo da empresa
+      </p>
+      <p>Exemplo com cliente “Maria” e referência “Pedido 12345”. Nada é gravado aqui.</p>
+    </div>
   </div>
 </template>

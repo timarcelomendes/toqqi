@@ -59,12 +59,13 @@ const rotas: RouteRecordRaw[] = [
         // Leva para a primeira seção que o perfil pode ver.
         redirect: () => {
           const sessao = useSessaoStore()
-          if (sessao.pode('configuracoes.gerenciar')) return '/configuracoes/seguranca'
+          if (sessao.pode('configuracoes.gerenciar')) return '/configuracoes/empresa'
           if (sessao.pode('envios.ver')) return '/configuracoes/envios'
           if (sessao.pode('acoes.ver')) return '/configuracoes/acoes'
           return '/inicio'
         },
       },
+      { path: 'configuracoes/empresa', name: 'config-empresa', component: () => import('@/modulos/configuracoes/EmpresaView.vue'), meta: { titulo: 'Dados da empresa', permissao: 'configuracoes.gerenciar' } },
       { path: 'configuracoes/seguranca', name: 'seguranca', component: () => import('@/modulos/configuracoes/SegurancaView.vue'), meta: { titulo: 'Segurança', permissao: 'configuracoes.gerenciar' } },
       { path: 'configuracoes/envios', name: 'config-envios', component: () => import('@/modulos/configuracoes/ConfigEnviosView.vue'), meta: { titulo: 'Configurações de envio', permissao: 'envios.ver' } },
       { path: 'configuracoes/acoes', name: 'config-acoes', component: () => import('@/modulos/configuracoes/ConfigAcoesView.vue'), meta: { titulo: 'Configurações dos planos de ação', permissao: 'acoes.ver' } },

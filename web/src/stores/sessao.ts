@@ -101,6 +101,13 @@ export const useSessaoStore = defineStore('sessao', () => {
     persistir()
   }
 
+  /** Atualiza dados da conta já na sessão (ex.: nome e logo salvos em Configurações › Empresa): o topo muda na hora. */
+  function atualizarConta(parcial: Partial<Conta>) {
+    if (!conta.value) return
+    conta.value = { ...conta.value, ...parcial }
+    persistir()
+  }
+
   /** Busca /eu para ter dados e permissões atualizados. */
   async function recarregar() {
     const d = await euApi.obter()
@@ -133,6 +140,8 @@ export const useSessaoStore = defineStore('sessao', () => {
   async function entrar(email: string, senha: string, lembrarDeMim: boolean) {
     const s = await authApi.entrar({ email, senha, lembrar: lembrarDeMim })
     definirSessao(s, lembrarDeMim)
+    // A resposta do login não traz o logo da conta (só GET /eu traz): busca em segundo plano, sem segurar a entrada.
+    if (s.conta && !('logo_url' in s.conta)) recarregar().catch(() => {})
   }
 
   async function sair() {
@@ -161,6 +170,7 @@ export const useSessaoStore = defineStore('sessao', () => {
     definirSessao,
     limpar,
     atualizarUsuario,
+    atualizarConta,
     recarregar,
     inicializar,
     entrar,

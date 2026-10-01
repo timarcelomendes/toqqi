@@ -6,6 +6,7 @@ import { avisar } from '@/composables/avisos'
 import { useFormulario } from '@/composables/formulario'
 import { useSessaoStore } from '@/stores/sessao'
 import { tipoPrincipal } from '@/pesquisa/logica'
+import { logoParaCliente } from '@/utils/imagens'
 import { TIPOS_FORMULARIO } from '@/utils/rotulos'
 import Pesquisa from '@/pesquisa/Pesquisa.vue'
 import Alerta from '@/components/ui/Alerta.vue'
@@ -111,7 +112,7 @@ async function criar() {
             <Pesquisa
               v-if="modelo"
               :key="modelo.chave"
-              :formulario="{ nome: modelo.nome, perguntas: modelo.perguntas ?? [], tema: modelo.tema }"
+              :formulario="{ nome: modelo.nome, perguntas: modelo.perguntas ?? [], tema: { ...modelo.tema, logo_url: logoParaCliente(modelo.tema?.logo_url, sessao.conta?.logo_url).url } }"
               :variaveis="{ empresa: sessao.conta?.nome ?? 'Sua empresa', nome: 'Maria', assunto: '', referencia: '' }"
               previa
               compacto

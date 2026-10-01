@@ -3,7 +3,20 @@ import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, Computed, Date, ForeignKey, Integer, Numeric, SmallInteger, Text, Time, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Computed,
+    Date,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    Numeric,
+    SmallInteger,
+    Text,
+    Time,
+    text,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import DateTime
@@ -29,6 +42,20 @@ class Conta(Base):
     termos_versao: Mapped[str | None] = mapped_column(Text)
     termos_ip: Mapped[str | None] = mapped_column(Text)
     criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    # dados da empresa (Configurações › Empresa); o logo fica em `imagens`
+    razao_social: Mapped[str | None] = mapped_column(Text)
+    documento: Mapped[str | None] = mapped_column(Text)  # CPF (11) ou CNPJ (14), só dígitos
+    telefone: Mapped[str | None] = mapped_column(Text)  # só dígitos, com 55
+    email_contato: Mapped[str | None] = mapped_column(CITEXT)
+    site: Mapped[str | None] = mapped_column(Text)
+    cep: Mapped[str | None] = mapped_column(Text)
+    logradouro: Mapped[str | None] = mapped_column(Text)
+    numero: Mapped[str | None] = mapped_column(Text)
+    complemento: Mapped[str | None] = mapped_column(Text)
+    bairro: Mapped[str | None] = mapped_column(Text)
+    cidade: Mapped[str | None] = mapped_column(Text)
+    uf: Mapped[str | None] = mapped_column(Text)
+    dados_atualizados_em: Mapped[datetime | None] = mapped_column(TZ)
 
 
 class Usuario(Base):
@@ -437,3 +464,19 @@ class ConfigAcoes(Base):
     prazo_promotor: Mapped[int] = mapped_column(Integer, server_default="7")
     acao_promotor: Mapped[bool] = mapped_column(Boolean, server_default="false")
     atualizado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+class Imagem(Base):
+    """Logo da conta ou de um formulário. `dados` só é lido quando pedido (deferred): os bytes não vêm junto nas
+    buscas de URL."""
+    __tablename__ = "imagens"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    uso: Mapped[str] = mapped_column(Text)  # logo_conta | logo_formulario
+    formulario_id: Mapped[int | None] = mapped_column(BigInteger)
+    chave: Mapped[str] = mapped_column(Text)
+    tipo: Mapped[str] = mapped_column(Text)
+    dados: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
+    tamanho: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(Text)
+    criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)

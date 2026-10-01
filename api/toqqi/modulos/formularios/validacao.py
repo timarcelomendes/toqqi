@@ -4,6 +4,7 @@ from typing import Any
 
 from toqqi.core.errors import AppError
 from toqqi.modulos.formularios.modelos import TEMA_PADRAO, gerar_id_pergunta
+from toqqi.modulos.imagens.servico import url_aceita_no_tema
 
 MAX_PERGUNTAS = 60
 TIPOS = ("nps", "csat", "estrelas", "escala", "texto_curto", "comentario", "escolha_unica", "escolha_multipla",
@@ -261,8 +262,9 @@ def normalizar_tema(entrada: Any, base: dict | None = None) -> dict:
             else:
                 tema["modo"] = valor
         elif chave == "logo_url":
+            # https://... ou a URL de uma imagem enviada à plataforma (POST /formularios/{id}/logo)
             v = _texto(valor)
-            if v and (not v.startswith("https://") or len(v) > 500):
+            if v and (len(v) > 500 or not url_aceita_no_tema(v)):
                 campos["tema.logo_url"] = "Use um endereço https:// (até 500 caracteres)."
             tema["logo_url"] = v or None
         else:

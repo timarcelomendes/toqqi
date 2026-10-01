@@ -1,7 +1,9 @@
 """Conteúdo dos e-mails de pesquisa (convite, lembrete, agradecimento) e da mensagem de WhatsApp.
 
 O layout é da plataforma: HTML em tabelas com estilos inline (Gmail, Outlook e celular).
-Os textos da conta são texto puro; aqui viram parágrafos escapados.
+Os textos da conta são texto puro; aqui viram parágrafos escapados. Com logo (o do formulário, senão o da conta),
+o e-mail ganha um cabeçalho com a imagem (URL absoluta, até 48 px de altura, `alt` = nome da conta); sem logo,
+fica como sempre foi.
 """
 import html
 import re
@@ -91,7 +93,19 @@ def bloco_da_nota(perguntas: list[dict], link: str, v: dict) -> str:
     return pergunta + _botoes_nota(tipo, link, rmin, rmax)
 
 
-def _layout(conteudo: str, empresa: str, sair: str) -> str:
+def _cabecalho(logo_url: str | None, empresa: str) -> str:
+    if not logo_url:
+        return ""
+    # height="48" vale no Outlook (que ignora max-height); a largura acompanha a proporção da imagem
+    return (
+        '<tr><td align="center" style="padding:28px 28px 0">'
+        f'<img src="{html.escape(logo_url)}" alt="{html.escape(empresa or "")}" height="48" '
+        'style="display:block;height:48px;max-height:48px;width:auto;max-width:100%;border:0;outline:none;'
+        f'text-decoration:none;{FONTE};font-size:16px;font-weight:bold;color:#111827"></td></tr>'
+    )
+
+
+def _layout(conteudo: str, empresa: str, sair: str, logo_url: str | None = None) -> str:
     rodape = (
         f'<p style="margin:0 0 6px;{FONTE};font-size:12px;line-height:18px;color:#6b7280">'
         f"Você recebeu esta pesquisa porque é cliente de {html.escape(empresa)}.</p>"
@@ -107,6 +121,7 @@ def _layout(conteudo: str, empresa: str, sair: str) -> str:
         '<tr><td align="center" style="padding:24px 12px">'
         '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" '
         'style="width:100%;max-width:600px;background:#ffffff;border-radius:8px">'
+        f"{_cabecalho(logo_url, empresa)}"
         f'<tr><td style="padding:32px 28px">{conteudo}</td></tr>'
         f'<tr><td style="padding:16px 28px 28px;border-top:1px solid #e5e7eb">{rodape}</td></tr>'
         "</table></td></tr></table></body></html>"
@@ -119,7 +134,8 @@ def _cabecalhos(conta_id: int, email: str) -> dict[str, str]:
 
 
 def email_pesquisa(*, conta_id: int, para: str, empresa: str, assunto: str, texto: str, perguntas: list[dict],
-                   link: str, v: dict, remetente_nome: str | None, responder_para: str | None) -> Mensagem:
+                   link: str, v: dict, remetente_nome: str | None, responder_para: str | None,
+                   logo_url: str | None = None) -> Mensagem:
     """Convite ou lembrete: texto da conta + bloco da nota + rodapé com descadastro."""
     sair = link_descadastro(conta_id, para)
     partes = paragrafos(renderizar(texto, v))
@@ -129,19 +145,20 @@ def email_pesquisa(*, conta_id: int, para: str, empresa: str, assunto: str, text
         f"Você recebeu esta pesquisa porque é cliente de {empresa}.",
         f"Não quero mais receber pesquisas: {sair}",
     ])
-    return Mensagem(para=para, assunto=renderizar(assunto, v), texto=texto_puro, html=_layout(conteudo, empresa, sair),
-                    remetente_nome=remetente_nome or empresa, responder_para=responder_para,
-                    cabecalhos=_cabecalhos(conta_id, para))
+    return Mensagem(para=para, assunto=renderizar(assunto, v), texto=texto_puro,
+                    html=_layout(conteudo, empresa, sair, logo_url), remetente_nome=remetente_nome or empresa,
+                    responder_para=responder_para, cabecalhos=_cabecalhos(conta_id, para))
 
 
 def email_agradecimento(*, conta_id: int, para: str, empresa: str, texto: str, v: dict,
-                        remetente_nome: str | None, responder_para: str | None) -> Mensagem:
+                        remetente_nome: str | None, responder_para: str | None,
+                        logo_url: str | None = None) -> Mensagem:
     sair = link_descadastro(conta_id, para)
     partes = paragrafos(renderizar(texto, v))
     texto_puro = "\n\n".join(partes + [f"Não quero mais receber pesquisas: {sair}"])
     assunto = f"{empresa} agradece a sua resposta" if empresa else "Obrigado pela sua resposta"
     return Mensagem(para=para, assunto=assunto, texto=texto_puro,
-                    html=_layout("".join(_p(x) for x in partes), empresa, sair),
+                    html=_layout("".join(_p(x) for x in partes), empresa, sair, logo_url),
                     remetente_nome=remetente_nome or empresa, responder_para=responder_para,
                     cabecalhos=_cabecalhos(conta_id, para))
 

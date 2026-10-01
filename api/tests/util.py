@@ -379,3 +379,27 @@ def criar_responsavel(client, h: dict, nome: str = "Rita Gomes", **campos) -> di
 def perfil_id(client, h: dict, nome: str = "Decisor") -> int:
     perfis = client.get(f"{API}/cadastros/perfis", headers=h).json()
     return next(p["id"] for p in perfis if p["nome"] == nome)
+
+
+# ---- dados da empresa e imagens -----------------------------------------------
+
+def png(cor: int = 0) -> bytes:
+    """PNG 1x1 de verdade (a cor muda os bytes, e com eles o sha256)."""
+    import struct
+    import zlib
+
+    def bloco(tipo: bytes, dados: bytes) -> bytes:
+        return struct.pack(">I", len(dados)) + tipo + dados + struct.pack(">I", zlib.crc32(tipo + dados))
+
+    ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0)
+    idat = zlib.compress(b"\x00" + bytes([cor, cor, cor, 255]))
+    return b"\x89PNG\r\n\x1a\n" + bloco(b"IHDR", ihdr) + bloco(b"IDAT", idat) + bloco(b"IEND", b"")
+
+
+def caminho_imagem(url: str) -> str:
+    """URL pública de uma imagem da plataforma → caminho para o cliente de teste."""
+    from toqqi.core.config import config
+
+    prefixo = config().API_PUBLIC_URL.rstrip("/")
+    assert url.startswith(prefixo + "/api/v1/publico/imagens/"), url
+    return url[len(prefixo):]

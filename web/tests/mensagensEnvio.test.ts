@@ -124,6 +124,18 @@ describe('prévia do e-mail', () => {
     expect(botoes[10]!.attributes('data-cor')).toBe('verde')
     expect(w.get('[data-teste="assunto"]').text()).toBe('Acme quer saber a sua opinião')
     expect(w.get('[data-teste="descadastro"]').text()).toBe('Não quero mais receber pesquisas')
+    expect(w.find('[data-teste="logo"]').exists()).toBe(false) // sem logo, sem cabeçalho (como o e-mail real)
+  })
+
+  it('com logo, a prévia ganha o cabeçalho com a imagem (nome da empresa como texto alternativo)', () => {
+    const logo = 'https://api.toqqi.com/api/v1/publico/imagens/abc'
+    const p = montarPreviaEmail(config(), 'convite', 'nps', exemplo, logo)
+    expect(p.logo).toBe(logo)
+    const w = mount(PreviaEmail, { props: { previa: p, empresa: 'Acme' } })
+    const img = w.get('[data-teste="logo"] img')
+    expect(img.attributes('src')).toBe(logo)
+    expect(img.attributes('alt')).toBe('Acme')
+    expect(montarPreviaEmail(config(), 'convite', 'nps', exemplo, '').logo).toBeNull()
   })
 })
 

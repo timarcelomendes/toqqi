@@ -26,6 +26,7 @@ from toqqi.modulos.formularios.validacao import (
     normalizar_tema,
     tipo_principal,
 )
+from toqqi.modulos.imagens import servico as imagens
 from toqqi.modulos.respostas.convites import CHAVES_CONTEXTO
 from toqqi.modulos.respostas.registro import formatar_valor, renderizar, variaveis
 
@@ -163,6 +164,11 @@ def duplicar(ctx: Contexto, formulario_id: int) -> dict:
         f = Formulario(conta_id=ctx.conta_id, nome=f"Cópia de {o.nome}"[:120], descricao=o.descricao,
                        perguntas=copy.deepcopy(o.perguntas), tema=copy.deepcopy(o.tema), ativo=True, publico=o.publico)
         _inserir(s, f)
+        # logo enviado à plataforma: a cópia ganha a própria imagem (trocar o logo de um não mexe no outro)
+        logo = imagens.copiar_para_formulario(s, (o.tema or {}).get("logo_url"), ctx.conta_id, f.id)
+        if logo:
+            f.tema = {**f.tema, "logo_url": logo}
+            s.flush()
         return _json(f, 0)
 
 
@@ -204,6 +210,14 @@ def definir_padrao(ctx: Contexto, formulario_id: int, uso: str) -> dict:
                    "anterior": {"id": anterior.id, "nome": anterior.nome} if anterior else None},
                   usuario_id=ctx.usuario_id)
         return _json(f, _contar(s, f.id))
+
+
+def enviar_logo(ctx: Contexto, formulario_id: int, dados: bytes, tipo: str) -> dict:
+    """Troca o logo guardado do formulário (chave nova) e devolve a URL pública. O editor põe a URL em
+    `tema.logo_url`, que só muda quando o formulário é salvo."""
+    with em_conta(ctx.conta_id) as s:
+        f = _form_ou_404(s, formulario_id, travar=True)  # uma troca por vez
+        return {"logo_url": imagens.gravar(s, "logo_formulario", dados, tipo, ctx.conta_id, f.id)}
 
 
 def novo_codigo(ctx: Contexto, formulario_id: int) -> dict:

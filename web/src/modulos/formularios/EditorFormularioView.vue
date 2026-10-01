@@ -293,7 +293,7 @@ onBeforeUnmount(() => {
               :nome-empresa="nomeEmpresa"
             />
             <fieldset v-if="visitadas.has('aparencia')" v-show="aba === 'aparencia'" :disabled="!podeEditar" class="min-w-0">
-              <AbaAparencia v-model:tema="rascunho.tema" v-model:descricao="rascunho.descricao" :erros="erros" />
+              <AbaAparencia v-model:tema="rascunho.tema" v-model:descricao="rascunho.descricao" :erros="erros" :formulario-id="formulario.id" />
             </fieldset>
             <AbaCompartilhar v-if="visitadas.has('compartilhar')" v-show="aba === 'compartilhar'" :formulario="formulario" :pode-editar="podeEditar" :alterado="alterado" @atualizado="aoAtualizar" />
             <AbaRespostas v-if="visitadas.has('respostas')" v-show="aba === 'respostas'" :formulario-id="formulario.id" :perguntas="formulario.perguntas" />

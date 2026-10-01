@@ -102,7 +102,8 @@ A tela **Formulários → Compartilhar** monta o código pronto, o QR Code (PNG 
 ```
 src/
   api/            cliente fetch tipado (token, erros {erro:{codigo,mensagem,campos}}, multipart, download de
-                  arquivos com token), endpoints (index.ts, etapa2.ts, etapa3.ts…, etapa4a.ts, publico.ts) e tipos
+                  arquivos com token), endpoints (index.ts, etapa2.ts, etapa3.ts…, etapa4a.ts, empresa.ts,
+                  publico.ts) e tipos
   pesquisa/       núcleo da pesquisa SEM dependências do app: tipos, lógica (nota principal, grupos,
                   condições, páginas), variáveis ({nome}, {empresa}...), validação das respostas,
                   parâmetros/links com contexto, e os componentes Pesquisa.vue + CampoPergunta.vue
@@ -121,7 +122,7 @@ src/
                   contatos, importacao, formularios (editor/ com as abas e a pré-visualização), envios,
                   integracoes, painel, respostas, acoes (cada uma com a sua logica.ts, testada à parte)
   utils/          datas (dd/mm/aaaa, America/Sao_Paulo), períodos (7/30/90 dias, 12 meses, tudo, datas), senha,
-                  rótulos, validação
+                  rótulos, validação, imagens (conferência do logo antes de enviar, logo do formulário ou da empresa)
   styles/main.css Tailwind v4 + tokens (@theme) + modo escuro (classe .dark)
 public/widget.js  widget para sites de clientes (JS puro, sem build)
 responder.html    HTML da página pública
@@ -264,3 +265,50 @@ computador (≥ 1280 px) e cartões no celular. Os filtros ficam **no endereço*
 - Telas antigas: em Contatos, no celular, o botão "Filtros" desce de linha em vez de vazar do cartão; na fila de Envios,
   as ações da linha ficam só com ícone (nome no leitor de tela e na dica) e o contato tem largura máxima, para a tabela
   caber no cartão em 1280 px.
+
+## Dados da empresa e logo
+
+Contrato: [`../docs/api-dados-empresa.md`](../docs/api-dados-empresa.md). Endpoints em `src/api/empresa.ts`
+(`empresaApi`: `GET`/`PUT /conta/dados`, `PUT`/`DELETE /conta/logo`; `logoFormularioApi`: `POST /formularios/{id}/logo`).
+O tipo se chama `DadosEmpresaConta` (no contrato, `DadosEmpresa`, nome que no front já é o corpo das empresas dos
+contatos). `GET /eu` traz `conta.logo_url`, que a sessão guarda junto.
+
+### Configurações › Empresa (`/configuracoes/empresa`, `configuracoes.gerenciar`)
+
+Primeira seção de Configurações (o item "Configurações" do menu e `/configuracoes` abrem nela, para quem pode). Regras
+puras em `src/modulos/configuracoes/empresa.ts` (testadas à parte), tela em `EmpresaView.vue`, logo em `LogoEmpresa.vue`.
+
+- **Identificação** (nome, obrigatório, que é o `{empresa}` das pesquisas e dos e-mails; razão social; CNPJ com
+  máscara, que também aceita CPF), **Contato** (telefone/WhatsApp com máscara, e-mail, site) e **Endereço**.
+- **Máscaras:** a tela mostra formatado; para a API vão só os dígitos (documento, telefone, CEP), os vazios como `null`
+  e sem espaços nas pontas. O telefone salvo com o 55 volta para o campo sem ele; começando com "+", fica como número
+  de outro país (sem a máscara brasileira, que cortaria dígitos). Máscara ou espaço a mais não contam como alteração.
+- **Conferência antes de enviar**, com as mesmas regras e mensagens do servidor: CPF/CNPJ pelos dígitos verificadores,
+  telefone com DDD (sem o zero da operadora), e-mail, site (sem `https://` vale; só http/https; domínio com ponto; até
+  200 caracteres), CEP com 8 números, UF da lista e limites de tamanho. O que o servidor disser (422 `campos`) também
+  aparece no campo, e o foco vai para o primeiro campo com erro.
+- **CEP → endereço (ViaCEP):** com os 8 números, busca `https://viacep.com.br/ws/{cep}/json/` e preenche só
+  logradouro, bairro, cidade e UF que estiverem vazios ("Endereço preenchido pelo CEP. Confira e complete o número.").
+  Tempo limite de 4 s; CEP que não existe, sem internet ou demora: nada acontece e a pessoa segue à mão. Mudar o CEP
+  no meio da busca cancela a anterior.
+- **Barra "Salvar alterações / Descartar"** e pergunta ao sair com alterações não salvas (trocar de página ou fechar a
+  aba), como nas outras seções de Configurações.
+- **Salvou:** nome e logo mudam na sessão na hora (`sessao.atualizarConta`), então o topo do app já mostra o nome novo.
+- **Logo:** prévia em fundo claro e escuro, "Enviar logo"/"Trocar logo" (`PUT /conta/logo`, multipart `arquivo`) e
+  "Remover" com confirmação (`DELETE /conta/logo`). Vale na hora, sem esperar o "Salvar alterações" (o que está sendo
+  editado nos outros cartões continua lá). Antes de enviar, o arquivo é conferido pelos primeiros bytes (PNG ou JPG de
+  verdade, não pela extensão) e pelo tamanho (até 300 KB), com a mesma mensagem da API (`src/utils/imagens.ts`).
+
+### Editor de formulário › Aparência
+
+- "Enviar imagem" manda o arquivo para `POST /formularios/{id}/logo` (só PNG/JPG até 300 KB, conferidos antes; SVG,
+  WebP e GIF saíram) e põe a URL devolvida em `tema.logo_url`. Nunca guarda `data:`. A pesquisa só muda quando o
+  formulário é salvo (o aviso diz isso). Com imagem enviada, o campo "Endereço da imagem" some (a URL é interna) e o
+  botão vira "Trocar imagem"; "Tirar logo" volta ao campo de endereço (`https://`).
+- Sem logo no formulário, vale o da empresa, como a API faz na página pública e nos e-mails (`logoParaCliente` em
+  `src/utils/imagens.ts`): a aba mostra o logo da empresa com "Usando o logo da empresa." (e o link para trocá-lo, para
+  quem tem `configuracoes.gerenciar`), e a pré-visualização (ao lado e no "Pré-visualizar" do celular) mostra a pesquisa
+  com ele e o aviso "Usando o logo da empresa". A prévia dos modelos em "Novo formulário" segue a mesma regra.
+- Imagem que não abre (endereço errado, ou trocada sem salvar e depois descartada) ganha um aviso.
+- As cores prontas ganharam borda (a "Grafite" sumia no modo escuro) e o "Tirar logo" saiu de cima do fundo branco
+  da prévia (no modo escuro, o vermelho claro do botão ficava sem contraste).

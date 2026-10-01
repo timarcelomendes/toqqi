@@ -46,6 +46,9 @@ ROTULOS = {
     "importacao_respostas": "Planilha de respostas antigas importada",
     "acao_excluida": "Plano de ação excluído",
     "config_acoes": "Configurações dos planos de ação alteradas",
+    "dados_empresa_alterados": "Dados da empresa alterados",
+    "logo_alterado": "Logo da empresa alterado",
+    "logo_removido": "Logo da empresa removido",
 }
 
 

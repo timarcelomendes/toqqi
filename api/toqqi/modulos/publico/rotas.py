@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from toqqi.core.errors import AppError
 from toqqi.core.rate_limit import (
     LIMITE_DESCADASTRO,
+    LIMITE_IMAGEM,
     LIMITE_PUBLICO_ABRIR,
     LIMITE_RESPONDER_CONVITE,
     LIMITE_RESPONDER_LINK,
@@ -18,6 +19,7 @@ from toqqi.modulos.envios import descadastro
 from toqqi.modulos.envios.agradecimento import coletar_envios
 from toqqi.modulos.envios.esquemas import DescadastroPublicoIn
 from toqqi.modulos.envios.processamento import processar_lista
+from toqqi.modulos.imagens import servico as imagens
 from toqqi.modulos.integracoes.webhooks import coletar_entregas, entregar_lista
 from toqqi.modulos.publico import servico
 from toqqi.modulos.publico.esquemas import ResponderIn, ResponderLinkIn
@@ -96,3 +98,19 @@ async def descadastrar(request: Request, token: str, tarefas: BackgroundTasks):
         resultado = await run_in_threadpool(descadastro.descadastrar, token, motivo, origem)
     tarefas.add_task(entregar_lista, entregas)  # webhooks de saída (contato.descadastrado)
     return resultado
+
+
+# ---- imagens (logo da conta e dos formulários) --------------------------------
+
+@router.get("/imagens/{chave}")
+@limiter.limit(LIMITE_IMAGEM)
+def imagem(request: Request, chave: str):
+    """A imagem, sem login. O conteúdo de uma chave nunca muda (trocar o logo gera chave nova): cache longo."""
+    achada = imagens.abrir_publica(chave, request.headers.get("if-none-match"))
+    if achada is None:
+        raise AppError(404, "nao_encontrado", "Imagem não encontrada.")
+    tipo, sha256, dados = achada
+    cabecalhos = {"Cache-Control": imagens.CACHE, "ETag": f'"{sha256}"', "X-Content-Type-Options": "nosniff"}
+    if dados is None:
+        return Response(status_code=304, headers=cabecalhos)
+    return Response(dados, media_type=tipo, headers=cabecalhos)

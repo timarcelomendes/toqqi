@@ -34,6 +34,7 @@ from toqqi.modulos.envios.processamento import (
     ordem_canais,
     whatsapp_da_config,
 )
+from toqqi.modulos.imagens.servico import logo_para_cliente
 from toqqi.modulos.respostas.convites import link_do_convite, novo_convite
 from toqqi.modulos.whatsapp import franquia
 
@@ -108,7 +109,8 @@ def enviar_teste(ctx: Contexto) -> dict:
             conta_id=ctx.conta_id, para=ctx.email, empresa=empresa, assunto=cfg.assunto_convite,
             texto=cfg.texto_convite, perguntas=f.perguntas, link=mensagens.link_formulario_publico(f.codigo_publico),
             v=mensagens.variaveis(empresa, ctx.usuario.get("nome")), remetente_nome=cfg.remetente_nome,
-            responder_para=cfg.responder_para)
+            responder_para=cfg.responder_para,
+            logo_url=logo_para_cliente(s, ctx.conta_id, (f.tema or {}).get("logo_url")))
     try:
         enviar_mensagem(m)
     except FalhaEnvio as falha:

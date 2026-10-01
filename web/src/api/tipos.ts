@@ -47,7 +47,37 @@ export interface Conta {
   plano: string | null
   situacao: string
   teste_ate: string | null
+  /** Logo da empresa (vem de GET /eu); aparece nas pesquisas e nos e-mails quando o formulário não tem logo. */
+  logo_url?: string | null
 }
+
+// ───────────────────── Dados da empresa e logo (docs/api-dados-empresa.md) ─────────────────────
+
+/**
+ * GET/PUT /conta/dados (no contrato, `DadosEmpresa`; aqui com outro nome porque `DadosEmpresa` já é o corpo das
+ * empresas dos contatos). Vazios vêm como null; documento, telefone e CEP só com dígitos (telefone com o 55). */
+export interface DadosEmpresaConta {
+  nome: string
+  razao_social: string | null
+  /** CPF (11) ou CNPJ (14), só dígitos. */
+  documento: string | null
+  telefone: string | null
+  email_contato: string | null
+  /** Sempre com http(s):// (o servidor completa). */
+  site: string | null
+  cep: string | null
+  logradouro: string | null
+  numero: string | null
+  complemento: string | null
+  bairro: string | null
+  cidade: string | null
+  uf: string | null
+  logo_url: string | null
+  atualizado_em: string | null
+}
+
+/** Corpo de PUT /conta/dados: todos os campos de texto (os opcionais vazios vão como null). */
+export type DadosEmpresaContaIn = Omit<DadosEmpresaConta, 'logo_url' | 'atualizado_em'>
 
 export interface DadosSessao {
   usuario: Usuario

@@ -14,6 +14,7 @@ from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.errors import AppError
 from toqqi.core.security import hash_token
 from toqqi.modelos import Conta, Contato, Convite, Formulario, Resposta
+from toqqi.modulos.imagens.servico import logo_para_cliente
 from toqqi.modulos.respostas.convites import CANAL_RESPOSTA, limpar_contexto
 from toqqi.modulos.respostas.registro import (
     formulario_publico,
@@ -47,6 +48,13 @@ def _disponivel(f: Formulario | None) -> bool:
     return f is not None and f.ativo and not f.arquivado
 
 
+def _publico(s, conta_id: int, f: Formulario, v: dict) -> dict:
+    """Formulário para a página pública; sem logo próprio, o tema leva o logo da conta (se houver)."""
+    dados = formulario_publico(f, v)
+    dados["tema"]["logo_url"] = logo_para_cliente(s, conta_id, (f.tema or {}).get("logo_url"))
+    return dados
+
+
 # ---- convites ---------------------------------------------------------------
 
 def _achar_convite(token: str) -> tuple[int, int]:
@@ -74,7 +82,7 @@ def abrir_convite(token: str) -> dict:
     with em_conta(conta_id) as s:
         c = s.get(Convite, convite_id)
         f, _, v = _dados_convite(s, c)
-        return {"formulario": formulario_publico(f, v), "variaveis": v, "ja_respondido": c.respondido_em is not None}
+        return {"formulario": _publico(s, conta_id, f, v), "variaveis": v, "ja_respondido": c.respondido_em is not None}
 
 
 def responder_convite(token: str, respostas: dict, ip: str | None) -> dict:
@@ -116,7 +124,7 @@ def abrir_formulario(codigo: str, referencia: str | None = None) -> dict:
     with em_conta(conta_id) as s:
         f = _form_publico(s, form_id)
         v = variaveis(_nome_conta(s), referencia=(referencia or "")[:120] or None)
-        return {"formulario": formulario_publico(f, v), "variaveis": v}
+        return {"formulario": _publico(s, conta_id, f, v), "variaveis": v}
 
 
 def responder_formulario(codigo: str, dados, ip: str | None) -> dict:

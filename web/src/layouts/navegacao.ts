@@ -41,7 +41,7 @@ export const navegacaoPrincipal: ItemNavegacao[] = [
 
 export const navegacaoAdministracao: ItemNavegacao[] = [
   { rotulo: 'Equipe', para: '/equipe', icone: Users, permissao: 'equipe.gerenciar' },
-  { rotulo: 'Configurações', para: '/configuracoes/seguranca', prefixo: '/configuracoes', icone: ShieldCheck, permissao: 'configuracoes.gerenciar' },
+  { rotulo: 'Configurações', para: '/configuracoes/empresa', prefixo: '/configuracoes', icone: ShieldCheck, permissao: 'configuracoes.gerenciar' },
   { rotulo: 'Integrações', para: '/integracoes', icone: Plug, admin: true },
   { rotulo: 'Auditoria', para: '/auditoria', icone: History, permissao: 'auditoria.ver' },
   { rotulo: 'Plataforma', para: '/plataforma', icone: Building2, superadmin: true },

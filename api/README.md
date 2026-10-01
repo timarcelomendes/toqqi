@@ -1,4 +1,4 @@
-# Toqqi API · etapas 1, 2, 3a, 3b e 4a
+# Toqqi API · etapas 1, 2, 3a, 3b e 4a + dados da empresa
 
 FastAPI + SQLAlchemy 2 (psycopg 3) + Alembic + PostgreSQL 16.
 Contratos implementados (base `/api/v1`):
@@ -9,7 +9,9 @@ Contratos implementados (base `/api/v1`):
   histórico, convite por WhatsApp (link wa.me), descadastro e exclusão de conta pela plataforma;
 - `../docs/api-etapa-3b.md`: chave de integração, disparo por evento, webhooks de saída e WhatsApp automático;
 - `../docs/api-etapa-4a.md`: respostas (lista, análise, registro à mão, arquivar, excluir, CSV), temas por
-  palavras-chave, planos de ação (quadro, ação automática, alerta de risco), painel e importação de respostas antigas.
+  palavras-chave, planos de ação (quadro, ação automática, alerta de risco), painel e importação de respostas antigas;
+- `../docs/api-dados-empresa.md`: dados da empresa (Configurações › Empresa) e imagens (logo da conta e dos
+  formulários) nas pesquisas e nos e-mails.
 
 ## Isolamento entre contas (RLS)
 O isolamento é garantido pelo próprio PostgreSQL:
@@ -62,7 +64,7 @@ para que o IP real do cliente seja usado no limite de tentativas, nas sessões e
 | `AUTO_MIGRATE` | `1` aplica migrações ao iniciar |
 | `JWT_SECRET` | Segredo do token de acesso (obrigatório, mínimo 16 caracteres) |
 | `FRONTEND_URL` | Base dos links enviados por e-mail (`/confirmar-email`, `/redefinir-senha`, `/entrar`) |
-| `API_PUBLIC_URL` | Endereço público da API |
+| `API_PUBLIC_URL` | Endereço público da API (base das URLs das imagens/logos e do descadastro de um clique) |
 | `ALLOWED_ORIGINS` | Origens liberadas no CORS, separadas por vírgula |
 | `EMAIL_PROVIDER` | `console` (imprime), `memory` (testes), `zeptomail` ou `resend` |
 | `ZEPTOMAIL_TOKEN` / `RESEND_API_KEY` | Credenciais do provedor de e-mail |
@@ -232,6 +234,27 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
 - Testes que dependem de "hoje" usam o fixture `relogio_estavel` (relógio das regras ao meio-dia do dia corrente),
   para não falharem quando a suíte cruza a meia-noite.
 
+## Dados da empresa e imagens (logo)
+- **Migração `0006_dados_empresa`**: colunas novas em `contas` (CHECK de formato e tamanho; vazio = NULL) e a tabela
+  `imagens` (RLS com FORCE, chave composta com `formularios` ON DELETE CASCADE, um logo por conta e um por formulário
+  por índice único parcial). Os bytes não ficam em `contas`, lida a cada requisição; `GET /eu` busca o logo à parte.
+- **Validação** (`modulos/conta/esquemas.py`): reusa `Documento` (CPF ou CNPJ, com máscara), `Telefone` (regra dos
+  contatos), `EmailOpcional` e `TextoAte`. Site sem esquema ganha `https://` (esquema e domínio em minúsculas; aceita
+  domínio com acento); CEP aceita hífen e ponto; UF sem diferenciar maiúsculas. O PUT leva todos os campos: o que vem
+  nulo, vazio ou falta fica sem valor. Salvar sem mudança não grava nem audita; `atualizado_em`
+  (`contas.dados_atualizados_em`) muda quando algum dado muda e quando o logo é trocado ou removido.
+- **Imagens** (`modulos/imagens/servico.py`): tipo pelos primeiros bytes (PNG `89 50 4E 47 0D 0A 1A 0A`, JPEG
+  `FF D8 FF`), até 300 KB, lendo no máximo 300 KB + 1 byte do upload. Chave `secrets.token_urlsafe(32)` (43
+  caracteres); trocar apaga a anterior e grava outra com chave nova, com o dono travado (a conta ou o formulário).
+  `GET /publico/imagens/{chave}` busca em modo sistema só pela chave; o `ETag` é o sha256 entre aspas (como o HTTP
+  pede) e `If-None-Match` aceita lista, `W/` e `*`; o 304 não lê os bytes. O logo de formulário não é auditado.
+- **Logo que o cliente vê** (`logo_para_cliente`, páginas públicas e e-mails de pesquisa): o do formulário; sem ele, o
+  da conta. Também cai no da conta quando o `tema.logo_url` salvo aponta para uma imagem da plataforma que não existe
+  mais (ex.: logo enviado de novo no editor e o formulário não foi salvo) ou que é de outra conta. Copiar um
+  formulário copia também a imagem enviada (chave nova): trocar o logo de um não mexe no outro.
+- **E-mails**: cabeçalho com `<img height="48">` (o Outlook ignora `max-height`) e `alt` = nome da conta; sem logo, o
+  HTML é o mesmo de antes, e o texto puro não muda. A exclusão de conta pela plataforma apaga as imagens junto.
+
 ## Estrutura
 ```
 toqqi/
@@ -243,7 +266,8 @@ toqqi/
                           texto (telefone, CNPJ/CPF, valores, datas), planos, paginacao, filtros, rede
   modulos/acesso/         cadastro, entrar, sair, confirmar, reenviar, esqueci, redefinir, pedir-acesso, /eu
   modulos/equipe/         usuários da conta e matriz de permissões
-  modulos/conta/          segurança: duração da sessão e domínios liberados
+  modulos/conta/          segurança (duração da sessão, domínios liberados), dados da empresa e logo da conta
+  modulos/imagens/        imagens da conta (logo da empresa e dos formulários): envio, URL pública, logo do cliente
   modulos/auditoria/      registro de atividades
   modulos/plataforma/     área do superadmin
   modulos/cadastros/      grupos, segmentos, perfis, cargos e responsáveis (teste do Teams)
@@ -266,6 +290,7 @@ alembic/versions/0002_cadastros_formularios.py   tabelas da etapa 2 + RLS + limi
 alembic/versions/0003_envios.py    config_envios, envios, descadastros + colunas de fila/lembrete + RLS
 alembic/versions/0004_integracoes.py   chaves, webhooks, entregas, WhatsApp, franquia, idempotência + RLS
 alembic/versions/0005_respostas_acoes.py   data/origem/temas/análise das respostas, ações, prazos, tipo da importação
+alembic/versions/0006_dados_empresa.py   dados da empresa em `contas` e tabela `imagens` (logos) + RLS
 tests/                             pytest
 ```
 

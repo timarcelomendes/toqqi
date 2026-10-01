@@ -114,6 +114,8 @@ export function blocoNota(tipo: TipoFormulario | null | undefined): BlocoNota {
 
 export interface PreviaEmail {
   de: string
+  /** Logo do cabeçalho: o do formulário dos convites, senão o da empresa; null = e-mail sem cabeçalho. */
+  logo: string | null
   responderPara: string | null
   assunto: string
   paragrafos: string[]
@@ -128,6 +130,7 @@ export function montarPreviaEmail(
   qual: 'convite' | 'lembrete',
   tipoFormulario: TipoFormulario | null | undefined,
   exemplo: ValoresExemplo,
+  logo: string | null = null,
 ): PreviaEmail {
   const empresa = (exemplo.empresa ?? '').trim()
   const remetente = (config.remetente_nome ?? '').trim() || empresa || 'Sua empresa'
@@ -135,6 +138,7 @@ export function montarPreviaEmail(
   const texto = qual === 'convite' ? config.texto_convite : config.texto_lembrete
   return {
     de: `${remetente} via Toqqi`,
+    logo: logo || null,
     responderPara: (config.responder_para ?? '').trim() || null,
     assunto: renderizarMensagem(assunto, exemplo),
     paragrafos: paragrafos(renderizarMensagem(texto, exemplo)),

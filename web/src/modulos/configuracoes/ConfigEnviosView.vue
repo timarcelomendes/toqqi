@@ -148,8 +148,30 @@ const exemplo = computed(() => ({
   empresa_cliente: 'Mercado Bom Preço',
   link: `${window.location.origin}/r/exemplo`,
 }))
+// Logo do cabeçalho do e-mail: o do formulário dos convites; sem ele, o da empresa (como no e-mail de verdade).
+const logoFormulario = ref<string | null>(null)
+watch(
+  () => f.formulario_id,
+  async (id) => {
+    logoFormulario.value = null
+    if (!id || !sessao.pode('formularios.ver')) return
+    try {
+      const form = await formulariosApi.obter(id)
+      if (String(f.formulario_id) === String(id)) logoFormulario.value = form.tema?.logo_url ?? null
+    } catch {
+      /* sem o formulário, a prévia usa o logo da empresa */
+    }
+  },
+  { immediate: true },
+)
 const previaEmail = computed(() =>
-  montarPreviaEmail(f, previaAtual.value === 'lembrete' ? 'lembrete' : 'convite', tipoFormulario.value, exemplo.value),
+  montarPreviaEmail(
+    f,
+    previaAtual.value === 'lembrete' ? 'lembrete' : 'convite',
+    tipoFormulario.value,
+    exemplo.value,
+    logoFormulario.value || sessao.conta?.logo_url || null,
+  ),
 )
 const dicaRemetente = computed(() => `Aparece como "${(f.remetente_nome || sessao.conta?.nome || 'Sua empresa').trim()} via Toqqi".`)
 const textoWhatsapp = computed(() => renderizarMensagem(f.texto_whatsapp, exemplo.value))
@@ -536,7 +558,7 @@ onMounted(carregar)
               </div>
             </div>
             <div aria-live="polite" aria-atomic="false">
-              <PreviaEmail v-if="previaAtual !== 'whatsapp'" :previa="previaEmail" />
+              <PreviaEmail v-if="previaAtual !== 'whatsapp'" :previa="previaEmail" :empresa="sessao.conta?.nome ?? ''" />
               <div v-else class="rounded-2xl bg-[#e5ddd5] p-4" aria-label="Prévia da mensagem de WhatsApp">
                 <p class="ml-auto max-w-[85%] whitespace-pre-line break-words rounded-xl rounded-tr-sm bg-[#dcf8c6] px-3 py-2 text-sm text-slate-900 shadow-sm">
                   {{ partesWhatsapp.antes }}<span v-if="partesWhatsapp.link" class="text-sky-700 underline">{{ partesWhatsapp.link }}</span>{{ partesWhatsapp.depois }}

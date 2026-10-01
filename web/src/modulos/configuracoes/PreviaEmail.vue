@@ -2,7 +2,7 @@
 // Como o e-mail chega para o cliente (aparência aproximada; o layout final é da plataforma).
 import type { CorNota, PreviaEmail } from './mensagens'
 
-defineProps<{ previa: PreviaEmail }>()
+withDefaults(defineProps<{ previa: PreviaEmail; empresa?: string }>(), { empresa: '' })
 
 const cores: Record<CorNota, string> = {
   vermelho: 'bg-red-600 text-white',
@@ -18,6 +18,9 @@ const cores: Record<CorNota, string> = {
       <p v-if="previa.responderPara" class="truncate text-slate-600"><span class="text-slate-500">Responder para:</span> {{ previa.responderPara }}</p>
       <p class="mt-1 font-bold text-slate-900" data-teste="assunto">{{ previa.assunto || '(sem assunto)' }}</p>
     </header>
+    <div v-if="previa.logo" class="flex justify-center px-4 pt-6 sm:px-6" data-teste="logo">
+      <img :src="previa.logo" :alt="empresa" class="h-12 max-w-full object-contain" />
+    </div>
     <div class="flex flex-col gap-3 px-4 py-5 text-[0.95rem] leading-relaxed sm:px-6">
       <p v-for="(p, i) in previa.paragrafos" :key="i" class="whitespace-pre-line">{{ p }}</p>
 
