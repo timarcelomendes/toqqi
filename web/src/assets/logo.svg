@@ -1,9 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" role="img" aria-label="Toqqi">
-  <!-- balão de trás -->
-  <path d="M20 6h14a10 10 0 0 1 10 10v8a10 10 0 0 1-10 10h-1l-5 5v-5h-8a10 10 0 0 1-10-10v-8A10 10 0 0 1 20 6Z" fill="#FFB199"/>
-  <!-- balão da frente -->
-  <path d="M14 14h14a10 10 0 0 1 10 10v8a10 10 0 0 1-10 10h-8l-6 5v-5.2A10 10 0 0 1 4 32v-8a10 10 0 0 1 10-10Z" fill="#FF5A36"/>
-  <circle cx="15" cy="28" r="2.4" fill="#fff"/>
-  <circle cx="21" cy="28" r="2.4" fill="#fff"/>
-  <circle cx="27" cy="28" r="2.4" fill="#fff"/>
+  <rect width="48" height="48" rx="11" fill="#FF5A36"/>
+  <!-- qq com hastes retas (olhos) e sorriso solto abaixo -->
+  <g transform="translate(9.1 9.7) scale(0.21)" stroke="#FFFFFF" fill="none">
+    <circle cx="33" cy="33" r="24.5" stroke-width="20"/>
+    <path d="M57.5 33 V92" stroke-width="20"/>
+    <circle cx="109" cy="33" r="24.5" stroke-width="20"/>
+    <path d="M133.5 33 V92" stroke-width="20"/>
+    <path d="M18 112 Q70 140 122 112" stroke-width="17" stroke-linecap="round"/>
+  </g>
 </svg>
