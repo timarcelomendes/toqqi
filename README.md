@@ -23,8 +23,16 @@ A especificação funcional (o que o sistema faz) fica no documento "Rakiti: esp
 Os testes rodam no GitHub a cada envio (`.github/workflows/testes.yml`).
 
 ## Etapas
-1. **Fundação** (esta): contas, acesso, perfis e permissões, sessões, auditoria, plataforma.
-2. Cadastros e pesquisas · 3. Envios · 4. Respostas e análise · 5. Conta e extras · 6. Troca.
+| Etapa | Situação | Contrato |
+|---|---|---|
+| 1. Fundação: contas, acesso, perfis e permissões, sessões, auditoria, plataforma | pronta | `docs/api-etapa-1.md` |
+| 2. Cadastros e pesquisas: contatos, empresas, importação, formulários, páginas de resposta | pronta | `docs/api-etapa-2.md` |
+| 3a. Envios: e-mail, robô, lembretes, WhatsApp por link, descadastro | pronta | `docs/api-etapa-3.md` |
+| 3b. Integrações: chave da conta, disparo por evento, webhooks, WhatsApp automático | pronta | `docs/api-etapa-3b.md` |
+| 4a. Respostas, planos de ação e painel | pronta | `docs/api-etapa-4a.md` |
+| Extra: dados da empresa e logo (Configurações › Empresa) | pronta | `docs/api-dados-empresa.md` |
+| 4b. Relatórios, IA por resposta e resumo semanal | próxima | — |
+| 5. Conta e extras · 6. Troca | depois | — |
 
 ## Publicação (Render)
 O arquivo `render.yaml` cria tudo de uma vez: no Render, **New > Blueprint** e escolha este repositório.
@@ -36,3 +44,11 @@ Dois serviços apontando para este mesmo repositório:
 - **Site** (Static Site): pasta raiz `web/`; em *Build Filters*, incluir só `web/**`.
 
 Assim, um commit que só mexe no backend republica só a API, e vice-versa. Os testes no GitHub seguem a mesma regra.
+
+Um terceiro serviço, **toqqi-tarefas** (Cron Job), roda `python -m toqqi.tarefas` a cada 15 minutos: robô de envio,
+lembretes, envios pendentes e webhooks. Ele conecta direto no banco (não acorda a API) e recebe as variáveis da API por
+`fromService`. Custa por segundo de execução, com mínimo de US$ 1 por mês.
+
+Variáveis com `value:` no `render.yaml` são reaplicadas a cada sincronização do Blueprint. Para trocar o
+`EMAIL_PROVIDER` (ex.: ZeptoMail), altere o arquivo, não o painel do Render, e acrescente `EMAIL_FROM` e
+`ZEPTOMAIL_TOKEN` também no toqqi-tarefas.
