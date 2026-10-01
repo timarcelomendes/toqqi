@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ChevronDown, LogOut, Menu, UserRound, X } from 'lucide-vue-next'
 import { useSessaoStore } from '@/stores/sessao'
 import { useFocoPreso } from '@/composables/focoPreso'
+import { useMenuLateral } from '@/composables/menuLateral'
 import { formatarData, diasAte } from '@/utils/datas'
 import { iniciais, PERFIS } from '@/utils/rotulos'
 import BotaoTema from '@/components/app/BotaoTema.vue'
@@ -14,6 +15,7 @@ import BarraLateral from './BarraLateral.vue'
 const sessao = useSessaoStore()
 const router = useRouter()
 const rota = useRoute()
+const { recolhido } = useMenuLateral()
 
 const gavetaAberta = ref(false)
 const gaveta = ref<HTMLElement | null>(null)
@@ -35,14 +37,20 @@ async function sair() {
 </script>
 
 <template>
-  <div class="min-h-dvh lg:pl-64">
+  <div
+    class="min-h-dvh transition-[padding] duration-200 motion-reduce:transition-none"
+    :class="recolhido ? 'lg:pl-[4.5rem]' : 'lg:pl-64'"
+  >
     <a href="#conteudo" class="sr-only z-[70] rounded-lg bg-superficie px-4 py-2 font-semibold focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
       Pular para o conteúdo
     </a>
 
     <!-- Barra lateral (computador) -->
-    <aside class="fixed inset-y-0 left-0 hidden w-64 border-r border-borda bg-superficie lg:block">
-      <BarraLateral />
+    <aside
+      class="fixed inset-y-0 left-0 z-[35] hidden border-r border-borda bg-superficie transition-[width] duration-200 motion-reduce:transition-none lg:block"
+      :class="recolhido ? 'w-[4.5rem]' : 'w-64'"
+    >
+      <BarraLateral recolhivel />
     </aside>
 
     <!-- Gaveta (celular) -->

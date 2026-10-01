@@ -131,6 +131,9 @@ tests/            testes unitários (lógica/condições, variáveis, validaçã
 ## Comportamentos importantes
 
 - **Sessão:** com "Lembrar de mim" o token fica no `localStorage`; sem, no `sessionStorage` (some ao fechar o navegador).
+- **Menu lateral recolhível** (computador): "Recolher menu", no pé da barra, deixa só os ícones (72 px); o nome aparece numa
+  dica ao passar o mouse ou chegar pelo teclado e continua para leitores de tela. A escolha fica no `localStorage`
+  (`toqqi.menu-recolhido`, com try/catch). A gaveta do celular fica sempre aberta. Estado em `composables/menuLateral.ts`.
   Ao abrir o app, `GET /eu` atualiza usuário, conta e permissões.
 - **401 `sessao_invalida`:** apaga a sessão, volta para `/entrar` e mostra a mensagem da API.
 - **403 `sem_permissao`:** mostra um aviso e continua logado.
