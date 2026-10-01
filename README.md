@@ -7,6 +7,7 @@ Plataforma para empresas B2B medirem e tratarem a satisfação dos clientes (NPS
 | `api/` | Backend em Python (FastAPI + PostgreSQL), com isolamento entre contas feito pelo próprio banco (RLS) |
 | `web/` | Frontend em Vue 3 + TypeScript |
 | `docs/` | Contrato da API e decisões |
+| `design-system/` | Marca (logo e ícone oficiais), cores, tipografia e guia dos componentes |
 
 A especificação funcional (o que o sistema faz) fica no documento "Rakiti: especificação funcional" e é a única fonte para o código novo.
 

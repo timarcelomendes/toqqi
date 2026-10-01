@@ -18,17 +18,17 @@ withDefaults(defineProps<{ tamanho?: 'sm' | 'md' | 'lg' }>(), { tamanho: 'md' })
       :class="{ sm: 'text-xl', md: 'text-2xl', lg: 'text-3xl' }[tamanho]"
       >to<svg
         class="inline-block text-marca"
-        style="width: 1.11em; height: 1.06em; vertical-align: -0.54em; margin: 0 0.03em 0 0.05em"
+        style="width: 1.175em; height: 1.125em; vertical-align: -0.579em; margin: 0 0.03em 0 0.05em"
         viewBox="0 0 142 136"
         fill="none"
         stroke="currentColor"
         focusable="false"
       >
-        <circle cx="33" cy="33" r="24.5" stroke-width="19" />
-        <path d="M57.5 33 V92" stroke-width="19" />
-        <circle cx="109" cy="33" r="24.5" stroke-width="19" />
-        <path d="M133.5 33 V92" stroke-width="19" />
-        <path d="M18 112 Q70 140 122 112" stroke-width="16" stroke-linecap="round" /></svg
+        <circle cx="33" cy="33" r="24.5" stroke-width="18" />
+        <path d="M57.5 33 V92" stroke-width="18" />
+        <circle cx="109" cy="33" r="24.5" stroke-width="18" />
+        <path d="M133.5 33 V92" stroke-width="18" />
+        <path d="M18 112 Q70 140 122 112" stroke-width="15" stroke-linecap="round" /></svg
       >i</span
     >
   </span>
