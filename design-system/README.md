@@ -38,6 +38,7 @@ As letras da logo estão convertidas em contornos, então não dependem da fonte
 - **Área de respiro**: deixe livre em volta da logo, no mínimo, a altura do "o".
 - **Tamanho mínimo**: logo com 96 px de largura na tela (25 mm impressa). Abaixo disso, use o ícone.
 - **Ícone**: funciona a partir de 16 px (favicon).
+- **Favicon do site**: `web/public/favicon.svg` (cópia do ícone), `favicon.ico` (16 e 32 px) e `apple-touch-icon.png` (180 px), ligados em `web/index.html` e `web/responder.html` com `?v=2`. Ao trocar o ícone, atualize os três e suba o `v`, senão os navegadores continuam mostrando o antigo guardado no cache.
 - **Fundos**: logo principal em fundos claros (branco, `#F8FAFC`) e versão escura sobre `#0F172A` ou mais escuro. Sobre fotos, use a mono branca com contraste suficiente.
 
 ### O que não fazer
