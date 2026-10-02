@@ -22,11 +22,13 @@ export const GRAVIDADES: Record<Gravidade, { rotulo: string; tom: Tom }> = {
   erro: { rotulo: 'Erro', tom: 'erro' },
 }
 
-/** Situação da conta: o contrato não lista os valores; conhecidos aqui, o resto aparece como veio. */
+/** Situação da conta (etapa 5a: teste, teste_expirado, ativa, atrasada, cancelada, cortesia); outras aparecem como vieram. */
 const SITUACOES_CONTA: Record<string, { rotulo: string; tom: Tom }> = {
   teste: { rotulo: 'Em teste', tom: 'info' },
+  teste_expirado: { rotulo: 'Teste encerrado', tom: 'atencao' },
   cortesia: { rotulo: 'Cortesia', tom: 'marca' },
   ativa: { rotulo: 'Ativa', tom: 'sucesso' },
+  atrasada: { rotulo: 'Atrasada', tom: 'erro' },
   ativo: { rotulo: 'Ativa', tom: 'sucesso' },
   expirada: { rotulo: 'Teste encerrado', tom: 'atencao' },
   vencida: { rotulo: 'Vencida', tom: 'atencao' },

@@ -53,28 +53,38 @@ def _cpf_valido(d: str) -> bool:
     return True
 
 
+_RE_CNPJ = re.compile(r"[0-9A-Z]{12}[0-9]{2}")
+_NAO_ALFANUMERICO = re.compile(r"[^0-9A-Za-z]+")
+
+
 def _cnpj_valido(d: str) -> bool:
-    if len(d) != 14 or d == d[0] * 14:
+    """CNPJ numérico ou alfanumérico (Receita Federal, desde 31/07/2026): 12 caracteres [0-9A-Z] + 2 dígitos
+    verificadores. Cada caractere vale o código ASCII − 48 ('0'–'9' → 0–9, 'A' → 17 … 'Z' → 42); pesos 5,4,3,2,9,8,7,6,
+    5,4,3,2 (1º DV) e 6,5,4,3,2,9,8,7,6,5,4,3,2 (2º DV); resto < 2 → 0, senão 11 − resto."""
+    if not _RE_CNPJ.fullmatch(d) or d == d[0] * 14:
         return False
+    valores = [ord(c) - 48 for c in d]
     for n in (12, 13):
         pesos = list(range(n - 7, 1, -1)) + list(range(9, 1, -1))
-        soma = sum(int(d[i]) * pesos[i] for i in range(n))
-        dv = 11 - soma % 11
-        dv = 0 if dv >= 10 else dv
-        if dv != int(d[n]):
+        resto = sum(valores[i] * pesos[i] for i in range(n)) % 11
+        if (0 if resto < 2 else 11 - resto) != valores[n]:
             return False
     return True
 
 
 def normalizar_documento(v: str) -> str | None:
-    """CPF ou CNPJ só com dígitos; vazio → None. Levanta ValueError se os dígitos verificadores não baterem."""
-    d = so_digitos(v)
+    """CPF (11 dígitos) ou CNPJ (14 caracteres, numérico ou alfanumérico), sem pontuação e em maiúsculas; aceita
+    máscara e minúsculas (12.abc.345/01de-35 → 12ABC34501DE35). Vazio → None. Levanta ValueError se os dígitos
+    verificadores não baterem."""
+    d = _NAO_ALFANUMERICO.sub("", v or "").upper()
     if not d:
         return None
-    if len(d) == 11 and _cpf_valido(d):
-        return d
-    if len(d) == 14 and _cnpj_valido(d):
-        return d
+    # só os dígitos: o documento numérico com palavras em volta ("CNPJ 11.222.333/0001-81") continua valendo
+    for candidato in dict.fromkeys((d, so_digitos(d))):
+        if len(candidato) == 11 and candidato.isdigit() and _cpf_valido(candidato):
+            return candidato
+        if len(candidato) == 14 and _cnpj_valido(candidato):
+            return candidato
     raise ValueError("CNPJ ou CPF inválido. Confira os números.")
 
 

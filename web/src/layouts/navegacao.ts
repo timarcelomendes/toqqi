@@ -2,6 +2,7 @@ import type { Component } from 'vue'
 import {
   BarChart3,
   ClipboardList,
+  CreditCard,
   FileText,
   History,
   Home,
@@ -43,6 +44,7 @@ export const navegacaoAdministracao: ItemNavegacao[] = [
   { rotulo: 'Equipe', para: '/equipe', icone: Users, permissao: 'equipe.gerenciar' },
   { rotulo: 'Configurações', para: '/configuracoes/empresa', prefixo: '/configuracoes', icone: ShieldCheck, permissao: 'configuracoes.gerenciar' },
   { rotulo: 'Integrações', para: '/integracoes', icone: Plug, admin: true },
+  { rotulo: 'Assinatura', para: '/assinatura', icone: CreditCard, permissao: 'assinatura.gerenciar' },
   { rotulo: 'Auditoria', para: '/auditoria', icone: History, permissao: 'auditoria.ver' },
   { rotulo: 'Plataforma', para: '/plataforma', icone: Building2, superadmin: true },
 ]

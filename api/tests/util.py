@@ -403,3 +403,138 @@ def caminho_imagem(url: str) -> str:
     prefixo = config().API_PUBLIC_URL.rstrip("/")
     assert url.startswith(prefixo + "/api/v1/publico/imagens/"), url
     return url[len(prefixo):]
+
+
+# ---- etapa 5a: assinatura e Asaas -----------------------------------------------------
+
+CHAVE_ASAAS = "$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OjAwMDAwMDAwMDA6OiRhYWNoXzAwMDA="
+TOKEN_WEBHOOK = "token-do-webhook-do-asaas-0123456789abcdef"
+CNPJ_COBRANCA = "11222333000181"
+CPF_COBRANCA = "52998224725"
+DADOS_COBRANCA = {"razao_social": "Alfa Distribuidora Ltda", "documento": "11.222.333/0001-81",
+                  "email_cobranca": "Financeiro@Alfa.com.br", "telefone": "(11) 98765-4321"}
+
+
+class AsaasFalso:
+    """O Asaas falso de `scripts/asaas_falso.py` em memória, atrás do transporte do adaptador (httpx.MockTransport).
+    - `pedidos`: o que chegou (httpx.Request);
+    - `falhar(resposta, metodo, trecho, depois, pular)`: a próxima chamada que bate (método e trecho do caminho; com
+      `pular=n`, a n+1ª) recebe `resposta` (httpx.Response ou exceção a levantar); com `depois=True`, o Asaas falso faz
+      o pedido antes (a resposta é que se perde, como num tempo esgotado depois de o Asaas gravar);
+    - os webhooks que ele mandaria ficam em `avisos`; `entregar()` manda os pendentes para a API de teste."""
+
+    def __init__(self, client):
+        from fastapi.testclient import TestClient
+        from scripts import asaas_falso
+
+        from toqqi.core import relogio
+
+        self.client = client
+        self.avisos: list[dict] = []
+        self.pedidos: list = []
+        self.falhas: list = []
+        self.app = asaas_falso.criar_app(webhook_url="http://api.teste/api/v1/asaas/webhook",
+                                         webhook_token=TOKEN_WEBHOOK, url_publica="https://asaas.teste",
+                                         enviar=self._guardar, hoje=lambda: relogio.hoje())
+        self.http = TestClient(self.app)
+
+    def _guardar(self, url, token, corpo) -> int:
+        self.avisos.append(corpo)
+        return 200
+
+    def __call__(self, request):
+        self.pedidos.append(request)
+        for i, falha in enumerate(self.falhas):
+            metodo, trecho, resposta, depois, pular = falha
+            if (metodo is None or metodo == request.method) and trecho in request.url.path:
+                if pular:
+                    falha[4] -= 1
+                    break
+                del self.falhas[i]
+                if depois:
+                    self._repassar(request)
+                if isinstance(resposta, Exception):
+                    raise resposta
+                return resposta
+        return self._repassar(request)
+
+    def _repassar(self, request):
+        import httpx
+
+        cabecalhos = {k: v for k, v in request.headers.items() if k in ("access_token", "user-agent", "content-type")}
+        r = self.http.request(request.method, request.url.path, params=request.url.params, content=request.content,
+                              headers=cabecalhos)
+        return httpx.Response(r.status_code, content=r.content, headers={"content-type": "application/json"})
+
+    def falhar(self, resposta, metodo: str | None = None, trecho: str = "", depois: bool = False,
+               pular: int = 0) -> None:
+        self.falhas.append([metodo, trecho, resposta, depois, pular])
+
+    @property
+    def dados(self) -> dict:
+        return self.app.state.dados
+
+    def vivas(self) -> list[dict]:
+        """Assinaturas que seguem cobrando (não removidas nem INACTIVE/EXPIRED)."""
+        return [a for a in self.dados["assinaturas"].values()
+                if not a["deleted"] and a["status"] not in ("INACTIVE", "EXPIRED")]
+
+    def assinatura(self) -> dict:
+        """A única assinatura não removida."""
+        vivas = [a for a in self.dados["assinaturas"].values() if not a["deleted"]]
+        assert len(vivas) == 1, vivas
+        return vivas[0]
+
+    def criar_direto(self, conta_id: int, valor: float = 349.0, vencimento: str = "2026-10-15",
+                     cliente: str | None = None) -> dict:
+        """Assinatura criada no Asaas sem a API saber (o pedido esgotou o tempo ou o processo caiu antes de gravar),
+        com a referência da conta. Usa o cliente dado ou o primeiro da conta (criando um, se não houver)."""
+        ref = f"toqqi-conta-{conta_id}"
+        if cliente is None:
+            cliente = next((c["id"] for c in self.dados["clientes"].values() if c.get("externalReference") == ref),
+                           None)
+        if cliente is None:
+            r = self.http.post("/v3/customers", headers={"access_token": "x"}, json={
+                "name": "Alfa Distribuidora Ltda", "cpfCnpj": CNPJ_COBRANCA, "email": "financeiro@alfa.com.br",
+                "mobilePhone": "11987654321", "phone": "", "externalReference": ref})
+            assert r.status_code == 200, r.text
+            cliente = r.json()["id"]
+        r = self.http.post("/v3/subscriptions", headers={"access_token": "x"}, json={
+            "customer": cliente, "billingType": "UNDEFINED", "value": valor, "nextDueDate": vencimento,
+            "cycle": "MONTHLY", "description": "Toqqi", "externalReference": ref})
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    def cobrancas(self, assinatura_id: str | None = None) -> list[dict]:
+        """Cobranças (não removidas) da assinatura, da mais antiga para a mais nova."""
+        sid = assinatura_id or self.assinatura()["id"]
+        return sorted((p for p in self.dados["cobrancas"].values() if p["subscription"] == sid and not p["deleted"]),
+                      key=lambda p: (p["dueDate"], p["id"]))
+
+    def simular(self, acao: str, alvo: str, entregar: bool = True, **params) -> dict:
+        r = self.http.post(f"/simular/{acao}/{alvo}", params=params)
+        assert r.status_code == 200, r.text
+        if entregar:
+            self.entregar()
+        return r.json()
+
+    def entregar(self) -> list:
+        """Manda para a API os webhooks guardados (na ordem) e devolve as respostas."""
+        respostas = [aviso_asaas(self.client, a) for a in self.avisos]
+        self.avisos.clear()
+        return respostas
+
+
+def aviso_asaas(client, corpo: dict, token: str = TOKEN_WEBHOOK):
+    """POST no webhook do Asaas com o cabeçalho do token."""
+    return client.post(f"{API}/asaas/webhook", json=corpo, headers={"asaas-access-token": token})
+
+
+def assinar(client, h: dict, plano: str = "profissional", **dados):
+    return client.post(f"{API}/assinatura", headers=h, json={"plano": plano, **DADOS_COBRANCA, **dados})
+
+
+def situacao_conta(dono, conta_id: int) -> tuple:
+    """(situacao, pago_ate, atrasada_desde, primeiro_vencimento) direto do banco."""
+    return tuple(sql(dono, "select situacao, pago_ate, atrasada_desde, primeiro_vencimento from contas where id = :c",
+                     c=conta_id)[0])

@@ -24,7 +24,7 @@ import {
   type SituacaoContato,
 } from '@/api'
 import { avisar } from '@/composables/avisos'
-import { useWhatsapp } from '@/composables/whatsapp'
+import { AVISO_WHATSAPP_PAUSADO, useWhatsapp } from '@/composables/whatsapp'
 import { useCadastrosStore } from '@/stores/cadastros'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarData, formatarDiaMes } from '@/utils/datas'
@@ -58,6 +58,8 @@ withDefaults(defineProps<{ emailLiberado?: boolean }>(), { emailLiberado: true }
 const emit = defineEmits<{ 'pre-condicao': [] }>()
 
 const sessao = useSessaoStore()
+/** A assinatura permite enviar (etapa 5a); pausada, o WhatsApp também não sai. */
+const contaLiberada = computed(() => sessao.conta?.cobranca?.liberada !== false)
 const cadastros = useCadastrosStore()
 const whatsapp = useWhatsapp()
 const podeDisparar = computed(() => sessao.pode('envios.disparar'))
@@ -494,9 +496,9 @@ defineExpose({ recarregar })
               v-if="podeEnviarWhatsapp(c)"
               type="button"
               class="inline-flex h-8 items-center gap-1.5 rounded-xl bg-emerald-700 px-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco disabled:cursor-not-allowed disabled:opacity-55"
-              :disabled="whatsapp.abrindo.value !== null"
+              :disabled="whatsapp.abrindo.value !== null || !contaLiberada"
               :aria-label="`Enviar pelo WhatsApp para ${c.nome}`"
-              :title="`Enviar pelo WhatsApp para ${c.nome}`"
+              :title="contaLiberada ? `Enviar pelo WhatsApp para ${c.nome}` : AVISO_WHATSAPP_PAUSADO"
               @click="abrirWhatsapp(c)"
             >
               <MessageCircle class="size-4" :class="{ 'animate-pulse': whatsapp.abrindo.value === c.id }" aria-hidden="true" />

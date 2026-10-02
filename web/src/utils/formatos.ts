@@ -1,4 +1,4 @@
-import { apenasDigitos, formatarTelefone } from './validacao'
+import { apenasDigitos, formatarTelefone, normalizarDocumento } from './validacao'
 
 const fmtMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmtDecimal = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -32,20 +32,29 @@ export function formatarNumero(n: number | null | undefined): string {
   return typeof n === 'number' ? fmtNumero.format(n) : '—'
 }
 
-/** CPF (11 dígitos) ou CNPJ (14) com pontuação, enquanto digita. */
+/**
+ * CPF (11 dígitos) ou CNPJ (14) com pontuação, enquanto digita. O CNPJ pode ter letras nos 12 primeiros caracteres
+ * (CNPJ alfanumérico, desde 07/2026); os 2 últimos são sempre dígitos. Letras vão para maiúsculas; CPF é só número.
+ */
 export function formatarDocumento(v: string | null | undefined): string {
-  const d = apenasDigitos(v ?? '').slice(0, 14)
-  if (d.length <= 11) {
+  let base = ''
+  let dv = ''
+  for (const ch of normalizarDocumento(v)) {
+    if (base.length < 12) base += ch
+    else if (dv.length < 2 && ch >= '0' && ch <= '9') dv += ch
+  }
+  const d = base + dv
+  if (d.length <= 11 && /^\d*$/.test(d)) {
     return d
       .replace(/^(\d{3})(\d)/, '$1.$2')
       .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
       .replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2')
   }
   return d
-    .replace(/^(\d{2})(\d)/, '$1.$2')
-    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-    .replace(/\.(\d{3})(\d)/, '.$1/$2')
-    .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+    .replace(/^([0-9A-Z]{2})([0-9A-Z])/, '$1.$2')
+    .replace(/^([0-9A-Z]{2})\.([0-9A-Z]{3})([0-9A-Z])/, '$1.$2.$3')
+    .replace(/\.([0-9A-Z]{3})([0-9A-Z])/, '.$1/$2')
+    .replace(/([0-9A-Z]{4})([0-9]{1,2})$/, '$1-$2')
 }
 
 /** Telefone guardado só com dígitos e DDI 55 → "(11) 91234-5678". Outros países: +DDI e número. */

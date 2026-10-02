@@ -1,8 +1,8 @@
 """IA por resposta: quem passa pela IA, a fila (`ia_situacao = pendente`), o processamento e a configuração da conta.
 
 Quem passa: resposta de origem `pesquisa` ou `manual` com texto do cliente de 3 letras ou mais, numa conta com
-`ia_analise_respostas` ligado e assinatura em dia, com a IA disponível. Ao gravar (ponto único
-`ao_registrar_resposta`), essas ficam `pendente`; quem grava envolve o trabalho em `coletar_analises()` e agenda
+`ia_analise_respostas` ligado e liberada (assinatura em dia, `assinatura.regras.liberada`), com a IA disponível. Ao
+gravar (ponto único `ao_registrar_resposta`), essas ficam `pendente`; quem grava envolve o trabalho em `coletar_analises()` e agenda
 `analisar(pares)` depois do commit (sem coletor, fica para a tarefa `ia`). As importadas ficam de fora, salvo por
 "Analisar comentários dos últimos 90 dias".
 
@@ -32,7 +32,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -44,7 +44,7 @@ from toqqi.core.errors import AppError
 from toqqi.core.filtros import inicio_do_dia
 from toqqi.core.log_seguro import descrever_erro
 from toqqi.modelos import Conta, Formulario, IaUsoMensal, Resposta
-from toqqi.modulos.envios.configuracao import assinatura_ok
+from toqqi.modulos.assinatura.regras import liberada
 from toqqi.modulos.ia.regras import MIN_LETRAS, ia_ativa, passa_pela_ia, teto_mensal, texto_qualifica
 from toqqi.modulos.respostas import temas as temas_mod
 from toqqi.modulos.respostas.eventos import GANCHOS
@@ -290,26 +290,27 @@ def analisar(pares: Iterable[tuple[int, int]]) -> None:
             _vagas.release()
 
 
-def _assinatura_em_dia(agora):
-    return or_(Conta.situacao.in_(("cortesia", "ativa")), and_(Conta.situacao == "teste", Conta.teste_ate > agora))
-
-
 def executar() -> dict:
-    """Tarefa `ia`: as pendentes mais antigas (até 300 ou 4 minutos por rodada), de contas com a IA ligada e a
-    assinatura em dia. Devolve {analisadas, falharam, limite}."""
+    """Tarefa `ia`: as pendentes mais antigas (até 300 ou 4 minutos por rodada), de contas com a IA ligada e
+    liberadas (assinatura em dia: a regra de `assinatura.regras.liberada`, aplicada às contas com pendentes). Devolve
+    {analisadas, falharam, limite}."""
     resumo = {"analisadas": 0, "falharam": 0, "limite": 0}
     if not ia.disponivel():
         return resumo
     inicio = relogio_real.monotonic()
     agora = relogio.agora()
     with modo_sistema() as s:  # só ids; o trabalho de cada resposta roda em em_conta(conta)
+        com_pendentes = select(Resposta.conta_id).where(Resposta.ia_situacao == "pendente").distinct()
+        contas = [c.id for c in s.scalars(select(Conta).where(Conta.ia_analise_respostas.is_(True),
+                                                              Conta.id.in_(com_pendentes)))
+                  if liberada(c, agora)]
         pares = s.execute(
-            select(Resposta.conta_id, Resposta.id).join(Conta, Conta.id == Resposta.conta_id)
+            select(Resposta.conta_id, Resposta.id)
             .where(Resposta.ia_situacao == "pendente",
                    or_(Resposta.ia_reservada_em.is_(None), Resposta.ia_reservada_em < agora - RESERVA),
-                   Conta.ia_analise_respostas.is_(True), _assinatura_em_dia(agora))
+                   Resposta.conta_id.in_(contas))
             .order_by(Resposta.ia_reservada_em.asc().nulls_first(), Resposta.criada_em, Resposta.id)
-            .limit(LOTE_TAREFA)).all()
+            .limit(LOTE_TAREFA)).all() if contas else []
     for conta_id, resposta_id in pares:
         if relogio_real.monotonic() - inicio > TEMPO_TAREFA:
             break
@@ -379,7 +380,7 @@ def analisar_recentes(ctx: Contexto) -> dict:
             raise _indisponivel("A análise de comentários com IA não está ligada na plataforma.")
         if not conta.ia_analise_respostas:
             raise _indisponivel("Ligue \"Analisar comentários com IA\" antes.")
-        if not assinatura_ok(conta):
+        if not liberada(conta):
             raise _indisponivel("A análise com IA volta a funcionar quando a assinatura estiver em dia.")
         estado = _estado(s, conta)
         saldo = estado["limite"] - estado["analises"] - estado["pendentes"]

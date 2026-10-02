@@ -6,7 +6,8 @@ import { useFormulario } from '@/composables/formulario'
 import { useCadastrosStore } from '@/stores/cadastros'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarDecimal, formatarDocumento, lerMoeda } from '@/utils/formatos'
-import { apenasDigitos } from '@/utils/validacao'
+import { normalizarDocumento } from '@/utils/validacao'
+import { MENSAGENS, documentoValido } from '@/modulos/configuracoes/empresa'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Campo from '@/components/ui/Campo.vue'
@@ -72,10 +73,16 @@ function aoSairValor() {
 }
 
 async function salvar() {
-  const doc = apenasDigitos(dados.documento)
+  const doc = normalizarDocumento(dados.documento)
   const valor = dados.valor_mensal.trim() ? lerMoeda(dados.valor_mensal) : null
   locais.nome = dados.nome.trim() ? undefined : 'Informe o nome da empresa.'
-  locais.documento = doc && doc.length !== 11 && doc.length !== 14 ? 'CPF tem 11 números e CNPJ tem 14.' : undefined
+  locais.documento = !doc
+    ? undefined
+    : doc.length !== 11 && doc.length !== 14
+      ? 'O CPF tem 11 números e o CNPJ tem 14 caracteres.'
+      : documentoValido(doc)
+        ? undefined
+        : MENSAGENS.documento
   locais.valor_mensal = dados.valor_mensal.trim() && (valor === null || valor < 0) ? 'Digite um valor, ex.: 1.250,00.' : undefined
   if (Object.values(locais).some(Boolean)) return
   const corpo: DadosEmpresa = {
@@ -106,14 +113,15 @@ onMounted(() => cadastros.garantir(['responsaveis']))
       <Campo v-model="dados.nome" rotulo="Nome" obrigatorio data-autofoco autocomplete="off" maxlength="150" :erro="erro('nome')" />
       <div class="grid gap-4 sm:grid-cols-2">
         <Campo
-          :model-value="dados.documento"
+          v-model="dados.documento"
           rotulo="CNPJ ou CPF"
           opcional
-          inputmode="numeric"
+          autocapitalize="characters"
           autocomplete="off"
+          spellcheck="false"
           placeholder="00.000.000/0000-00"
+          :mascara="formatarDocumento"
           :erro="erro('documento')"
-          @update:model-value="(v: string) => (dados.documento = formatarDocumento(v))"
         />
         <Campo v-model="dados.codigo_externo" rotulo="Código no seu sistema" opcional maxlength="80" :erro="erro('codigo_externo')" />
       </div>

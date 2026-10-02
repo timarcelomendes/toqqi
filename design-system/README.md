@@ -158,9 +158,9 @@ Quem pede movimento reduzido no sistema operacional tem todas as animações pra
 
 | Componente | Quando usar |
 |---|---|
-| `Botao` | Qualquer ação. Variantes: `primario` (uma por tela), `secundario`, `fantasma`, `perigo`, `perigo-suave`. Tamanhos: `sm`, `md`, `lg`. Com `para`, vira link. Tem estado `carregando`. |
+| `Botao` | Qualquer ação. Variantes: `primario` (uma por tela), `secundario`, `fantasma`, `perigo`, `perigo-suave`. Tamanhos: `sm`, `md`, `lg`. Com `para`, vira link do app; com `href`, link para outro site que abre em nova aba (o leitor de tela ouve "abre em nova aba"). Tem estado `carregando`. |
 | `BotaoCopiar` | Copiar um texto (link de pesquisa, token) com aviso de "Copiado!". |
-| `Campo` | Campo de texto com rótulo, ajuda e erro. |
+| `Campo` | Campo de texto com rótulo, ajuda e erro. Com `mascara` (CPF/CNPJ, telefone, CEP), mostra sempre o valor formatado, inclusive o que foi colado; não use `maxlength` nesses campos (cortaria o colado antes da máscara). |
 | `CampoSenha` | Senha com botão de mostrar/ocultar. Use com `RegrasSenha`. |
 | `RegrasSenha` | Lista as regras de senha e marca as já atendidas. |
 | `AreaTexto` | Texto longo (comentários, descrições). |

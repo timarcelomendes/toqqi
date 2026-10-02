@@ -1,7 +1,7 @@
 """Regras da IA por resposta sem banco nem sessão (usadas também no formato da conta em /eu e no login)."""
 from toqqi.core import ia
 from toqqi.modelos import Conta, Resposta
-from toqqi.modulos.envios.configuracao import assinatura_ok
+from toqqi.modulos.assinatura.regras import liberada
 
 ORIGENS = ("pesquisa", "manual")
 MIN_LETRAS = 3
@@ -21,8 +21,8 @@ def teto_mensal(conta: Conta) -> int:
 
 
 def ia_ativa(conta: Conta) -> bool:
-    """IA disponível na plataforma + chave da conta ligada + assinatura em dia."""
-    return ia.disponivel() and bool(conta.ia_analise_respostas) and assinatura_ok(conta)
+    """IA disponível na plataforma + chave da conta ligada + conta liberada (assinatura em dia)."""
+    return ia.disponivel() and bool(conta.ia_analise_respostas) and liberada(conta)
 
 
 def texto_qualifica(texto: str | None) -> bool:

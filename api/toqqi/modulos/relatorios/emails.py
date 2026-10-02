@@ -2,8 +2,8 @@
 
 Destinatários: usuários ativos, com e-mail confirmado e permissão `painel.ver` (admin sempre), com a preferência
 ligada (`recebe_alertas` / `recebe_resumo_semanal`, em Minha conta). Só com provedor de e-mail real (`provedor_ok`)
-e conta com a assinatura em dia. São e-mails do sistema (`core.email.enviar`, o visual do "Alerta de risco"), um por
-pessoa, e não entram no histórico de envios.
+e conta liberada (assinatura em dia). São e-mails do sistema (`core.email.enviar`, o visual do "Alerta de risco"), um
+por pessoa, e não entram no histórico de envios.
 
 As tarefas rodam por conta (a lista vem do modo sistema, o trabalho de cada conta em em_conta); uma conta com erro
 não derruba as outras.
@@ -16,7 +16,7 @@ não derruba as outras.
 import logging
 from datetime import date, datetime, time, timedelta
 
-from sqlalchemy import and_, case, exists, func, or_, select, update
+from sqlalchemy import case, exists, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, aliased
 
@@ -39,7 +39,8 @@ from toqqi.modelos import (
     Usuario,
 )
 from toqqi.modulos.acoes.regras import aberta
-from toqqi.modulos.envios.configuracao import assinatura_ok, provedor_ok
+from toqqi.modulos.assinatura.regras import liberada
+from toqqi.modulos.envios.configuracao import provedor_ok
 from toqqi.modulos.painel.servico import Filtro, _com_empresa
 from toqqi.modulos.relatorios import picos as picos_mod
 from toqqi.modulos.relatorios.regras import ROTULOS_FAIXA_NPS
@@ -80,11 +81,11 @@ def destinatarios(s: Session, preferencia: str) -> list[str]:
 
 
 def _contas_em_dia() -> list[int]:
+    """Contas liberadas (assinatura em dia, pela regra de `assinatura.regras.liberada`)."""
     agora = relogio.agora()
     with modo_sistema() as s:  # só ids; o trabalho de cada conta roda em em_conta(conta)
-        return list(s.scalars(select(Conta.id).where(or_(
-            Conta.situacao.in_(("cortesia", "ativa")), and_(Conta.situacao == "teste", Conta.teste_ate > agora)))
-            .order_by(Conta.id)))
+        return [c.id for c in s.scalars(select(Conta).where(Conta.situacao != "teste_expirado").order_by(Conta.id))
+                if liberada(c, agora)]
 
 
 def _plural(n: int, singular: str, plural: str) -> str:
@@ -141,7 +142,7 @@ def picos_conta(conta_id: int) -> dict:
     novos = []
     with em_conta(conta_id) as s:
         conta = s.get(Conta, conta_id)
-        if conta is None or not assinatura_ok(conta):
+        if conta is None or not liberada(conta):
             return {"picos": 0, "emails": 0}
         for pico in picos_mod.calcular(s, conta_id, hoje):
             travar(s, f"alerta_pico:{conta_id}:{pico['tema']}")  # duas rodadas ao mesmo tempo esperam aqui
@@ -307,7 +308,7 @@ def resumo_conta(conta_id: int, semana: date) -> dict | None:
     """Monta, registra (uma vez por semana) e manda o resumo da conta. None se não era o caso."""
     with em_conta(conta_id) as s:
         conta = s.get(Conta, conta_id)
-        if conta is None or not assinatura_ok(conta):
+        if conta is None or not liberada(conta):
             return None
         conteudo = _conteudo_resumo(s, conta_id, semana)
         if conteudo is None:

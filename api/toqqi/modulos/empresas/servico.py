@@ -56,8 +56,10 @@ def listar(ctx: Contexto, pg: Pagina, busca: str | None, grupo_id: int | None, s
     filtros = []
     if busca:
         termo = f"%{busca}%"
+        documento = "".join(ch for ch in busca if ch.isascii() and ch.isalnum()).upper()  # 12.ABC.345 → 12ABC345
         filtros.append(or_(cast(Empresa.nome, String).ilike(termo), Empresa.documento.ilike(termo),
-                           Empresa.codigo_externo.ilike(termo)))
+                           Empresa.codigo_externo.ilike(termo),
+                           *([Empresa.documento.ilike(f"%{documento}%")] if documento else [])))
     if grupo_id:
         filtros.append(Empresa.grupo_id == grupo_id)
     if segmento_id:

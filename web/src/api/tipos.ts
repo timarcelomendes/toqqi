@@ -1,4 +1,4 @@
-// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a e -4b).
+// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b e -5a).
 import type { Contexto, GrupoNota, Pergunta, Tema } from '@/pesquisa/tipos'
 
 export type Perfil = 'admin' | 'gestor' | 'consulta'
@@ -48,12 +48,14 @@ export interface Conta {
   id: number | string
   nome: string
   plano: string | null
-  situacao: string
+  situacao: SituacaoConta
   teste_ate: string | null
   /** Logo da empresa (vem de GET /eu); aparece nas pesquisas e nos e-mails quando o formulário não tem logo. */
   logo_url?: string | null
   /** Etapa 4b: IA disponível na plataforma + análise ligada na conta + assinatura em dia (GET /eu e login). */
   ia_ativa?: boolean
+  /** Etapa 5a (GET /eu e login): se os envios estão liberados e o aviso do topo das telas. */
+  cobranca?: CobrancaConta
 }
 
 // ───────────────────── Dados da empresa e logo (docs/api-dados-empresa.md) ─────────────────────
@@ -157,10 +159,16 @@ export interface ContaPlataforma {
   id: number | string
   nome: string
   plano: string | null
-  situacao: string
+  situacao: SituacaoConta
   teste_ate: string | null
   usuarios: number
   criada_em: string
+  /** Etapa 5a: último dia coberto por pagamento (AAAA-MM-DD). */
+  pago_ate?: string | null
+  /** Etapa 5a: vencimento da fatura em atraso mais antiga (AAAA-MM-DD). */
+  atrasada_desde?: string | null
+  /** Etapa 5a: a assinatura ativa, se houver. */
+  assinatura?: { plano: string; valor: ValorDecimal; situacao: string } | null
 }
 
 // ───────────────────────── Etapa 2 (docs/api-etapa-2.md) ─────────────────────────
@@ -1303,4 +1311,118 @@ export interface HistoricoEmpresa {
   linha_do_tempo: ItemLinhaDoTempo[]
   /** Respostas da empresa no período (todas, não só as da linha do tempo). */
   total: number
+}
+
+// ───────────────────── Etapa 5a: assinatura e cobrança pelo Asaas (docs/api-etapa-5a.md) ─────────────────────
+
+/** Situação da conta (seção 3). Aceita outras strings para não quebrar se a API crescer. */
+export type SituacaoConta = 'teste' | 'teste_expirado' | 'ativa' | 'atrasada' | 'cancelada' | 'cortesia' | (string & {})
+
+export type TipoAvisoCobranca =
+  | 'teste_acabando'
+  | 'teste_expirado'
+  | 'atrasada'
+  | 'pausada'
+  | 'cancelada'
+  | 'cancelada_encerrada'
+  | 'aguardando_pagamento'
+
+/** Aviso do topo das telas (`conta.cobranca.aviso`). */
+export interface AvisoCobranca {
+  tipo: TipoAvisoCobranca | (string & {})
+  /**
+   * AAAA-MM-DD. teste_acabando e teste_expirado: último dia do teste; atrasada: dia em que os envios param;
+   * pausada: vencimento da fatura em atraso; cancelada e cancelada_encerrada: `pago_ate`; aguardando_pagamento:
+   * vencimento da primeira fatura de quem já assinou.
+   */
+  data: string | null
+  /** Dias até `data` (0 = hoje), em teste_acabando, atrasada e cancelada. */
+  dias: number | null
+}
+
+export interface CobrancaConta {
+  /** Envios, robô, lembretes, CSAT e IA podem rodar. */
+  liberada: boolean
+  /** Tem assinatura ativa (mesmo antes do primeiro pagamento). */
+  assinada?: boolean
+  pago_ate: string | null
+  atrasada_desde: string | null
+  /** Quando os envios param (data e hora), se estão liberados com prazo. */
+  pausa_em: string | null
+  aviso: AvisoCobranca | null
+}
+
+export type ChavePlano = 'essencial' | 'profissional' | 'empresa'
+
+export interface PlanoAssinatura {
+  chave: ChavePlano | (string & {})
+  nome: string
+  /** Reais por mês (pode vir como texto decimal, "349.00"). */
+  preco: ValorDecimal
+  /** Contatos ativos permitidos; null = sem limite. */
+  contatos: number | null
+}
+
+/** Dados de cobrança (cliente no Asaas). Documento e telefone só com dígitos. */
+export interface DadosCobranca {
+  razao_social: string
+  /** CPF (11) ou CNPJ (14). */
+  documento: string
+  email_cobranca: string
+  /** Com DDD (a API guarda com o 55). */
+  telefone: string
+}
+
+export type SituacaoCobranca = 'pendente' | 'paga' | 'vencida' | 'estornada' | 'removida'
+export type FormaPagamento = 'pix' | 'boleto' | 'cartao'
+
+/** A fatura pendente ou vencida mais antiga da assinatura. */
+export interface FaturaAberta {
+  valor: ValorDecimal
+  /** AAAA-MM-DD. */
+  vencimento: string
+  situacao: SituacaoCobranca | (string & {})
+  /** Página da fatura no Asaas (Pix, boleto ou cartão). */
+  link: string | null
+}
+
+export interface CobrancaAssinatura extends FaturaAberta {
+  /** Como foi (ou vai ser) paga; null enquanto o cliente não escolheu. */
+  forma: FormaPagamento | (string & {}) | null
+  pago_em: string | null
+}
+
+export interface Assinatura {
+  plano: ChavePlano | (string & {})
+  valor: ValorDecimal
+  situacao: 'ativa' | 'cancelada' | (string & {})
+  criada_em: string
+  cancelada_em: string | null
+  /** AAAA-MM-DD. */
+  primeiro_vencimento: string
+  dados: DadosCobranca
+}
+
+/** GET /assinatura (e a resposta das rotas que mudam a assinatura). */
+export interface EstadoAssinatura {
+  conta: {
+    situacao: SituacaoConta
+    plano: string | null
+    teste_ate: string | null
+    pago_ate: string | null
+    atrasada_desde: string | null
+    liberada: boolean
+    pausa_em: string | null
+  }
+  contatos_ativos: number
+  /** O Asaas está configurado na plataforma. */
+  disponivel: boolean
+  planos: PlanoAssinatura[]
+  /** Dos dados da empresa e do e-mail do admin, para preencher o formulário de cobrança. */
+  dados_sugeridos: { [K in keyof DadosCobranca]: string | null }
+  /** A assinatura ativa (null sem assinatura ou depois de cancelar). */
+  assinatura: Assinatura | null
+  fatura_aberta: FaturaAberta | null
+  /** As 12 mais recentes. */
+  cobrancas: CobrancaAssinatura[]
 }

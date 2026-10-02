@@ -1,6 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import { avisos } from '@/composables/avisos'
-import { AVISO_WHATSAPP, useWhatsapp } from '@/composables/whatsapp'
+import { AVISO_WHATSAPP, AVISO_WHATSAPP_PAUSADO, useWhatsapp } from '@/composables/whatsapp'
+import { useSessaoStore } from '@/stores/sessao'
+
+beforeEach(() => setActivePinia(createPinia()))
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -34,5 +38,19 @@ describe('abrir convite no WhatsApp', () => {
     expect(await abrir({ id: 1, nome: 'Bia' })).toBe(false)
     expect(aba.close).toHaveBeenCalled()
     expect(avisos.some((a) => a.mensagem === 'Este contato não tem telefone.')).toBe(true)
+  })
+
+  it('com a conta pausada pela assinatura, não abre nem chama a API e explica o motivo', async () => {
+    const sessao = useSessaoStore()
+    sessao.conta = { id: 1, nome: 'Sol', plano: 'profissional', situacao: 'teste_expirado', teste_ate: null,
+      cobranca: { liberada: false, pago_ate: null, atrasada_desde: null, pausa_em: null, aviso: null } } as never
+    const open = vi.spyOn(window, 'open')
+    const fetch = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    const { abrir } = useWhatsapp()
+    expect(await abrir({ id: 1, nome: 'Bia' })).toBe(false)
+    expect(open).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(avisos.some((a) => a.mensagem === AVISO_WHATSAPP_PAUSADO)).toBe(true)
   })
 })

@@ -21,3 +21,4 @@ LIMITE_RESPONDER_LINK = "5/minute"       # responder link público do formulári
 LIMITE_DESCADASTRO = "20/minute"       # página pública de descadastro (abrir e confirmar)
 LIMITE_INTEGRACAO = "120/minute"       # rotas da chave de integração (por chave)
 LIMITE_IMAGEM = "600/minute"           # imagens públicas (logo): os e-mails abrem pelo proxy de imagens do Gmail
+LIMITE_ASAAS_WEBHOOK = "300/minute"    # avisos do Asaas (poucos IPs, rajadas na madrugada)

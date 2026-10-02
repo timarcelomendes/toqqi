@@ -51,6 +51,17 @@ ROTULOS = {
     "logo_removido": "Logo da empresa removido",
     "config_ia": "Análise de comentários com IA ligada ou desligada",
     "ia_analisar_recentes": "Comentários dos últimos 90 dias enviados para análise da IA",
+    "assinatura_criada": "Assinatura criada",
+    "plano_alterado": "Plano da assinatura alterado",
+    "dados_cobranca_alterados": "Dados de cobrança alterados",
+    "assinatura_cancelada": "Assinatura cancelada",
+    "pagamento_confirmado": "Pagamento confirmado",
+    "pagamento_vencido": "Fatura vencida",
+    "pagamento_estornado": "Pagamento estornado",
+    "assinatura_adotada": "Assinatura encontrada no Asaas e ligada à conta",
+    "assinatura_removida_no_asaas": "Assinatura duplicada removida no Asaas",
+    "valor_realinhado": "Valor da assinatura corrigido no Asaas",
+    "ambiente_asaas_trocado": "Cobrança de teste (sandbox) descartada",
 }
 
 

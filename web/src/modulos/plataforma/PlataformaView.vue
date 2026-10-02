@@ -5,8 +5,10 @@ import { mensagemDoErro, plataformaApi, type ContaPlataforma } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
 import { useSessaoStore } from '@/stores/sessao'
-import { formatarData } from '@/utils/datas'
+import { diasAte, formatarData } from '@/utils/datas'
+import { formatarMoeda, plural } from '@/utils/formatos'
 import { situacaoConta } from '@/utils/rotulos'
+import { nomeDoPlano } from '@/modulos/assinatura/logica'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
@@ -39,14 +41,34 @@ function aoExcluir(c: ContaPlataforma) {
   contas.value = contas.value.filter((x) => String(x.id) !== String(c.id))
 }
 
+// Usuários e "criada em" ganham coluna só em telas bem largas; antes disso, ficam embaixo do nome.
 const colunas: Coluna[] = [
   { chave: 'nome', rotulo: 'Empresa' },
   { chave: 'situacao', rotulo: 'Situação', classe: 'hidden sm:table-cell' },
-  { chave: 'teste_ate', rotulo: 'Teste até', classe: 'hidden md:table-cell' },
-  { chave: 'usuarios', rotulo: 'Usuários', classe: 'hidden lg:table-cell', alinhar: 'direita' },
-  { chave: 'criada_em', rotulo: 'Criada em', classe: 'hidden lg:table-cell' },
+  { chave: 'assinatura', rotulo: 'Assinatura', classe: 'hidden md:table-cell' },
+  { chave: 'datas', rotulo: 'Datas', classe: 'hidden lg:table-cell' },
+  { chave: 'usuarios', rotulo: 'Usuários', classe: 'hidden 2xl:table-cell', alinhar: 'direita' },
+  { chave: 'criada_em', rotulo: 'Criada em', classe: 'hidden 2xl:table-cell' },
   { chave: 'acoes', rotulo: 'Ações', rotuloOculto: true, alinhar: 'direita' },
 ]
+
+/** "Profissional · R$ 349,00/mês" (etapa 5a); sem assinatura, o plano da conta (o do teste). */
+function textoAssinatura(c: ContaPlataforma): string {
+  if (c.assinatura) return `${nomeDoPlano(c.assinatura.plano)} · ${formatarMoeda(c.assinatura.valor)}/mês`
+  return c.plano ? `Sem assinatura (plano ${nomeDoPlano(c.plano)})` : 'Sem assinatura'
+}
+
+/** "Teste até 15/10/2026 · Pago até 29/10/2026" (celular e telas médias, onde não há a coluna de datas). */
+function textoDatas(c: ContaPlataforma): string {
+  return [c.teste_ate ? `Teste até ${formatarData(c.teste_ate)}` : '', c.pago_ate ? `Pago até ${formatarData(c.pago_ate)}` : ''].filter(Boolean).join(' · ')
+}
+
+/** "+14 dias" não vale para conta com assinatura ativa nem cortesia (a API devolve 409). */
+function semEstender(c: ContaPlataforma): string | null {
+  if (c.situacao === 'cortesia') return 'Conta cortesia não tem teste para estender.'
+  if (c.assinatura) return 'Conta com assinatura ativa: o teste não pode ser estendido.'
+  return null
+}
 
 const filtradas = computed(() => {
   const t = busca.value.trim().toLowerCase()
@@ -72,11 +94,16 @@ function substituir(c: ContaPlataforma) {
 }
 
 async function estender(c: ContaPlataforma) {
+  if (semEstender(c)) return
+  const dias = diasAte(c.teste_ate)
   const ok = await confirmar({
     titulo: `Dar mais 14 dias para ${c.nome}?`,
-    mensagem: c.teste_ate
-      ? `O teste vai até ${formatarData(c.teste_ate)}. Os 14 dias contam a partir dessa data.`
-      : 'Os 14 dias contam a partir do fim do teste atual.',
+    mensagem:
+      c.teste_ate && dias !== null && dias >= 0
+        ? `O teste vai até ${formatarData(c.teste_ate)}. Os 14 dias contam a partir dessa data.`
+        : c.teste_ate
+          ? `O teste acabou em ${formatarData(c.teste_ate)}. Os 14 dias contam a partir de hoje.`
+          : 'Os 14 dias contam a partir de hoje.',
     confirmar: '+14 dias',
   })
   if (!ok) return
@@ -95,8 +122,12 @@ async function estender(c: ContaPlataforma) {
 async function cortesia(c: ContaPlataforma) {
   const ok = await confirmar({
     titulo: `Dar cortesia para ${c.nome}?`,
-    mensagem: 'A conta passa a usar o Toqqi sem cobrança, sem data para acabar.',
-    confirmar: 'Dar cortesia',
+    mensagem: c.assinatura
+      ? `A conta passa a usar o Toqqi sem cobrança, sem data para acabar. A assinatura no Asaas (${textoAssinatura(c)}) será cancelada, com as faturas em aberto.`
+      : 'A conta passa a usar o Toqqi sem cobrança, sem data para acabar.',
+    confirmar: c.assinatura ? 'Cancelar a assinatura e dar cortesia' : 'Dar cortesia',
+    perigo: !!c.assinatura,
+    cancelar: 'Voltar',
   })
   if (!ok) return
   ocupado.value = `cortesia-${c.id}`
@@ -131,17 +162,32 @@ onMounted(carregar)
     <Alerta v-if="erro" tom="erro" class="m-4">
       {{ erro }} <button type="button" class="link ml-1" @click="carregar">Tentar de novo</button>
     </Alerta>
-    <Tabela v-else :colunas="colunas" :linhas="filtradas" :chave="(c) => c.id" :carregando="carregando" legenda="Contas da plataforma">
+    <Tabela v-else :colunas="colunas" :linhas="filtradas" :chave="(c) => c.id" :carregando="carregando" legenda="Contas da plataforma" densa>
       <template #cel-nome="{ linha: c }">
         <p class="font-semibold text-texto">{{ c.nome }}</p>
-        <p class="text-texto-fraco">{{ c.plano || 'Sem plano' }}</p>
+        <p class="text-xs text-texto-fraco 2xl:hidden">{{ plural(c.usuarios ?? 0, 'usuário', 'usuários') }} · criada em {{ formatarData(c.criada_em) }}</p>
+        <p class="mt-1 text-texto-suave md:hidden">{{ textoAssinatura(c) }}</p>
         <div class="mt-1 sm:hidden"><Etiqueta :tom="situacaoConta(c.situacao).tom">{{ situacaoConta(c.situacao).rotulo }}</Etiqueta></div>
+        <p v-if="c.teste_ate || c.pago_ate" class="mt-1 text-xs text-texto-fraco lg:hidden">{{ textoDatas(c) }}</p>
       </template>
       <template #cel-situacao="{ linha: c }">
         <Etiqueta :tom="situacaoConta(c.situacao).tom">{{ situacaoConta(c.situacao).rotulo }}</Etiqueta>
+        <p v-if="c.atrasada_desde" class="mt-1 whitespace-nowrap text-xs text-texto-fraco">Vencida em {{ formatarData(c.atrasada_desde) }}</p>
       </template>
-      <template #cel-teste_ate="{ linha: c }">
-        <span class="whitespace-nowrap text-texto-suave">{{ formatarData(c.teste_ate) }}</span>
+      <template #cel-assinatura="{ linha: c }">
+        <template v-if="c.assinatura">
+          <p class="text-texto">{{ nomeDoPlano(c.assinatura.plano) }}</p>
+          <p class="whitespace-nowrap text-xs text-texto-fraco">{{ formatarMoeda(c.assinatura.valor) }}/mês</p>
+        </template>
+        <template v-else>
+          <p class="text-texto-fraco">Sem assinatura</p>
+          <p v-if="c.plano" class="whitespace-nowrap text-xs text-texto-fraco">Plano {{ nomeDoPlano(c.plano) }}</p>
+        </template>
+      </template>
+      <template #cel-datas="{ linha: c }">
+        <p v-if="c.teste_ate" class="whitespace-nowrap text-texto-suave">Teste até {{ formatarData(c.teste_ate) }}</p>
+        <p v-if="c.pago_ate" class="whitespace-nowrap text-texto-suave">Pago até {{ formatarData(c.pago_ate) }}</p>
+        <span v-if="!c.teste_ate && !c.pago_ate" class="text-texto-fraco">—</span>
       </template>
       <template #cel-usuarios="{ linha: c }">
         <span class="tabular-nums text-texto-suave">{{ c.usuarios ?? '—' }}</span>
@@ -152,14 +198,14 @@ onMounted(carregar)
       <template #cel-acoes="{ linha: c }">
         <div class="flex flex-wrap justify-end gap-1.5">
           <Botao
-            v-if="c.situacao !== 'cortesia'"
             variante="secundario"
             tamanho="sm"
             :carregando="ocupado === `estender-${c.id}`"
-            :desabilitado="!!ocupado"
+            :desabilitado="!!ocupado || !!semEstender(c)"
+            :title="semEstender(c) ?? undefined"
             @click="estender(c)"
           >
-            <CalendarPlus class="size-4" aria-hidden="true" /> +14 dias<span class="sr-only"> para {{ c.nome }}</span>
+            <CalendarPlus class="size-4" aria-hidden="true" /> +14 dias<span class="sr-only"> para {{ c.nome }}{{ semEstender(c) ? ` (indisponível: ${semEstender(c)})` : '' }}</span>
           </Botao>
           <Botao
             v-if="c.situacao !== 'cortesia'"

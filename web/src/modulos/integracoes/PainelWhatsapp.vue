@@ -195,7 +195,8 @@ async function desconectar() {
             placeholder="(11) 91234-5678"
             :erro="erroTelefone"
             class="sm:max-w-xs sm:flex-1"
-            @update:model-value="(v: string) => (telefone = formatarTelefone(v))"
+            :mascara="formatarTelefone"
+            @update:model-value="(v: string) => (telefone = v)"
           />
           <Botao tipo="submit" variante="secundario" :carregando="ocupado === 'teste'" :desabilitado="ocupado !== null && ocupado !== 'teste'" class="sm:mt-7">
             <Send v-if="ocupado !== 'teste'" class="size-4" aria-hidden="true" /> Enviar teste

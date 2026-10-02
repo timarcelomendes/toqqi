@@ -12,9 +12,22 @@ export function apenasDigitos(v: string): string {
   return v.replace(/\D/g, '')
 }
 
-/** Formata telefone brasileiro enquanto digita: (11) 91234-5678. */
+/**
+ * CPF ou CNPJ sem pontuação, em maiúsculas (o CNPJ pode ter letras desde 07/2026: 12.ABC.345/01DE-35 → 12ABC34501DE35).
+ */
+export function normalizarDocumento(v: string | null | undefined): string {
+  return (v ?? '').toUpperCase().replace(/[^0-9A-Z]/g, '')
+}
+
+/**
+ * Formata telefone brasileiro enquanto digita: (11) 91234-5678. Colado com o código do país ("+55 11 98765-4321",
+ * "5511987654321"), fica só o número nacional; o que vem da própria máscara (começa com "(") não perde o 55, que
+ * também é DDD.
+ */
 export function formatarTelefone(v: string): string {
-  const d = apenasDigitos(v).slice(0, 11)
+  let d = apenasDigitos(v)
+  if (d.length > 11 && d.startsWith('55') && !v.trimStart().startsWith('(')) d = d.slice(2)
+  d = d.slice(0, 11)
   if (d.length <= 2) return d ? `(${d}` : ''
   if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`

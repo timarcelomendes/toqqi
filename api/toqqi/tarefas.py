@@ -1,27 +1,30 @@
-"""Tarefas periódicas: `python -m toqqi.tarefas [robo|lembretes|pendentes|webhooks|ia|picos|resumo|tudo]` (padrão:
-tudo).
+"""Tarefas periódicas: `python -m toqqi.tarefas
+[assinaturas|robo|lembretes|pendentes|webhooks|ia|picos|resumo|tudo]` (padrão: tudo).
 
 Também disponíveis em POST /api/v1/interno/tarefas (cabeçalho X-Tarefas-Token). Em produção, o Cron Job
 `toqqi-tarefas` do Render roda este comando a cada 15 minutos; cada tarefa decide por conta se é hora de agir.
-`tudo` roda na ordem: pendentes, robô, lembretes, webhooks, ia, picos, resumo (a IA antes, para os picos já usarem
-as análises novas).
+`tudo` roda na ordem: assinaturas, pendentes, robô, lembretes, webhooks, ia, picos, resumo (assinaturas primeiro,
+para a liberação dos envios já valer; a IA antes dos picos, para eles já usarem as análises novas).
 """
 import json
 import logging
 import sys
 
+from toqqi.modulos.assinatura import conferencia as assinaturas
 from toqqi.modulos.envios import automacao
 from toqqi.modulos.ia import servico as ia
 from toqqi.modulos.integracoes import webhooks
 from toqqi.modulos.relatorios import emails
 
-TAREFAS = ("robo", "lembretes", "pendentes", "webhooks", "ia", "picos", "resumo", "tudo")
+TAREFAS = ("assinaturas", "robo", "lembretes", "pendentes", "webhooks", "ia", "picos", "resumo", "tudo")
 
 
 def executar(qual: str = "tudo") -> dict:
     """Roda as tarefas pedidas (na ordem acima) e devolve o resumo de cada uma."""
     assert qual in TAREFAS
     resultado: dict = {}
+    if qual in ("assinaturas", "tudo"):
+        resultado["assinaturas"] = assinaturas.executar()
     if qual in ("pendentes", "tudo"):
         resultado["pendentes"] = automacao.pendentes()
     if qual in ("robo", "tudo"):

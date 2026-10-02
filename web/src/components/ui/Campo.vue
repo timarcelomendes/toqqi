@@ -15,6 +15,11 @@ const props = withDefaults(
     /** Esconde o rótulo visualmente (continua para leitores de tela). */
     rotuloOculto?: boolean
     id?: string
+    /**
+     * Formata enquanto digita (CPF/CNPJ, telefone, CEP). O campo mostra sempre o valor formatado, também quando o que
+     * foi colado ou digitado vira outra coisa (ou nada): sem `maxlength`, que cortaria o colado antes da máscara.
+     */
+    mascara?: (v: string) => string
   }>(),
   { tipo: 'text' },
 )
@@ -30,6 +35,32 @@ const descritoPor = computed(
 )
 const entrada = ref<HTMLInputElement | null>(null)
 defineExpose({ focar: () => entrada.value?.focus() })
+
+/** O valor do campo; com `mascara`, o que vai para o v-model e para a tela é o formatado. */
+const valor = computed({
+  get: () => modelo.value,
+  set: (bruto: string) => {
+    if (!props.mascara) {
+      modelo.value = bruto
+      return
+    }
+    const formatado = props.mascara(bruto)
+    const el = entrada.value
+    // Se o formatado for igual ao valor anterior, o Vue não redesenha o campo: escreve aqui (o cursor fica à mesma
+    // distância do fim, que é o que a pessoa espera ao digitar no meio).
+    if (el && el.value !== formatado) {
+      const doFim = el.value.length - (el.selectionEnd ?? el.value.length)
+      el.value = formatado
+      const pos = Math.max(0, formatado.length - doFim)
+      try {
+        if (document.activeElement === el) el.setSelectionRange(pos, pos)
+      } catch {
+        /* tipo de campo sem cursor (ex.: e-mail) */
+      }
+    }
+    modelo.value = formatado
+  },
+})
 </script>
 
 <template>
@@ -46,7 +77,7 @@ defineExpose({ focar: () => entrada.value?.focus() })
         :id="idCampo"
         ref="entrada"
         v-bind="{ ...$attrs, class: undefined }"
-        v-model="modelo"
+        v-model="valor"
         :type="tipo"
         :required="obrigatorio"
         :disabled="desabilitado"

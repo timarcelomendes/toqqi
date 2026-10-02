@@ -2,7 +2,7 @@
 // mensagens do servidor e o preenchimento do endereço pelo CEP (ViaCEP).
 import type { DadosEmpresaConta, DadosEmpresaContaIn } from '@/api/tipos'
 import { formatarDocumento, telefoneParaCampo } from '@/utils/formatos'
-import { apenasDigitos, emailValido, formatarTelefone } from '@/utils/validacao'
+import { apenasDigitos, emailValido, formatarTelefone, normalizarDocumento } from '@/utils/validacao'
 
 export const UFS = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
@@ -76,15 +76,16 @@ export function formatarCep(v: string | null | undefined): string {
   return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d
 }
 
-/** CNPJ (ou CPF) enquanto digita. */
+/** CNPJ (numérico ou alfanumérico, em maiúsculas) ou CPF enquanto digita. */
 export const mascaraDocumento = (v: string) => formatarDocumento(v)
 
 /**
  * Telefone enquanto digita: (11) 91234-5678. Começando com "+", fica como número com código do país (+351912345678),
- * sem a máscara brasileira (que cortaria os dígitos a mais).
+ * sem a máscara brasileira (que cortaria os dígitos a mais); "+55" com o número inteiro vira o formato nacional.
  */
 export function mascaraTelefone(v: string): string {
-  if (v.trim().startsWith('+')) return `+${apenasDigitos(v).slice(0, 13)}`
+  const d = apenasDigitos(v)
+  if (v.trim().startsWith('+') && !(d.startsWith('55') && d.length >= 12)) return `+${d.slice(0, 13)}`
   return formatarTelefone(v)
 }
 
@@ -127,7 +128,7 @@ export function corpoDoForm(f: FormEmpresa): DadosEmpresaContaIn {
   return {
     nome: f.nome.trim(),
     razao_social: vazioParaNull(f.razao_social),
-    documento: digitosOuNull(f.documento),
+    documento: normalizarDocumento(f.documento) || null,
     telefone: digitosOuNull(f.telefone),
     email_contato: vazioParaNull(f.email_contato),
     site: vazioParaNull(f.site),
@@ -165,21 +166,27 @@ export function cpfValido(d: string): boolean {
   return true
 }
 
+/**
+ * CNPJ numérico ou alfanumérico (Receita Federal, desde 31/07/2026): 12 caracteres [0-9A-Z] + 2 dígitos verificadores.
+ * Cada caractere vale o código ASCII − 48 ('0'–'9' → 0–9, 'A' → 17 … 'Z' → 42); pesos 5,4,3,2,9,8,7,6,5,4,3,2 (1º DV)
+ * e 6,5,4,3,2,9,8,7,6,5,4,3,2 (2º DV); resto < 2 → 0, senão 11 − resto. Exemplo oficial: 12.ABC.345/01DE-35.
+ */
 export function cnpjValido(d: string): boolean {
-  if (!/^\d{14}$/.test(d) || /^(\d)\1{13}$/.test(d)) return false
+  if (!/^[0-9A-Z]{12}\d{2}$/.test(d) || d === d[0]!.repeat(14)) return false
+  const valores = Array.from(d, (c) => c.charCodeAt(0) - 48)
   for (const n of [12, 13]) {
     const pesos = [...Array.from({ length: n - 8 }, (_, i) => n - 7 - i), 9, 8, 7, 6, 5, 4, 3, 2]
     let soma = 0
-    for (let i = 0; i < n; i++) soma += Number(d[i]) * pesos[i]!
-    const dv = 11 - (soma % 11)
-    if ((dv >= 10 ? 0 : dv) !== Number(d[n])) return false
+    for (let i = 0; i < n; i++) soma += valores[i]! * pesos[i]!
+    const resto = soma % 11
+    if ((resto < 2 ? 0 : 11 - resto) !== valores[n]) return false
   }
   return true
 }
 
-/** CPF ou CNPJ com os dígitos verificadores certos (aceita a máscara). */
+/** CPF (só números) ou CNPJ (numérico ou alfanumérico) com os dígitos verificadores certos; aceita máscara e minúsculas. */
 export function documentoValido(v: string): boolean {
-  const d = apenasDigitos(v)
+  const d = normalizarDocumento(v)
   return d.length === 11 ? cpfValido(d) : d.length === 14 ? cnpjValido(d) : false
 }
 
@@ -220,7 +227,7 @@ export function validarEmpresa(f: FormEmpresa): Partial<Record<keyof FormEmpresa
   const nome = f.nome.trim()
   if (nome.length < 2) e.nome = MENSAGENS.nome
   else if (nome.length > LIMITES.nome) e.nome = `Use no máximo ${LIMITES.nome} caracteres.`
-  if (apenasDigitos(f.documento) && !documentoValido(f.documento)) e.documento = MENSAGENS.documento
+  if (normalizarDocumento(f.documento) && !documentoValido(f.documento)) e.documento = MENSAGENS.documento
   const tel = erroTelefone(f.telefone)
   if (tel) e.telefone = tel
   if (f.email_contato.trim() && !emailValido(f.email_contato)) e.email_contato = MENSAGENS.email_contato

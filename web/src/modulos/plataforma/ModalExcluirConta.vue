@@ -50,6 +50,7 @@ const erroTopo = computed(() => (codigoErro.value === 'nome_nao_confere' ? null 
     <form id="form-excluir-conta" class="flex flex-col gap-4" novalidate @submit.prevent="excluir">
       <Alerta tom="erro" titulo="Isso não tem volta">
         Apaga a conta e tudo o que é dela: usuários, contatos, empresas, formulários, respostas e envios. Ninguém da empresa consegue mais entrar.
+        <template v-if="conta?.assinatura">A assinatura no Asaas é cancelada antes, com as faturas em aberto.</template>
       </Alerta>
       <Alerta v-if="erroTopo" tom="erro">{{ erroTopo }}</Alerta>
       <Campo

@@ -107,8 +107,9 @@ async function reenviar() {
         inputmode="tel"
         placeholder="(11) 91234-5678"
         dica="Só para te ajudar, se precisar. Não enviamos propaganda."
+        :mascara="formatarTelefone"
         :erro="erro('telefone')"
-        @update:model-value="(v: string) => (dados.telefone = formatarTelefone(v))"
+        @update:model-value="(v: string) => (dados.telefone = v)"
       />
       <CampoSenha
         v-model="dados.senha"

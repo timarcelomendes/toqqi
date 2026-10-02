@@ -16,6 +16,8 @@ const props = withDefaults(
     bloco?: boolean
     /** Se informado, vira um link do router. */
     para?: RouteLocationRaw
+    /** Endereço de outro site: vira link que abre em nova aba (o leitor de tela ouve "abre em nova aba"). */
+    href?: string
     /** Botão só com ícone: informe o texto para leitores de tela. */
     somenteIcone?: string
   }>(),
@@ -45,6 +47,10 @@ const inativo = computed(() => props.desabilitado || props.carregando)
   <RouterLink v-if="para && !inativo" :to="para" :class="classes" :aria-label="somenteIcone">
     <slot />
   </RouterLink>
+  <a v-else-if="href && !inativo" :href="href" target="_blank" rel="noopener noreferrer" :class="classes" :aria-label="somenteIcone">
+    <slot />
+    <span class="sr-only">{{ ' ' }}(abre em nova aba)</span>
+  </a>
   <button
     v-else
     :type="tipo"

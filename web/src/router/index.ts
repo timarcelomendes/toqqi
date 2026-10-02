@@ -19,8 +19,6 @@ declare module 'vue-router' {
   }
 }
 
-const emConstrucao = () => import('@/modulos/geral/EmConstrucaoView.vue')
-
 const rotas: RouteRecordRaw[] = [
   { path: '/', redirect: '/inicio' },
   {
@@ -55,7 +53,8 @@ const rotas: RouteRecordRaw[] = [
       // Etapa 4b: uma tela com 7 abas; a aba e os filtros ficam no endereço (/relatorios/temas?periodo=30).
       { path: 'relatorios', redirect: (to) => ({ path: '/relatorios/empresas', query: to.query }) },
       { path: 'relatorios/:aba', name: 'relatorios', component: () => import('@/modulos/relatorios/RelatoriosView.vue'), meta: { titulo: 'Relatórios', permissao: 'relatorios.ver' } },
-      { path: 'assinatura', name: 'assinatura', component: emConstrucao, meta: { titulo: 'Assinatura' } },
+      // Etapa 5a: planos, fatura em aberto, trocar de plano, dados de cobrança, cancelar e histórico.
+      { path: 'assinatura', name: 'assinatura', component: () => import('@/modulos/assinatura/AssinaturaView.vue'), meta: { titulo: 'Assinatura', permissao: 'assinatura.gerenciar' } },
       { path: 'minha-conta', name: 'minha-conta', component: () => import('@/modulos/conta/MinhaContaView.vue'), meta: { titulo: 'Minha conta' } },
       { path: 'equipe', name: 'equipe', component: () => import('@/modulos/equipe/EquipeView.vue'), meta: { titulo: 'Equipe', permissao: 'equipe.gerenciar' } },
       {

@@ -21,6 +21,9 @@ os.environ.update({
     "ALLOWED_ORIGINS": "http://app.teste",
     "IA_PROVEDOR": "memoria",
     "OPENAI_API_KEY": "",
+    "ASAAS_API_KEY": "",
+    "ASAAS_WEBHOOK_TOKEN": "",
+    "ASAAS_URL": "",
 })
 
 import pytest  # noqa: E402
@@ -34,7 +37,7 @@ from toqqi.core.email import caixa_memoria  # noqa: E402
 from toqqi.core.rate_limit import limiter  # noqa: E402
 from toqqi.main import create_app  # noqa: E402
 
-TABELAS = ("ia_uso_mensal, alertas_pico, resumos_semanais, imagens, acoes, config_acoes, envios, descadastros, config_envios, importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
+TABELAS = ("asaas_remocoes, asaas_eventos, cobrancas, assinaturas, ia_uso_mensal, alertas_pico, resumos_semanais, imagens, acoes, config_acoes, envios, descadastros, config_envios, importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
            "perfis_contato, cargos, auditoria, dominios_liberados, perfil_permissoes, tokens_uso_unico, sessoes, usuarios, contas")
 
 
@@ -83,10 +86,11 @@ def app_engine():
 
 @pytest.fixture(autouse=True)
 def sem_rede(monkeypatch):
-    """Nada sai para a rede: a Graph API e os webhooks de saída só respondem pelos dublês dos testes."""
+    """Nada sai para a rede: a Graph API, a OpenAI, o Asaas e os webhooks de saída só respondem pelos dublês dos
+    testes."""
     import httpx
 
-    from toqqi.core import ia, rede
+    from toqqi.core import asaas, ia, rede
     from toqqi.modulos.whatsapp import graph
 
     def recusar(*_a, **_k):
@@ -94,6 +98,7 @@ def sem_rede(monkeypatch):
 
     monkeypatch.setattr(graph, "transporte", httpx.MockTransport(recusar))
     monkeypatch.setattr(ia, "transporte", httpx.MockTransport(recusar))
+    monkeypatch.setattr(asaas, "transporte", httpx.MockTransport(recusar))
     monkeypatch.setattr(rede, "enviar_post", recusar)
     ia.memoria.limpar()  # provedor de IA dos testes (IA_PROVEDOR=memoria): sem chamadas nem falhas programadas
 
@@ -125,6 +130,22 @@ def destino(monkeypatch):
     monkeypatch.setattr(rede, "resolver", lambda host: ["52.96.1.10"])
     monkeypatch.setattr(rede, "enviar_post", d)
     return d
+
+
+@pytest.fixture
+def asaas_falso(client, monkeypatch):
+    """Asaas falso (scripts/asaas_falso.py) atrás do adaptador, com a chave e o token do webhook configurados."""
+    import httpx
+    from util import CHAVE_ASAAS, TOKEN_WEBHOOK, AsaasFalso
+
+    from toqqi.core import asaas
+    from toqqi.core.config import config
+
+    falso = AsaasFalso(client)
+    monkeypatch.setattr(asaas, "transporte", httpx.MockTransport(falso))
+    monkeypatch.setattr(config(), "ASAAS_API_KEY", CHAVE_ASAAS)
+    monkeypatch.setattr(config(), "ASAAS_WEBHOOK_TOKEN", TOKEN_WEBHOOK)
+    return falso
 
 
 @pytest.fixture

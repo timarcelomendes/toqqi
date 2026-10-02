@@ -104,12 +104,14 @@ def registrar_handlers(app: FastAPI) -> None:
 
 
 def erro_do_banco(exc: DBAPIError) -> AppError | None:
-    """Erros de regra levantados pelo próprio banco (gatilhos) viram AppError."""
+    """Erros de regra levantados pelo próprio banco (gatilhos) viram AppError. O limite de contatos (TQ402) leva o
+    limite em `campos.limite` (o gatilho manda no DETAIL), para a tela oferecer "Ver planos"."""
     orig = getattr(exc, "orig", None)
     if getattr(orig, "sqlstate", None) == "TQ402":
         diag = getattr(orig, "diag", None)
         msg = getattr(diag, "message_primary", None) or "Você atingiu o limite de contatos ativos do seu plano."
-        return AppError(402, "limite_do_plano", msg)
+        limite = getattr(diag, "message_detail", None) or ""
+        return AppError(402, "limite_do_plano", msg, {"limite": limite} if limite.isdigit() else None)
     return None
 
 

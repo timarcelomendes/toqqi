@@ -1,6 +1,7 @@
 """Conversão de modelos para o formato JSON do contrato."""
 from toqqi.core.config import config
 from toqqi.modelos import Conta, Usuario
+from toqqi.modulos.assinatura.regras import cobranca_json
 from toqqi.modulos.ia.regras import ia_ativa
 
 
@@ -27,5 +28,6 @@ def usuario_json(u: Usuario, preferencias: bool = False) -> dict:
 
 
 def conta_json(c: Conta) -> dict:
+    """`cobranca` (etapa 5a): {liberada, pago_ate, atrasada_desde, pausa_em, aviso} — regras em assinatura.regras."""
     return {"id": c.id, "nome": c.nome, "plano": c.plano, "situacao": c.situacao, "teste_ate": c.teste_ate,
-            "ia_ativa": ia_ativa(c)}
+            "ia_ativa": ia_ativa(c), "cobranca": cobranca_json(c)}

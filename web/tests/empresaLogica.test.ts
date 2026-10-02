@@ -6,6 +6,7 @@ import {
   UFS,
   buscarCep,
   cnpjValido,
+  documentoValido,
   corpoDoForm,
   cpfValido,
   formDosDados,
@@ -60,6 +61,8 @@ describe('máscaras', () => {
 
   it('telefone brasileiro com máscara; com "+", fica com o código do país e sem cortar', () => {
     expect(mascaraTelefone('11912345678')).toBe('(11) 91234-5678')
+    // colado com +55 e máscara: nada se perde (o campo não tem maxlength que corte antes da máscara)
+    expect(mascaraTelefone('+55 11 98765-4321')).toBe('(11) 98765-4321')
     expect(mascaraTelefone('1132345678')).toBe('(11) 3234-5678')
     expect(mascaraTelefone('+351 912 345 678')).toBe('+351912345678')
     expect(mascaraTelefone('+')).toBe('+')
@@ -260,5 +263,16 @@ describe('logo: conferência antes de enviar', () => {
     expect(logoParaCliente(null, 'https://x.com.br/e.png')).toEqual({ url: 'https://x.com.br/e.png', daEmpresa: true })
     expect(logoParaCliente('  ', 'https://x.com.br/e.png')).toEqual({ url: 'https://x.com.br/e.png', daEmpresa: true })
     expect(logoParaCliente(null, null)).toEqual({ url: null, daEmpresa: false })
+  })
+})
+
+describe('CNPJ alfanumérico (Receita Federal, desde 31/07/2026)', () => {
+  it('aceita o exemplo oficial, com máscara e minúsculas; recusa DV errado e letra no DV', () => {
+    expect(cnpjValido('12ABC34501DE35')).toBe(true)
+    expect(documentoValido('12.abc.345/01de-35')).toBe(true)
+    expect(cnpjValido('12ABC34501DE36')).toBe(false)
+    expect(cnpjValido('12ABC34501DE3A')).toBe(false)
+    expect(documentoValido('12.ABC.345/01DE-3')).toBe(false)
+    expect(documentoValido('11.222.333/0001-81')).toBe(true) // o numérico continua valendo
   })
 })

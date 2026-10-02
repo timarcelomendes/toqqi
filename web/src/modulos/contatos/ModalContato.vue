@@ -56,10 +56,6 @@ watch(aberto, (v) => {
   mostrarMais.value = !!c?.codigo_externo
 })
 
-function aoDigitarTelefone(v: string) {
-  dados.telefone = formatarTelefone(v)
-}
-
 function erro(campo: string) {
   if (locais[campo]) return locais[campo]
   if (erros[campo]) return erros[campo]
@@ -111,14 +107,14 @@ async function salvar() {
       <div class="grid gap-4 sm:grid-cols-2">
         <Campo v-model="dados.email" rotulo="E-mail" tipo="email" inputmode="email" autocomplete="off" :erro="erro('email')" />
         <Campo
-          :model-value="dados.telefone"
+          v-model="dados.telefone"
           rotulo="Telefone / WhatsApp"
           tipo="tel"
           inputmode="tel"
           autocomplete="off"
           placeholder="(11) 91234-5678"
+          :mascara="formatarTelefone"
           :erro="erro('telefone')"
-          @update:model-value="aoDigitarTelefone"
         />
       </div>
       <p class="-mt-2 text-sm text-texto-fraco">Precisa de pelo menos um dos dois: e-mail ou telefone.</p>

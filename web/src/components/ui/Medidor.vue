@@ -31,7 +31,7 @@ const cor = computed(() =>
     :aria-valuemax="Math.max(0, maximo)"
     :aria-valuenow="Math.min(Math.max(0, valor), Math.max(0, maximo))"
     :aria-valuetext="texto ?? `${valor} de ${maximo}`"
-    class="h-2.5 w-full overflow-hidden rounded-full bg-superficie-2"
+    class="h-2.5 w-full overflow-hidden rounded-full bg-borda-forte"
   >
     <div class="h-full rounded-full transition-[width] duration-300" :class="cor" :style="{ width: `${fracao * 100}%` }" />
   </div>

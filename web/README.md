@@ -103,7 +103,7 @@ A tela **Formulários → Compartilhar** monta o código pronto, o QR Code (PNG 
 src/
   api/            cliente fetch tipado (token, erros {erro:{codigo,mensagem,campos}}, multipart, download de
                   arquivos com token), endpoints (index.ts, etapa2.ts, etapa3.ts…, etapa4a.ts, etapa4b.ts,
-                  empresa.ts, publico.ts) e tipos
+                  etapa5a.ts, empresa.ts, publico.ts) e tipos
   pesquisa/       núcleo da pesquisa SEM dependências do app: tipos, lógica (nota principal, grupos,
                   condições, páginas), variáveis ({nome}, {empresa}...), validação das respostas,
                   parâmetros/links com contexto, e os componentes Pesquisa.vue + CampoPergunta.vue
@@ -116,12 +116,13 @@ src/
   components/ui/  componentes próprios: Botao, Campo, CampoSenha, Selecao, CaixaSelecao, Modal,
                   DialogoConfirmacao, Avisos (toasts), Tabela, Etiqueta, EstadoVazio, Carregando,
                   Alerta, Abas, CampoChips, MenuSuspenso, Medidor
-  components/app/ marca, botão de tema, cabeçalho de página, item de menu
+  components/app/ marca, botão de tema, cabeçalho de página, item de menu, aviso da assinatura no topo
+                  (AvisoCobranca) e a mensagem de limite de contatos (AlertaLimitePlano)
   composables/    avisos, confirmação, tema, foco preso (modais), formulário, regras de senha
   modulos/<área>/ telas: acesso, inicio, conta, equipe, configuracoes, auditoria, plataforma, geral,
                   contatos, importacao, formularios (editor/ com as abas e a pré-visualização), envios,
-                  integracoes, painel, respostas, acoes, relatorios (cada uma com a sua logica.ts, testada à
-                  parte)
+                  integracoes, painel, respostas, acoes, relatorios, assinatura (cada uma com a sua logica.ts,
+                  testada à parte)
   utils/          datas (dd/mm/aaaa, America/Sao_Paulo), períodos (7/30/90 dias, 12 meses, tudo, datas), senha,
                   rótulos, validação, imagens (conferência do logo antes de enviar, logo do formulário ou da empresa)
   styles/main.css Tailwind v4 + tokens (@theme) + modo escuro (classe .dark)
@@ -142,13 +143,13 @@ tests/            testes unitários (lógica/condições, variáveis, validaçã
 - **409/422:** mostra `mensagem` e, se houver, cada `campos.<campo>` ao lado do campo.
 - **429:** "Muitas tentativas. Aguarde um minuto."
 - **Permissões:** itens do menu e rotas são filtrados por `pode(permissao)`; sem permissão, a rota volta para `/inicio` com aviso.
-- **402 `limite_do_plano`** (contatos e importação): aviso amigável com link para `/assinatura` (ainda "Em construção").
+- **402 `limite_do_plano`** (criar, reativar e importar contatos): aviso amigável; quem tem `assinatura.gerenciar` vê
+  "Ver planos" (leva para `/assinatura`), os outros leem que precisam pedir ao administrador da conta.
 - **Editor de formulário:** alterações ficam num rascunho; barra "não salvo", Ctrl/⌘+S, aviso ao sair da página ou fechar a aba.
   Erros 422 com `perguntas.<i>.<campo>` abrem a pergunta certa e aparecem no campo. "Recebendo respostas" e
   "link público" salvam na hora (não entram no rascunho).
 - **Pesquisa pública:** no modo "uma por vez", tocar numa nota avança sozinho (com teclado, as setas só trocam a
   opção; Enter avança; no NPS as teclas 0–9 marcam a nota e "1" seguido de "0" marca 10).
-- Assinatura ainda mostra "Em construção".
 
 ## Etapa 4a
 
@@ -439,3 +440,62 @@ apagados, até chegar o novo).
 - `Medidor` (novo, em `ui/`): quanto de um limite já foi usado (`role="meter"`).
 - `BarraGrupos`: `legenda="nenhuma"` e `fina` (linhas de tabela). `CampoEmpresa`: `fonte` opcional (outra origem para a
   busca). Tokens `--color-grafico-tema-1…6` e `--color-grafico-cinza`, documentados no design system.
+
+## Etapa 5a
+
+Contrato: [`../docs/api-etapa-5a.md`](../docs/api-etapa-5a.md) (§8, telas; §0, §3, §4 e §7, regras e formatos).
+Endpoints em `src/api/etapa5a.ts` (`assinaturaApi`: planos, `GET /assinatura`, assinar, trocar de plano, dados de
+cobrança e cancelar); a Plataforma continua em `plataformaApi`. Tipos no fim de `src/api/tipos.ts` (`EstadoAssinatura`,
+`CobrancaConta`, `AvisoCobranca`…; valores em reais como número ou texto). Regras puras (datas, avisos, primeira fatura,
+limite de contatos, formulário) em `src/modulos/assinatura/logica.ts`.
+
+### Assinatura (`/assinatura`, `assinatura.gerenciar`)
+
+- Entrada no menu da conta (canto de cima) e em Administração › Assinatura.
+- **Sem assinatura:** a situação (teste com o último dia, teste encerrado, cancelada ainda no período pago ou não), os
+  contatos ativos contra o limite do plano em uso (o do teste) e os 3 planos em cartões (preço, limite, "Envios,
+  formulários e usuários ilimitados"). Os planos são rádios nativos (Tab entra, setas trocam); o que não comporta os
+  contatos ativos de hoje fica bloqueado, com o motivo escrito. Escolhido um plano, aparece o formulário de cobrança
+  preenchido com `dados_sugeridos` (razão social, CPF/CNPJ e telefone com as máscaras de Configurações › Empresa,
+  e-mail de cobrança), com as mesmas mensagens da API, e o resumo da primeira fatura: no último dia do teste (se ele
+  ainda vale), no dia seguinte ao fim do período pago ou amanhã ("Primeira fatura de R$ 349,00 com vencimento em
+  15/10/2026, no fim do teste. Depois, todo dia 15."). Escolher com mouse ou toque leva a tela até o formulário; com o
+  teclado, não (o Tab chega lá).
+- **Com assinatura:** "Plano X" com o selo da situação (Em teste, Ativa, Atrasada, Aguardando pagamento), o valor, os
+  contatos ativos, o próximo vencimento e a data da assinatura; a fatura em aberto com "Pagar" (abre a fatura do
+  Asaas em nova aba: Pix, boleto ou cartão) e "Atualizar"; os dados de cobrança (editar numa janela: sem mudança,
+  "Salvar" fica travado); "Trocar de plano" (janela com os 3 planos, o novo valor, a fatura pendente que muda junto e o
+  limite; plano menor com contatos demais avisa e não deixa trocar); "Cancelar assinatura" (confirmação com até quando
+  usa, ou a volta para o teste, "Sem multa"); o histórico (vencimento, valor, forma, situação, pago em e "Ver fatura";
+  tabela a partir de 640 px, cartões no celular). O histórico continua depois de cancelar.
+- **Cortesia:** só a situação ("não precisa assinar"). **`disponivel: false`:** "A cobrança online ainda não está
+  disponível. Fale com a equipe Toqqi." e as ações que dependem do Asaas travadas.
+- **Esperar o pagamento:** depois de assinar (ou de clicar em "Pagar"), busca `GET /assinatura` de 10 em 10 s por até
+  2 min enquanto a fatura estiver em aberto (e de novo ao voltar para a aba, no máximo a cada 10 s). Quando a situação
+  da conta muda, busca a sessão (`GET /eu`) de novo; quando a fatura aparece paga, avisa "Pagamento confirmado".
+- **Erros:** 422 (campos e `cobranca_recusada`) no campo; `limite_do_plano` em âmbar; 503 `cobranca_indisponivel` com a
+  mensagem da API; 409 `ja_assinada`/`cortesia` avisam e recarregam a tela.
+
+### Aviso no topo das telas
+
+- `AvisoCobranca` (no `AppLayout`, abaixo da barra de cima) lê `conta.cobranca.aviso` da sessão: teste acabando ("Seu
+  teste grátis termina em 3 dias."), teste encerrado, atrasada ("A fatura venceu em 10/10. Os envios param em 18/10 se
+  ela não for paga."), pausada, cancelada ("Você usa até 14/11.") e cancelada encerrada; tipo novo da API vira um aviso
+  genérico. Quem tem `assinatura.gerenciar` vê "Escolher plano" ou "Pagar agora" (na própria tela de Assinatura, sem o
+  botão); os outros, "Fale com o administrador da conta.". Os informativos (teste acabando e cancelada) podem ser
+  fechados até a próxima sessão do navegador (`sessionStorage`, com try/catch); voltam quando o aviso muda. O selo de
+  teste no cabeçalho continua.
+
+### Plataforma
+
+- Selos das situações novas (Teste encerrado, Atrasada, com "Vencida em"), a assinatura (plano e valor, ou "Sem
+  assinatura" e o plano da conta) e as datas (teste até, pago até); usuários e "criada em" viram coluna só a partir de
+  1536 px (antes, embaixo do nome). "+14 dias" travado com assinatura ativa ou cortesia (o motivo vai para o leitor de
+  tela); com o teste já acabado, a confirmação diz que os dias contam a partir de hoje. "Cortesia" numa conta com
+  assinatura avisa que a assinatura no Asaas será cancelada; "Excluir" também.
+
+### Componentes que mudaram
+
+- `Botao`: `href` (link para outro site, abre em nova aba e avisa o leitor de tela).
+- `AlertaLimitePlano`: "Ver planos" só para `assinatura.gerenciar`.
+- `situacaoConta` (rótulos): `teste_expirado` e `atrasada`. A rota `/assinatura` saiu do "Em construção".

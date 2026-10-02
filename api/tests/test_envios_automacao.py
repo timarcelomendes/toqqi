@@ -312,7 +312,10 @@ def test_rota_interna_de_tarefas(client, monkeypatch):
     assert r.status_code == 401 and r.json()["erro"]["codigo"] == "token_invalido"
     r = client.post(url, headers={"X-Tarefas-Token": "segredo-das-tarefas"})
     assert r.status_code == 200
-    assert r.json() == {"pendentes": 0, "robo": {"contas": 0, "agendados": 0, "ignorados": 0},
+    assert list(r.json())[0] == "assinaturas"  # roda primeiro: a liberação vale antes dos envios
+    assert r.json() == {"assinaturas": {"testes_expirados": 0, "contas_de_outro_ambiente": 0, "remocoes_no_asaas": 0,
+                                        "eventos_reprocessados": 0, "contas_conferidas": 0},
+                        "pendentes": 0, "robo": {"contas": 0, "agendados": 0, "ignorados": 0},
                         "lembretes": {"contas": 0, "enviados": 0, "ignorados": 0},
                         "webhooks": {"entregues": 0, "falharam": 0},
                         "ia": {"analisadas": 0, "falharam": 0, "limite": 0}, "picos": {"picos": 0, "emails": 0},

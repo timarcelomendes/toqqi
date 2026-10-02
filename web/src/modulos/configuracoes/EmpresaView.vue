@@ -72,13 +72,7 @@ async function carregar() {
   }
 }
 
-// ── Máscaras (o campo mostra formatado; para a API vão só os dígitos) ───────
-function aoDigitarDocumento(v: string) {
-  form.documento = mascaraDocumento(v)
-}
-function aoDigitarTelefone(v: string) {
-  form.telefone = mascaraTelefone(v)
-}
+// Máscaras: o campo (`mascara`) mostra o valor formatado; para a API vão só os dígitos (e as letras do CNPJ).
 
 // ── CEP → endereço (ViaCEP): só os campos vazios; se falhar, segue à mão sem aviso ──
 const buscandoCep = ref(false)
@@ -207,16 +201,17 @@ onBeforeUnmount(() => {
         />
         <Campo v-model="form.razao_social" rotulo="Razão social" opcional :maxlength="LIMITES.razao_social" :erro="erro('razao_social')" />
         <Campo
-          :model-value="form.documento"
+          v-model="form.documento"
           rotulo="CNPJ"
           opcional
-          inputmode="numeric"
-          maxlength="18"
+          autocapitalize="characters"
+          autocomplete="off"
+          spellcheck="false"
           placeholder="00.000.000/0000-00"
+          :mascara="mascaraDocumento"
           :erro="erro('documento')"
-          dica="Também aceita CPF."
+          dica="Também aceita CPF. O CNPJ pode ter letras (CNPJ alfanumérico)."
           class="sm:max-w-xs"
-          @update:model-value="aoDigitarDocumento"
         />
       </div>
     </section>
@@ -230,16 +225,15 @@ onBeforeUnmount(() => {
       </div>
       <div class="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 md:col-span-2">
         <Campo
-          :model-value="form.telefone"
+          v-model="form.telefone"
           rotulo="Telefone ou WhatsApp"
           opcional
           tipo="tel"
           inputmode="tel"
           autocomplete="tel-national"
-          maxlength="15"
           placeholder="(11) 91234-5678"
+          :mascara="mascaraTelefone"
           :erro="erro('telefone')"
-          @update:model-value="aoDigitarTelefone"
         />
         <Campo
           v-model="form.email_contato"
@@ -280,8 +274,8 @@ onBeforeUnmount(() => {
           opcional
           inputmode="numeric"
           autocomplete="postal-code"
-          maxlength="9"
           placeholder="00000-000"
+          :mascara="formatarCep"
           :erro="erro('cep')"
           class="sm:col-span-3"
           @update:model-value="aoDigitarCep"

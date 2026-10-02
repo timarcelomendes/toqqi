@@ -1,6 +1,10 @@
 import { ref } from 'vue'
 import { ApiError, mensagemDoErro, whatsappApi, type Id } from '@/api'
+import { useSessaoStore } from '@/stores/sessao'
 import { avisar } from './avisos'
+
+/** Com a assinatura pausando os envios, o WhatsApp também não sai (a API devolveria 409). */
+export const AVISO_WHATSAPP_PAUSADO = 'Os envios estão pausados pela assinatura: o WhatsApp volta quando ela estiver em dia.'
 
 export const AVISO_WHATSAPP =
   'A mensagem abriu no WhatsApp. Ela só sai quando você apertar Enviar lá: o Toqqi não consegue confirmar a entrega por esse caminho.'
@@ -11,9 +15,14 @@ export const AVISO_WHATSAPP =
  */
 export function useWhatsapp() {
   const abrindo = ref<Id | null>(null)
+  const sessao = useSessaoStore()
 
   async function abrir(contato: { id: Id; nome: string }, formularioId?: Id): Promise<boolean> {
     if (abrindo.value !== null) return false
+    if (sessao.conta?.cobranca?.liberada === false) {
+      avisar.atencao(AVISO_WHATSAPP_PAUSADO)
+      return false
+    }
     abrindo.value = contato.id
     let janela: Window | null = null
     try {

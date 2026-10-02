@@ -71,10 +71,14 @@ export const useSessaoStore = defineStore('sessao', () => {
     }
   }
 
+  /** Quando a sessão veio da API pela última vez (ms). */
+  let atualizadaEm = 0
+
   function aplicarDados(d: DadosSessao) {
     usuario.value = d.usuario
     conta.value = d.conta
     permissoes.value = Array.isArray(d.permissoes) ? d.permissoes : []
+    atualizadaEm = Date.now()
   }
 
   function definirSessao(s: Sessao, lembrarDeMim: boolean) {
@@ -113,6 +117,20 @@ export const useSessaoStore = defineStore('sessao', () => {
     const d = await euApi.obter()
     aplicarDados(d)
     persistir()
+  }
+
+  /**
+   * Busca /eu de novo se a última busca foi há mais de `ms` (a aba voltou a ficar visível): quem pagou pelo e-mail do
+   * Asaas ou noutro aparelho vê o aviso do topo e os envios certos sem recarregar a página.
+   */
+  async function recarregarSeAntiga(ms = 180_000) {
+    if (!token.value || Date.now() - atualizadaEm < ms) return
+    atualizadaEm = Date.now() // duas voltas seguidas não fazem duas buscas
+    try {
+      await recarregar()
+    } catch {
+      /* sem conexão: fica a sessão que está; 401 já é tratado pelo cliente */
+    }
   }
 
   /** Chamado uma vez pelo router antes da primeira navegação. */
@@ -172,6 +190,7 @@ export const useSessaoStore = defineStore('sessao', () => {
     atualizarUsuario,
     atualizarConta,
     recarregar,
+    recarregarSeAntiga,
     inicializar,
     entrar,
     sair,

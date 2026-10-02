@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronDown, LogOut, Menu, UserRound, X } from 'lucide-vue-next'
+import { ChevronDown, CreditCard, LogOut, Menu, UserRound, X } from 'lucide-vue-next'
 import { useSessaoStore } from '@/stores/sessao'
 import { useFocoPreso } from '@/composables/focoPreso'
 import { useMenuLateral } from '@/composables/menuLateral'
 import { formatarData, diasAte } from '@/utils/datas'
+import { testeValendo, ultimoDiaDoTeste } from '@/modulos/assinatura/logica'
 import { iniciais, PERFIS } from '@/utils/rotulos'
+import AvisoCobranca from '@/components/app/AvisoCobranca.vue'
 import BotaoTema from '@/components/app/BotaoTema.vue'
 import ItemMenu from '@/components/app/ItemMenu.vue'
 import MenuSuspenso from '@/components/ui/MenuSuspenso.vue'
@@ -23,11 +25,33 @@ useFocoPreso(gaveta, gavetaAberta, () => (gavetaAberta.value = false))
 watch(() => rota.fullPath, () => (gavetaAberta.value = false))
 watch(gavetaAberta, (v) => (document.body.style.overflow = v ? 'hidden' : ''))
 
+// Relógio de minuto em minuto: o selo do teste muda para "encerrado" na hora do fim, não só no dia seguinte.
+const agora = ref(Date.now())
+let relogio: ReturnType<typeof setInterval> | undefined
+
+/** Selo do teste no cabeçalho, pela data e hora do fim (o último dia é o de São Paulo, como a API). */
 const teste = computed(() => {
   const c = sessao.conta
   if (!c || c.situacao !== 'teste' || !c.teste_ate) return null
-  const dias = diasAte(c.teste_ate)
-  return { data: formatarData(c.teste_ate), dias }
+  const ultimo = ultimoDiaDoTeste(c.teste_ate)
+  if (!testeValendo(c.teste_ate, new Date(agora.value))) return { data: formatarData(ultimo), dias: -1 }
+  return { data: formatarData(ultimo), dias: diasAte(ultimo) }
+})
+
+/** A aba voltou a ficar visível: busca a sessão de novo, no máximo a cada 3 minutos (aviso do topo, envios). */
+function aoVoltarParaAba() {
+  if (document.visibilityState !== 'visible') return
+  agora.value = Date.now()
+  sessao.recarregarSeAntiga()
+}
+
+onMounted(() => {
+  relogio = setInterval(() => (agora.value = Date.now()), 60_000)
+  document.addEventListener('visibilitychange', aoVoltarParaAba)
+})
+onBeforeUnmount(() => {
+  clearInterval(relogio)
+  document.removeEventListener('visibilitychange', aoVoltarParaAba)
 })
 
 async function sair() {
@@ -121,10 +145,14 @@ async function sair() {
         </div>
         <div class="pt-1.5" role="none">
           <ItemMenu para="/minha-conta" :icone="UserRound">Minha conta</ItemMenu>
+          <ItemMenu v-if="sessao.pode('assinatura.gerenciar')" para="/assinatura" :icone="CreditCard">Assinatura</ItemMenu>
           <ItemMenu :icone="LogOut" perigo @click="sair">Sair</ItemMenu>
         </div>
       </MenuSuspenso>
     </header>
+
+    <!-- Etapa 5a: teste acabando, fatura atrasada, envios pausados... (conta.cobranca.aviso) -->
+    <AvisoCobranca />
 
     <main id="conteudo" tabindex="-1" class="mx-auto w-full max-w-6xl px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-10">
       <RouterView />

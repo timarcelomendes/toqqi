@@ -254,7 +254,9 @@ def test_sem_provedor_ou_assinatura_nao_alerta(client, conta, dono, monkeypatch,
         monkeypatch.setattr(config(), "EMAIL_PROVIDER", "console")
         monkeypatch.setattr(config(), "AMBIENTE", "producao")
     else:
-        sql(dono, "update contas set situacao = 'cancelada' where id = :c", c=a["conta"]["id"])
+        # cancelada, com o período pago e o teste já acabados (o mais tarde dos dois vale)
+        sql(dono, "update contas set situacao = 'cancelada', teste_ate = now() - interval '30 days' where id = :c",
+            c=a["conta"]["id"])
     caixa_memoria.clear()
     assert tarefas.executar("picos")["picos"] == {"picos": 0, "emails": 0}
     assert sql(dono, "select count(*) from alertas_pico")[0][0] == 0

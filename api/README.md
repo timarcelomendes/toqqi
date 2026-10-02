@@ -1,4 +1,4 @@
-# Toqqi API · etapas 1, 2, 3a, 3b, 4a e 4b + dados da empresa
+# Toqqi API · etapas 1, 2, 3a, 3b, 4a, 4b e 5a + dados da empresa
 
 FastAPI + SQLAlchemy 2 (psycopg 3) + Alembic + PostgreSQL 16.
 Contratos implementados (base `/api/v1`):
@@ -13,7 +13,9 @@ Contratos implementados (base `/api/v1`):
 - `../docs/api-dados-empresa.md`: dados da empresa (Configurações › Empresa) e imagens (logo da conta e dos
   formulários) nas pesquisas e nos e-mails;
 - `../docs/api-etapa-4b.md`: IA por resposta (OpenAI), reclamações e picos por tema, relatórios (empresas, grupos de
-  clientes, temas, entregas, responsáveis, operação, histórico de uma empresa) e resumo semanal por e-mail.
+  clientes, temas, entregas, responsáveis, operação, histórico de uma empresa) e resumo semanal por e-mail;
+- `../docs/api-etapa-5a.md`: assinatura e cobrança pelo Asaas (planos, assinar, trocar de plano, cancelar, webhook,
+  situação da conta e liberação dos envios, conferência diária, plataforma).
 
 ## Isolamento entre contas (RLS)
 O isolamento é garantido pelo próprio PostgreSQL:
@@ -84,6 +86,9 @@ para que o IP real do cliente seja usado no limite de tentativas, nas sessões e
 | `IA_MODELO` | Modelo da OpenAI (padrão `gpt-5-mini`) |
 | `IA_ESFORCO` | `reasoning.effort` enviado (padrão `minimal`; vazio = não manda `reasoning`) |
 | `IA_BASE_URL` | Endereço base da API da OpenAI (padrão `https://api.openai.com`) |
+| `ASAAS_API_KEY` | Chave de API do Asaas (da plataforma), em toqqi-api **e** toqqi-tarefas. Vazia = sem cobrança online |
+| `ASAAS_WEBHOOK_TOKEN` | Token do webhook do Asaas (cabeçalho `asaas-access-token`), só em toqqi-api. Vazio = webhook desligado (404) |
+| `ASAAS_URL` | Opcional: sobrepõe o endereço da API do Asaas (Asaas falso local). Vazio = o endereço segue a chave |
 
 A etapa 2 não criou variáveis novas. `FRONTEND_URL` também é a base dos links de convite (`/r/{token}`)
 e `JWT_SECRET` entra no sal diário do hash de IP das respostas públicas.
@@ -119,7 +124,7 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
   que já existiam.
 
 ## Etapa 3a: envios
-- **Tarefas periódicas**: `python -m toqqi.tarefas [robo|lembretes|pendentes|webhooks|ia|picos|resumo|tudo]` ou
+- **Tarefas periódicas**: `python -m toqqi.tarefas [assinaturas|robo|lembretes|pendentes|webhooks|ia|picos|resumo|tudo]` ou
   `POST /api/v1/interno/tarefas` com `X-Tarefas-Token` (comparação em tempo constante). Em produção, o Cron Job
   `toqqi-tarefas` do Render roda o comando a cada 15 minutos; cada conta decide se é hora (janela, dias úteis, 6 h entre rodadas do robô, lembretes uma vez
   por dia a partir das 10:00). A lista de contas sai do modo sistema (só ids); o trabalho de cada conta roda em
@@ -318,6 +323,182 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
   vencidas das empresas da carteira. Histórico: `acoes.concluidas` = concluídas no período. Operação: "último convite
   que saiu" = `contatos.ultimo_envio`.
 
+## Etapa 5a: assinatura e cobrança (Asaas)
+- **Chaves só no painel do Render** (Environment), nunca no `render.yaml` (o Blueprint não apaga variáveis que ele não
+  declara): `ASAAS_API_KEY` em **toqqi-api e toqqi-tarefas** (a tarefa `assinaturas` reprocessa avisos e confere as
+  cobranças); `ASAAS_WEBHOOK_TOKEN` **só na toqqi-api** (32 a 255 caracteres, sem espaços nem acentos, diferente da
+  chave; fora disso o webhook fica desligado e o log diz por quê). Gere o token com
+  `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`. O endereço e o **ambiente** seguem a chave:
+  `$aact_prod_…` → produção (`https://api.asaas.com/v3`); qualquer outra (`$aact_hmlg_…`) → sandbox (uma chave de
+  formato desconhecido nunca cobra de verdade). `ASAAS_URL` só para o Asaas falso. Sem a chave, `GET /assinatura` sai
+  com `disponivel: false` (a tela avisa que a cobrança online não está disponível) e o resto funciona; sem o token, o
+  webhook responde 404. Num `.env` local, ponha a chave entre aspas simples se o seu carregador expande `$`.
+- **No Asaas** (sandbox primeiro, depois produção): *Integrações › Chaves de API* → gerar a chave (`ASAAS_API_KEY`).
+  *Integrações › Webhooks* → criar o webhook com a URL `https://<api>/api/v1/asaas/webhook`, os **eventos de
+  cobranças** (Payments), o mesmo token em "Token de autenticação" (`ASAAS_WEBHOOK_TOKEN`), versão da API **v3** e a
+  fila de sincronização ativada (a ordem dos avisos não importa: a API sempre consulta o Asaas). O Asaas espera 200
+  depressa: a API grava o aviso e responde; o resto roda depois da resposta. **Uma conta do Asaas por instalação do
+  Toqqi**: não use a mesma chave em duas instalações (homologação e produção, por exemplo) — a conciliação reconhece
+  as assinaturas pela referência `toqqi-conta-{id}` e trataria as da outra instalação como suas.
+- **Migração `0008_assinaturas`**: `contas` ganha `asaas_cliente_id` + `asaas_ambiente` (`sandbox` | `producao`, os
+  dois juntos ou nenhum), `asaas_conferida_em`, `pago_ate`, `atrasada_desde` e `primeiro_vencimento` (cópia do da
+  assinatura ativa); tabelas `assinaturas` (com o `ambiente`; uma ativa por conta, índice único parcial;
+  `nao_encontrada_desde` para o 404 na conferência), `cobrancas` (RLS com FORCE, chaves compostas), `asaas_eventos`
+  (tabela da plataforma: RLS com FORCE e política só para o modo sistema; guarda só ids e tipo, nunca o corpo do aviso)
+  e `asaas_remocoes` (assinaturas a remover no Asaas que falharam; RLS da conta; a linha fica se a conta for excluída).
+  Também troca a função do gatilho do limite de contatos (a trava antes de ler o plano) e os CHECKs de `documento`
+  (CNPJ alfanumérico) de `empresas` e `contas`; o downgrade volta os dois (documento alfanumérico fica sem valor).
+- **Adaptador** (`core/asaas.py`): httpx sem SDK, 20 s, sem redirecionamento, `User-Agent: Toqqi/1.0`; os testes
+  trocam `asaas.transporte` por um `httpx.MockTransport` (o `conftest` bloqueia a rede). Falhas: `recusado` (400 →
+  422 `cobranca_recusada`, CPF/CNPJ, e-mail e telefone no campo), `configuracao` (401/403, log de erro → 503),
+  `nao_encontrado` (404), `indisponivel` (429, 5xx, tempo, rede → 503 `cobranca_indisponivel`). O log leva só método,
+  caminho, status e códigos de erro do Asaas: nunca a chave, o CPF/CNPJ nem as descrições dos erros. Celular vai em
+  `mobilePhone` e fixo em `phone`, sempre com o outro campo vazio (trocar um pelo outro apaga o antigo no Asaas). As
+  listas pela referência (`GET /customers` e `GET /subscriptions` com `externalReference`) são paginadas e só aceitam
+  os itens com a referência exata.
+- **Situação da conta** (`modulos/assinatura/servico.recalcular`, chamada depois de assinar, trocar, cancelar, de cada
+  aviso, da conferência e pela tarefa) e **liberada** (`modulos/assinatura/regras.liberada`: a única regra de envios,
+  robô, lembretes, CSAT, IA e e-mails do painel; sai só da linha da conta, sem consulta a mais por requisição). Dias no
+  fuso de São Paulo. Sem assinatura ativa: período pago valendo → `cancelada`; senão teste valendo → `teste`; senão já
+  pagou → `cancelada`; senão `teste_expirado` (e quem fica sem assinatura sem nunca ter pago volta ao plano do teste,
+  `profissional`). `teste` e `cancelada` ficam liberadas até o mais tarde entre o fim do teste e o fim do dia
+  `pago_ate`; quem assinou no teste e ainda não pagou segue liberado até o fim do 7º dia depois do primeiro vencimento
+  (o mesmo prazo de quando a tarefa marca `atrasada`: sem buraco). `conta.cobranca` em `/eu` e no login:
+  `{liberada, assinada, pago_ate, atrasada_desde, pausa_em, aviso}`; `assinada` = tem assinatura ativa; o aviso
+  `aguardando_pagamento` (quem já assinou e ainda não pagou; no teste, só a 5 dias do primeiro vencimento; sem teste
+  válido, sempre) toma o lugar dos de teste e de cancelada.
+- **Fonte da verdade é o Asaas**: o webhook só avisa; a API consulta a cobrança (`GET /payments/{id}`) com a conta
+  travada antes de gravar (aviso fora de ordem, repetido ou forjado não muda nada). Erro ao processar → 200 mesmo assim,
+  o aviso fica com `erro` e a tarefa tenta de novo depois de 2 minutos: até 5 tentativas, mas o Asaas fora do ar (ou a
+  chave recusada) não gasta tentativa (a tarefa só para e retoma na próxima vez). Aviso de uma **assinatura
+  desconhecida** não é ignorado: fica pendente, a API pergunta ao Asaas de quem ela é (cobrança → assinatura →
+  referência `toqqi-conta-{id}`), espera o que estiver em andamento na conta (um assinar ainda gravando) e, se ela
+  continua desconhecida, concilia a conta (log de erro). Sem resolver em 1 hora, fica ignorado (log de erro). Aviso de
+  assinatura de outro sistema ou de outro ambiente → ignorado.
+- **Nunca duas assinaturas vivas no Asaas** para a mesma conta (um tempo esgotado pode criar lá sem a API saber; o
+  processo pode cair entre criar lá e gravar aqui):
+  - assinar é feito em duas transações: (1) o cliente — o guardado deste ambiente, senão um já criado com a
+    referência da conta (`GET /customers?externalReference=`), senão um novo; tempo esgotado ao criar → procura de novo
+    —, gravado na conta; (2) a assinatura — antes de criar, lista as da referência da conta: a desconhecida com o valor
+    pedido é adotada (sem criar outra) e as outras são removidas; tempo esgotado ao criar → lista de novo e adota a que
+    chegou a ser criada (sem ela, 503);
+  - se a gravação falhar depois de criar no Asaas, ela é removida lá; remoção que falha fica em `asaas_remocoes` e a
+    tarefa tenta de novo (404 = já removida; até 20 vezes, depois log de erro). Uma assinatura com a remoção pendente
+    nunca é adotada;
+  - a conferência diária concilia cada conta (adota a desconhecida se a conta não tem assinatura ativa, não é cortesia e
+    o valor é o de um plano; senão remove; remove também a cancelada aqui que segue viva lá), com auditoria
+    (`assinatura_adotada`, `assinatura_removida_no_asaas`, gravidade atenção);
+  - a exclusão de conta pela plataforma remove todas as vivas com a referência da conta (falhou → 503, nada é apagado).
+- **Troca de plano**: tempo esgotado no `PUT` → a API lê a assinatura no Asaas; com o valor novo já lá, conclui aqui
+  (200), senão 503. A conferência diária compara o valor do Asaas com o daqui e, se diferente, volta o do Asaas para o
+  daqui (`PUT` com `updatePendingPayments`; auditoria `valor_realinhado`, atenção).
+- **Tarefa `assinaturas`** (primeira em `tudo`, para a liberação valer antes dos envios): recalcula as contas que mudam
+  pela data (teste que acabou; fatura pendente que passou do vencimento; período pago que acabou com o teste ainda
+  valendo); com o Asaas configurado, descarta o que era de sandbox se a chave é de produção, tenta de novo as remoções
+  pendentes, reprocessa avisos e, a partir das 6h, faz a **conferência diária** (uma vez por dia por conta com
+  assinatura ativa ou cancelada há menos de 40 dias no ambiente atual, e por conta com cliente no Asaas ainda não
+  conferida): concilia; lê a assinatura ativa — removida, `INACTIVE` ou `EXPIRED` → cancelada aqui; 404 → log de erro a
+  cada dia e, no 3º dia seguido, cancelada aqui (auditoria com `motivo: nao_encontrada_no_asaas`, atenção); valor
+  diferente → realinha —; busca as cobranças (pega webhook perdido); recalcula (também quando para no meio, com o
+  Asaas fora) e verifica a sanidade (ativa, paga só até mais de 40 dias atrás e sem fatura em aberto → log de erro).
+  Para no primeiro erro do Asaas. Sem `ASAAS_API_KEY`, só a parte das datas. Devolve `{testes_expirados,
+  contas_de_outro_ambiente, remocoes_no_asaas, eventos_reprocessados, contas_conferidas}`.
+- **Plataforma**: cortesia e exclusão de conta removem antes a assinatura no Asaas (falhou → 503 e nada muda);
+  "+14 dias" → 409 `assinatura_ativa` com assinatura ativa ou cortesia, e recalcula a situação (com o período pago
+  mais longo que o teste, a conta segue `cancelada` até ele acabar).
+
+### Trocar a chave do sandbox para a produção
+1. No Asaas de produção: gere a chave e crie o webhook (mesma URL, eventos de cobranças, v3) com um token novo.
+2. No Render: troque `ASAAS_API_KEY` na **toqqi-api e na toqqi-tarefas** (e `ASAAS_WEBHOOK_TOKEN` na toqqi-api) e
+   reimplante as duas.
+3. Para a chave de produção, o que foi feito no sandbox não existe: a próxima execução da tarefa `assinaturas` (ou o
+   próximo assinar da conta) cancela aqui a assinatura ativa de sandbox (sem chamar o Asaas), esquece o cliente de
+   sandbox, zera `pago_ate` e `atrasada_desde` (pagamento de sandbox não vale em produção), recalcula a conta e audita
+   (`ambiente_asaas_trocado`, atenção). Quem tinha assinado no sandbox assina de novo (cliente e assinatura novos em
+   produção). O histórico de cobranças de sandbox fica no banco, mas não aparece mais.
+4. O contrário (chave de sandbox com dados de produção, por engano) não apaga nada: a tarefa registra um log de erro
+   a cada execução, as assinaturas de produção ficam como estão (sem conferência) e assinar de novo responde 503 até a
+   chave certa voltar.
+
+### CNPJ alfanumérico
+Desde 31/07/2026 a Receita emite CNPJ com 12 caracteres `[0-9A-Z]` + 2 dígitos verificadores (cada caractere vale o
+código ASCII − 48; pesos 5,4,3,2,9,8,7,6,5,4,3,2 e 6,5,4,3,2,9,8,7,6,5,4,3,2; resto < 2 → 0, senão 11 − resto; ex.:
+`12.ABC.345/01DE-35`). `core/texto.normalizar_documento` (e o tipo `Documento` das entradas) aceita máscara e
+minúsculas e guarda em maiúsculas, sem pontuação, em empresas (e na busca), dados da empresa, integrações, importação
+de empresas e assinatura; o CPF segue só com dígitos; as mensagens de erro não mudaram. Os CHECKs do banco
+(`empresas`, `contas`, `assinaturas`) aceitam `^([0-9]{11}|[0-9A-Z]{12}[0-9]{2})$`. O documento vai para o Asaas
+como está (`cpfCnpj` em maiúsculas): confira no sandbox que ele aceita um CNPJ alfanumérico.
+
+### Limitação conhecida
+As chamadas ao Asaas (até 20 s cada; assinar faz várias) acontecem com as travas da conta pegas (`assinatura:{conta}`,
+a linha da conta em `FOR NO KEY UPDATE` — que não segura as inclusões que só apontam para a conta, como contatos e
+respostas — e, enquanto o plano muda, a trava das inclusões de contatos). Com o Asaas lento, outra operação de
+assinatura da mesma conta (e, ao assinar ou trocar de plano, a inclusão de contatos dela) espera.
+
+### O que conferir no sandbox antes da produção
+- `PUT /subscriptions/{id}` com `value` e `updatePendingPayments: true` muda também a fatura em aberto (a troca de
+  plano e o realinhamento contam com isso).
+- Primeiro vencimento nos dias 29, 30 e 31: em que dia caem as faturas dos meses mais curtos (a API calcula o período
+  pago como vencimento + 1 mês − 1 dia, com o dia ajustado ao fim do mês).
+- Os filtros `externalReference` de `GET /customers` e `GET /subscriptions` (a API confere a referência de cada item
+  mesmo assim) e as situações `INACTIVE`/`EXPIRED` de uma assinatura.
+- Um CNPJ alfanumérico em `cpfCnpj`; celular trocado por fixo (`mobilePhone` vazio) apaga o celular antigo.
+
+### Asaas falso (desenvolvimento local)
+`scripts/asaas_falso.py` é um FastAPI pequeno, em memória, com o que o adaptador usa (clientes, assinaturas, cobranças)
+e rotas para simular o Asaas: cada uma manda o webhook (com `asaas-access-token`) para a API.
+```bash
+# terminal 1 (pasta api/): o Asaas falso na porta 8010
+ASAAS_FALSO_WEBHOOK_TOKEN=token-local-do-webhook-com-32-caracteres-ou-mais python scripts/asaas_falso.py
+# terminal 2: a API apontando para ele
+ASAAS_URL=http://localhost:8010/v3 ASAAS_API_KEY=chave-local \
+ASAAS_WEBHOOK_TOKEN=token-local-do-webhook-com-32-caracteres-ou-mais uvicorn toqqi.main:app --reload
+```
+Assine pela tela (ou `POST /api/v1/assinatura`); o link da fatura abre `http://localhost:8010/fatura/{id}`, com
+botões para pagar (Pix, boleto, cartão). Também por `curl -X POST`:
+`/simular/pagar/{payment_id}?forma=PIX|BOLETO|CREDIT_CARD`, `/simular/vencer/{payment_id}`,
+`/simular/estornar/{payment_id}`, `/simular/proxima/{subscription_id}` (fatura do mês seguinte),
+`/simular/inativar/{subscription_id}?status=INACTIVE|EXPIRED` (sem aviso), `/simular/reenviar/{evento_id}` (aviso
+repetido) e `GET /simular/estado`. Aceita também as listas pela referência (`GET /v3/customers` e
+`GET /v3/subscriptions` com `externalReference`) e `GET /v3/customers/{id}`. `ASAAS_FALSO_WEBHOOK_URL` (padrão
+`http://localhost:8000/api/v1/asaas/webhook`), `ASAAS_FALSO_URL` (padrão `http://localhost:8010`) e
+`ASAAS_FALSO_PORTA` mudam os endereços. Os testes usam o mesmo Asaas falso atrás do adaptador (`asaas_falso` no
+`conftest`, `tests/test_asaas_integrado.py` com o fluxo inteiro).
+
+### Etapa 5a: decisões tomadas aqui (além da seção 0 do contrato)
+- **Carência só para quem estava coberto**: a fatura vencida dá os 7 dias de `atrasada` (e "já houve cobrança paga" vale
+  `ativa`) só se a assinatura começou coberta — pelo teste (assinou durante ele) ou por um período pago que ela continua
+  (assinou de novo antes do fim do `pago_ate`) — ou se ela já teve fatura paga. Quem assina sem teste válido e não paga
+  fica `teste_expirado` (ou `cancelada`, se já pagou um dia), sem envios até pagar ("os envios voltam quando o pagamento
+  for confirmado"); sem isso, atrasar o pagamento liberaria os envios.
+- **Fatura pendente com o vencimento passado conta como em atraso** (`atrasada_desde`) e sai como `vencida` na tela: o
+  Asaas só marca `OVERDUE` de madrugada, e a tarefa recalcula na virada do dia (sem buraco entre o fim do teste e o aviso).
+- O teste "estica" até o fim da carência da primeira fatura (7 dias depois do primeiro vencimento) só para quem assinou
+  durante o teste (primeiro vencimento até o último dia dele); quem assina depois começa sem envios.
+- Colunas a mais que o contrato não listava: `contas.primeiro_vencimento` (cópia do da assinatura ativa),
+  `contas.asaas_ambiente`, `contas.asaas_conferida_em` (conferência diária, por conta), `assinaturas.ambiente`,
+  `assinaturas.nao_encontrada_desde`, `asaas_eventos.ignorado` e `asaas_eventos.assinatura_asaas_id`; a tabela
+  `asaas_remocoes`.
+- `pago_ate` nunca diminui (estorno não tira o período já coberto); o estorno é auditado.
+- `assinatura` (em `GET /assinatura` e na plataforma) é só a ativa: depois de cancelar volta `null` (a tela mostra a
+  situação `cancelada` da conta). `POST /assinatura` responde 201.
+- Telefone de cobrança: regra brasileira estrita só nos dados de cobrança (DDD de 11 a 99; celular com 9 dígitos
+  começando com 9, fixo com 8 começando com 2 a 5; "+1 415 555 0100" → 422); celular vai em `mobilePhone`, fixo em
+  `phone` (sem o 55), o outro campo vazio.
+- `dados_sugeridos`: razão social (ou o nome da conta), CPF/CNPJ e telefone dos dados da empresa (sem telefone, o do
+  cadastro do admin), e-mail do admin. `pago_em` = dia do pagamento no Asaas às 12:00 de São Paulo.
+- Erro 402 `limite_do_plano` (contatos) e o 422 de assinar/trocar levam `campos.limite`.
+- Situações do Asaas que o contrato não citava: `DUNNING_REQUESTED` → vencida, `DUNNING_RECEIVED` → paga; desconhecida
+  mantém a situação local (log de aviso).
+- Exclusão de conta pela plataforma também remove as assinaturas vivas da conta no Asaas (senão ele seguiria cobrando).
+- A conferência diária também lê a assinatura no Asaas (`GET /subscriptions/{id}`): removida lá (`deleted: true`,
+  `INACTIVE` ou `EXPIRED`) → cancelada aqui (auditoria com `motivo: removida_no_asaas`); 404 → cancelada só no 3º dia
+  seguido.
+- Assinatura desconhecida com a referência de uma conta que não existe aqui: só o log de erro (nada é removido no
+  Asaas por um aviso). Com a chave de sandbox e dados de produção, nada é apagado (ver "Trocar a chave").
+- Quem fica sem assinatura sem nunca ter pago volta ao plano `profissional` (o do teste), em qualquer caminho
+  (cancelar, removida no Asaas, troca de ambiente).
+
 ## Estrutura
 ```
 toqqi/
@@ -327,7 +508,7 @@ toqqi/
   core/                   config, db (em_conta / modo_sistema), security (argon2id, JWT, tokens), relogio,
                           errors, validacao, email, rate_limit, auditoria, permissoes, deps (requer),
                           texto (telefone, CNPJ/CPF, valores, datas), planos, paginacao, filtros, rede,
-                          ia (adaptador da OpenAI e provedor de testes)
+                          ia (adaptador da OpenAI e provedor de testes), asaas (adaptador do Asaas)
   modulos/acesso/         cadastro, entrar, sair, confirmar, reenviar, esqueci, redefinir, pedir-acesso, /eu
   modulos/equipe/         usuários da conta e matriz de permissões
   modulos/conta/          segurança (duração da sessão, domínios liberados), dados da empresa e logo da conta
@@ -345,6 +526,8 @@ toqqi/
   modulos/painel/         painel (visão geral) e palavras mais citadas
   modulos/ia/             IA por resposta: quem passa, fila, reserva, teto do mês, configuração da conta
   modulos/relatorios/     relatórios, picos de reclamação, alerta de pico e resumo semanal por e-mail
+  modulos/assinatura/     planos, assinatura e cobranças (Asaas), situação da conta e "liberada", webhook,
+                          conciliação e conferência diária (tarefa)
   modulos/publico/        páginas públicas (convite, link público e descadastro)
   modulos/envios/         configuração e pré-condições, fila/situação, disparo, histórico, WhatsApp,
                           robô/lembretes/pendentes, agradecimento, descadastro, modelos de e-mail
@@ -358,6 +541,8 @@ alembic/versions/0004_integracoes.py   chaves, webhooks, entregas, WhatsApp, fra
 alembic/versions/0005_respostas_acoes.py   data/origem/temas/análise das respostas, ações, prazos, tipo da importação
 alembic/versions/0006_dados_empresa.py   dados da empresa em `contas` e tabela `imagens` (logos) + RLS
 alembic/versions/0007_ia_relatorios.py   IA por resposta, reclamação/elogio por tema, uso da IA, picos, resumos + RLS
+alembic/versions/0008_assinaturas.py   cobrança em `contas`, assinaturas, cobranças e avisos do Asaas + RLS
+scripts/asaas_falso.py             Asaas falso (desenvolvimento local e testes)
 tests/                             pytest
 ```
 

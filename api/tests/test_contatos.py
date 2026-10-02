@@ -125,8 +125,9 @@ def test_limite_do_plano_via_api(client, admin, dono):
     ultimo = criar_contato(client, h)  # 300º cabe
     r = client.post(f"{API}/contatos", headers=h, json={"nome": "Excedente", "email": "x@y.com.br"})
     assert r.status_code == 402
+    # etapa 5a: o limite vem em `campos` para a tela oferecer "Ver planos"
     assert r.json()["erro"] == {"codigo": "limite_do_plano",
-                                "mensagem": "Seu plano permite até 300 contatos ativos.", "campos": {}}
+                                "mensagem": "Seu plano permite até 300 contatos ativos.", "campos": {"limite": "300"}}
     # contato inativo não conta
     assert client.post(f"{API}/contatos", headers=h,
                        json={"nome": "Inativo", "email": "i@y.com.br", "ativo": False}).status_code == 201

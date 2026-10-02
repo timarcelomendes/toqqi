@@ -5,10 +5,10 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from toqqi.core import relogio
 from toqqi.core.config import config
 from toqqi.core.errors import AppError
 from toqqi.modelos import ConfigEnvios, Conta, Formulario
+from toqqi.modulos.assinatura.regras import liberada, mensagem_pausa
 
 DIAS_LEMBRETES_PADRAO = [3, 7, 15]
 PADROES = {
@@ -86,12 +86,8 @@ def na_janela(cfg: ConfigEnvios, momento) -> bool:
 
 
 # ---- pré-condições ----------------------------------------------------------
-
-def assinatura_ok(conta: Conta) -> bool:
-    if conta.situacao in ("cortesia", "ativa"):
-        return True
-    return conta.situacao == "teste" and conta.teste_ate is not None and conta.teste_ate > relogio.agora()
-
+# A da assinatura é a regra de "liberada" (assinatura.regras.liberada), a mesma do robô, dos lembretes, do CSAT,
+# da IA e dos e-mails do painel.
 
 def provedor_ok() -> bool:
     cfg = config()
@@ -118,8 +114,7 @@ def _item(chave: str, ok: bool, mensagem: str, acao: tuple[str, str] | None = No
 def pre_condicoes(s: Session, cfg: ConfigEnvios) -> dict:
     conta = s.scalar(select(Conta))
     itens = [
-        _item("assinatura", assinatura_ok(conta),
-              "O período de teste acabou. Assine um plano para voltar a enviar.", ("Assinatura", ROTA_ASSINATURA)),
+        _item("assinatura", liberada(conta), mensagem_pausa(conta), ("Assinatura", ROTA_ASSINATURA)),
         _item("provedor", provedor_ok(), "O envio de e-mails ainda não foi configurado na plataforma."),
         _item("formulario", formulario_ok(s, cfg), "Escolha o formulário usado nos convites.",
               ("Configurações de envio", ROTA_CONFIG)),

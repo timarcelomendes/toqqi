@@ -40,6 +40,12 @@ class Config(BaseSettings):
     IA_MODELO: str = "gpt-5-mini"
     IA_ESFORCO: str = "minimal"  # vazio = não manda `reasoning`
     IA_BASE_URL: str = "https://api.openai.com"
+    # Cobrança (Asaas). Só no painel do Render: ASAAS_API_KEY em toqqi-api e toqqi-tarefas; ASAAS_WEBHOOK_TOKEN só
+    # em toqqi-api. O endereço segue a chave ($aact_prod_ → produção; o resto → sandbox); ASAAS_URL sobrepõe
+    # (Asaas falso local, testes). Sem chave, a tela de assinatura avisa que a cobrança online não está disponível.
+    ASAAS_API_KEY: str = ""
+    ASAAS_WEBHOOK_TOKEN: str = ""
+    ASAAS_URL: str = ""
     ALLOWED_ORIGINS: str = "http://localhost:5173"
     AUTO_MIGRATE: bool = True
     RATE_LIMIT_ENABLED: bool = True

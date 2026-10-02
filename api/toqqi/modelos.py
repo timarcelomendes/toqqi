@@ -44,7 +44,7 @@ class Conta(Base):
     criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
     # dados da empresa (Configurações › Empresa); o logo fica em `imagens`
     razao_social: Mapped[str | None] = mapped_column(Text)
-    documento: Mapped[str | None] = mapped_column(Text)  # CPF (11) ou CNPJ (14), só dígitos
+    documento: Mapped[str | None] = mapped_column(Text)  # CPF (11 dígitos) ou CNPJ (14, alfanumérico em maiúsculas)
     telefone: Mapped[str | None] = mapped_column(Text)  # só dígitos, com 55
     email_contato: Mapped[str | None] = mapped_column(CITEXT)
     site: Mapped[str | None] = mapped_column(Text)
@@ -58,6 +58,15 @@ class Conta(Base):
     dados_atualizados_em: Mapped[datetime | None] = mapped_column(TZ)
     # etapa 4b: análise de comentários pela IA (chave da conta, ligada por padrão)
     ia_analise_respostas: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    # etapa 5a: cobrança (Asaas). `situacao` é decidida por assinatura.servico.recalcular
+    asaas_cliente_id: Mapped[str | None] = mapped_column(Text)  # cliente no Asaas (reaproveitado)
+    asaas_ambiente: Mapped[str | None] = mapped_column(Text)  # sandbox | producao (o do cliente acima)
+    asaas_conferida_em: Mapped[date | None] = mapped_column(Date)  # última conferência diária (São Paulo)
+    pago_ate: Mapped[date | None] = mapped_column(Date)  # último dia coberto por pagamento (inclusivo)
+    atrasada_desde: Mapped[date | None] = mapped_column(Date)  # vencimento da fatura em atraso mais antiga
+    # cópia do primeiro vencimento da assinatura ativa (null sem assinatura ativa): a regra de "liberada" sai só da
+    # linha da conta, lida a cada requisição
+    primeiro_vencimento: Mapped[date | None] = mapped_column(Date)
 
 
 class Usuario(Base):
@@ -532,3 +541,72 @@ class ResumoSemanal(Base):
     semana: Mapped[date] = mapped_column(Date)  # a segunda-feira da semana resumida
     enviado_em: Mapped[datetime | None] = mapped_column(TZ)
     destinatarios: Mapped[int] = mapped_column(Integer, server_default="0")
+
+
+# ---- etapa 5a: assinatura e cobrança (Asaas) ----------------------------------------
+
+class Assinatura(Base):
+    __tablename__ = "assinaturas"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    asaas_id: Mapped[str] = mapped_column(Text)
+    ambiente: Mapped[str] = mapped_column(Text)  # sandbox | producao: o do Asaas em que ela existe
+    plano: Mapped[str] = mapped_column(Text)
+    valor: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    situacao: Mapped[str] = mapped_column(Text, server_default="ativa")  # ativa | cancelada
+    razao_social: Mapped[str] = mapped_column(Text)
+    documento: Mapped[str] = mapped_column(Text)  # CPF (11 dígitos) ou CNPJ (14, alfanumérico em maiúsculas)
+    email_cobranca: Mapped[str] = mapped_column(CITEXT)
+    telefone: Mapped[str] = mapped_column(Text)  # só dígitos, com 55
+    primeiro_vencimento: Mapped[date] = mapped_column(Date)
+    criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    criada_por: Mapped[int | None] = mapped_column(BigInteger)
+    cancelada_em: Mapped[datetime | None] = mapped_column(TZ)
+    cancelada_por: Mapped[int | None] = mapped_column(BigInteger)
+    nao_encontrada_desde: Mapped[date | None] = mapped_column(Date)  # 1º dia seguido de 404 na conferência
+
+
+class Cobranca(Base):
+    __tablename__ = "cobrancas"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    assinatura_id: Mapped[int | None] = mapped_column(BigInteger)
+    asaas_id: Mapped[str] = mapped_column(Text)
+    valor: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    valor_liquido: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    vencimento: Mapped[date] = mapped_column(Date)
+    situacao: Mapped[str] = mapped_column(Text)  # pendente | paga | vencida | estornada | removida
+    situacao_asaas: Mapped[str | None] = mapped_column(Text)
+    forma: Mapped[str | None] = mapped_column(Text)  # pix | boleto | cartao
+    pago_em: Mapped[datetime | None] = mapped_column(TZ)
+    link: Mapped[str | None] = mapped_column(Text)  # fatura do Asaas (Pix, boleto ou cartão)
+    criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    atualizada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+class AsaasEvento(Base):
+    """Avisos do webhook do Asaas (tabela da plataforma: só em modo sistema). Só ids e tipo, nunca o corpo."""
+    __tablename__ = "asaas_eventos"
+    id: Mapped[str] = mapped_column(Text, primary_key=True)  # id do evento ("evt_...")
+    tipo: Mapped[str] = mapped_column(Text)
+    conta_id: Mapped[int | None] = mapped_column(BigInteger)
+    cobranca_asaas_id: Mapped[str | None] = mapped_column(Text)
+    assinatura_asaas_id: Mapped[str | None] = mapped_column(Text)
+    recebido_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    processado_em: Mapped[datetime | None] = mapped_column(TZ)
+    ignorado: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    tentativas: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    erro: Mapped[str | None] = mapped_column(Text)
+
+
+class AsaasRemocao(Base):
+    """Assinatura que precisa ser removida no Asaas e ainda não foi (a tarefa `assinaturas` tenta de novo)."""
+    __tablename__ = "asaas_remocoes"
+    asaas_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    ambiente: Mapped[str] = mapped_column(Text)
+    conta_id: Mapped[int | None] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    motivo: Mapped[str] = mapped_column(Text)
+    criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    tentativas: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    erro: Mapped[str | None] = mapped_column(Text)
+    removida_em: Mapped[datetime | None] = mapped_column(TZ)
