@@ -3,24 +3,647 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Toqqi: meça e cuide da satisfação dos seus clientes." />
+    <meta name="description" content="O Toqqi envia a pesquisa de NPS e CSAT por e-mail e WhatsApp, lê cada comentário com IA e transforma a resposta em ação: plano para o cliente em risco, indicação de quem recomenda você." />
     <meta name="theme-color" content="#FF5A36" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Toqqi" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Toqqi: retenha quem está insatisfeito, cresça com quem está feliz" />
+    <meta property="og:description" content="Pesquisa de NPS e CSAT por e-mail e WhatsApp, comentários lidos por IA e planos de ação. 14 dias grátis, sem cartão." />
     <!-- ?v=2: endereço novo para os navegadores largarem o ícone antigo (balões) do cache. Ao trocar o ícone, suba o v. -->
     <link rel="icon" href="/favicon.ico?v=2" sizes="32x32" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
-    <title>Toqqi</title>
+    <title>Toqqi · Pesquisa de satisfação que vira ação</title>
+    <style>
+      /* A raiz é a página do site; os outros endereços são o app (src/entrada.ts). Esconde o site antes de desenhar. */
+      html[data-pagina='app'] #site { display: none; }
+    </style>
     <script>
-      // Aplica o tema antes de desenhar a página (evita piscar).
+      // Site (raiz) ou app? E, no app, aplica o tema antes de desenhar a página (evita piscar). O site é sempre claro.
       try {
-        var t = localStorage.getItem('toqqi.tema');
-        var escuro = t === 'escuro' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        if (escuro) document.documentElement.classList.add('dark');
+        var p = location.pathname;
+        var site = p === '/' || p === '' || p === '/index.html';
+        document.documentElement.setAttribute('data-pagina', site ? 'site' : 'app');
+        if (!site) {
+          var t = localStorage.getItem('toqqi.tema');
+          var escuro = t === 'escuro' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (escuro) document.documentElement.classList.add('dark');
+        }
       } catch (e) {}
     </script>
   </head>
   <body>
+<div id="site" style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0F172A;background:#F8FAFC;width:100%">
+
+<header style="position:sticky;top:0;z-index:5;background:rgba(248,250,252,.92);backdrop-filter:blur(8px);border-bottom:1px solid #E2E8F0">
+<div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:24px;height:72px">
+<a href="#inicio" aria-label="Toqqi, início" style="display:flex;align-items:center"><img src="/marca/toqqi-logo.svg" alt="toqqi" style="height:30px;width:auto;display:block"></a>
+<nav class="nav" aria-label="Principal" style="display:flex;gap:28px">
+<a href="#como">Como funciona</a>
+<a href="#reter">Retenção</a>
+<a href="#crescer">Crescimento</a>
+<a href="#planos">Planos</a>
+<a href="#duvidas">Dúvidas</a>
+</nav>
+<div style="display:flex;align-items:center;gap:12px">
+<a href="/entrar" data-entrar class="so-largo" style="font-weight:600;font-size:15px;color:#0F172A;text-decoration:none;padding:12px 8px">Entrar</a>
+<a href="/cadastro" data-cta-topo class="btn btn-p" style="min-height:44px;font-size:15px;padding:0 18px">Testar grátis</a>
+</div>
+</div>
+</header>
+
+<section id="inicio" style="padding:72px 0 64px">
+<div class="wrap" style="display:flex;flex-wrap:wrap;gap:56px;align-items:center">
+<div style="flex:1 1 440px;min-width:0;display:flex;flex-direction:column;gap:24px">
+<span style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;background:#FFF4F1;color:#B02F13;font-weight:600;font-size:14px;padding:8px 14px;border-radius:999px;border:1px solid #FFC9B8">NPS e CSAT para empresas B2B</span>
+<h1 style="margin:0;font-size:clamp(38px,5.6vw,60px);line-height:1.05;font-weight:800;letter-spacing:-.035em">Retenha quem está insatisfeito. <span style="color:#D63A18">Cresça com quem está feliz.</span></h1>
+<p class="lead" style="max-width:540px">O Toqqi envia a pesquisa por e-mail e WhatsApp, lê cada comentário com IA e transforma a resposta em ação: plano para o cliente em risco, indicação de quem recomenda você.</p>
+<div style="display:flex;flex-wrap:wrap;gap:12px">
+<a href="/cadastro" class="btn btn-p">Começar 14 dias grátis</a>
+<a href="#como" class="btn btn-s">Ver como funciona</a>
+</div>
+<p style="margin:0;font-size:14px;color:#64748B">Sem cartão de crédito. Feito para a LGPD desde o primeiro dia.</p>
+</div>
+
+<div style="flex:1 1 440px;min-width:0;position:relative">
+<div class="cartao" style="padding:24px;display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+<div style="font-weight:700;font-size:16px">Painel</div>
+<div style="font-size:13px;color:#64748B;background:#F1F5F9;border-radius:8px;padding:6px 10px">Últimos 90 dias</div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-end">
+<div>
+<div style="font-size:13px;color:#64748B;font-weight:600">NPS</div>
+<div style="font-size:64px;font-weight:800;letter-spacing:-.04em;line-height:1">24</div>
+<div style="font-size:13px;color:#475569;margin-top:4px">anterior: 25</div>
+</div>
+<div style="flex:1 1 220px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;height:14px;border-radius:999px;overflow:hidden;gap:2px">
+<div style="flex:23;background:#059669"></div>
+<div style="flex:11;background:#F59E0B"></div>
+<div style="flex:12;background:#DC2626"></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:#475569">
+<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#059669"></span>23 promotores</span>
+<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#F59E0B"></span>11 neutros</span>
+<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#DC2626"></span>12 detratores</span>
+</div>
+</div>
+</div>
+<div style="display:flex;gap:12px;align-items:flex-start;background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:14px 16px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:1px"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+<div style="font-size:14px;line-height:1.5"><strong style="color:#991B1B">Pico de reclamações em Prazo e entrega</strong><br><span style="color:#475569">6 comentários negativos em 3 dias. A média era zero.</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="font-size:13px;font-weight:600;color:#64748B">Planos de ação abertos</div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border:1px solid #E2E8F0;border-radius:12px">
+<div style="min-width:0"><div style="font-weight:600;font-size:14px">Distribuidora Serra Azul</div><div style="font-size:13px;color:#64748B">Nota 3 · “o pedido chegou com 5 dias de atraso”</div></div>
+<span style="flex:none;font-size:12px;font-weight:700;color:#B91C1C;background:#FEF2F2;border-radius:999px;padding:4px 10px">vence em 2 dias</span>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border:1px solid #E2E8F0;border-radius:12px">
+<div style="min-width:0"><div style="font-weight:600;font-size:14px">Agro Cerrado Insumos</div><div style="font-size:13px;color:#64748B">Nota 7 · “preço subiu sem aviso”</div></div>
+<span style="flex:none;font-size:12px;font-weight:700;color:#B45309;background:#FFFBEB;border-radius:999px;padding:4px 10px">vence em 5 dias</span>
+</div>
+</div>
+<div style="font-size:12px;color:#64748B">Dados de exemplo</div>
+</div>
+</div>
+</div>
+</section>
+
+<section aria-label="Destaques" style="border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;background:#FFFFFF">
+<div class="wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;padding-top:28px;padding-bottom:28px">
+<div><div style="font-weight:700;font-size:16px">E-mail e WhatsApp</div><div style="font-size:14px;color:#475569;margin-top:4px">Manual, automático ou disparado pelo seu ERP</div></div>
+<div><div style="font-weight:700;font-size:16px">IA em cada comentário</div><div style="font-size:14px;color:#475569;margin-top:4px">Tema e sentimento, sem ler um por um</div></div>
+<div><div style="font-weight:700;font-size:16px">Ação com prazo</div><div style="font-size:14px;color:#475569;margin-top:4px">Detrator gera plano para o responsável</div></div>
+<div><div style="font-weight:700;font-size:16px">Pix, boleto ou cartão</div><div style="font-size:14px;color:#475569;margin-top:4px">Mensal, sem fidelidade</div></div>
+</div>
+</section>
+
+<section id="como" style="padding:104px 0">
+<div class="wrap" style="display:flex;flex-direction:column;gap:56px">
+<div style="display:flex;flex-direction:column;gap:14px;max-width:720px">
+<span class="rot">Como funciona</span>
+<h2 class="h2">Do primeiro envio ao cliente salvo, em quatro passos</h2>
+<p class="lead">Sem time de dados e sem planilha de controle. Você importa os clientes uma vez, e o Toqqi cuida do resto todo mês.</p>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:40px;align-items:stretch">
+<div style="flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:8px">
+<button type="button" class="passo ativo" data-passo="1" aria-pressed="true" aria-controls="cena-1">
+<span class="num">1</span>
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><span class="tit">Traga seus clientes</span><span class="tag">uma vez</span></span>
+<span class="desc">Uma planilha e pronto: empresas, contatos, valor mensal e responsável. Seu NPS antigo vem junto, para a evolução já começar cheia.</span>
+</span>
+<span class="barra" aria-hidden="true"><span></span></span>
+</button>
+<button type="button" class="passo" data-passo="2" aria-pressed="false" aria-controls="cena-2">
+<span class="num">2</span>
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><span class="tit">A pesquisa vai sozinha</span><span class="tag">todo mês</span></span>
+<span class="desc">Por e-mail ou WhatsApp, com lembrete para quem esqueceu. Ligado ao seu sistema, sai no momento em que o pedido é entregue.</span>
+</span>
+<span class="barra" aria-hidden="true"><span></span></span>
+</button>
+<button type="button" class="passo" data-passo="3" aria-pressed="false" aria-controls="cena-3">
+<span class="num">3</span>
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><span class="tit">A IA lê por você</span><span class="tag">a cada resposta</span></span>
+<span class="desc">Cada comentário ganha tema e sentimento. Se as reclamações disparam, o alerta chega antes de o cliente pedir para sair.</span>
+</span>
+<span class="barra" aria-hidden="true"><span></span></span>
+</button>
+<button type="button" class="passo" data-passo="4" aria-pressed="false" aria-controls="cena-4">
+<span class="num">4</span>
+<span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<span style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><span class="tit">Você age no que importa</span><span class="tag">com dono e prazo</span></span>
+<span class="desc">Detrator vira plano de ação com prazo e responsável. Promotor vira indicação e oportunidade para o representante.</span>
+</span>
+<span class="barra" aria-hidden="true"><span></span></span>
+</button>
+</div>
+
+<div class="palco" style="flex:1 1 480px;min-width:0;min-height:460px;border-radius:24px;background-color:#FFF4F1;border:1px solid #FFE5DD;padding:clamp(20px,4vw,40px);box-sizing:border-box;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+
+<div class="cena" id="cena-1" data-cena="1">
+<div style="width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px">
+<div class="cartao an" style="padding:14px 16px;display:flex;align-items:center;gap:12px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5M9 13h6M9 17h6"></path></svg>
+<span style="font-weight:700;font-size:15px">clientes.xlsx</span>
+<span style="margin-left:auto;font-size:13px;color:#64748B">conferindo…</span>
+</div>
+<div class="cartao" style="padding:6px 0;overflow:hidden">
+<div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr);gap:8px;padding:8px 16px;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em"><span>Empresa</span><span>Valor/mês</span><span>Responsável</span></div>
+<div class="an linha" style="animation-delay:.35s"><span>Distribuidora Serra Azul</span><span>R$ 18.400</span><span>Felipe</span></div>
+<div class="an linha" style="animation-delay:.55s"><span>Agro Cerrado Insumos</span><span>R$ 9.650</span><span>Renata</span></div>
+<div class="an linha" style="animation-delay:.75s"><span>Pequi Marista</span><span>R$ 52.000</span><span>Felipe</span></div>
+<div class="an linha" style="animation-delay:.95s;border-bottom:none"><span>Embalagens Meia Ponte</span><span>R$ 31.200</span><span>Carla</span></div>
+</div>
+<div class="pop" style="animation-delay:1.5s;align-self:flex-start;display:inline-flex;align-items:center;gap:8px;background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;border-radius:999px;padding:8px 14px;font-size:14px;font-weight:700">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+20 empresas e 47 contatos prontos
+</div>
+</div>
+</div>
+
+<div class="cena" id="cena-2" data-cena="2" hidden>
+<div style="width:100%;max-width:440px;display:flex;flex-direction:column;gap:14px">
+<div class="cartao an" style="padding:18px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#64748B;font-weight:600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg>E-mail · para ana@serraazul.com.br</div>
+<div style="font-weight:700;font-size:16px;line-height:1.35">De 0 a 10, quanto você recomendaria a gente a um colega?</div>
+<div style="display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:4px">
+<span class="nota">0</span><span class="nota">1</span><span class="nota">2</span><span class="nota">3</span><span class="nota">4</span><span class="nota">5</span><span class="nota">6</span><span class="nota">7</span><span class="nota">8</span><span class="nota escolhe">9</span><span class="nota">10</span>
+</div>
+</div>
+<div class="an" style="animation-delay:.9s;align-self:flex-end;max-width:86%;background:#DCF8C6;color:#0F172A;border-radius:14px 14px 4px 14px;padding:12px 14px;font-size:14px;line-height:1.5;box-shadow:0 1px 2px rgba(15,23,42,.08)">
+Oi, Marcos! Como foi a entrega de ontem? Leva 30 segundos responder: <span style="color:#1D4ED8;text-decoration:underline">toqqi.com/r/8kq2</span>
+<div style="font-size:11px;color:#64748B;text-align:right;margin-top:4px">WhatsApp · 09:12 ✓✓</div>
+</div>
+<div class="pop" style="animation-delay:1.9s;align-self:flex-start;display:inline-flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:#334155">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+Lembrete agendado para quem não respondeu
+</div>
+</div>
+</div>
+
+<div class="cena" id="cena-3" data-cena="3" hidden>
+<div style="width:100%;max-width:440px;display:flex;flex-direction:column;gap:14px">
+<div class="cartao an" style="padding:18px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-weight:700;font-size:14px">Embalagens Meia Ponte</span><span style="font-size:12px;font-weight:700;color:#FFFFFF;background:#DC2626;border-radius:8px;padding:3px 8px">Nota 4</span></div>
+<div style="font-size:15px;line-height:1.55;color:#334155">“Terceira vez que a entrega atrasa desde que trocaram a transportadora. Assim fica difícil.”</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<span class="pop" style="animation-delay:.8s;font-size:12px;font-weight:700;color:#1D4ED8;background:#EFF6FF;border-radius:999px;padding:5px 10px">Prazo e entrega</span>
+<span class="pop" style="animation-delay:1s;font-size:12px;font-weight:700;color:#B91C1C;background:#FEF2F2;border-radius:999px;padding:5px 10px">Sentimento negativo</span>
+</div>
+</div>
+<div class="cartao an" style="animation-delay:1.2s;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+<div style="font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em">Reclamações na semana</div>
+<div class="tema"><span>Prazo e entrega</span><span class="trilho"><span class="cresce" style="width:100%;background:#2A78D6;animation-delay:1.4s"></span></span><b>6</b></div>
+<div class="tema"><span>Preço</span><span class="trilho"><span class="cresce" style="width:34%;background:#EDA100;animation-delay:1.5s"></span></span><b>2</b></div>
+<div class="tema"><span>Atendimento</span><span class="trilho"><span class="cresce" style="width:17%;background:#1BAF7A;animation-delay:1.6s"></span></span><b>1</b></div>
+</div>
+<div class="pop" style="animation-delay:2.3s;align-self:flex-start">
+<div class="pulso" style="display:inline-flex;align-items:center;gap:8px;background:#FEF2F2;color:#991B1B;border:1px solid #FECACA;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+Pico em Prazo e entrega · alerta enviado
+</div>
+</div>
+</div>
+</div>
+
+<div class="cena" id="cena-4" data-cena="4" hidden>
+<div style="width:100%;max-width:460px;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;align-items:center;gap:10px">
+<div class="cartao an" style="flex:1 1 0;min-width:0;padding:14px"><div style="font-size:12px;font-weight:700;color:#B91C1C">Detrator · nota 4</div><div style="font-weight:700;font-size:14px;margin-top:4px">Embalagens Meia Ponte</div></div>
+<svg width="44" height="20" viewBox="0 0 44 20" fill="none" stroke="#D63A18" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path class="traco" d="M2 10h36M32 4l6 6-6 6" style="animation-delay:.4s"></path></svg>
+<div class="cartao pop" style="animation-delay:.9s;flex:1 1 0;min-width:0;padding:14px;border-color:#FECACA"><div style="font-size:12px;font-weight:700;color:#64748B">Plano de ação</div><div style="font-weight:700;font-size:14px;margin-top:4px">Carla · vence em 2 dias</div></div>
+</div>
+<div style="display:flex;align-items:center;gap:10px">
+<div class="cartao an" style="animation-delay:1.2s;flex:1 1 0;min-width:0;padding:14px"><div style="font-size:12px;font-weight:700;color:#047857">Promotor · nota 10</div><div style="font-weight:700;font-size:14px;margin-top:4px">Cerâmica Bela Vista</div></div>
+<svg width="44" height="20" viewBox="0 0 44 20" fill="none" stroke="#D63A18" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path class="traco" d="M2 10h36M32 4l6 6-6 6" style="animation-delay:1.6s"></path></svg>
+<div class="cartao pop" style="animation-delay:2.1s;flex:1 1 0;min-width:0;padding:14px;border-color:#A7F3D0"><div style="font-size:12px;font-weight:700;color:#64748B">Indicação</div><div style="font-weight:700;font-size:14px;margin-top:4px">2 contatos novos para Renata</div></div>
+</div>
+<div class="pop" style="animation-delay:2.7s;align-self:center;display:inline-flex;align-items:center;gap:8px;background:#0F172A;color:#F1F5F9;border-radius:999px;padding:10px 16px;font-size:14px;font-weight:600">
+Retenha quem está insatisfeito. Cresça com quem está feliz.
+</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</section>
+
+<section id="reter" style="padding:104px 0;background:#FFFFFF;border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0">
+<div class="wrap ret" id="retencao" style="display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-wrap:wrap;gap:24px 56px;align-items:flex-end;justify-content:space-between">
+<div style="flex:1 1 520px;min-width:0;display:flex;flex-direction:column;gap:14px">
+<span class="rot">Retenção</span>
+<h2 class="h2">Saiba em reais quanto você pode perder, e com quem falar primeiro</h2>
+</div>
+<p class="lead" style="flex:1 1 360px;min-width:0">O Toqqi cruza a nota de cada cliente com o valor que ele paga. O cliente grande e insatisfeito aparece no topo da lista, não no relatório de cancelamentos do mês que vem.</p>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:stretch">
+
+<div class="cartao" style="flex:1.4 1 520px;min-width:0;padding:24px;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+<div><div style="font-weight:700;font-size:17px">Matriz NPS × valor</div><div style="font-size:13px;color:#64748B;margin-top:2px">cada ponto é uma empresa · últimos 90 dias</div></div>
+<span style="font-size:12px;color:#64748B">Dados de exemplo</span>
+</div>
+<div style="display:flex;gap:10px;min-width:0">
+<div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;font-weight:600;color:#64748B;text-align:center">valor mensal →</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+<div class="plano" style="position:relative;height:340px;border-radius:14px;overflow:hidden;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:3px">
+<div class="quad" style="background:#FEF2F2"><span class="qrot" style="color:#991B1B">Proteger já <b>2</b></span></div>
+<div class="quad" style="background:#F1F5F9;justify-content:flex-end"><span class="qrot" style="color:#334155">Manter de perto <b>7</b></span></div>
+<div class="quad" style="background:#FFFBEB;align-items:flex-end"><span class="qrot" style="color:#92400E">Corrigir <b>3</b></span></div>
+<div class="quad" style="background:#ECFDF5;align-items:flex-end;justify-content:flex-end"><span class="qrot" style="color:#065F46">Pode crescer <b>6</b></span></div>
+<span style="position:absolute;right:10px;top:50%;margin-top:-20px;font-size:11px;font-weight:600;color:#64748B">mediana R$ 9.650</span>
+
+<span class="ponto alvo" title="Pequi Marista" style="left:17%;top:24%;width:26px;height:26px;margin:-13px 0 0 -13px;background:#DC2626;animation-delay:.2s"></span>
+<span class="ponto alvo" title="Embalagens Meia Ponte" style="left:35%;top:38%;width:20px;height:20px;margin:-10px 0 0 -10px;background:#DC2626;animation-delay:.3s"></span>
+<span class="etq" style="left:17%;top:24%;margin:18px 0 0 -40px;animation-delay:.9s">Pequi Marista</span>
+<span class="etq" style="left:35%;top:38%;margin:14px 0 0 -54px;animation-delay:1s">Embalagens Meia Ponte</span>
+
+<span class="ponto" title="Manter de perto" style="left:60%;top:16%;width:18px;height:18px;margin:-9px 0 0 -9px;background:#64748B;animation-delay:.4s"></span>
+<span class="ponto" title="Manter de perto" style="left:72%;top:30%;width:14px;height:14px;margin:-7px 0 0 -7px;background:#64748B;animation-delay:.45s"></span>
+<span class="ponto" title="Manter de perto" style="left:88%;top:26%;width:22px;height:22px;margin:-11px 0 0 -11px;background:#64748B;animation-delay:.5s"></span>
+<span class="ponto" title="Manter de perto" style="left:66%;top:42%;width:12px;height:12px;margin:-6px 0 0 -6px;background:#64748B;animation-delay:.55s"></span>
+<span class="ponto" title="Manter de perto" style="left:91%;top:38%;width:14px;height:14px;margin:-7px 0 0 -7px;background:#64748B;animation-delay:.6s"></span>
+<span class="ponto" title="Manter de perto" style="left:76%;top:22%;width:18px;height:18px;margin:-9px 0 0 -9px;background:#64748B;animation-delay:.65s"></span>
+<span class="ponto" title="Manter de perto" style="left:55%;top:29%;width:12px;height:12px;margin:-6px 0 0 -6px;background:#64748B;animation-delay:.7s"></span>
+
+<span class="ponto" title="Corrigir" style="left:22%;top:70%;width:12px;height:12px;margin:-6px 0 0 -6px;background:#D97706;animation-delay:.75s"></span>
+<span class="ponto" title="Corrigir" style="left:39%;top:62%;width:10px;height:10px;margin:-5px 0 0 -5px;background:#D97706;animation-delay:.8s"></span>
+<span class="ponto" title="Corrigir" style="left:30%;top:80%;width:10px;height:10px;margin:-5px 0 0 -5px;background:#D97706;animation-delay:.85s"></span>
+
+<span class="ponto" title="Pode crescer" style="left:62%;top:66%;width:12px;height:12px;margin:-6px 0 0 -6px;background:#059669;animation-delay:.9s"></span>
+<span class="ponto" title="Pode crescer" style="left:80%;top:58%;width:12px;height:12px;margin:-6px 0 0 -6px;background:#059669;animation-delay:.95s"></span>
+<span class="ponto" title="Pode crescer" style="left:70%;top:80%;width:10px;height:10px;margin:-5px 0 0 -5px;background:#059669;animation-delay:1s"></span>
+<span class="ponto" title="Pode crescer" style="left:90%;top:72%;width:12px;height:12px;margin:-6px 0 0 -6px;background:#059669;animation-delay:1.05s"></span>
+<span class="ponto" title="Pode crescer" style="left:56%;top:86%;width:10px;height:10px;margin:-5px 0 0 -5px;background:#059669;animation-delay:1.1s"></span>
+<span class="ponto" title="Pode crescer" style="left:75%;top:68%;width:10px;height:10px;margin:-5px 0 0 -5px;background:#059669;animation-delay:1.15s"></span>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:#64748B"><span>← insatisfeitos</span><span>NPS</span><span>satisfeitos →</span></div>
+</div>
+</div>
+</div>
+
+<div style="flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:20px">
+<div style="background:#0F172A;color:#F1F5F9;border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:18px;flex:1">
+<div style="font-size:14px;font-weight:600;color:#CBD5E1">Receita em risco</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="font-size:clamp(34px,4vw,44px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums"><span data-risco>R$ 262.399,99</span></div>
+<div style="font-size:14px;color:#CBD5E1">por mês, em 6 empresas com detratores</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div class="trilho" style="height:12px;background:#1E293B"><span class="enche" style="width:47%;background:#FF7C5C"></span></div>
+<div style="display:flex;justify-content:space-between;font-size:13px;color:#94A3B8"><span><b style="color:#F1F5F9">47%</b> da receita da carteira</span><span>R$ 557 mil</span></div>
+</div>
+<div style="border-top:1px solid #1F2A3C;padding-top:16px;display:flex;flex-direction:column;gap:12px">
+<div style="font-size:12px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.06em">Por responsável</div>
+<div class="resp"><span>Felipe</span><span class="trilho" style="background:#1E293B"><span class="enche" style="width:100%;background:#FF7C5C;animation-delay:.3s"></span></span><b>R$ 182 mil</b></div>
+<div class="resp"><span>Carla</span><span class="trilho" style="background:#1E293B"><span class="enche" style="width:30%;background:#FF7C5C;animation-delay:.4s"></span></span><b>R$ 54 mil</b></div>
+<div class="resp"><span>Renata</span><span class="trilho" style="background:#1E293B"><span class="enche" style="width:14%;background:#FF7C5C;animation-delay:.5s"></span></span><b>R$ 26 mil</b></div>
+</div>
+<div style="font-size:12px;color:#94A3B8">Dados de exemplo</div>
+</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:28px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="width:44px;height:44px;border-radius:12px;background:#FFF4F1;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"></path><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></div>
+<h3 style="margin:0;font-size:17px;font-weight:700">Ninguém fica sem resposta</h3>
+<p style="margin:0;font-size:15px;line-height:1.6;color:#475569">Cada detrator e neutro vira um plano de ação com responsável e prazo de 2, 5 ou 7 dias, que você ajusta.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="width:44px;height:44px;border-radius:12px;background:#FFF4F1;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M14.8 9a2.5 2.5 0 0 0-2.3-1.5h-1a2.3 2.3 0 0 0 0 4.5h1a2.3 2.3 0 0 1 0 4.5h-1A2.5 2.5 0 0 1 9.2 15M12 6v1.5M12 16.5V18"></path></svg></div>
+<h3 style="margin:0;font-size:17px;font-weight:700">Risco em reais, não em nota</h3>
+<p style="margin:0;font-size:15px;line-height:1.6;color:#475569">Veja a receita em risco por responsável, segmento e faixa de valor, e decida a quem ligar primeiro.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="width:44px;height:44px;border-radius:12px;background:#FFF4F1;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h11l-3-3M17 17H6l3 3"></path></svg></div>
+<h3 style="margin:0;font-size:17px;font-weight:700">Quem mudou de lado</h3>
+<p style="margin:0;font-size:15px;line-height:1.6;color:#475569">Saiba quem deixou de ser promotor e quem você resgatou, entre as 7 visões de relatório.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="width:44px;height:44px;border-radius:12px;background:#FFF4F1;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg></div>
+<h3 style="margin:0;font-size:17px;font-weight:700">A semana na sua caixa</h3>
+<p style="margin:0;font-size:15px;line-height:1.6;color:#475569">Toda segunda de manhã, o resumo da semana chega a quem acompanha o painel, sem precisar abrir o Toqqi.</p>
+</div>
+</div>
+
+</div>
+</section>
+
+<section id="crescer" style="padding:96px 0">
+<div class="wrap" style="display:flex;flex-wrap:wrap-reverse;gap:56px;align-items:center">
+<div style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:14px">
+<div class="cartao" style="padding:24px;display:flex;flex-direction:column;gap:14px">
+<div style="font-size:13px;font-weight:600;color:#64748B">Tela final da pesquisa · nota 10</div>
+<div style="font-size:20px;font-weight:700;line-height:1.3">Que bom! Conhece alguém que também gostaria de trabalhar com a gente?</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="border:1px solid #CBD5E1;border-radius:12px;padding:12px 14px;font-size:15px;color:#475569">Nome e empresa de quem você indica</div>
+<div style="border:1px solid #CBD5E1;border-radius:12px;padding:12px 14px;font-size:15px;color:#475569">Telefone ou e-mail</div>
+</div>
+<div style="font-size:13px;color:#475569">Até 3 indicações por resposta.</div>
+</div>
+<div class="cartao" style="padding:20px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+<div style="min-width:0"><div style="font-weight:700;font-size:15px">Oferta pronta no WhatsApp</div><div style="font-size:14px;color:#475569">O representante abre a conversa com o texto já escrito.</div></div>
+<span style="flex:none;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#065F46;background:#ECFDF5;border-radius:999px;padding:6px 12px">aceitou · R$ 1.250,00/mês</span>
+</div>
+</div>
+<div style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:20px">
+<span class="rot">Crescimento</span>
+<h2 class="h2">Seus clientes felizes também vendem por você</h2>
+<p class="lead">Quem dá nota 9 ou 10 recebe o convite para indicar. A indicação chega ao responsável pela conta, e o Toqqi aponta quem está pronto para comprar mais.</p>
+<ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px">
+<li style="display:flex;gap:12px;font-size:16px;line-height:1.55;color:#334155"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:1px"><path d="M20 6 9 17l-5-5"></path></svg><span><strong>Funil de indicações</strong>: nova, em contato, virou cliente, com o valor fechado.</span></li>
+<li style="display:flex;gap:12px;font-size:16px;line-height:1.55;color:#334155"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:1px"><path d="M20 6 9 17l-5-5"></path></svg><span><strong>Oportunidades de oferta</strong> entre promotores recentes e clientes que podem crescer.</span></li>
+<li style="display:flex;gap:12px;font-size:16px;line-height:1.55;color:#334155"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:1px"><path d="M20 6 9 17l-5-5"></path></svg><span><strong>Regra de ouro</strong>: nunca oferece nada a quem tem reclamação recente ou plano de ação aberto.</span></li>
+</ul>
+</div>
+</div>
+</section>
+
+<section id="assistente" style="padding:104px 0;background:#0B1120;color:#F1F5F9">
+<div class="wrap chatsec" id="conversa" style="display:flex;flex-wrap:wrap;gap:56px;align-items:center">
+<div style="flex:1 1 400px;min-width:0;display:flex;flex-direction:column;gap:22px">
+<span style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#FFA68D;background:#2A1712;border:1px solid #4A2418;border-radius:999px;padding:6px 14px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"></path></svg>ToqqiAI</span>
+<h2 style="margin:0;font-size:clamp(28px,4vw,42px);line-height:1.12;font-weight:700;letter-spacing:-.02em;color:#F1F5F9">Pergunte aos seus resultados como perguntaria a um colega</h2>
+<p style="margin:0;font-size:18px;line-height:1.6;color:#CBD5E1">O ToqqiAI é o assistente do Toqqi. Sem filtro, sem planilha, sem esperar o relatório do mês: escreva a pergunta e receba a resposta com os números da sua conta.</p>
+<ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px">
+<li style="display:flex;gap:12px;font-size:16px;line-height:1.5;color:#E2E8F0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF7C5C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:1px"><path d="M20 6 9 17l-5-5"></path></svg><span>Consulta NPS, comentários, temas e empresas da sua conta</span></li>
+<li style="display:flex;gap:12px;font-size:16px;line-height:1.5;color:#E2E8F0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF7C5C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:1px"><path d="M20 6 9 17l-5-5"></path></svg><span>Compara períodos de até 12 meses com o anterior</span></li>
+<li style="display:flex;gap:12px;font-size:16px;line-height:1.5;color:#E2E8F0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF7C5C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:1px"><path d="M20 6 9 17l-5-5"></path></svg><span>Tira dúvidas de uso, como um manual que responde</span></li>
+<li style="display:flex;gap:12px;font-size:16px;line-height:1.5;color:#E2E8F0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF7C5C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:1px"><path d="M20 6 9 17l-5-5"></path></svg><span>Cada pessoa só vê o que tem permissão de ver</span></li>
+</ul>
+</div>
+
+<div style="flex:1 1 460px;min-width:0">
+<div style="background:#111827;border:1px solid #1F2A3C;border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #1F2A3C">
+<span style="width:32px;height:32px;border-radius:10px;background:#2A1712;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF7C5C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"></path><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"></path></svg></span>
+<div style="display:flex;flex-direction:column"><span style="font-weight:700;font-size:15px">ToqqiAI</span><span style="font-size:12px;color:#94A3B8">Restam <span data-restam>497</span> de 500 perguntas no mês</span></div>
+<span style="margin-left:auto;font-size:11px;color:#94A3B8;border:1px solid #1F2A3C;border-radius:999px;padding:3px 8px">Dados de exemplo</span>
+</div>
+
+<div style="height:420px;padding:18px;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;overflow:hidden" role="img" aria-label="Exemplo de conversa com o ToqqiAI">
+<div class="chat-msgs" data-msgs style="display:contents">
+<div style="align-self:flex-end;max-width:82%;background:#D63A18;color:#FFFFFF;border-radius:16px 16px 4px 16px;padding:11px 15px;font-size:15px;line-height:1.5;flex:none">Por que o NPS caiu em setembro?</div>
+<div style="align-self:flex-start;max-width:92%;display:flex;flex-direction:column;gap:6px;flex:none"><span style="align-self:flex-start;font-size:11px;font-weight:600;color:#94A3B8">✓ Consultou: evolução mensal · comentários</span><div style="background:#1E293B;color:#F1F5F9;border-radius:16px 16px 16px 4px;padding:13px 16px;font-size:15px;line-height:1.6">O NPS de setembro foi 14, contra 43 em julho. A queda vem quase toda de Prazo e entrega: 6 reclamações entre 28 e 30/09, todas citando a transportadora nova.</div></div>
+<div style="align-self:flex-end;max-width:82%;background:#D63A18;color:#FFFFFF;border-radius:16px 16px 4px 16px;padding:11px 15px;font-size:15px;line-height:1.5;flex:none">Quais clientes grandes estão em risco?</div>
+<div style="align-self:flex-start;max-width:92%;display:flex;flex-direction:column;gap:6px;flex:none"><span style="align-self:flex-start;font-size:11px;font-weight:600;color:#94A3B8">✓ Consultou: empresas · indicadores</span><div style="background:#1E293B;color:#F1F5F9;border-radius:16px 16px 16px 4px;padding:13px 16px;font-size:15px;line-height:1.6">Duas empresas acima da mediana de valor têm NPS negativo: Pequi Marista (R$ 52.000/mês, com o Felipe) e Embalagens Meia Ponte (R$ 31.200/mês, com a Carla). A Embalagens deu nota 4 e reclamou da entrega.</div></div>
+<div style="align-self:flex-end;max-width:82%;background:#D63A18;color:#FFFFFF;border-radius:16px 16px 4px 16px;padding:11px 15px;font-size:15px;line-height:1.5;flex:none">Como mudo o prazo dos planos de ação?</div>
+<div style="align-self:flex-start;max-width:92%;display:flex;flex-direction:column;gap:6px;flex:none"><span style="align-self:flex-start;font-size:11px;font-weight:600;color:#94A3B8">✓ Consultou: Ajuda</span><div style="background:#1E293B;color:#F1F5F9;border-radius:16px 16px 16px 4px;padding:13px 16px;font-size:15px;line-height:1.6">Em Configurações › Planos de ação, no campo “Prazo para tratar”, informe os dias de detrator, neutro e promotor (de 1 a 90) e clique em “Salvar alterações”. O botão “Prazos automáticos”, na tela Planos de ação, leva direto até lá.</div></div>
+</div>
+<div class="an" data-pensando hidden style="align-self:flex-start;display:inline-flex;align-items:center;gap:10px;background:#1E293B;border-radius:16px 16px 16px 4px;padding:11px 15px;flex:none">
+<span class="pontos" aria-hidden="true"><i></i><i></i><i></i></span>
+<span style="font-size:13px;color:#CBD5E1" data-status></span>
+</div>
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid #1F2A3C">
+<div style="flex:1;min-width:0;min-height:44px;display:flex;align-items:center;background:#0B1120;border:1px solid #334155;border-radius:12px;padding:0 14px;font-size:15px;color:#F1F5F9;white-space:nowrap;overflow:hidden">
+<span data-digitado hidden></span><span class="cursor" data-cursor hidden></span><span data-dica style="color:#64748B">Pergunte sobre seus resultados…</span>
+</div>
+<span class="enviar" data-enviar aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section id="recursos" style="padding:96px 0">
+<div class="wrap" style="display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:14px;max-width:680px">
+<span class="rot">Tudo incluído</span>
+<h2 class="h2">O produto completo em todos os planos</h2>
+<p class="lead">Do Essencial ao Empresa, você usa tudo o que está aqui. Os planos mudam só as quantidades: contatos, convites de WhatsApp automático e uso da IA.</p>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px">
+<div class="cartao" style="padding:28px;display:flex;flex-direction:column;gap:14px">
+<div style="width:48px;height:48px;border-radius:12px;background:#FFF4F1;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="M7 15l3-3 2 2 5-5"></path><circle cx="8" cy="8.5" r="1.2"></circle></svg></div>
+<h3 style="margin:0;font-size:19px;line-height:1.3;font-weight:700;letter-spacing:-.01em">Sua marca em cada pesquisa</h3>
+<p style="margin:0;font-size:15px;line-height:1.65;color:#475569;flex:1">O cliente vê o seu logo e o nome da sua empresa do começo ao fim. Antes de enviar, confira como a pesquisa fica no e-mail, no WhatsApp e na página.</p>
+<div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px"><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">NPS</span><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">CSAT</span><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">Múltipla escolha</span></div>
+</div>
+<div class="cartao" style="padding:28px;display:flex;flex-direction:column;gap:14px">
+<div style="width:48px;height:48px;border-radius:12px;background:#FFF4F1;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20l1.3-5.1A8.4 8.4 0 1 1 21 11.5z"></path><path d="M9 10h6M9 13.5h4"></path></svg></div>
+<h3 style="margin:0;font-size:19px;line-height:1.3;font-weight:700;letter-spacing:-.01em">WhatsApp, onde seu cliente já está</h3>
+<p style="margin:0;font-size:15px;line-height:1.65;color:#475569;flex:1">A pesquisa sai do número oficial da sua empresa, sem ninguém apertar enviar. Prefere o toque pessoal? Use o link com a mensagem pronta.</p>
+<div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px"><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">Plataforma oficial da Meta</span><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">Link pronto</span></div>
+</div>
+<div class="cartao" style="padding:28px;display:flex;flex-direction:column;gap:14px">
+<div style="width:48px;height:48px;border-radius:12px;background:#FFF4F1;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10H7z"></path><path d="M3 10h4M3 14h4M17 10h4M17 14h4M10 3v4M14 3v4M10 17v4M14 17v4"></path></svg></div>
+<h3 style="margin:0;font-size:19px;line-height:1.3;font-weight:700;letter-spacing:-.01em">Pesquisa na hora certa, sozinha</h3>
+<p style="margin:0;font-size:15px;line-height:1.65;color:#475569;flex:1">Pedido entregue, pesquisa enviada. Seu sistema avisa o Toqqi, e o Toqqi avisa de volta quando o cliente responde, sai da lista ou indica alguém.</p>
+<div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px"><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">API</span><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">Webhooks</span><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">Passo a passo para o técnico</span></div>
+</div>
+<div class="cartao" style="padding:28px;display:flex;flex-direction:column;gap:14px">
+<div style="width:48px;height:48px;border-radius:12px;background:#FFF4F1;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><circle cx="17.5" cy="9" r="2.5"></circle><path d="M16 14.2a5 5 0 0 1 5.5 4.8"></path></svg></div>
+<h3 style="margin:0;font-size:19px;line-height:1.3;font-weight:700;letter-spacing:-.01em">Cada um no seu papel</h3>
+<p style="margin:0;font-size:15px;line-height:1.65;color:#475569;flex:1">Administrador, gestor e consulta, com permissões ajustáveis. Cada responsável recebe os alertas da própria carteira, e tudo fica registrado na auditoria.</p>
+<div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px"><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">3 perfis</span><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">Alertas por responsável</span><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">Auditoria</span></div>
+</div>
+<div class="cartao" style="padding:28px;display:flex;flex-direction:column;gap:14px">
+<div style="width:48px;height:48px;border-radius:12px;background:#FFF4F1;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"></path><path d="m7 15 4-4 3 3 5-6"></path></svg></div>
+<h3 style="margin:0;font-size:19px;line-height:1.3;font-weight:700;letter-spacing:-.01em">Números prontos para a reunião</h3>
+<p style="margin:0;font-size:15px;line-height:1.65;color:#475569;flex:1">Filtre por período, segmento, grupo e responsável e veja o que mudou. Leve respostas e relatórios para a planilha quando precisar.</p>
+<div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px"><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">7 visões</span><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">Comparação de períodos</span><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">CSV</span></div>
+</div>
+<div class="cartao" style="padding:28px;display:flex;flex-direction:column;gap:14px">
+<div style="width:48px;height:48px;border-radius:12px;background:#FFF4F1;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D63A18" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"></path><path d="m9 12 2 2 4-4"></path></svg></div>
+<h3 style="margin:0;font-size:19px;line-height:1.3;font-weight:700;letter-spacing:-.01em">Privacidade sem letra miúda</h3>
+<p style="margin:0;font-size:15px;line-height:1.65;color:#475569;flex:1">Todo e-mail tem descadastro em um clique, o site não usa cookies de rastreamento e a IA lê o comentário sem guardá-lo.</p>
+<div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:6px"><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">LGPD</span><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">Descadastro em 1 clique</span><span style="font-size:12px;font-weight:600;color:#334155;background:#F1F5F9;border-radius:999px;padding:5px 10px">Sem rastreamento</span></div>
+</div>
+</div>
+</div>
+</section>
+
+<section id="planos" style="padding:96px 0;background:#FFFFFF;border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0">
+<div class="wrap" style="display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:14px;max-width:720px;margin:0 auto;text-align:center;align-items:center">
+<span class="rot">Planos</span>
+<h2 class="h2">Comece grátis por 14 dias</h2>
+<p class="lead">Sem cartão no teste. Depois, uma fatura por mês, paga por Pix, boleto ou cartão. Cancele quando quiser e use até o fim do período pago.</p>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:20px;align-items:stretch">
+<div class="cartao" style="padding:32px;display:flex;flex-direction:column;gap:22px;position:relative;">
+<div><h3 style="margin:0;font-size:20px;font-weight:700">Essencial</h3><p style="margin:6px 0 0;font-size:15px;color:#475569">Para começar a medir</p></div>
+<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:16px;font-weight:600">R$</span><span style="font-size:48px;font-weight:800;letter-spacing:-.03em;line-height:1">149</span><span style="font-size:15px;color:#64748B">/mês</span></div>
+<div style="display:flex;flex-direction:column;flex:1">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Contatos ativos</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">300</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>WhatsApp automático</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">40/mês</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Perguntas ao ToqqiAI</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">100/mês</b></div>
+<div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#047857;padding-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Todos os recursos incluídos</div>
+</div>
+<a href="/cadastro" class="btn btn-s">Testar 14 dias grátis</a>
+</div>
+<div class="cartao" style="padding:32px;display:flex;flex-direction:column;gap:22px;position:relative;border:2px solid #D63A18;">
+<span style="position:absolute;top:-14px;left:32px;background:#D63A18;color:#FFFFFF;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px">Recomendado</span>
+<div><h3 style="margin:0;font-size:20px;font-weight:700">Profissional</h3><p style="margin:6px 0 0;font-size:15px;color:#475569">Para a carteira inteira</p></div>
+<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:16px;font-weight:600">R$</span><span style="font-size:48px;font-weight:800;letter-spacing:-.03em;line-height:1">349</span><span style="font-size:15px;color:#64748B">/mês</span></div>
+<div style="display:flex;flex-direction:column;flex:1">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Contatos ativos</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">1.500</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>WhatsApp automático</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">90/mês</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Perguntas ao ToqqiAI</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">500/mês</b></div>
+<div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#047857;padding-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Todos os recursos incluídos</div>
+</div>
+<a href="/cadastro" class="btn btn-p">Testar 14 dias grátis</a>
+</div>
+<div class="cartao" style="padding:32px;display:flex;flex-direction:column;gap:22px;position:relative;">
+<div><h3 style="margin:0;font-size:20px;font-weight:700">Empresa</h3><p style="margin:6px 0 0;font-size:15px;color:#475569">Para operações maiores</p></div>
+<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:16px;font-weight:600">R$</span><span style="font-size:48px;font-weight:800;letter-spacing:-.03em;line-height:1">799</span><span style="font-size:15px;color:#64748B">/mês</span></div>
+<div style="display:flex;flex-direction:column;flex:1">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Contatos ativos</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">sem limite</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>WhatsApp automático</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">200/mês</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Perguntas ao ToqqiAI</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">2.000/mês</b></div>
+<div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#047857;padding-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Todos os recursos incluídos</div>
+</div>
+<a href="/cadastro" class="btn btn-s">Testar 14 dias grátis</a>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:24px">
+<button type="button" class="comparar" data-comparar aria-expanded="false" aria-controls="tabela-planos">
+<span data-rotulo-fechado>Comparar todos os recursos</span>
+<span data-rotulo-aberto hidden>Esconder a comparação</span>
+<span class="seta" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+</button>
+<div id="tabela-planos" class="an" hidden style="width:100%;display:flex;flex-direction:column;gap:14px">
+<div class="cartao" style="overflow-x:auto;padding:0">
+<table class="tplanos">
+<thead><tr><th scope="col" style="text-align:left">Recurso</th><th scope="col">Essencial<span>R$ 149</span></th><th scope="col" class="tdest">Profissional<span>R$ 349</span></th><th scope="col">Empresa<span>R$ 799</span></th></tr></thead>
+<tbody>
+<tr><th colspan="4" scope="colgroup" class="tgrupo">Limites</th></tr>
+<tr><th scope="row">Contatos ativos</th><td>300</td><td class="tdest">1.500</td><td>Sem limite</td></tr>
+<tr><th scope="row">Usuários</th><td>Sem limite</td><td class="tdest">Sem limite</td><td>Sem limite</td></tr>
+<tr><th scope="row">WhatsApp automático (convites/mês)</th><td>40</td><td class="tdest">90</td><td>200</td></tr>
+<tr><th scope="row">Perguntas ao ToqqiAI por mês</th><td>100</td><td class="tdest">500</td><td>2.000</td></tr>
+<tr><th scope="row">Comentários lidos pela IA por mês</th><td>1.000</td><td class="tdest">5.000</td><td>20.000</td></tr>
+<tr><th colspan="4" scope="colgroup" class="tgrupo">Pesquisas</th></tr>
+<tr><th scope="row">Formulários NPS e CSAT com a sua marca</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Envio por e-mail, manual e automático</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Lembrete para quem não respondeu</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">WhatsApp por link com a mensagem pronta</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">WhatsApp automático pelo número da sua empresa <span class="topc">opcional</span></th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Descadastro em um clique</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th colspan="4" scope="colgroup" class="tgrupo">Análise</th></tr>
+<tr><th scope="row">Temas e sentimento de cada comentário por IA</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Alerta de pico de reclamações</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Painel e relatórios em 7 visões</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Matriz NPS × valor e receita em risco</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Resumo semanal por e-mail</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th colspan="4" scope="colgroup" class="tgrupo">Ação e crescimento</th></tr>
+<tr><th scope="row">Planos de ação automáticos com prazo</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Indicações dos promotores</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Oportunidades de oferta pelo WhatsApp</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th colspan="4" scope="colgroup" class="tgrupo">Gestão</th></tr>
+<tr><th scope="row">Importação de contatos e do NPS antigo</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Exportação de respostas e relatórios em CSV</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">API e webhooks para o seu sistema <span class="topc">opcional</span></th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Auditoria das ações da equipe</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+<tr><th scope="row">Ajuda completa e ToqqiAI</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
+</tbody>
+</table>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.6;color:#64748B;max-width:860px">
+<p style="margin:0"><b style="color:#475569">Opcional:</b> o WhatsApp automático precisa de uma conta da sua empresa na plataforma oficial da Meta; acabados os convites do mês, a pesquisa segue por e-mail. A API e os webhooks são para quem quer ligar o Toqqi ao próprio sistema.</p>
+<p style="margin:0">No teste grátis valem 20 convites de WhatsApp automático e até 1.000 comentários lidos pela IA. As perguntas ao ToqqiAI seguem o plano escolhido para o teste.</p>
+</div>
+</div>
+
+</div>
+</div>
+</section>
+
+<section id="duvidas" style="padding:96px 0">
+<div class="wrap" style="display:flex;flex-wrap:wrap;gap:48px">
+<div style="flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:14px">
+<span class="rot">Dúvidas</span>
+<h2 class="h2">Perguntas frequentes</h2>
+<p class="lead">Depois de entrar, a Ajuda e o ToqqiAI respondem o resto.</p>
+</div>
+<div style="flex:2 1 520px;min-width:0;display:flex;flex-direction:column;gap:12px">
+<details class="cartao" style="padding:0">
+<summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;font-weight:600;font-size:17px">O que acontece quando o teste acaba?<span class="mais" style="flex:none;font-size:24px;font-weight:400;color:#64748B;transition:transform .16s">+</span></summary>
+<p style="margin:0;padding:0 24px 22px;font-size:16px;line-height:1.6;color:#475569">Os envios pausam até alguém escolher um plano. Nada é apagado: contatos, respostas e relatórios continuam lá. Se você assinar durante o teste, a primeira fatura vence no último dia dele.</p>
+</details>
+<details class="cartao" style="padding:0">
+<summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;font-weight:600;font-size:17px">O que conta como contato ativo?<span class="mais" style="flex:none;font-size:24px;font-weight:400;color:#64748B;transition:transform .16s">+</span></summary>
+<p style="margin:0;padding:0 24px 22px;font-size:16px;line-height:1.6;color:#475569">É cada pessoa que pode receber a pesquisa. Contatos desativados ficam no histórico e não contam para o limite do plano.</p>
+</details>
+<details class="cartao" style="padding:0">
+<summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;font-weight:600;font-size:17px">Posso trazer o NPS que já medi em outra ferramenta?<span class="mais" style="flex:none;font-size:24px;font-weight:400;color:#64748B;transition:transform .16s">+</span></summary>
+<p style="margin:0;padding:0 24px 22px;font-size:16px;line-height:1.6;color:#475569">Sim. Importe as respostas antigas por planilha. Elas entram nos relatórios e na evolução, sem gerar planos de ação nem e-mails.</p>
+</details>
+<details class="cartao" style="padding:0">
+<summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;font-weight:600;font-size:17px">A análise dos comentários gasta as perguntas do ToqqiAI?<span class="mais" style="flex:none;font-size:24px;font-weight:400;color:#64748B;transition:transform .16s">+</span></summary>
+<p style="margin:0;padding:0 24px 22px;font-size:16px;line-height:1.6;color:#475569">Não. Cada comentário é analisado sem custo extra. Só as perguntas feitas ao ToqqiAI contam no limite mensal.</p>
+</details>
+<details class="cartao" style="padding:0">
+<summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;font-weight:600;font-size:17px">Como o Toqqi cuida dos dados dos meus clientes?<span class="mais" style="flex:none;font-size:24px;font-weight:400;color:#64748B;transition:transform .16s">+</span></summary>
+<p style="margin:0;padding:0 24px 22px;font-size:16px;line-height:1.6;color:#475569">Todo e-mail tem descadastro em um clique, o site não usa cookies de rastreamento e a IA recebe só o comentário, sem guardá-lo. Os detalhes estão na Política de privacidade.</p>
+</details>
+<details class="cartao" style="padding:0">
+<summary style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;font-weight:600;font-size:17px">Preciso de alguém técnico para começar?<span class="mais" style="flex:none;font-size:24px;font-weight:400;color:#64748B;transition:transform .16s">+</span></summary>
+<p style="margin:0;padding:0 24px 22px;font-size:16px;line-height:1.6;color:#475569">Não. Importe a planilha e envie pela própria tela. A integração com o seu sistema é opcional e vem com passo a passo para o técnico.</p>
+</details>
+</div>
+</div>
+</section>
+
+<section id="comecar" style="padding:0 0 96px">
+<div class="wrap">
+<div style="background:#FFF4F1;border:1px solid #FFC9B8;border-radius:24px;padding:clamp(32px,6vw,64px);display:flex;flex-wrap:wrap;gap:32px;align-items:center;justify-content:space-between">
+<div style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:12px">
+<h2 class="h2">Descubra hoje quem está prestes a sair</h2>
+<p class="lead">Crie a conta, importe seus clientes e mande a primeira pesquisa em minutos.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+<a href="/cadastro" class="btn btn-p" style="min-height:56px;font-size:17px;padding:0 28px">Começar 14 dias grátis</a>
+<span style="font-size:14px;color:#64748B">Sem cartão de crédito</span>
+</div>
+</div>
+</div>
+</section>
+
+<footer style="background:#0B1120;color:#CBD5E1;padding:48px 0">
+<div class="wrap" style="display:flex;flex-wrap:wrap;gap:32px;justify-content:space-between;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:12px;max-width:320px">
+<img src="/marca/toqqi-logo-escuro.svg" alt="toqqi" style="height:28px;width:auto;align-self:flex-start">
+<p style="margin:0;font-size:14px;line-height:1.6;color:#94A3B8">Pesquisa de satisfação que vira ação.</p>
+</div>
+<nav aria-label="Rodapé" style="display:flex;flex-wrap:wrap;gap:24px;font-size:14px">
+<a href="/termos" style="color:#CBD5E1;text-decoration:none">Termos de uso</a>
+<a href="/privacidade" style="color:#CBD5E1;text-decoration:none">Política de privacidade</a>
+<a href="mailto:privacidade@toqqi.com" style="color:#CBD5E1;text-decoration:none">privacidade@toqqi.com</a>
+<a href="/entrar" style="color:#CBD5E1;text-decoration:none">Entrar</a>
+</nav>
+</div>
+<div class="wrap" style="margin-top:32px;padding-top:24px;border-top:1px solid #1F2A3C;font-size:13px;color:#94A3B8">© 2026 Toqqi</div>
+</footer>
+
+</div>
     <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/entrada.ts"></script>
   </body>
 </html>

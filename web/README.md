@@ -39,10 +39,21 @@ O build gera **duas páginas**:
 
 | Arquivo | O que é | Carrega |
 |---|---|---|
-| `dist/index.html` | o app (área logada e telas de acesso) | Vue, router, Pinia, ícones, telas |
+| `dist/index.html` | na raiz (`/`), a **página do site**; em qualquer outro endereço, o app (área logada e telas de acesso) | na raiz, só `site.ts` e `site.css` (sem Vue); nos outros, Vue, router, Pinia, ícones, telas |
 | `dist/responder.html` | a pesquisa pública (`/r/:token` e `/f/:codigo`) e a página para sair da lista (`/sair/:token`) | só Vue, o cliente fetch e o componente da pesquisa (~45 KB gzip de JS) |
 
 A página pública é separada de propósito: abre rápido no 4G e não baixa nada da área logada.
+
+**Página do site.** O HTML da página de apresentação do Toqqi está pronto dentro de `index.html` (`<div id="site">`),
+para abrir rápido, aparecer para buscadores e funcionar sem JavaScript. A entrada `src/entrada.ts` olha o endereço: na
+raiz carrega `src/site/site.ts` (animações, tabela de comparação dos planos, "Abrir o Toqqi" para quem já entrou); fora
+dela, apaga o site e carrega o app (`src/main.ts`). Um script no `<head>` esconde o site antes de desenhar quando o
+endereço não é a raiz, então o servidor não muda: tudo que não for arquivo continua indo para `index.html`. O site é só
+claro, usa a fonte servida pelo próprio site e não faz requisição a terceiros. Com "reduzir movimento" ligado no
+sistema, as animações param e a conversa de exemplo aparece completa. Os números da página são de exemplo (os mesmos
+dos dados fictícios); preços e limites dos planos precisam acompanhar `api/toqqi/core/planos.py`,
+`api/toqqi/modulos/whatsapp/franquia.py`, `api/toqqi/modulos/ia/regras.py` e a cota da etapa 5b (o teste
+`tests/site.test.ts` confere os valores escritos na página).
 Em `npm run dev` e `npm run preview` o próprio Vite já faz o redirecionamento. **Em produção, configure no servidor:**
 
 1. `/r/*`, `/f/*` e `/sair/*` → servir `responder.html` (sem mudar a URL);

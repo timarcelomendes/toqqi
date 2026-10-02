@@ -18,7 +18,8 @@ const medio = computed(() => rota.name === 'aceite')
     </div>
 
     <header class="flex items-center justify-between px-4 py-4 sm:px-8">
-      <RouterLink to="/" class="rounded-lg" aria-label="Toqqi, página inicial"><Marca /></RouterLink>
+      <!-- Link comum (não RouterLink): a raiz é a página do site, fora do app (src/entrada.ts). -->
+      <a href="/" class="rounded-lg" aria-label="Toqqi, página inicial"><Marca /></a>
       <BotaoTema />
     </header>
 
