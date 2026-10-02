@@ -3217,7 +3217,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Toda conta nova começa com 14 dias de teste grátis, sem cartão. Nas telas maiores, o topo mostra “Teste grátis: faltam N dias”. Na tela Assinatura, um selo mostra a situação da conta:"
+              "texto": "Toda conta nova começa com 14 dias de teste grátis, sem cartão. O topo mostra “Teste grátis: faltam N dias” (no celular, “Teste: N dias”); para quem cuida da assinatura, ele leva à tela Assinatura e, até alguém assinar, também o Início mostra um cartão com os dias que faltam e o botão “Ver planos”. Na tela Assinatura, um selo mostra a situação da conta:"
             },
             {
               "tipo": "lista",

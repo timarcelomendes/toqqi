@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ChevronDown, CreditCard, LogOut, Menu, UserRound, X } from 'lucide-vue-next'
 import { useSessaoStore } from '@/stores/sessao'
 import { useAssistenteStore } from '@/stores/assistente'
 import { useFocoPreso } from '@/composables/focoPreso'
 import { useMenuLateral } from '@/composables/menuLateral'
-import { formatarData, diasAte } from '@/utils/datas'
-import { testeValendo, ultimoDiaDoTeste } from '@/modulos/assinatura/logica'
+import { seloDoTeste } from '@/modulos/assinatura/logica'
 import { iniciais, PERFIS } from '@/utils/rotulos'
 import AvisoCobranca from '@/components/app/AvisoCobranca.vue'
 import BotaoTema from '@/components/app/BotaoTema.vue'
@@ -32,14 +31,9 @@ watch(gavetaAberta, (v) => (document.body.style.overflow = v ? 'hidden' : ''))
 const agora = ref(Date.now())
 let relogio: ReturnType<typeof setInterval> | undefined
 
-/** Selo do teste no cabeçalho, pela data e hora do fim (o último dia é o de São Paulo, como a API). */
-const teste = computed(() => {
-  const c = sessao.conta
-  if (!c || c.situacao !== 'teste' || !c.teste_ate) return null
-  const ultimo = ultimoDiaDoTeste(c.teste_ate)
-  if (!testeValendo(c.teste_ate, new Date(agora.value))) return { data: formatarData(ultimo), dias: -1 }
-  return { data: formatarData(ultimo), dias: diasAte(ultimo) }
-})
+/** Selo do teste no cabeçalho, pela data e hora do fim (o último dia é o de São Paulo, como a API). Quem cuida da
+ * assinatura clica e vai à tela de Assinatura ("Escolher plano" até assinar). */
+const teste = computed(() => seloDoTeste(sessao.conta, sessao.pode('assinatura.gerenciar'), new Date(agora.value)))
 
 /** A aba voltou a ficar visível: busca a sessão de novo, no máximo a cada 3 minutos (aviso do topo, envios). */
 function aoVoltarParaAba() {
@@ -116,16 +110,19 @@ async function sair() {
       </button>
       <p class="min-w-0 truncate text-sm font-semibold text-texto-suave">{{ sessao.conta?.nome }}</p>
       <div class="flex-1" />
-      <p
+      <component
+        :is="teste.link ? RouterLink : 'p'"
         v-if="teste"
-        class="hidden rounded-full bg-marca-suave px-3 py-1 text-xs font-semibold text-marca-texto sm:block"
-        :title="`Teste grátis até ${teste.data}`"
+        v-bind="teste.link ? { to: '/assinatura', 'aria-label': teste.convite ? `${teste.texto}. ${teste.convite}` : teste.texto } : {}"
+        class="shrink-0 rounded-full bg-marca-suave px-3 py-1 text-xs font-semibold text-marca-texto"
+        :class="teste.link ? 'hover:bg-coral-100 dark:hover:bg-coral-900/40' : ''"
+        :title="teste.titulo"
+        data-selo-teste
       >
-        <template v-if="teste.dias !== null && teste.dias >= 0">
-          Teste grátis: {{ teste.dias === 0 ? 'termina hoje' : teste.dias === 1 ? 'falta 1 dia' : `faltam ${teste.dias} dias` }}
-        </template>
-        <template v-else>Teste grátis encerrado em {{ teste.data }}</template>
-      </p>
+        <span class="sm:hidden">{{ teste.curto }}</span>
+        <span class="hidden sm:inline">{{ teste.texto }}</span>
+        <span v-if="teste.convite" class="hidden sm:inline"> · <span class="underline underline-offset-2">{{ teste.convite }}</span></span>
+      </component>
       <BotaoTema />
       <MenuSuspenso rotulo="Menu da sua conta">
         <template #gatilho="{ props }">

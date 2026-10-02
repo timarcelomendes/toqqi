@@ -5,6 +5,7 @@ import type {
   AvisoCobranca,
   CobrancaAssinatura,
   CobrancaConta,
+  Conta,
   DadosCobranca,
   EstadoAssinatura,
   FaturaAberta,
@@ -527,4 +528,75 @@ export function mesmosDadosCobranca(a: FormCobranca, b: FormCobranca): boolean {
     return { ...c, email_cobranca: c.email_cobranca.toLowerCase(), telefone: c.telefone.length <= 11 ? `55${c.telefone}` : c.telefone }
   }
   return JSON.stringify(norm(a)) === JSON.stringify(norm(b))
+}
+
+// ── Teste grátis: selo do topo e cartão do Início ──────────────────────────────
+
+type ContaTeste = Pick<Conta, 'situacao' | 'teste_ate' | 'plano'> & { cobranca?: Pick<CobrancaConta, 'assinada'> | null }
+
+/** Dias inteiros de hoje (São Paulo) até o último dia do teste; 0 = termina hoje. */
+export function diasDeTeste(ultimo: string, agora: Date = new Date()): number {
+  const hoje = Date.parse(`${diaEmSaoPaulo(agora)}T00:00:00Z`)
+  return Math.round((Date.parse(`${ultimo}T00:00:00Z`) - hoje) / 86_400_000)
+}
+
+function textoFalta(dias: number): string {
+  return dias <= 0 ? 'termina hoje' : dias === 1 ? 'falta 1 dia' : `faltam ${dias} dias`
+}
+
+export interface SeloTeste {
+  /** Texto das telas maiores ("Teste grátis: faltam 9 dias"). */
+  texto: string
+  /** Texto do celular ("Teste: 9 dias"). */
+  curto: string
+  titulo: string
+  /** Leva a /assinatura (quem cuida da assinatura); com o rótulo do convite, quando ainda não assinou. */
+  link: boolean
+  convite: string | null
+}
+
+/**
+ * Selo do topo enquanto a conta está em teste. Quem cuida da assinatura clica e vai à tela de Assinatura, com o convite
+ * "Escolher plano" até assinar; os outros só leem.
+ */
+export function seloDoTeste(conta: ContaTeste | null | undefined, podeGerenciar: boolean, agora: Date = new Date()): SeloTeste | null {
+  if (!conta || conta.situacao !== 'teste' || !conta.teste_ate) return null
+  const ultimo = ultimoDiaDoTeste(conta.teste_ate)
+  if (!ultimo) return null
+  const data = formatarData(ultimo)
+  const assinada = !!conta.cobranca?.assinada
+  const convite = podeGerenciar && !assinada ? 'Escolher plano' : null
+  if (!testeValendo(conta.teste_ate, agora)) {
+    return { texto: `Teste grátis encerrado em ${data}`, curto: 'Teste encerrado', titulo: `Teste grátis encerrado em ${data}`, link: podeGerenciar, convite }
+  }
+  const dias = diasDeTeste(ultimo, agora)
+  return {
+    texto: `Teste grátis: ${textoFalta(dias)}`,
+    curto: dias <= 0 ? 'Teste: hoje' : dias === 1 ? 'Teste: 1 dia' : `Teste: ${dias} dias`,
+    titulo: `Teste grátis até ${data}`,
+    link: podeGerenciar,
+    convite,
+  }
+}
+
+export interface CartaoTeste {
+  data: string
+  dias: number
+  plano: string
+}
+
+/**
+ * Cartão do Início para quem cuida da assinatura, durante o teste e antes de assinar. Nos últimos dias
+ * (`DIAS_AVISO_TESTE`, o mesmo da API) quem avisa é a faixa do topo ("teste acabando"), então o cartão sai.
+ */
+export const DIAS_AVISO_TESTE = 5
+
+export function cartaoDoTeste(conta: ContaTeste | null | undefined, podeGerenciar: boolean, agora: Date = new Date()): CartaoTeste | null {
+  if (!podeGerenciar || !conta || conta.situacao !== 'teste' || conta.cobranca?.assinada) return null
+  if (!testeValendo(conta.teste_ate, agora)) return null
+  const ultimo = ultimoDiaDoTeste(conta.teste_ate)
+  if (!ultimo) return null
+  const dias = diasDeTeste(ultimo, agora)
+  if (dias <= DIAS_AVISO_TESTE) return null
+  return { data: formatarData(ultimo), dias, plano: nomeDoPlano(conta.plano) }
 }
