@@ -302,8 +302,9 @@ onBeforeUnmount(() => {
 
         <!-- Pré-visualização ao lado (telas grandes) -->
         <aside v-if="aba === 'perguntas' || aba === 'aparencia'" class="hidden xl:block" aria-label="Pré-visualização">
-          <div class="sticky top-20 h-[calc(100dvh-7rem)]">
-            <PreVisualizacao :nome="rascunho.nome" :perguntas="rascunho.perguntas" :tema="rascunho.tema" :nome-empresa="nomeEmpresa" />
+          <!-- termina acima do botão do assistente, que fica no canto da tela -->
+          <div class="sticky top-20 h-[calc(100dvh-9.5rem)]">
+            <PreVisualizacao :nome="rascunho.nome" :perguntas="rascunho.perguntas" :tema="rascunho.tema" :nome-empresa="nomeEmpresa" :tipo="tipoAtual" />
           </div>
         </aside>
       </div>
@@ -325,7 +326,7 @@ onBeforeUnmount(() => {
 
       <Modal v-model:aberto="previaAberta" titulo="Pré-visualização" descricao="É assim que seu cliente vê. Nada é gravado." tamanho="lg">
         <div class="-mx-5 -my-5 h-[70dvh] sm:-mx-6">
-          <PreVisualizacao :nome="rascunho.nome" :perguntas="rascunho.perguntas" :tema="rascunho.tema" :nome-empresa="nomeEmpresa" />
+          <PreVisualizacao :nome="rascunho.nome" :perguntas="rascunho.perguntas" :tema="rascunho.tema" :nome-empresa="nomeEmpresa" :tipo="tipoAtual" :titulo="false" />
         </div>
       </Modal>
     </template>

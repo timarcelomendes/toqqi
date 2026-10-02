@@ -694,7 +694,7 @@
             },
             {
               "tipo": "dica",
-              "texto": "Use “Pré-visualizar” (ou o painel à direita, em tela grande) para ver como o cliente enxerga. Nada é gravado."
+              "texto": "Use “Pré-visualizar” (ou o painel à direita, em tela grande) para ver como o cliente enxerga: em “Página”, a pesquisa; em “E-mail”, o convite como chega na caixa de entrada; em “WhatsApp”, a mensagem com o link. E-mail e WhatsApp usam os textos de Configurações › Envios. Nada é gravado."
             }
           ]
         },

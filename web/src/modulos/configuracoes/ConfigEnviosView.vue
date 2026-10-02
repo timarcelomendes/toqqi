@@ -29,6 +29,7 @@ import Selecao from '@/components/ui/Selecao.vue'
 import CampoMensagem from './CampoMensagem.vue'
 import NavConfiguracoes from './NavConfiguracoes.vue'
 import PreviaEmail from './PreviaEmail.vue'
+import PreviaWhatsapp from './PreviaWhatsapp.vue'
 import {
   LIMITE_ASSUNTO,
   LIMITE_TEXTO,
@@ -175,12 +176,6 @@ const previaEmail = computed(() =>
 )
 const dicaRemetente = computed(() => `Aparece como "${(f.remetente_nome || sessao.conta?.nome || 'Sua empresa').trim()} via Toqqi".`)
 const textoWhatsapp = computed(() => renderizarMensagem(f.texto_whatsapp, exemplo.value))
-const partesWhatsapp = computed(() => {
-  const link = exemplo.value.link
-  const t = textoWhatsapp.value
-  const i = t.indexOf(link)
-  return i < 0 ? { antes: t, link: '', depois: '' } : { antes: t.slice(0, i), link, depois: t.slice(i + link.length) }
-})
 
 async function carregar() {
   carregando.value = true
@@ -559,12 +554,7 @@ onMounted(carregar)
             </div>
             <div aria-live="polite" aria-atomic="false">
               <PreviaEmail v-if="previaAtual !== 'whatsapp'" :previa="previaEmail" :empresa="sessao.conta?.nome ?? ''" />
-              <div v-else class="rounded-2xl bg-[#e5ddd5] p-4" aria-label="Prévia da mensagem de WhatsApp">
-                <p class="ml-auto max-w-[85%] whitespace-pre-line break-words rounded-xl rounded-tr-sm bg-[#dcf8c6] px-3 py-2 text-sm text-slate-900 shadow-sm">
-                  {{ partesWhatsapp.antes }}<span v-if="partesWhatsapp.link" class="text-sky-700 underline">{{ partesWhatsapp.link }}</span>{{ partesWhatsapp.depois }}
-                </p>
-                <p class="mt-2 text-center text-xs text-slate-600">A mensagem abre pronta no WhatsApp; quem envia aperta o botão Enviar.</p>
-              </div>
+              <PreviaWhatsapp v-else :texto="textoWhatsapp" :link="exemplo.link" />
             </div>
             <p class="mt-2 text-xs text-texto-fraco">Exemplo com uma cliente chamada Maria, da empresa Mercado Bom Preço.</p>
           </div>
