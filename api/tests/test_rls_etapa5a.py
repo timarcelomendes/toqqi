@@ -24,6 +24,8 @@ def ab(client, dono, asaas_falso, monkeypatch):
     fixar_relogio(monkeypatch, momento("2026-10-10"))
     a = conta_pronta(client, "ana@alfa.com.br", empresa="Alfa")
     b = conta_pronta(client, "bia@beta.com.br", empresa="Beta")
+    # o cadastro conta o teste pelo relógio de verdade: fixa o fim para a primeira fatura vencer em 15/10
+    sql(dono, "update contas set teste_ate = :t where id = :b", t=momento("2026-10-15", 14), b=b["conta"]["id"])
     assert assinar(client, b["h"], razao_social="Beta Ltda").status_code == 201
     asaas_falso.simular("pagar", asaas_falso.cobrancas()[0]["id"], forma="PIX")
     assert sql(dono, "select count(*) from asaas_eventos")[0][0] == 1

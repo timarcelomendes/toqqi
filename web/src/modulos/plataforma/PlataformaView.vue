@@ -70,9 +70,19 @@ function semEstender(c: ContaPlataforma): string | null {
   return null
 }
 
+/** O administrador mais antigo da conta e quantos outros há ("ana@alfa.com.br e mais 1 administrador"). */
+function adminDe(c: ContaPlataforma): { email: string; confirmado: boolean; mais: string } | null {
+  const [primeiro, ...outros] = c.admins ?? []
+  if (!primeiro) return null
+  const mais = outros.length ? ` e mais ${plural(outros.length, 'administrador', 'administradores')}` : ''
+  return { email: primeiro.email, confirmado: primeiro.email_confirmado, mais }
+}
+
+/** Busca pelo nome da empresa ou pelo e-mail de um administrador. */
 const filtradas = computed(() => {
   const t = busca.value.trim().toLowerCase()
-  return t ? contas.value.filter((c) => c.nome.toLowerCase().includes(t)) : contas.value
+  if (!t) return contas.value
+  return contas.value.filter((c) => c.nome.toLowerCase().includes(t) || (c.admins ?? []).some((a) => a.email.toLowerCase().includes(t)))
 })
 
 async function carregar() {
@@ -153,7 +163,7 @@ onMounted(carregar)
 
   <div class="cartao">
     <div class="flex flex-col gap-3 border-b border-borda p-4 sm:flex-row sm:items-center sm:px-5">
-      <Campo v-model="busca" rotulo="Buscar conta" rotulo-oculto tipo="search" placeholder="Buscar por empresa" class="sm:max-w-sm sm:flex-1">
+      <Campo v-model="busca" rotulo="Buscar conta" rotulo-oculto tipo="search" placeholder="Buscar por empresa ou e-mail" class="sm:max-w-sm sm:flex-1">
         <template #antes><Search class="size-4" aria-hidden="true" /></template>
       </Campo>
       <p class="text-sm text-texto-fraco sm:ml-auto">{{ filtradas.length }} {{ filtradas.length === 1 ? 'conta' : 'contas' }}</p>
@@ -164,7 +174,13 @@ onMounted(carregar)
     </Alerta>
     <Tabela v-else :colunas="colunas" :linhas="filtradas" :chave="(c) => c.id" :carregando="carregando" legenda="Contas da plataforma" densa>
       <template #cel-nome="{ linha: c }">
-        <p class="font-semibold text-texto">{{ c.nome }}</p>
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p class="font-semibold text-texto">{{ c.nome }}</p>
+          <Etiqueta v-if="propria(c)" tom="marca" data-sua-conta>Sua conta</Etiqueta>
+        </div>
+        <p v-if="adminDe(c)" class="text-texto-suave [overflow-wrap:anywhere]" data-admin>
+          {{ adminDe(c)!.email }}<span v-if="!adminDe(c)!.confirmado" class="text-atencao"> (não confirmado)</span>{{ adminDe(c)!.mais }}
+        </p>
         <p class="text-xs text-texto-fraco 2xl:hidden">{{ plural(c.usuarios ?? 0, 'usuário', 'usuários') }} · criada em {{ formatarData(c.criada_em) }}</p>
         <p class="mt-1 text-texto-suave md:hidden">{{ textoAssinatura(c) }}</p>
         <div class="mt-1 sm:hidden"><Etiqueta :tom="situacaoConta(c.situacao).tom">{{ situacaoConta(c.situacao).rotulo }}</Etiqueta></div>

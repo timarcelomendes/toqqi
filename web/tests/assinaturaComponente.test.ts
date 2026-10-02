@@ -635,6 +635,35 @@ describe('Plataforma (etapa 5a)', () => {
     expect(estadoConfirmacao.mensagem).toBe('O teste acabou em 20/09/2026. Os 14 dias contam a partir de hoje.')
   })
 
+  it('e-mail do administrador, "Sua conta" sem "Excluir" e busca pelo e-mail', async () => {
+    entrar([], { superadmin: true })
+    const adm = (email: string, email_confirmado = true) => ({ nome: 'Pessoa', email, email_confirmado })
+    apiFalsa({
+      'GET /plataforma/contas': () => [
+        conta({ id: 1, nome: 'Toqqi', situacao: 'cortesia', teste_ate: null, admins: [adm('admin@toqqi.com')] }),
+        conta({ id: 6, nome: 'Toqqi', situacao: 'cortesia', teste_ate: null, admins: [adm('outro@gmail.com', false)] }),
+        conta({ id: 7, nome: 'Alfa', admins: [adm('ana@alfa.com.br'), adm('bia@alfa.com.br')] }),
+        conta({ id: 8, nome: 'Sem admin', admins: [] }),
+      ],
+    })
+    const w = await abrir('/plataforma', PlataformaView)
+    const sua = linha(w, 'admin@toqqi.com')
+    expect(t(sua.get('[data-sua-conta]').text())).toBe('Sua conta')
+    expect(sua.findAll('button').some((b) => b.text().includes('Excluir'))).toBe(false)
+    const outra = linha(w, 'outro@gmail.com')
+    expect(outra.find('[data-sua-conta]').exists()).toBe(false)
+    expect(t(outra.get('[data-admin]').text())).toBe('outro@gmail.com (não confirmado)')
+    expect(outra.findAll('button').some((b) => b.text().includes('Excluir'))).toBe(true)
+    expect(t(linha(w, 'Alfa').get('[data-admin]').text())).toBe('ana@alfa.com.br e mais 1 administrador')
+    expect(linha(w, 'Sem admin').find('[data-admin]').exists()).toBe(false)
+    // Busca pelo e-mail de qualquer administrador (e pelo nome da empresa)
+    await w.get('input[type="search"]').setValue('BIA@alfa')
+    expect(w.findAll('tbody tr').map((tr) => tr.text())).toHaveLength(1)
+    expect(t(w.get('tbody tr').text())).toContain('Alfa')
+    await w.get('input[type="search"]').setValue('toqqi')
+    expect(w.findAll('tbody tr')).toHaveLength(2)
+  })
+
   it('cortesia numa conta com assinatura avisa que a assinatura no Asaas será cancelada', async () => {
     entrar([], { superadmin: true })
     apiFalsa({ 'GET /plataforma/contas': () => CONTAS })

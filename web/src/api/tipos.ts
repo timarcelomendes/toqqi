@@ -169,6 +169,14 @@ export interface ContaPlataforma {
   atrasada_desde?: string | null
   /** Etapa 5a: a assinatura ativa, se houver. */
   assinatura?: { plano: string; valor: ValorDecimal; situacao: string } | null
+  /** Administradores da conta, o mais antigo primeiro. */
+  admins?: AdminPlataforma[]
+}
+
+export interface AdminPlataforma {
+  nome: string
+  email: string
+  email_confirmado: boolean
 }
 
 // ───────────────────────── Etapa 2 (docs/api-etapa-2.md) ─────────────────────────

@@ -38,6 +38,8 @@ Os testes rodam no GitHub a cada envio (`.github/workflows/testes.yml`).
 ## Publicação (Render)
 O arquivo `render.yaml` cria tudo de uma vez: no Render, **New > Blueprint** e escolha este repositório.
 Na criação, o Render pede `SUPERADMIN_EMAILS`, `ADMIN_INICIAL_EMAIL` e `ADMIN_INICIAL_SENHA` (seu acesso inicial).
+A conta inicial só é criada com o banco vazio: trocar `ADMIN_INICIAL_EMAIL` depois não cria outra conta (crie as
+demais pela Plataforma). Quem está em `SUPERADMIN_EMAILS` (separados por vírgula, e-mail confirmado) vê a Plataforma.
 A API cria sozinha o papel restrito do banco e aplica as migrações a cada subida.
 
 Dois serviços apontando para este mesmo repositório:

@@ -1,7 +1,7 @@
 """Área da plataforma (superadmin)."""
 from datetime import datetime, timedelta, timezone
 
-from util import conta_pronta, entrar, sql
+from util import cadastrar, conta_pronta, entrar, membro, sql
 
 API = "/api/v1"
 
@@ -33,6 +33,31 @@ def test_superadmin_lista_e_cria_contas(client):
     r = client.post(f"{API}/plataforma/contas", headers=root["h"], json={
         "empresa": "Delta", "admin_nome": "Ana", "admin_email": "ana@alfa.com.br", "admin_senha": "Senha@123"})
     assert r.status_code == 409 and r.json()["erro"]["codigo"] == "email_em_uso"
+
+
+def test_lista_mostra_os_administradores_de_cada_conta(client):
+    root = conta_pronta(client, "root@toqqi.com", empresa="Toqqi")
+    alfa = conta_pronta(client, "ana@alfa.com.br", empresa="Alfa")
+    membro(client, alfa["h"], "bia@alfa.com.br", perfil="admin")
+    membro(client, alfa["h"], "caio@alfa.com.br")  # consulta: não é administrador
+    cadastrar(client, "rui@beta.com.br", empresa="Beta")  # ainda sem confirmar o e-mail
+    contas = {c["nome"]: c for c in client.get(f"{API}/plataforma/contas", headers=root["h"]).json()}
+    assert [(a["email"], a["email_confirmado"]) for a in contas["Alfa"]["admins"]] == [
+        ("ana@alfa.com.br", True), ("bia@alfa.com.br", True)]  # o mais antigo primeiro
+    assert [(a["email"], a["email_confirmado"]) for a in contas["Beta"]["admins"]] == [("rui@beta.com.br", False)]
+    assert [a["email"] for a in contas["Toqqi"]["admins"]] == ["root@toqqi.com"]
+    assert contas["Alfa"]["usuarios"] == 3
+
+    # criar, "+14 dias" e "Cortesia" devolvem a conta com os administradores
+    r = client.post(f"{API}/plataforma/contas", headers=root["h"], json={
+        "empresa": "Gama", "admin_nome": "Gui", "admin_email": "gui@gama.com.br", "admin_senha": "Senha@123"})
+    assert r.status_code == 201 and r.json()["admins"] == [
+        {"nome": "Gui", "email": "gui@gama.com.br", "email_confirmado": True}]
+    cid = alfa["conta"]["id"]
+    r = client.post(f"{API}/plataforma/contas/{cid}/estender-teste", headers=root["h"], json={"dias": 14})
+    assert [a["email"] for a in r.json()["admins"]] == ["ana@alfa.com.br", "bia@alfa.com.br"]
+    r = client.post(f"{API}/plataforma/contas/{cid}/cortesia", headers=root["h"])
+    assert [a["email"] for a in r.json()["admins"]] == ["ana@alfa.com.br", "bia@alfa.com.br"]
 
 
 def test_estender_teste_conta_do_fim_atual_ou_de_agora(client, dono):

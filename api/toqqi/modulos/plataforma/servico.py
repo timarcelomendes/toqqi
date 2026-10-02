@@ -51,18 +51,32 @@ from toqqi.modulos.assinatura import servico as assinaturas
 from toqqi.modulos.formularios.semear import semear_conta
 
 
-def _conta_json(c: Conta, usuarios: int, a: Assinatura | None = None) -> dict:
-    """`assinatura` = a assinatura ativa ({plano, valor, situacao}) ou null."""
+def _conta_json(c: Conta, usuarios: int, a: Assinatura | None = None, admins: list[dict] | None = None) -> dict:
+    """`assinatura` = a assinatura ativa ({plano, valor, situacao}) ou null; `admins` = administradores da conta, o
+    mais antigo primeiro ([{nome, email, email_confirmado}])."""
     return {
         "id": c.id, "nome": c.nome, "plano": c.plano, "situacao": c.situacao,
         "teste_ate": c.teste_ate, "usuarios": usuarios, "criada_em": c.criada_em,
         "pago_ate": c.pago_ate, "atrasada_desde": c.atrasada_desde,
         "assinatura": {"plano": a.plano, "valor": a.valor, "situacao": a.situacao} if a is not None else None,
+        "admins": admins or [],
     }
 
 
 def _contar_usuarios(s, conta_id: int) -> int:
     return s.scalar(select(func.count()).select_from(Usuario).where(Usuario.conta_id == conta_id))
+
+
+def _admins(s, conta_id: int | None = None) -> dict[int, list[dict]]:
+    """Administradores por conta (de todas, ou só de `conta_id`), o mais antigo primeiro."""
+    consulta = (select(Usuario.conta_id, Usuario.nome, Usuario.email, Usuario.email_confirmado)
+                .where(Usuario.perfil == "admin").order_by(Usuario.conta_id, Usuario.id))
+    if conta_id is not None:
+        consulta = consulta.where(Usuario.conta_id == conta_id)
+    por_conta: dict[int, list[dict]] = {}
+    for dona, nome, email, confirmado in s.execute(consulta):
+        por_conta.setdefault(dona, []).append({"nome": nome, "email": email, "email_confirmado": bool(confirmado)})
+    return por_conta
 
 
 def listar() -> list[dict]:
@@ -77,7 +91,8 @@ def listar() -> list[dict]:
                                         assinaturas.filtro_ambiente()))
             .order_by(Conta.criada_em.desc(), Conta.id.desc())
         ).all()
-    return [_conta_json(c, n, a) for c, n, a in linhas]
+        admins = _admins(s)
+    return [_conta_json(c, n, a, admins.get(c.id)) for c, n, a in linhas]
 
 
 def criar_conta(ctx: Contexto, dados) -> dict:
@@ -97,7 +112,7 @@ def criar_conta(ctx: Contexto, dados) -> dict:
             registrar(s, "conta_criada_plataforma", "info",
                       {"por": ctx.email, "situacao": dados.situacao, "admin_email": u.email}, conta_id=conta.id)
             s.refresh(conta)
-            return _conta_json(conta, 1)
+            return _conta_json(conta, 1, None, _admins(s, conta.id).get(conta.id))
     except IntegrityError:
         msg = "Este e-mail já está em uso no Toqqi."
         raise AppError(409, "email_em_uso", msg, {"admin_email": msg})
@@ -128,7 +143,7 @@ def estender_teste(ctx: Contexto, conta_id: int, dias: int) -> dict:
                   {"por": ctx.email, "dias": dias, "teste_ate_anterior": anterior.isoformat() if anterior else None,
                    "teste_ate_novo": c.teste_ate.isoformat()}, conta_id=c.id)
         s.flush()
-        return _conta_json(c, _contar_usuarios(s, c.id))
+        return _conta_json(c, _contar_usuarios(s, c.id), None, _admins(s, c.id).get(c.id))
 
 
 def cortesia(ctx: Contexto, conta_id: int) -> dict:
@@ -146,7 +161,7 @@ def cortesia(ctx: Contexto, conta_id: int) -> dict:
         assinaturas.recalcular(s, c)  # cortesia não muda por cobrança; refaz atraso e primeiro vencimento
         registrar(s, "cortesia", "info", {"por": ctx.email, "situacao_anterior": anterior}, conta_id=c.id)
         s.flush()
-        return _conta_json(c, _contar_usuarios(s, c.id))
+        return _conta_json(c, _contar_usuarios(s, c.id), None, _admins(s, c.id).get(c.id))
 
 
 # Ordem de exclusão: quem aponta para outras tabelas da conta sai antes.

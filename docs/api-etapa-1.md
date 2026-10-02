@@ -60,7 +60,11 @@ Permissões (strings): `painel.ver`, `painel.exportar`, `contatos.ver`, `contato
 - `GET /auditoria?de=YYYY-MM-DD&ate=YYYY-MM-DD&gravidade=&busca=&pagina=1` → `{itens: [{id, criado_em, evento, rotulo, gravidade: "info"|"sucesso"|"atencao"|"erro", usuario: {id, nome}|null, detalhe, ip}], total, pagina, por_pagina}`.
 
 ## Plataforma (superadmin)
-- `GET /plataforma/contas` → `[{id, nome, plano, situacao, teste_ate, usuarios, criada_em}]`.
+- `GET /plataforma/contas` → `[{id, nome, plano, situacao, teste_ate, usuarios, criada_em, admins}]`; `admins` = os
+  administradores da conta, o mais antigo primeiro (`[{nome, email, email_confirmado}]`; também nas respostas de criar,
+  "+14 dias" e cortesia). A tela mostra o e-mail do primeiro, marca "Sua conta" e busca por empresa ou e-mail.
+- Conta inicial (`ADMIN_INICIAL_EMAIL`/`ADMIN_INICIAL_SENHA`, na subida): só é criada com o banco vazio; trocar o e-mail
+  depois não cria outra conta (as demais saem da Plataforma).
 - `POST /plataforma/contas` `{empresa, admin_nome, admin_email, admin_senha, situacao: "teste"|"cortesia"}` → 201.
 - `POST /plataforma/contas/{id}/estender-teste` `{dias: 14}` → conta (conta a partir do fim do teste atual).
 - `POST /plataforma/contas/{id}/cortesia` → conta.

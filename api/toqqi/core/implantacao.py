@@ -3,7 +3,8 @@
 1. garantir_papel_app: cria/atualiza o papel restrito da aplicação (sem superusuário e sem BYPASSRLS),
    para o isolamento entre contas depender do banco e não só do código.
 2. garantir_admin_inicial: cria a conta da plataforma e o primeiro admin (e-mail já confirmado),
-   para existir um jeito de entrar antes de o envio de e-mails estar configurado.
+   para existir um jeito de entrar antes de o envio de e-mails estar configurado. Só com o banco vazio:
+   trocar ADMIN_INICIAL_EMAIL depois não cria outra conta.
 """
 import logging
 import re
@@ -74,6 +75,11 @@ def garantir_admin_inicial() -> None:
     with modo_sistema() as s:
         if s.scalar(select(Usuario.id).where(Usuario.email == email)):
             log.info("Admin inicial: %s já existe; nada a fazer.", _mascarar(email))
+            return
+        # Só com o banco vazio: trocar ADMIN_INICIAL_EMAIL depois não cria outra conta (as outras saem da Plataforma).
+        if s.scalar(select(Conta.id).limit(1)) is not None:
+            log.warning("Admin inicial: o banco já tem contas; %s não foi criado. A conta inicial só é criada com o "
+                        "banco vazio; para outra conta, use a Plataforma.", _mascarar(email))
             return
         faltas = problemas_senha(cfg.ADMIN_INICIAL_SENHA)
         if faltas:

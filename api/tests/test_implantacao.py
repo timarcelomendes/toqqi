@@ -33,6 +33,37 @@ def test_admin_inicial_criado_uma_vez_e_entra(client, monkeypatch):
         config_mod.config.cache_clear()
 
 
+def test_conta_inicial_so_com_o_banco_vazio(client, dono, monkeypatch, caplog):
+    """Trocar ADMIN_INICIAL_EMAIL depois da primeira subida não cria outra conta (as outras saem da Plataforma)."""
+    from util import cadastrar, entrar, sql
+
+    from toqqi.core import implantacao
+    monkeypatch.setenv("ADMIN_INICIAL_SENHA", "Senha@Forte123")
+    monkeypatch.setenv("ADMIN_INICIAL_EMAIL", "fundador@toqqi.com")
+    config_mod.config.cache_clear()
+    try:
+        implantacao.garantir_admin_inicial()
+        monkeypatch.setenv("ADMIN_INICIAL_EMAIL", "outro@toqqi.com")
+        config_mod.config.cache_clear()
+        with caplog.at_level("WARNING", logger="toqqi"):
+            implantacao.garantir_admin_inicial()
+        assert sql(dono, "select count(*) from contas")[0][0] == 1
+        assert entrar(client, "outro@toqqi.com", "Senha@Forte123").status_code == 401
+        assert "o banco já tem contas" in caplog.text and "outro@toqqi.com" not in caplog.text  # e-mail mascarado
+        assert entrar(client, "fundador@toqqi.com", "Senha@Forte123").status_code == 200
+
+        # banco com uma conta de cadastro (e nenhuma inicial): também não cria
+        sql(dono, "truncate contas restart identity cascade")
+        cadastrar(client, "ana@alfa.com.br", empresa="Alfa")
+        implantacao.garantir_admin_inicial()
+        assert sql(dono, "select count(*) from contas")[0][0] == 1
+        assert entrar(client, "outro@toqqi.com", "Senha@Forte123").status_code == 401
+    finally:
+        monkeypatch.delenv("ADMIN_INICIAL_EMAIL")
+        monkeypatch.delenv("ADMIN_INICIAL_SENHA")
+        config_mod.config.cache_clear()
+
+
 def test_papel_restrito_criado_sem_privilegios(monkeypatch):
     from toqqi.core import implantacao
     cfg = config_mod.config()
