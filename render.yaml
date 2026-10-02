@@ -64,62 +64,66 @@ services:
       - key: ADMIN_INICIAL_SENHA
         sync: false
 
+  # Tarefas agendadas: hoje rodam pela rotina do GitHub (.github/workflows/tarefas.yml), que chama
+  # POST /api/v1/interno/tarefas a cada 30 minutos, sem custo. O Cron Job abaixo (mais pontual, US$ 1 por mês no
+  # mínimo) fica comentado para quando valer a pena (API no plano pago). Para voltar: descomente o bloco, faça o
+  # Manual Sync do Blueprint, ponha OPENAI_API_KEY e ASAAS_API_KEY também no toqqi-tarefas e desligue a rotina do GitHub.
   # Tarefas agendadas: robô de envio, lembretes, envios pendentes e webhooks, a cada 15 minutos (horário UTC).
   # Conecta direto no banco (não acorda a API). Cobrança por segundo de execução, com mínimo de US$ 1 por mês.
   # As variáveis vêm da API para os dois usarem os mesmos segredos (JWT_SECRET monta os links dos lembretes).
   # Ao configurar o ZeptoMail, acrescente aqui EMAIL_FROM e ZEPTOMAIL_TOKEN (fromService), como as demais.
-  - type: cron
-    name: toqqi-tarefas
-    runtime: python
-    region: oregon
-    schedule: "*/15 * * * *"
-    rootDir: api
-    buildCommand: pip install -r requirements.txt
-    startCommand: python -m toqqi.tarefas
-    buildFilter:
-      paths: ["api/**"]
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.11.9"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: toqqi-db
-          property: connectionString
-      - key: APP_DB_PASSWORD
-        fromService:
-          type: web
-          name: toqqi-api
-          envVarKey: APP_DB_PASSWORD
-      - key: JWT_SECRET
-        fromService:
-          type: web
-          name: toqqi-api
-          envVarKey: JWT_SECRET
-      - key: SEGREDOS_KEY
-        fromService:
-          type: web
-          name: toqqi-api
-          envVarKey: SEGREDOS_KEY
-      - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: toqqi-api
-          envVarKey: FRONTEND_URL
-      - key: API_PUBLIC_URL
-        fromService:
-          type: web
-          name: toqqi-api
-          envVarKey: API_PUBLIC_URL
-      - key: EMAIL_PROVIDER
-        fromService:
-          type: web
-          name: toqqi-api
-          envVarKey: EMAIL_PROVIDER
-      - key: AMBIENTE
-        fromService:
-          type: web
-          name: toqqi-api
-          envVarKey: AMBIENTE
+  # - type: cron
+  #   name: toqqi-tarefas
+  #   runtime: python
+  #   region: oregon
+  #   schedule: "*/15 * * * *"
+  #   rootDir: api
+  #   buildCommand: pip install -r requirements.txt
+  #   startCommand: python -m toqqi.tarefas
+  #   buildFilter:
+  #     paths: ["api/**"]
+  #   envVars:
+  #     - key: PYTHON_VERSION
+  #       value: "3.11.9"
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: toqqi-db
+  #         property: connectionString
+  #     - key: APP_DB_PASSWORD
+  #       fromService:
+  #         type: web
+  #         name: toqqi-api
+  #         envVarKey: APP_DB_PASSWORD
+  #     - key: JWT_SECRET
+  #       fromService:
+  #         type: web
+  #         name: toqqi-api
+  #         envVarKey: JWT_SECRET
+  #     - key: SEGREDOS_KEY
+  #       fromService:
+  #         type: web
+  #         name: toqqi-api
+  #         envVarKey: SEGREDOS_KEY
+  #     - key: FRONTEND_URL
+  #       fromService:
+  #         type: web
+  #         name: toqqi-api
+  #         envVarKey: FRONTEND_URL
+  #     - key: API_PUBLIC_URL
+  #       fromService:
+  #         type: web
+  #         name: toqqi-api
+  #         envVarKey: API_PUBLIC_URL
+  #     - key: EMAIL_PROVIDER
+  #       fromService:
+  #         type: web
+  #         name: toqqi-api
+  #         envVarKey: EMAIL_PROVIDER
+  #     - key: AMBIENTE
+  #       fromService:
+  #         type: web
+  #         name: toqqi-api
+  #         envVarKey: AMBIENTE
 
   - type: web
     name: toqqi-web

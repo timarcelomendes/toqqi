@@ -49,19 +49,23 @@ Dois serviços apontando para este mesmo repositório:
 
 Assim, um commit que só mexe no backend republica só a API, e vice-versa. Os testes no GitHub seguem a mesma regra.
 
-Um terceiro serviço, **toqqi-tarefas** (Cron Job), roda `python -m toqqi.tarefas` a cada 15 minutos: robô de envio,
-lembretes, envios pendentes, webhooks, análise de comentários com IA, alerta de pico de reclamações e o resumo semanal
-(segundas, a partir das 8h). Ele conecta direto no banco (não acorda a API) e recebe as variáveis da API por
-`fromService`. Custa por segundo de execução, com mínimo de US$ 1 por mês.
+**Tarefas agendadas** (robô de envio, lembretes, envios pendentes, webhooks, fila da IA, alerta de pico de reclamações,
+resumo semanal e rotinas da assinatura): a rotina do GitHub `.github/workflows/tarefas.yml` chama
+`POST /api/v1/interno/tarefas` a cada 30 minutos, sem custo. Ela precisa do segredo `TAREFAS_TOKEN` no GitHub
+(*Settings › Secrets and variables › Actions*), com o mesmo valor da variável `TAREFAS_TOKEN` da toqqi-api no Render; dá
+para rodar à mão em *Actions › Tarefas agendadas › Run workflow*. Cada conta decide se é hora, então os atrasos do GitHub
+não fazem mal. O GitHub desliga a rotina depois de 60 dias sem commits (avisa por e-mail; religar em *Actions*).
+O Cron Job do Render (`toqqi-tarefas`, `python -m toqqi.tarefas` direto no banco, mais pontual, mínimo de US$ 1 por mês)
+está comentado no `render.yaml` com o passo a passo para voltar, quando a API estiver no plano pago.
 
-**IA (OpenAI)**: a chave `OPENAI_API_KEY` vai no painel do Render, em *Environment*, nos **dois** serviços (toqqi-api e
-toqqi-tarefas), e não no `render.yaml`. Sem ela, tudo funciona e os temas seguem por palavras-chave. Detalhes em
+**IA (OpenAI)**: a chave `OPENAI_API_KEY` vai no painel do Render, em *Environment*, na toqqi-api (e no toqqi-tarefas,
+se o Cron Job estiver ligado), e não no `render.yaml`. Sem ela, tudo funciona e os temas seguem por palavras-chave. Detalhes em
 `docs/api-etapa-4b.md` e `api/README.md`. A mesma chave liga o **assistente** (botão no canto das telas): modelo e esforço
 em `IA_ASSISTENTE_MODELO` e `IA_ASSISTENTE_ESFORCO`, cota da cortesia em `IA_COTA_CORTESIA` (no `render.yaml`). Ele manda à
 OpenAI a pergunta, as últimas mensagens e os dados consultados (inclusive nomes e comentários): cite na política de
 privacidade. Detalhes em `docs/api-etapa-5b.md`.
 
-**Cobrança (Asaas)**: `ASAAS_API_KEY` no painel do Render em toqqi-api e toqqi-tarefas; `ASAAS_WEBHOOK_TOKEN` só na
+**Cobrança (Asaas)**: `ASAAS_API_KEY` no painel do Render na toqqi-api (e no toqqi-tarefas, se o Cron Job estiver ligado); `ASAAS_WEBHOOK_TOKEN` só na
 toqqi-api (32 a 255 caracteres, sem espaços). No Asaas, o webhook de cobranças aponta para
 `https://<api>/api/v1/asaas/webhook` com o mesmo token. Comece pelo sandbox (chave `$aact_hmlg_…`); ao trocar para a chave
 de produção, as assinaturas de teste são canceladas sozinhas. Sem as chaves, a tela de Assinatura avisa que a cobrança online
@@ -69,4 +73,4 @@ ainda não está disponível. Detalhes em `docs/api-etapa-5a.md` e `api/README.m
 
 Variáveis com `value:` no `render.yaml` são reaplicadas a cada sincronização do Blueprint. Para trocar o
 `EMAIL_PROVIDER` (ex.: ZeptoMail), altere o arquivo, não o painel do Render, e acrescente `EMAIL_FROM` e
-`ZEPTOMAIL_TOKEN` também no toqqi-tarefas.
+`ZEPTOMAIL_TOKEN` na toqqi-api (e no toqqi-tarefas, se o Cron Job estiver ligado).

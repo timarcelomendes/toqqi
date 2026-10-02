@@ -86,7 +86,7 @@ para que o IP real do cliente seja usado no limite de tentativas, nas sessões e
 | `IA_MODELO` | Modelo da OpenAI (padrão `gpt-5-mini`) |
 | `IA_ESFORCO` | `reasoning.effort` enviado (padrão `minimal`; vazio = não manda `reasoning`) |
 | `IA_BASE_URL` | Endereço base da API da OpenAI (padrão `https://api.openai.com`) |
-| `ASAAS_API_KEY` | Chave de API do Asaas (da plataforma), em toqqi-api **e** toqqi-tarefas. Vazia = sem cobrança online |
+| `ASAAS_API_KEY` | Chave de API do Asaas (da plataforma), na toqqi-api (e no toqqi-tarefas, se o Cron Job estiver ligado). Vazia = sem cobrança online |
 | `ASAAS_WEBHOOK_TOKEN` | Token do webhook do Asaas (cabeçalho `asaas-access-token`), só em toqqi-api. Vazio = webhook desligado (404) |
 | `ASAAS_URL` | Opcional: sobrepõe o endereço da API do Asaas (Asaas falso local). Vazio = o endereço segue a chave |
 
@@ -125,8 +125,9 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
 
 ## Etapa 3a: envios
 - **Tarefas periódicas**: `python -m toqqi.tarefas [assinaturas|robo|lembretes|pendentes|webhooks|ia|picos|resumo|tudo]` ou
-  `POST /api/v1/interno/tarefas` com `X-Tarefas-Token` (comparação em tempo constante). Em produção, o Cron Job
-  `toqqi-tarefas` do Render roda o comando a cada 15 minutos; cada conta decide se é hora (janela, dias úteis, 6 h entre rodadas do robô, lembretes uma vez
+  `POST /api/v1/interno/tarefas` com `X-Tarefas-Token` (comparação em tempo constante). Em produção, a rotina do GitHub
+  (`.github/workflows/tarefas.yml`) chama a rota a cada 30 minutos (o Cron Job `toqqi-tarefas` do Render, que roda o
+  comando direto no banco, está comentado no `render.yaml` para quando valer o custo); cada conta decide se é hora (janela, dias úteis, 6 h entre rodadas do robô, lembretes uma vez
   por dia a partir das 10:00). A lista de contas sai do modo sistema (só ids); o trabalho de cada conta roda em
   `em_conta`.
 - **Envio em segundo plano**: o envio nasce `pendente` na transação que o decide e sai depois do commit
@@ -268,9 +269,9 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
   HTML é o mesmo de antes, e o texto puro não muda. A exclusão de conta pela plataforma apaga as imagens junto.
 
 ## Etapa 4b: IA por resposta, relatórios, picos e resumo semanal
-- **Chave da OpenAI no Render**: `OPENAI_API_KEY` vai no painel do Render (Environment) dos dois serviços,
-  **toqqi-api** (análise logo depois de gravar a resposta) **e toqqi-tarefas** (tarefa `ia`: fila, novas tentativas e
-  "analisar os últimos 90 dias"), e não no `render.yaml` (o Blueprint não apaga variáveis que ele não declara).
+- **Chave da OpenAI no Render**: `OPENAI_API_KEY` vai no painel do Render (Environment) da **toqqi-api** (análise logo
+  depois de gravar a resposta e, pela rotina do GitHub, a tarefa `ia`: fila, novas tentativas e "analisar os últimos 90
+  dias"; se o Cron Job `toqqi-tarefas` estiver ligado, nele também), e não no `render.yaml` (o Blueprint não apaga variáveis que ele não declara).
   `IA_MODELO` e `IA_ESFORCO` só se quiser trocar o padrão. Sem a chave, tudo funciona como antes (temas por
   palavras-chave) e `conta.ia_ativa` sai `false` para a tela esconder as partes de IA.
 - **Migração `0007_ia_relatorios`**: colunas `ia_*` em `respostas`, `contas.ia_analise_respostas`, as preferências de
@@ -325,8 +326,8 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
 
 ## Etapa 5a: assinatura e cobrança (Asaas)
 - **Chaves só no painel do Render** (Environment), nunca no `render.yaml` (o Blueprint não apaga variáveis que ele não
-  declara): `ASAAS_API_KEY` em **toqqi-api e toqqi-tarefas** (a tarefa `assinaturas` reprocessa avisos e confere as
-  cobranças); `ASAAS_WEBHOOK_TOKEN` **só na toqqi-api** (32 a 255 caracteres, sem espaços nem acentos, diferente da
+  declara): `ASAAS_API_KEY` na **toqqi-api** (e no toqqi-tarefas, se o Cron Job estiver ligado: a tarefa `assinaturas` reprocessa
+  avisos e confere as cobranças); `ASAAS_WEBHOOK_TOKEN` **só na toqqi-api** (32 a 255 caracteres, sem espaços nem acentos, diferente da
   chave; fora disso o webhook fica desligado e o log diz por quê). Gere o token com
   `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`. O endereço e o **ambiente** seguem a chave:
   `$aact_prod_…` → produção (`https://api.asaas.com/v3`); qualquer outra (`$aact_hmlg_…`) → sandbox (uma chave de
@@ -409,8 +410,8 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
 
 ### Trocar a chave do sandbox para a produção
 1. No Asaas de produção: gere a chave e crie o webhook (mesma URL, eventos de cobranças, v3) com um token novo.
-2. No Render: troque `ASAAS_API_KEY` na **toqqi-api e na toqqi-tarefas** (e `ASAAS_WEBHOOK_TOKEN` na toqqi-api) e
-   reimplante as duas.
+2. No Render: troque `ASAAS_API_KEY` na **toqqi-api** (e no toqqi-tarefas, se o Cron Job estiver ligado) e
+   `ASAAS_WEBHOOK_TOKEN` na toqqi-api, e reimplante.
 3. Para a chave de produção, o que foi feito no sandbox não existe: a próxima execução da tarefa `assinaturas` (ou o
    próximo assinar da conta) cancela aqui a assinatura ativa de sandbox (sem chamar o Asaas), esquece o cliente de
    sandbox, zera `pago_ate` e `atrasada_desde` (pagamento de sandbox não vale em produção), recalcula a conta e audita

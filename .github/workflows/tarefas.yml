@@ -1,0 +1,39 @@
+name: Tarefas agendadas
+# Chama a API a cada 30 minutos para rodar as tarefas: robô de envio, lembretes, envios pendentes, webhooks, fila da IA,
+# alertas de pico, resumo semanal e rotinas da assinatura. Cada conta decide se é hora, então os atrasos do GitHub em
+# horário de pico não fazem mal. Segredos do repositório: TAREFAS_TOKEN (o mesmo valor da toqqi-api no Render) e,
+# opcional, TOQQI_API_URL. Sem o segredo, a rotina não faz nada.
+# 30 minutos, e não 15: a API grátis do Render dorme depois de 15 min sem uso, e acordá-la a cada 15 min a deixaria ligada o
+# mês inteiro, no limite das 750 horas grátis. Para voltar ao Cron Job do Render, veja o bloco comentado no render.yaml e
+# desligue esta rotina (aba Actions › Tarefas agendadas › Disable workflow).
+# O GitHub desliga rotinas agendadas de repositórios públicos depois de 60 dias sem commits (avisa por e-mail).
+on:
+  schedule:
+    - cron: "7,37 * * * *"   # UTC; fora do minuto 0, quando o GitHub mais atrasa
+  workflow_dispatch:
+
+concurrency:
+  group: tarefas
+  cancel-in-progress: false
+
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Rodar as tarefas
+        env:
+          TOKEN: ${{ secrets.TAREFAS_TOKEN }}
+          API: ${{ secrets.TOQQI_API_URL || 'https://toqqi-api.onrender.com' }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "TAREFAS_TOKEN não configurado; nada a fazer."; exit 0; fi
+          # A API grátis do Render leva cerca de 1 minuto para acordar: a primeira chamada só acorda.
+          curl -s -o /dev/null --max-time 120 --retry 3 --retry-delay 10 --retry-all-errors "$API/api/v1/auth/regras-senha" || true
+          # O resumo da execução não vai para o log (o repositório é público): só o código HTTP e, se der erro, a mensagem.
+          codigo=$(curl -sS -o resposta.json -w "%{http_code}" --max-time 600 -X POST \
+            -H "X-Tarefas-Token: $TOKEN" "$API/api/v1/interno/tarefas") || codigo="000"
+          echo "HTTP $codigo"
+          if [ "$codigo" != "200" ]; then
+            python3 -c "import json; print(json.load(open('resposta.json'))['erro']['mensagem'])" 2>/dev/null || true
+            exit 1
+          fi
