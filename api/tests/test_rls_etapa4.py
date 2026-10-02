@@ -104,7 +104,8 @@ def test_api_de_a_nao_ve_nem_mexe_em_b(client, ab):
         "prazo_detrator": 2, "prazo_neutro": 5, "prazo_promotor": 7, "acao_promotor": False}
     p = client.get(f"{API}/painel", headers=h).json()
     assert p["nps"]["total"] == 0 and p["atencao"]["acoes_abertas"] == 1  # só a "Minha", de A
-    assert p["atencao"]["receita_em_risco"] == {"valor": 0, "empresas": 0, "sem_valor": 0}
+    assert p["atencao"]["receita_em_risco"] == {"valor": 0, "empresas": 0, "sem_valor": 0,
+                                                 "carteira": None}
     assert p["comentarios"] == [] and p["primeiros_passos"]["primeira_resposta"] is False
     assert client.get(f"{API}/respostas.csv", headers=h).content.decode("utf-8-sig").count("\r\n") == 1
     # B continua intacto, com a própria configuração

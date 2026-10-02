@@ -968,6 +968,34 @@ export interface EmpresaNps {
   empresa: Referencia
   nps: number
   respostas: number
+  /** Painel v2: contrato mensal da empresa (pode faltar no servidor antigo; null sem valor cadastrado). */
+  valor_mensal?: ValorDecimal | null
+}
+
+/** Painel v2: um mês da evolução de 12 meses (grupo e só ativas valem; o período não). */
+export interface MesEvolucao12m {
+  /** AAAA-MM */
+  mes: string
+  nps: number | null
+  total: number
+  /** O mês cruza o período do filtro. */
+  no_periodo: boolean
+}
+
+/** Painel v2: tom (sentimento da IA) dos comentários do cliente nas respostas do período (NPS e CSAT). */
+export interface TomComentarios {
+  /** Com comentário e com sentimento da IA. */
+  analisados: number
+  com_comentario: number
+  total_respostas: number
+  /** Com comentário e análise da IA na fila (`ia_situacao = pendente`); pode faltar em servidor antigo. */
+  pendentes?: number
+  negativo: number
+  misto: number
+  neutro: number
+  positivo: number
+  /** O mesmo no período anterior (só com período). */
+  anterior: { analisados: number; negativo: number } | null
 }
 
 export interface Painel {
@@ -986,7 +1014,8 @@ export interface Painel {
     acoes_vencidas: number
     tudo_em_dia: boolean
     empresas: EmpresaAtencao[]
-    receita_em_risco: { valor: number | string; empresas: number; sem_valor: number }
+    /** `carteira` (painel v2): soma do valor mensal das empresas no filtro; null se nenhuma tem valor (pode faltar). */
+    receita_em_risco: { valor: number | string; empresas: number; sem_valor: number; carteira?: ValorDecimal | null }
   }
   /**
    * Etapa 4b: `reclamacoes` (menções que contam como reclamação) e `variacao` (menções no período − no período
@@ -1006,7 +1035,8 @@ export interface Painel {
   /** NPS por mês (AAAA-MM), em ordem cronológica. */
   evolucao: { mes: string; nps: number | null; total: number }[]
   empresas: { menor: EmpresaNps[]; maior: EmpresaNps[] }
-  palavras: { palavra: string; total: number }[]
+  /** `tom` da palavra: o contrato ainda não manda; se um dia vier, a nuvem usa (sem ele, a cor segue o tamanho). */
+  palavras: { palavra: string; total: number; tom?: 'negativo' | 'positivo' | 'neutro' | null }[]
   /** Cada passo: feito ou não (o contrato não fixa se vem booleano ou contagem). */
   primeiros_passos: {
     contatos: boolean | number
@@ -1016,6 +1046,10 @@ export interface Painel {
   }
   /** Etapa 4b: temas com pico de reclamações nos últimos 7 dias (sem os filtros da tela). */
   picos?: Pico[]
+  /** Painel v2: sempre 12 meses terminando no fim do período (pode faltar no servidor antigo: o site usa `evolucao`). */
+  evolucao_12m?: MesEvolucao12m[]
+  /** Painel v2: tom dos comentários (pode faltar no servidor antigo: o bloco não aparece). */
+  tom?: TomComentarios
 }
 
 // ───────────────────────── Etapa 4b (docs/api-etapa-4b.md) ─────────────────────────

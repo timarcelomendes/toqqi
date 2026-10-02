@@ -6,6 +6,7 @@ import { useSessaoStore } from '@/stores/sessao'
 import { formatarData } from '@/utils/datas'
 import { formatarNumero } from '@/utils/formatos'
 import { tomNotaNps } from '@/utils/rotulos'
+import Etiqueta from '@/components/ui/Etiqueta.vue'
 
 const props = defineProps<{ movimentacao: Painel['movimentacao'] }>()
 const sessao = useSessaoStore()
@@ -20,43 +21,47 @@ function corNota(n: number) {
 </script>
 
 <template>
-  <section class="cartao @container flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="t-movimentacao">
+  <section class="cartao flex flex-col gap-3 p-5 sm:p-6" aria-labelledby="t-movimentacao">
     <header>
-      <h2 id="t-movimentacao" class="text-base font-bold text-texto">Movimentação</h2>
-      <p class="text-sm text-texto-suave">Quem mudou de grupo, comparando a última nota com a anterior.</p>
+      <h2 id="t-movimentacao" class="text-base font-bold text-texto">Quem mudou de lado</h2>
+      <p class="text-sm text-texto-suave">Última nota de cada contato comparada com a anterior.</p>
     </header>
 
-    <div class="grid grid-cols-1 gap-3 @lg:grid-cols-2">
-      <div class="flex items-start gap-3 rounded-xl bg-superficie-2 p-4">
-        <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sucesso-suave text-sucesso" aria-hidden="true"><TrendingUp class="size-5" /></span>
-        <div class="min-w-0">
-          <p class="text-3xl font-extrabold leading-none text-texto">{{ formatarNumero(movimentacao?.resgatados ?? 0) }}</p>
-          <p class="mt-1 text-sm font-semibold text-texto">{{ movimentacao?.resgatados === 1 ? 'resgatado' : 'resgatados' }}</p>
-          <p class="text-xs text-texto-fraco">Eram detratores e agora deram 9 ou 10.</p>
-        </div>
+    <div class="flex items-center gap-3 rounded-xl bg-sucesso-suave p-3.5" data-resgatados>
+      <span class="w-11 shrink-0 text-center text-4xl font-extrabold leading-none tabular-nums text-sucesso">{{ formatarNumero(movimentacao?.resgatados ?? 0) }}</span>
+      <div class="flex min-w-0 flex-col gap-1">
+        <p class="flex flex-wrap items-center gap-1" aria-hidden="true">
+          <Etiqueta tom="erro">detrator</Etiqueta><ArrowRight class="size-3.5 text-sucesso" /><Etiqueta tom="sucesso">promotor</Etiqueta>
+        </p>
+        <p class="text-sm text-texto-suave">
+          {{ movimentacao?.resgatados === 1 ? 'resgatado' : 'resgatados' }}<span class="sr-only">: eram detratores e agora deram 9 ou 10</span>
+        </p>
       </div>
-      <div class="flex items-start gap-3 rounded-xl bg-superficie-2 p-4">
-        <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-erro-suave text-erro" aria-hidden="true"><TrendingDown class="size-5" /></span>
-        <div class="min-w-0">
-          <p class="text-3xl font-extrabold leading-none text-texto">{{ formatarNumero(movimentacao?.deixaram_de_ser_promotores ?? 0) }}</p>
-          <p class="mt-1 text-sm font-semibold text-texto">deixaram de ser promotores</p>
-          <p class="text-xs text-texto-fraco">Davam 9 ou 10 e agora deram 8 ou menos.</p>
-        </div>
+    </div>
+    <div class="flex items-center gap-3 rounded-xl bg-erro-suave p-3.5" data-deixaram>
+      <span class="w-11 shrink-0 text-center text-4xl font-extrabold leading-none tabular-nums text-erro">{{ formatarNumero(movimentacao?.deixaram_de_ser_promotores ?? 0) }}</span>
+      <div class="flex min-w-0 flex-col gap-1">
+        <p class="flex flex-wrap items-center gap-1" aria-hidden="true">
+          <Etiqueta tom="sucesso">promotor</Etiqueta><ArrowRight class="size-3.5 text-erro" /><Etiqueta tom="atencao">8 ou menos</Etiqueta>
+        </p>
+        <p class="text-sm text-texto-suave">
+          {{ movimentacao?.deixaram_de_ser_promotores === 1 ? 'deixou de ser promotor' : 'deixaram de ser promotores' }}<span class="sr-only">: davam 9 ou 10 e agora deram 8 ou menos</span>
+        </p>
       </div>
     </div>
 
     <template v-if="itens.length">
       <button
         type="button"
-        class="inline-flex h-10 w-fit items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-marca-texto hover:bg-marca-suave"
+        class="-ml-3 inline-flex min-h-11 w-fit items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-marca-texto hover:bg-marca-suave"
         :aria-expanded="aberto"
         :aria-controls="`${id}-lista`"
         @click="aberto = !aberto"
       >
+        {{ aberto ? 'Esconder a lista' : itens.length === 1 ? 'Ver a pessoa' : `Ver as ${formatarNumero(itens.length)} pessoas` }}
         <ChevronDown class="size-4 transition-transform" :class="aberto ? 'rotate-180' : ''" aria-hidden="true" />
-        {{ aberto ? 'Esconder o que mudou' : `Ver o que mudou (${formatarNumero(itens.length)})` }}
       </button>
-      <ul v-show="aberto" :id="`${id}-lista`" class="-mt-1 divide-y divide-borda rounded-xl border border-borda">
+      <ul v-show="aberto" :id="`${id}-lista`" class="divide-y divide-borda rounded-xl border border-borda">
         <li v-for="(m, i) in itens" :key="`${m.contato.id}-${i}`" class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div class="min-w-0">
             <p class="flex items-center gap-1.5 text-sm font-semibold text-texto">

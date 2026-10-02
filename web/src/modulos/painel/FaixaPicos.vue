@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Picos de reclamação: um aviso por tema que passou do normal nos últimos 7 dias (3 ou mais reclamações e o dobro
-// da média das 4 semanas antes), com o atalho para as respostas. Vale para o Painel e para Relatórios › Temas.
+// da média das 4 semanas antes), com o atalho para as respostas. Usado em Relatórios › Temas (no Início, desde o
+// painel v2, o pico vira a manchete "O que mudou").
 import { TrendingUp } from 'lucide-vue-next'
 import type { Pico } from '@/api/tipos'
 import Botao from '@/components/ui/Botao.vue'

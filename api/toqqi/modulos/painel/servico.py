@@ -19,7 +19,7 @@ from toqqi.core import relogio
 from toqqi.core.db import em_conta, sem_jit
 from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError
-from toqqi.core.filtros import entre_datas
+from toqqi.core.filtros import entre_datas, inicio_do_dia
 from toqqi.core.relogio import FUSO_NOME
 from toqqi.modelos import (
     Acao,
@@ -52,6 +52,8 @@ MESES_COM_PERIODO = 24
 MIN_RESPOSTAS_EMPRESA = 3
 MAX_EMPRESAS_RANKING = 6
 MAX_TEXTOS_PALAVRAS = 5000
+MESES_EVOLUCAO_12M = 12
+SENTIMENTOS = ("negativo", "misto", "neutro", "positivo")
 
 
 @dataclass
@@ -89,6 +91,7 @@ def _com_empresa(consulta):
 
 NPS = Resposta.tipo_nota == "nps"
 CSAT = Resposta.tipo_nota == "csat"
+COM_NOTA = Resposta.tipo_nota.in_(("nps", "csat"))
 
 
 def _grupos(condicao=None) -> list:
@@ -98,15 +101,27 @@ def _grupos(condicao=None) -> list:
 
 # ---- blocos -----------------------------------------------------------------
 
-def _nps_csat(s: Session, conds: list) -> tuple[dict, dict]:
+def _contagens_tom() -> list:
+    """Colunas do tom (respostas NPS e CSAT): total, com comentário, analisadas, pendentes e uma por sentimento."""
+    texto = Resposta.comentario_cliente != ""
+    analisada = and_(texto, Resposta.ia_situacao == "analisada", Resposta.ia_sentimento.in_(SENTIMENTOS))
+    return [func.count().filter(COM_NOTA), func.count().filter(COM_NOTA, texto),
+            func.count().filter(COM_NOTA, analisada),
+            func.count().filter(COM_NOTA, texto, Resposta.ia_situacao == "pendente"),
+            *[func.count().filter(COM_NOTA, analisada, Resposta.ia_sentimento == x) for x in SENTIMENTOS]]
+
+
+def _nps_csat(s: Session, conds: list) -> tuple[dict, dict, tuple]:
+    """NPS, CSAT e as contagens do tom do período numa consulta só (as junções com contato e perfil são 1:1)."""
     decisor = cast(PerfilContato.nome, String).ilike("decisor")
     consulta = select(
         *_grupos(), *_grupos(decisor),
         func.count().filter(CSAT), func.count().filter(CSAT, Resposta.grupo == "satisfeito"),
         func.coalesce(func.sum(Resposta.nota).filter(CSAT), 0),
+        *_contagens_tom(),
     ).select_from(Resposta).outerjoin(Contato, Contato.id == Resposta.contato_id) \
         .outerjoin(PerfilContato, PerfilContato.id == Contato.perfil_id)
-    p, n, d, dp, dn, dd, csat_total, satisfeitos, soma = s.execute(_com_empresa(consulta).where(*conds)).one()
+    p, n, d, dp, dn, dd, csat_total, satisfeitos, soma, *tom = s.execute(_com_empresa(consulta).where(*conds)).one()
     nps = ind.bloco_nps(p, n, d)
     nps["pct"] = {"promotores": ind.percentual(p, nps["total"], 1) or 0.0,
                   "neutros": ind.percentual(n, nps["total"], 1) or 0.0,
@@ -115,7 +130,7 @@ def _nps_csat(s: Session, conds: list) -> tuple[dict, dict]:
     nps["decisores"] = {"valor": ind.nps(dp, dd, decisores), "total": decisores}
     csat = {"percentual": ind.percentual(satisfeitos, csat_total), "media": ind.media(soma, csat_total),
             "total": csat_total, "satisfeitos": satisfeitos}
-    return nps, csat
+    return nps, csat, tuple(tom)
 
 
 def _nps_de(s: Session, conds: list) -> int | None:
@@ -221,9 +236,13 @@ def _atencao(s: Session, f: Filtro, conds: list, hoje: date) -> dict:
     detratores = (_com_empresa(select(Resposta.empresa_id).select_from(Resposta))
                   .where(*conds, NPS, Resposta.grupo == "detrator", Resposta.empresa_id.is_not(None))
                   .distinct().subquery())
-    valor, empresas, sem_valor = s.execute(
+    # carteira: soma do valor mensal das empresas no filtro (grupo; só ativas se pedido), sem olhar respostas;
+    # subconsulta escalar na mesma consulta da receita em risco
+    carteira_ = (select(func.sum(Empresa.valor_mensal))
+                 .where(Empresa.conta_id == f.conta_id, *f.empresa(Empresa.id)).scalar_subquery())
+    valor, empresas, sem_valor, carteira = s.execute(
         select(func.coalesce(func.sum(Empresa.valor_mensal), 0), func.count(),
-               func.count().filter(Empresa.valor_mensal.is_(None)))
+               func.count().filter(Empresa.valor_mensal.is_(None)), carteira_)
         .select_from(Empresa).join(detratores, detratores.c.empresa_id == Empresa.id)).one()
     return {
         "acoes_abertas": abertas, "acoes_vencidas": vencidas, "tudo_em_dia": abertas == 0,
@@ -233,7 +252,7 @@ def _atencao(s: Session, f: Filtro, conds: list, hoje: date) -> dict:
              "responsavel": ref(x.responsavel_id, x.responsavel_nome),
              "ultimo_comentario_detrator": comentario.get(x.empresa_id), "acao_id": urgente.get(x.empresa_id)}
             for x in por_empresa],
-        "receita_em_risco": {"valor": valor, "empresas": empresas, "sem_valor": sem_valor},
+        "receita_em_risco": {"valor": valor, "empresas": empresas, "sem_valor": sem_valor, "carteira": carteira},
     }
 
 
@@ -281,14 +300,58 @@ def _evolucao(s: Session, f: Filtro, conds: list) -> list[dict]:
     return [{"mes": m, "nps": ind.nps(p, d, p + n + d), "total": p + n + d} for m, p, n, d in reversed(linhas)]
 
 
+def _mes_seguinte(d: date) -> date:
+    return date(d.year + d.month // 12, d.month % 12 + 1, 1)
+
+
+def _evolucao_12m(s: Session, f: Filtro, hoje: date) -> list[dict]:
+    """Sempre 12 meses (São Paulo) terminando no mês de `ate` (sem `ate`: hoje, ou `de` se ele é futuro); grupo e
+    só ativas valem, o período não. `no_periodo` = o mês cruza o período (sem período, nenhum)."""
+    fim = f.ate or (max(hoje, f.de) if f.de else hoje)
+    meses = [date(fim.year, fim.month, 1)]
+    for _ in range(MESES_EVOLUCAO_12M - 1):
+        anterior = meses[0] - timedelta(days=1)
+        meses.insert(0, date(anterior.year, anterior.month, 1))
+    mes = func.to_char(func.timezone(FUSO_NOME, Resposta.data_resposta), "YYYY-MM")
+    janela = [Resposta.data_resposta >= inicio_do_dia(meses[0]),
+              Resposta.data_resposta < inicio_do_dia(_mes_seguinte(meses[-1]))]
+    linhas = {m: (p, n, d) for m, p, n, d in s.execute(
+        _com_empresa(select(mes, *_grupos()).select_from(Resposta))
+        .where(*f.respostas(periodo=False), NPS, *janela).group_by(mes))}
+    itens = []
+    for m in meses:
+        p, n, d = linhas.get(m.strftime("%Y-%m"), (0, 0, 0))
+        ultimo = _mes_seguinte(m) - timedelta(days=1)
+        no_periodo = f.com_periodo and (f.de is None or ultimo >= f.de) and (f.ate is None or m <= f.ate)
+        itens.append({"mes": m.strftime("%Y-%m"), "nps": ind.nps(p, d, p + n + d), "total": p + n + d,
+                      "no_periodo": bool(no_periodo)})
+    return itens
+
+
+def _tom(s: Session, f: Filtro, contagens: tuple, anterior: tuple[date, date] | None) -> dict:
+    """Tom (sentimento da IA) dos comentários do cliente nas respostas NPS e CSAT do filtro (a contagem do relatório
+    de temas). `contagens` = as colunas de `_contagens_tom` do período (vêm da consulta de `_nps_csat`);
+    `analisados` = analisadas pela IA com sentimento; `pendentes` = com comentário e análise na fila;
+    `anterior` só com período completo."""
+    total, com_comentario, analisados, pendentes, *sentimentos = contagens
+    antes = None
+    if anterior is not None:
+        _, _, a_analisados, _, a_negativo, *_ = s.execute(_com_empresa(
+            select(*_contagens_tom()).select_from(Resposta)).where(*f.respostas(*anterior))).one()
+        antes = {"analisados": a_analisados, "negativo": a_negativo}
+    return {"analisados": analisados, "com_comentario": com_comentario, "total_respostas": total,
+            "pendentes": pendentes, **dict(zip(SENTIMENTOS, sentimentos, strict=True)), "anterior": antes}
+
+
 def _empresas(s: Session, conds: list) -> dict:
     """Empresas com 3+ respostas NPS: as de menor e as de maior NPS (até 6 cada, sem repetir)."""
     linhas = s.execute(
-        _com_empresa(select(Resposta.empresa_id, Empresa.nome, *_grupos()).select_from(Resposta))
+        _com_empresa(select(Resposta.empresa_id, Empresa.nome, Empresa.valor_mensal, *_grupos()).select_from(Resposta))
         .where(*conds, NPS, Resposta.empresa_id.is_not(None))
-        .group_by(Resposta.empresa_id, Empresa.nome).having(func.count() >= MIN_RESPOSTAS_EMPRESA)).all()
-    itens = [{"empresa": {"id": e, "nome": nome}, "nps": ind.nps(p, d, p + n + d), "respostas": p + n + d}
-             for e, nome, p, n, d in linhas]
+        .group_by(Resposta.empresa_id, Empresa.nome, Empresa.valor_mensal)
+        .having(func.count() >= MIN_RESPOSTAS_EMPRESA)).all()
+    itens = [{"empresa": {"id": e, "nome": nome}, "nps": ind.nps(p, d, p + n + d), "respostas": p + n + d,
+              "valor_mensal": valor} for e, nome, valor, p, n, d in linhas]
     # quantas vão para "menor": metade (arredondada para cima), até 6; o resto (até 6) para "maior"
     qtd_menor = min(MAX_EMPRESAS_RANKING, (len(itens) + 1) // 2)
     piores = sorted(itens, key=lambda x: (x["nps"], -x["respostas"], str(x["empresa"]["nome"]).lower()))
@@ -338,7 +401,7 @@ def painel(ctx: Contexto, de: date | None, ate: date | None, grupo_id: int | Non
     with em_conta(ctx.conta_id) as s:
         sem_jit(s)
         conds = f.respostas()
-        nps, csat = _nps_csat(s, conds)
+        nps, csat, contagens_tom = _nps_csat(s, conds)
         variacao = None
         if anterior is not None and nps["valor"] is not None:
             valor_anterior = _nps_de(s, f.respostas(*anterior))
@@ -356,6 +419,8 @@ def painel(ctx: Contexto, de: date | None, ate: date | None, grupo_id: int | Non
             "temas": _temas(s, conds, f.respostas(*anterior) if anterior else None),
             "comentarios": _comentarios(s, conds),
             "evolucao": _evolucao(s, f, conds),
+            "evolucao_12m": _evolucao_12m(s, f, hoje),
+            "tom": _tom(s, f, contagens_tom, anterior),
             "empresas": _empresas(s, conds),
             "palavras": _palavras(s, conds),
             "primeiros_passos": _primeiros_passos(s),

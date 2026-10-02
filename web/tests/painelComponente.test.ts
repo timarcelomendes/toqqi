@@ -132,7 +132,8 @@ describe('Início', () => {
     expect(pedido).toBeTruthy()
     expect(Object.fromEntries(pedido!.url.searchParams)).toEqual({ de: somarDias(HOJE, -89), ate: HOJE, so_ativos: 'true' })
     expect(w.text()).toContain('Pode melhorar')
-    expect(w.text()).toContain('Precisa de atenção')
+    expect(w.text()).toContain('O que mudou')
+    expect(w.text()).toContain('Receita em risco')
   })
 
   it('sem painel.ver, continua a tela de boas-vindas (e não pede o painel)', async () => {
@@ -145,16 +146,28 @@ describe('Início', () => {
 })
 
 describe('painel', () => {
-  it('"Tratar" leva direto à ação mais urgente da empresa', async () => {
+  it('"Tratar" leva direto à ação mais urgente; a receita em risco vem em moeda curta', async () => {
     entrar(TODAS)
     apiFalsa({ 'GET /painel': () => painel(), 'GET /cadastros/grupos': () => [] })
     const w = await abrir(PainelView)
     const tratar = w.findAll('a').find((a) => a.text().startsWith('Tratar'))
     expect(tratar?.attributes('href')).toBe('/planos-de-acao/900')
-    expect(w.text()).toMatch(/R\$\s48\.750,50 por mês/)
+    expect(tratar?.text()).toContain('Mercado Bom Preço')
+    const receita = w.get('[data-indicador="receita"]')
+    expect(receita.text()).toMatch(/R\$\s48,8 mil\s*\/mês/)
+    expect(receita.text()).toContain('1 empresa com detrator')
+    const planos = w.get('[data-indicador="planos"]')
+    expect(planos.text()).toContain('4 abertos')
+    expect(planos.text()).toContain('2 vencidos')
+    // Sem acoes.ver, nada de link para os planos.
+    w.unmount()
+    entrar(TODAS.filter((p) => p !== 'acoes.ver'))
+    apiFalsa({ 'GET /painel': () => painel(), 'GET /cadastros/grupos': () => [] })
+    const w2 = await abrir(PainelView)
+    expect(w2.findAll('a').some((a) => a.attributes('href')?.startsWith('/planos-de-acao'))).toBe(false)
   })
 
-  it('sem nada aberto, mostra "Tudo em dia"', async () => {
+  it('sem nada aberto, o cartão dos planos diz que não há vencidos e não oferece "Tratar"', async () => {
     entrar(TODAS)
     const base = painel()
     apiFalsa({
@@ -162,7 +175,8 @@ describe('painel', () => {
       'GET /cadastros/grupos': () => [],
     })
     const w = await abrir(PainelView)
-    expect(w.text()).toContain('Tudo em dia')
+    expect(w.get('[data-indicador="planos"]').text()).toContain('0 abertos')
+    expect(w.get('[data-indicador="planos"]').text()).toContain('Nenhum vencido')
     expect(w.findAll('a').some((a) => a.text().startsWith('Tratar'))).toBe(false)
   })
 
@@ -171,7 +185,10 @@ describe('painel', () => {
     apiFalsa({ 'GET /painel': () => painel(), 'GET /cadastros/grupos': () => [] })
     let w = await abrir(PainelView)
     expect(w.text()).toContain('Primeiros passos')
-    expect(w.text()).toContain('2 de 4 feitos')
+    expect(w.text()).toContain('Primeiros passos: 2 de 4.')
+    // O próximo passo, com o atalho (o perfil pode abrir Envios).
+    expect(w.text()).toContain('Próximo: mande a primeira pesquisa')
+    expect(w.get('[data-proximo-passo]').attributes('href')).toBe('/envios')
     await w.findAll('button').find((b) => b.text() === 'Ocultar')!.trigger('click')
     expect(w.find('#t-passos').exists()).toBe(false)
     expect(localStorage.getItem(chavePassosOcultos(42))).toBe('1')
@@ -251,7 +268,7 @@ describe('painel', () => {
       expect(pedidos).toHaveLength(2)
       expect(Object.fromEntries(pedidos[1]!.url.searchParams)).toEqual({ de: somarDias(HOJE, -6), ate: HOJE, so_ativos: 'true' })
       // Enquanto carrega, o painel anterior continua na tela.
-      expect(w.text()).toContain('Precisa de atenção')
+      expect(w.text()).toContain('O que mudou')
     } finally {
       vi.useRealTimers()
     }

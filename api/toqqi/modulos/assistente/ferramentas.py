@@ -220,8 +220,8 @@ def indicadores(ctx: Contexto, a: dict) -> dict:
     with _sessao(ctx) as s:
         sem_jit(s)
         empresa = _empresa(s, ctx, a.get("empresa_id"))
-        nps, csat = painel._nps_csat(s, _condicoes(ctx, empresa, de, ate))
-        nps_anterior, _ = painel._nps_csat(s, _condicoes(ctx, empresa, *anterior))
+        nps, csat, _ = painel._nps_csat(s, _condicoes(ctx, empresa, de, ate))
+        nps_anterior, _, _ = painel._nps_csat(s, _condicoes(ctx, empresa, *anterior))
     variacao = None
     if nps["valor"] is not None and nps_anterior["valor"] is not None:
         variacao = nps["valor"] - nps_anterior["valor"]

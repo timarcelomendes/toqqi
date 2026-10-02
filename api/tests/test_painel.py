@@ -206,7 +206,8 @@ def test_painel_marco(client, cenario):
     assert (oeste["nps"], oeste["acao_id"], oeste["ultimo_comentario_detrator"]) == (
         50, cenario["acoes"]["a7"], "Demorou")  # o comentário pode ser de qualquer data
     # receita em risco: empresas com detrator em março: Atacado Norte (R$ 1.000) e Mercado Sul (sem valor)
-    assert at["receita_em_risco"] == {"valor": 1000.0, "empresas": 2, "sem_valor": 1}
+    # carteira (só ativas): Atacado Norte 1.000 + Loja Oeste 300 (Padaria Leste inativa)
+    assert at["receita_em_risco"] == {"valor": 1000.0, "empresas": 2, "sem_valor": 1, "carteira": 1300.0}
 
     # temas (só NPS): prazo 3 (3, 8, 6 → 5,7); atendimento 2 (9,5); preço 2 (5,5); produto 1; sistema 1
     # reclamações (sem IA: tema de detrator): prazo (3 e 6), preço (3), produto (0)
@@ -233,8 +234,10 @@ def test_painel_marco(client, cenario):
     assert p["evolucao"] == [{"mes": "2026-03", "nps": -11, "total": 9}]
     # empresas com 3+ respostas NPS: Mercado Sul (−100) e Atacado Norte (0); Loja Oeste só tem 2
     assert p["empresas"] == {
-        "menor": [{"empresa": {"id": e2["id"], "nome": "Mercado Sul"}, "nps": -100, "respostas": 3}],
-        "maior": [{"empresa": {"id": e1["id"], "nome": "Atacado Norte"}, "nps": 0, "respostas": 3}],
+        "menor": [{"empresa": {"id": e2["id"], "nome": "Mercado Sul"}, "nps": -100, "respostas": 3,
+                   "valor_mensal": None}],
+        "maior": [{"empresa": {"id": e1["id"], "nome": "Atacado Norte"}, "nps": 0, "respostas": 3,
+                   "valor_mensal": 1000.0}],
     }
     assert p["palavras"] == [
         {"palavra": "atrasou", "total": 2}, {"palavra": "entrega", "total": 2},
@@ -272,7 +275,7 @@ def test_filtro_grupo_de_empresas(client, cenario):
     assert p["taxa_resposta"]["convidados"] == 2 and p["taxa_resposta"]["percentual"] == 100
     assert (p["atencao"]["acoes_abertas"], p["atencao"]["acoes_vencidas"]) == (3, 1)  # A6 (sem empresa) sai
     assert [x["tipo"] for x in p["movimentacao"]["itens"]] == ["deixou_de_ser_promotor", "resgatado"]
-    assert p["atencao"]["receita_em_risco"] == {"valor": 1000.0, "empresas": 2, "sem_valor": 1}
+    assert p["atencao"]["receita_em_risco"] == {"valor": 1000.0, "empresas": 2, "sem_valor": 1, "carteira": 1000.0}
 
 
 def test_sem_periodo(client, cenario):
@@ -376,7 +379,7 @@ def test_primeiros_passos_conta_nova(client, dono):
     assert p["primeiros_passos"] == {"contatos": False, "envios_ligados": False, "primeiro_envio": False,
                                      "primeira_resposta": False}
     assert p["atencao"] == {"acoes_abertas": 0, "acoes_vencidas": 0, "tudo_em_dia": True, "empresas": [],
-                            "receita_em_risco": {"valor": 0, "empresas": 0, "sem_valor": 0}}
+                            "receita_em_risco": {"valor": 0, "empresas": 0, "sem_valor": 0, "carteira": None}}
     assert p["nps"]["decisores"] == {"valor": None, "total": 0}
     assert p["movimentacao"] == {"resgatados": 0, "deixaram_de_ser_promotores": 0, "itens": []}
     criar_contato(client, h)

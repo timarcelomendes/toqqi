@@ -110,14 +110,14 @@ function painel(extra: Partial<Painel> = {}): Painel {
 }
 
 describe('Painel: picos e temas (4b)', () => {
-  it('faixa de picos com "Ver respostas" (reclamações do tema nos 7 dias, empresas ativas)', async () => {
+  it('com pico, a manchete do Resumo fala dele e "Ver as N reclamações" leva às reclamações do tema nos 7 dias', async () => {
     entrar(['painel.ver', 'respostas.ver'])
     apiFalsa({ 'GET /painel': () => painel() })
     const w = await abrir('/inicio', PainelView)
-    const picos = w.findAll('[data-pico]')
-    expect(picos).toHaveLength(1)
-    expect(picos[0]!.text()).toContain('Pico de reclamações em Prazo e entrega: 7 nos últimos 7 dias; a média era 1,5 por semana.')
-    const link = picos[0]!.find('a')
+    // O pico deixou de ser faixa separada no Início (painel v2).
+    expect(w.find('[data-pico]').exists()).toBe(false)
+    expect(w.get('[data-manchete-titulo]').text()).toBe('7 reclamações de Prazo e entrega em 7 dias, quando a média era 1,5 por semana.')
+    const link = w.findAll('a').find((a) => a.text() === 'Ver as 7 reclamações')!
     expect(Object.fromEntries(new URL(link.attributes('href')!, 'http://x').searchParams)).toEqual({
       tema: 'prazo_entrega',
       reclamacao: 'true',
@@ -127,16 +127,18 @@ describe('Painel: picos e temas (4b)', () => {
     })
   })
 
-  it('sem picos (ou servidor antigo), nada aparece; sem respostas.ver, sem o botão', async () => {
+  it('sem picos (ou servidor antigo), a manchete segue as outras regras; sem respostas.ver, sem o botão', async () => {
     entrar(['painel.ver'])
     apiFalsa({ 'GET /painel': () => painel() })
     let w = await abrir('/inicio', PainelView)
-    expect(w.find('[data-pico]').text()).not.toContain('Ver respostas')
+    expect(w.get('[data-manchete-titulo]').text()).toContain('7 reclamações de Prazo e entrega')
+    expect(w.text()).not.toContain('Ver as 7 reclamações')
     w.unmount()
     const { picos: _p, ...antigo } = painel({ picos: [] })
     apiFalsa({ 'GET /painel': () => antigo })
     w = await abrir('/inicio', PainelView)
-    expect(w.find('[data-pico]').exists()).toBe(false)
+    expect(w.get('[data-manchete-titulo]').text()).not.toContain('reclamações')
+    expect(w.get('[data-manchete-titulo]').text()).toBe('10 respostas de NPS no período.')
   })
 
   it('temas mostram as reclamações e a variação com seta', async () => {

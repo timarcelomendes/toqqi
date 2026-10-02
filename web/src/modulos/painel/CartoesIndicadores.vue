@@ -1,95 +1,119 @@
 <script setup lang="ts">
-// Três números do período: variação do NPS, CSAT e taxa de resposta.
+// Faixa de indicadores compactos (auto-fit): receita em risco, planos de ação, CSAT e taxa de resposta. Indicador sem
+// dado vira cartão apagado (fundo superficie-2, borda tracejada) com a frase curta e o atalho para resolver, só para
+// quem pode abrir o destino.
 import { computed } from 'vue'
-import { AlertTriangle, Minus, TrendingDown, TrendingUp } from 'lucide-vue-next'
+import { RouterLink } from 'vue-router'
+import { AlertTriangle } from 'lucide-vue-next'
 import type { Painel } from '@/api/tipos'
+import { useSessaoStore } from '@/stores/sessao'
 import { formatarNumero, plural } from '@/utils/formatos'
-import { descreverIntervalo } from '@/utils/periodo'
-import { descreverVariacao, formatarMedia2, formatarNps, formatarVariacao, tomCsat } from './logica'
+import { formatarMedia2, formatarMoedaCurta, pctCarteira, tomCsat } from './logica'
 
-const props = defineProps<{
-  variacao: Painel['variacao']
-  periodo: Painel['periodo']
-  csat: Painel['csat']
-  taxa: Painel['taxa_resposta']
-}>()
+const props = defineProps<{ atencao: Painel['atencao']; csat: Painel['csat']; taxa: Painel['taxa_resposta'] }>()
+const sessao = useSessaoStore()
 
-const COR_TEXTO = { sucesso: 'text-sucesso', atencao: 'text-atencao', erro: 'text-erro', neutro: 'text-texto', marca: 'text-texto', info: 'text-texto' } as const
+const COR = { sucesso: 'text-sucesso', atencao: 'text-atencao', erro: 'text-erro', neutro: 'text-texto', marca: 'text-texto', info: 'text-texto' } as const
 
-const temPeriodo = computed(() => !!(props.periodo?.de || props.periodo?.ate))
-const direcao = computed(() => {
-  const v = props.variacao?.valor ?? 0
-  return Math.round(v) > 0 ? 'sobe' : Math.round(v) < 0 ? 'desce' : 'igual'
-})
-const anterior = computed(() => (props.periodo?.anterior ? descreverIntervalo(props.periodo.anterior.de, props.periodo.anterior.ate) : null))
-const corCsat = computed(() => COR_TEXTO[tomCsat(props.csat?.percentual)])
+const receita = computed(() => props.atencao?.receita_em_risco ?? { valor: 0, empresas: 0, sem_valor: 0, carteira: null })
+const valorReceita = computed(() => Number(receita.value.valor) || 0)
+const pct = computed(() => pctCarteira(receita.value.valor, receita.value.carteira))
+const abertas = computed(() => props.atencao?.acoes_abertas ?? 0)
+const vencidas = computed(() => props.atencao?.acoes_vencidas ?? 0)
+/** A empresa com a ação mais urgente (a API manda em ordem de urgência). */
+const urgente = computed(() => (props.atencao?.empresas ?? []).find((e) => e.acao_id !== null && e.acao_id !== undefined) ?? null)
+const podeVerAcoes = computed(() => sessao.pode('acoes.ver'))
+/** Nenhuma empresa do filtro tem valor mensal (carteira nula) e nada em risco: o número não diria nada. */
+const semValores = computed(() => receita.value.carteira === null && valorReceita.value === 0)
+const temCsat = computed(() => !!props.csat && props.csat.total > 0 && props.csat.percentual !== null)
+const temTaxa = computed(() => !!props.taxa && props.taxa.percentual !== null && props.taxa.convidados > 0)
+
+const CARTAO = 'flex min-w-0 flex-col gap-1 rounded-cartao p-4 sm:p-5'
+const CHEIO = 'border border-borda bg-superficie shadow-cartao'
+const APAGADO = 'border border-dashed border-borda-forte bg-superficie-2'
 </script>
 
 <template>
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-    <!-- Variação -->
-    <section class="cartao flex flex-col gap-2 p-5" aria-labelledby="t-variacao">
-      <h2 id="t-variacao" class="text-sm font-semibold text-texto-suave">Variação do NPS</h2>
-      <template v-if="variacao">
-        <p class="flex items-center gap-2">
-          <span
-            class="flex size-8 items-center justify-center rounded-lg"
-            :class="direcao === 'sobe' ? 'bg-sucesso-suave text-sucesso' : direcao === 'desce' ? 'bg-erro-suave text-erro' : 'bg-superficie-2 text-texto-suave'"
-            aria-hidden="true"
-          >
-            <TrendingUp v-if="direcao === 'sobe'" class="size-4" />
-            <TrendingDown v-else-if="direcao === 'desce'" class="size-4" />
-            <Minus v-else class="size-4" />
-          </span>
-          <span class="text-4xl font-extrabold leading-none text-texto" :title="`O NPS ${descreverVariacao(variacao.valor)}`">{{ formatarVariacao(variacao.valor) }}</span>
-        </p>
-        <p class="text-sm text-texto-suave">{{ Math.abs(Math.round(variacao.valor)) === 1 ? 'ponto' : 'pontos' }} sobre o período anterior</p>
-        <p class="text-xs text-texto-fraco">
-          Antes: <strong class="font-semibold text-texto-suave">{{ formatarNps(variacao.anterior) }}</strong><template v-if="anterior">, {{ anterior }}</template>
-        </p>
-      </template>
-      <template v-else>
-        <p class="text-4xl font-extrabold leading-none text-texto-fraco" aria-hidden="true">—</p>
-        <p class="text-sm text-texto-suave">
-          {{ temPeriodo ? 'Faltam respostas de NPS neste período ou no anterior para comparar.' : 'Escolha um período para comparar com o anterior.' }}
-        </p>
-      </template>
-    </section>
+  <section class="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] lg:gap-4" aria-label="Indicadores">
+    <!-- Receita em risco -->
+    <div v-if="semValores" :class="[CARTAO, APAGADO]" data-indicador="receita" data-apagado>
+      <h2 class="text-sm font-semibold text-texto-suave">Receita em risco</h2>
+      <p class="font-bold text-texto-suave">Cadastre o valor mensal das empresas</p>
+      <RouterLink v-if="sessao.pode('contatos.editar')" to="/contatos?aba=empresas" class="link inline-flex min-h-11 items-center text-sm sm:min-h-0">
+        Ir para Contatos › Empresas
+      </RouterLink>
+      <p v-else class="text-xs text-texto-fraco">Com o valor do contrato, o painel mostra quanto está em risco.</p>
+    </div>
+    <div v-else :class="[CARTAO, CHEIO]" data-indicador="receita">
+      <h2 class="text-sm font-semibold text-texto-suave">Receita em risco</h2>
+      <p class="text-2xl font-extrabold leading-tight" :class="valorReceita > 0 ? 'text-erro' : 'text-texto'">
+        {{ formatarMoedaCurta(valorReceita) }}<span class="text-sm font-semibold text-texto-fraco"> /mês</span>
+      </p>
+      <p class="text-xs text-texto-suave">
+        <template v-if="receita.empresas">
+          {{ plural(receita.empresas, 'empresa', 'empresas') }} com detrator<template v-if="pct !== null"> · {{ pct }}% da carteira</template>
+        </template>
+        <template v-else>Nenhuma empresa teve detrator no período.</template>
+      </p>
+      <p v-if="receita.sem_valor" class="text-xs text-atencao">
+        {{ receita.sem_valor === 1 ? '1 delas não tem' : `${formatarNumero(receita.sem_valor)} delas não têm` }} o valor do contrato.
+        <RouterLink v-if="sessao.pode('contatos.ver')" to="/contatos?aba=empresas" class="link inline-flex min-h-11 items-center sm:min-h-0">Completar em Empresas</RouterLink>
+      </p>
+    </div>
+
+    <!-- Planos de ação -->
+    <div :class="[CARTAO, CHEIO]" data-indicador="planos">
+      <h2 class="text-sm font-semibold text-texto-suave">Planos de ação</h2>
+      <p class="text-2xl font-extrabold leading-tight text-texto">
+        <RouterLink v-if="podeVerAcoes" to="/planos-de-acao" class="inline-flex min-h-11 items-center hover:underline sm:min-h-0">{{ plural(abertas, 'aberto', 'abertos') }}</RouterLink>
+        <template v-else>{{ plural(abertas, 'aberto', 'abertos') }}</template>
+      </p>
+      <p class="flex items-center gap-1 text-xs" :class="vencidas ? 'font-semibold text-erro' : 'text-texto-suave'">
+        <AlertTriangle v-if="vencidas" class="size-3.5 shrink-0" aria-hidden="true" />
+        <RouterLink v-if="vencidas && podeVerAcoes" :to="{ path: '/planos-de-acao', query: { so_vencidas: 'true' } }" class="hover:underline">
+          {{ plural(vencidas, 'vencido', 'vencidos') }}
+        </RouterLink>
+        <template v-else>{{ vencidas ? plural(vencidas, 'vencido', 'vencidos') : 'Nenhum vencido' }}</template>
+      </p>
+      <p v-if="urgente && podeVerAcoes" class="text-xs text-texto-suave">
+        <RouterLink :to="`/planos-de-acao/${urgente.acao_id}`" class="link inline-flex min-h-11 items-center sm:min-h-0" data-tratar>
+          Tratar {{ urgente.empresa.nome }}<span class="sr-only">: a ação mais urgente</span>
+        </RouterLink>
+      </p>
+    </div>
 
     <!-- CSAT -->
-    <section class="cartao flex flex-col gap-2 p-5" aria-labelledby="t-csat">
-      <h2 id="t-csat" class="text-sm font-semibold text-texto-suave">Satisfação (CSAT)</h2>
-      <template v-if="csat && csat.total > 0 && csat.percentual !== null">
-        <p class="text-4xl font-extrabold leading-none" :class="corCsat">{{ formatarNumero(csat.percentual) }}%</p>
-        <p class="text-sm text-texto-suave">deram nota 4 ou 5</p>
-        <p class="text-xs text-texto-fraco">
-          Média <strong class="font-semibold text-texto-suave">{{ formatarMedia2(csat.media) }}</strong> de 5 · {{ plural(csat.total, 'resposta', 'respostas') }}
-        </p>
-      </template>
-      <template v-else>
-        <p class="text-4xl font-extrabold leading-none text-texto-fraco" aria-hidden="true">—</p>
-        <p class="text-sm text-texto-suave">Nenhuma resposta de satisfação (nota de 1 a 5) no período.</p>
-      </template>
-    </section>
+    <div v-if="temCsat" :class="[CARTAO, CHEIO]" data-indicador="csat">
+      <h2 class="text-sm font-semibold text-texto-suave">Satisfação (CSAT)</h2>
+      <p class="text-2xl font-extrabold leading-tight" :class="COR[tomCsat(csat.percentual)]">{{ formatarNumero(csat.percentual) }}%</p>
+      <p class="text-xs text-texto-suave">deram 4 ou 5 · média {{ formatarMedia2(csat.media) }} de 5 · {{ plural(csat.total, 'resposta', 'respostas') }}</p>
+    </div>
+    <div v-else :class="[CARTAO, APAGADO]" data-indicador="csat" data-apagado>
+      <h2 class="text-sm font-semibold text-texto-suave">Satisfação (CSAT)</h2>
+      <p class="font-bold text-texto-suave">Ainda sem respostas</p>
+      <RouterLink v-if="sessao.pode('formularios.ver')" to="/formularios" class="link inline-flex min-h-11 items-center text-sm sm:min-h-0">
+        Incluir a pergunta 1–5 num formulário
+      </RouterLink>
+      <p v-else class="text-xs text-texto-fraco">Nenhuma resposta de nota 1 a 5 no período.</p>
+    </div>
 
     <!-- Taxa de resposta -->
-    <section class="cartao flex flex-col gap-2 p-5" aria-labelledby="t-taxa">
-      <h2 id="t-taxa" class="text-sm font-semibold text-texto-suave">Taxa de resposta</h2>
-      <template v-if="taxa && taxa.percentual !== null && taxa.convidados > 0">
-        <p class="text-4xl font-extrabold leading-none text-texto">{{ formatarNumero(taxa.percentual) }}%</p>
-        <p class="text-sm text-texto-suave">
-          {{ formatarNumero(taxa.responderam) }} de {{ plural(taxa.convidados, 'contato', 'contatos') }} {{ taxa.responderam === 1 ? 'respondeu' : 'responderam' }}
-        </p>
-        <p class="text-xs text-texto-fraco">Conta só quem recebeu a pesquisa no período.</p>
-        <p v-if="taxa.amostra_pequena" class="mt-1 flex items-start gap-1.5 rounded-lg bg-atencao-suave px-2.5 py-2 text-xs text-atencao">
-          <AlertTriangle class="mt-px size-3.5 shrink-0" aria-hidden="true" />
-          <span><strong class="font-semibold">Amostra pequena:</strong> menos de 20% responderam; os números podem não mostrar o que todos pensam.</span>
-        </p>
-      </template>
-      <template v-else>
-        <p class="text-4xl font-extrabold leading-none text-texto-fraco" aria-hidden="true">—</p>
-        <p class="text-sm text-texto-suave">Nenhuma pesquisa saiu no período, então não dá para calcular.</p>
-      </template>
-    </section>
-  </div>
+    <div v-if="temTaxa" :class="[CARTAO, CHEIO]" data-indicador="taxa">
+      <h2 class="text-sm font-semibold text-texto-suave">Taxa de resposta</h2>
+      <p class="text-2xl font-extrabold leading-tight text-texto">{{ formatarNumero(taxa.percentual) }}%</p>
+      <p class="text-xs text-texto-suave">
+        {{ formatarNumero(taxa.responderam) }} de {{ plural(taxa.convidados, 'contato', 'contatos') }} {{ taxa.responderam === 1 ? 'respondeu' : 'responderam' }}
+      </p>
+      <p v-if="taxa.amostra_pequena" class="flex items-start gap-1 text-xs text-atencao">
+        <AlertTriangle class="mt-px size-3.5 shrink-0" aria-hidden="true" />
+        <span><strong class="font-semibold">Amostra pequena:</strong> menos de 20% responderam.</span>
+      </p>
+    </div>
+    <div v-else :class="[CARTAO, APAGADO]" data-indicador="taxa" data-apagado>
+      <h2 class="text-sm font-semibold text-texto-suave">Taxa de resposta</h2>
+      <p class="font-bold text-texto-suave">Nenhum envio no período</p>
+      <RouterLink v-if="sessao.pode('envios.ver')" to="/envios" class="link inline-flex min-h-11 items-center text-sm sm:min-h-0">Ir para Envios</RouterLink>
+      <p v-else class="text-xs text-texto-fraco">Sem pesquisas enviadas, não dá para calcular.</p>
+    </div>
+  </section>
 </template>

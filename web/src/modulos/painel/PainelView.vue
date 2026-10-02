@@ -1,35 +1,54 @@
 <script setup lang="ts">
-// Início para quem tem painel.ver: "como estamos e o que preciso tratar hoje".
+// Início para quem tem painel.ver: "como estamos e o que preciso tratar hoje" (painel v2, docs/painel-v2.md).
+// De cima para baixo: cabeçalho com filtros em pílulas; primeiros passos em uma linha; Resumo (medidor + O que mudou +
+// distribuição); indicadores; evolução de 12 meses + Quem mudou de lado; Do que estão falando + Tom e Palavras;
+// Comentários; Empresas; Como ler o painel. Os filtros ficam no endereço (/inicio?periodo=30…).
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { Download, HelpCircle, LineChart, Table2 } from 'lucide-vue-next'
+import { useRoute, useRouter } from 'vue-router'
+import { Check, ChevronDown, Download, HelpCircle, LineChart, Table2 } from 'lucide-vue-next'
 import { mensagemDoErro, painelApi, type FiltrosPainel, type GrupoNota, type Id, type Painel } from '@/api'
 import { avisar } from '@/composables/avisos'
+import { useAssistenteStore } from '@/stores/assistente'
 import { useCadastrosStore } from '@/stores/cadastros'
 import { useSessaoStore } from '@/stores/sessao'
 import { hojeIso } from '@/utils/datas'
 import { PERIODOS, erroPeriodoEscolhido, intervaloDoPeriodo, rotuloPeriodo, type PresetPeriodo } from '@/utils/periodo'
-import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Alerta from '@/components/ui/Alerta.vue'
-import Botao from '@/components/ui/Botao.vue'
 import Campo from '@/components/ui/Campo.vue'
-import Interruptor from '@/components/ui/Interruptor.vue'
-import Selecao from '@/components/ui/Selecao.vue'
 import AjudaPainel from './AjudaPainel.vue'
-import BlocoAtencao from './BlocoAtencao.vue'
 import BlocoComentarios from './BlocoComentarios.vue'
 import BlocoEmpresas from './BlocoEmpresas.vue'
 import BlocoPalavras from './BlocoPalavras.vue'
 import BlocoTemas from './BlocoTemas.vue'
+import BlocoTom from './BlocoTom.vue'
 import CartaoMovimentacao from './CartaoMovimentacao.vue'
-import CartaoNps from './CartaoNps.vue'
+import CartaoResumo from './CartaoResumo.vue'
 import CartoesIndicadores from './CartoesIndicadores.vue'
-import FaixaPicos from './FaixaPicos.vue'
 import GraficoEvolucao from './GraficoEvolucao.vue'
 import PrimeirosPassos from './PrimeirosPassos.vue'
-import { montarPassos, mostrarPassos, ocultarPassos, passosOcultos } from './logica'
+import {
+  PERGUNTA_TOQQIAI,
+  acoesManchete,
+  consultaDosFiltros,
+  dataPorExtenso,
+  diasNoIntervalo,
+  filtrosDaConsulta,
+  montarManchete,
+  montarPassos,
+  mostrarPassos,
+  ocultarPassos,
+  passosOcultos,
+  picosValemParaFiltros,
+  textoPeriodoAnterior,
+  tituloEvolucao12m,
+  tituloNps,
+} from './logica'
 
 const sessao = useSessaoStore()
 const cadastros = useCadastrosStore()
+const assistente = useAssistenteStore()
+const rota = useRoute()
+const router = useRouter()
 
 const primeiroNome = computed(() => sessao.usuario?.nome?.split(' ')[0] ?? '')
 const saudacao = computed(() => {
@@ -37,9 +56,54 @@ const saudacao = computed(() => {
   return hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite'
 })
 
-// ── Filtros (uma linha acima de tudo; valem para todos os blocos) ─────────────
-const filtros = reactive({ periodo: '90' as PresetPeriodo, de: '', ate: '', grupo_id: '' as Id | '', so_ativos: true })
+// ── Filtros (pílulas no cabeçalho; valem para todos os blocos e ficam no endereço) ──
+const filtros = reactive(filtrosDaConsulta(rota.query))
 const hoje = hojeIso()
+const hojePorExtenso = dataPorExtenso(hoje)
+const rotuloGrupo = computed(() => cadastros.listas.grupos.find((g) => String(g.id) === String(filtros.grupo_id))?.nome ?? 'Todos os grupos')
+/** Filtro em forma de pílula: alvo de 44 px, borda forte e o foco visível de sempre. */
+const PILULA =
+  'inline-flex h-11 cursor-pointer items-center rounded-full border border-borda-forte bg-superficie px-4 text-sm font-semibold text-texto hover:bg-superficie-2'
+const rotuloPreset = computed(() => PERIODOS.find((p) => p.valor === filtros.periodo)?.rotulo ?? '')
+
+// Grupo que não existe (endereço velho ou digitado): volta a "Todos os grupos" assim que a lista de grupos chega.
+watch(
+  () => [cadastros.carregado.grupos, cadastros.listas.grupos.length, filtros.grupo_id] as const,
+  ([carregados]) => {
+    if (carregados && filtros.grupo_id !== '' && !cadastros.listas.grupos.some((g) => String(g.id) === String(filtros.grupo_id))) filtros.grupo_id = ''
+  },
+  { immediate: true },
+)
+
+// Endereço ↔ filtros: trocar um filtro troca o endereço (sem novo item no histórico); voltar/avançar troca os filtros.
+// Roda já na carga: o endereço com valor inválido (período sem datas, datas trocadas, grupo inexistente) é corrigido
+// para o que a tela está mostrando. Enquanto as datas escolhidas estão incompletas, o endereço fica no último válido.
+const CHAVES_FILTRO = ['periodo', 'de', 'ate', 'grupo_id', 'so_ativos']
+const filtrosDoEndereco = (q: typeof rota.query) => JSON.stringify(Object.fromEntries(Object.entries(q).filter(([k]) => CHAVES_FILTRO.includes(k))))
+/** O último endereço que esta tela escreveu: ao voltar pelo watcher da rota, não desfaz o que a pessoa está digitando. */
+let escrito: string | null = null
+watch(
+  () => consultaDosFiltros(filtros),
+  (q) => {
+    if (filtros.periodo === 'personalizado' && erroPeriodoEscolhido(filtros.de, filtros.ate)) return
+    const atual = Object.fromEntries(Object.entries(rota.query).filter(([k]) => CHAVES_FILTRO.includes(k)))
+    if (JSON.stringify(q) === JSON.stringify(atual)) return
+    const outros = Object.fromEntries(Object.entries(rota.query).filter(([k]) => !CHAVES_FILTRO.includes(k)))
+    escrito = JSON.stringify(q)
+    router.replace({ query: { ...outros, ...q } }).catch(() => undefined)
+  },
+  { deep: true, immediate: true },
+)
+watch(
+  () => rota.query,
+  (q) => {
+    if (rota.path !== '/inicio') return
+    if (escrito !== null && filtrosDoEndereco(q) === escrito) return
+    escrito = null
+    const novos = filtrosDaConsulta(q)
+    if (JSON.stringify(consultaDosFiltros(novos)) !== JSON.stringify(consultaDosFiltros(filtros))) Object.assign(filtros, novos)
+  },
+)
 // Datas escolhidas à mão: as duas, válidas e na ordem; senão, avisa no campo e não busca de novo.
 const erroDatas = computed(() => (filtros.periodo === 'personalizado' ? erroPeriodoEscolhido(filtros.de, filtros.ate) : null))
 const intervalo = computed(() => intervaloDoPeriodo(filtros.periodo, { de: filtros.de, ate: filtros.ate }))
@@ -93,7 +157,10 @@ const baixando = ref(false)
 let controle: AbortController | null = null
 
 async function carregar() {
-  if (erroDatas.value) return
+  if (erroDatas.value) {
+    carregando.value = false // nunca fica preso em "Carregando": os campos de data mostram o que falta
+    return
+  }
   controle?.abort()
   controle = new AbortController()
   // Ao trocar filtro, o painel atual continua na tela (mais apagado) até chegar o novo.
@@ -168,6 +235,42 @@ function mostrarDeNovo() {
 }
 
 const evolucaoEmTabela = ref(false)
+/** A evolução de 12 meses (painel v2); servidor antigo: a evolução de antes, sem os destaques. */
+const evolucao12m = computed(() => (Array.isArray(dados.value?.evolucao_12m) && dados.value!.evolucao_12m.length ? dados.value!.evolucao_12m : null))
+const pontosEvolucao = computed(() => evolucao12m.value ?? dados.value?.evolucao ?? [])
+const tituloEvolucao = computed(() => (evolucao12m.value ? tituloEvolucao12m(evolucao12m.value[evolucao12m.value.length - 1]?.mes, hoje) : 'Evolução do NPS'))
+const temNpsNaEvolucao = computed(() => pontosEvolucao.value.some((p) => typeof p.nps === 'number'))
+
+// ── Resumo: título, período anterior e a manchete ──────────────────────────
+const tituloResumo = computed(() => tituloNps(filtrosNaTela.value.periodo, filtrosNaTela.value.rotulo))
+const textoAnterior = computed(() => textoPeriodoAnterior(dados.value?.periodo?.anterior))
+const entradaManchete = computed(() =>
+  dados.value
+    ? {
+        nps: dados.value.nps,
+        variacao: dados.value.variacao,
+        diasAnteriores: diasNoIntervalo(dados.value.periodo?.anterior?.de, dados.value.periodo?.anterior?.ate),
+        picos: dados.value.picos ?? [],
+        // Os picos são da conta inteira nos últimos 7 dias: só valem se o período termina hoje e sem grupo.
+        picosValem: picosValemParaFiltros({ ate: filtrosNaTela.value.intervalo.ate, grupo_id: filtrosNaTela.value.grupo_id }, hoje),
+        atencao: dados.value.atencao,
+      }
+    : null,
+)
+const manchete = computed(() => (entradaManchete.value ? montarManchete(entradaManchete.value) : null))
+const acoes = computed(() =>
+  entradaManchete.value && manchete.value
+    ? acoesManchete(entradaManchete.value, manchete.value, {
+        podeVerRespostas: podeVerRespostas.value,
+        podeVerAcoes: sessao.pode('acoes.ver'),
+        toqqiAI: assistente.disponivel,
+        consultaNps: consultaNps.value,
+      })
+    : [],
+)
+function perguntarAoToqqiAI() {
+  assistente.abrir(PERGUNTA_TOQQIAI)
+}
 
 // ── Ajuda ───────────────────────────────────────────────────────────────────
 const ajudaAberta = ref(false)
@@ -188,44 +291,72 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <CabecalhoPagina :titulo="`${saudacao}, ${primeiroNome}!`" descricao="Como estão seus clientes e o que precisa de cuidado hoje.">
-    <template #acoes>
-      <Botao variante="fantasma" @click="abrirAjuda"><HelpCircle class="size-4" aria-hidden="true" /> Como ler os números</Botao>
-      <Botao v-if="sessao.pode('painel.exportar')" variante="secundario" :carregando="baixando" :desabilitado="carregando || !!erroDatas" @click="exportar">
-        <Download v-if="!baixando" class="size-4" aria-hidden="true" /> Exportar CSV
-      </Botao>
-    </template>
-  </CabecalhoPagina>
-
-  <!-- Filtros: uma linha acima de tudo -->
-  <section class="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start" aria-label="Filtros do painel">
-    <Selecao v-model="filtros.periodo" rotulo="Período" :opcoes="PERIODOS" class="sm:w-52" />
-    <template v-if="filtros.periodo === 'personalizado'">
-      <div class="grid grid-cols-2 gap-3 sm:flex sm:gap-3">
-        <Campo v-model="filtros.de" rotulo="De" tipo="date" :max="filtros.ate || hoje" class="sm:w-40" :erro="erroDatas && erroDatas.includes('inicial') ? erroDatas : null" />
-        <Campo v-model="filtros.ate" rotulo="Até" tipo="date" :min="filtros.de || undefined" :max="hoje" class="sm:w-40" :erro="erroDatas && !erroDatas.includes('inicial') ? erroDatas : null" />
-      </div>
-    </template>
-    <Selecao
-      v-if="cadastros.listas.grupos.length || filtros.grupo_id !== ''"
-      v-model="filtros.grupo_id"
-      rotulo="Grupo de empresas"
-      :opcoes="cadastros.listas.grupos.map((g) => ({ valor: g.id, rotulo: g.nome }))"
-      vazio="Todos os grupos"
-      class="sm:w-56"
-    />
-    <div class="flex min-h-11 items-center sm:mt-7">
-      <Interruptor v-model="filtros.so_ativos" rotulo="Só empresas ativas" class="w-full sm:w-auto sm:gap-3" />
+  <!-- Cabeçalho: data e saudação à esquerda e, na mesma linha (pela base), os filtros em pílulas à direita; exportar e
+       ajuda logo abaixo dos filtros, discretos. No celular, tudo empilha. -->
+  <header class="mb-5 grid grid-cols-1 gap-x-6 gap-y-3 sm:mb-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end">
+    <div class="min-w-0">
+      <p class="text-xs font-semibold uppercase tracking-wider text-texto-fraco">{{ hojePorExtenso }}</p>
+      <h1 class="titulo-pagina mt-1">{{ saudacao }}, {{ primeiroNome }}!</h1>
     </div>
-  </section>
+    <section class="flex flex-wrap items-center gap-2 lg:justify-end" aria-label="Filtros do painel" data-filtros>
+      <div class="relative">
+        <label for="filtro-periodo" class="sr-only">Período</label>
+        <select id="filtro-periodo" v-model="filtros.periodo" :class="[PILULA, 'appearance-none pr-9']" :title="rotuloPreset">
+          <option v-for="o in PERIODOS" :key="o.valor" :value="o.valor">{{ o.rotulo }}</option>
+        </select>
+        <ChevronDown class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-texto-suave" aria-hidden="true" />
+      </div>
+      <div v-if="cadastros.listas.grupos.length || filtros.grupo_id !== ''" class="relative">
+        <label for="filtro-grupo" class="sr-only">Grupo de empresas</label>
+        <select id="filtro-grupo" v-model="filtros.grupo_id" :class="[PILULA, 'max-w-56 appearance-none truncate pr-9']" :title="rotuloGrupo">
+          <option value="">Todos os grupos</option>
+          <option v-for="g in cadastros.listas.grupos" :key="String(g.id)" :value="g.id">{{ g.nome }}</option>
+        </select>
+        <ChevronDown class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-texto-suave" aria-hidden="true" />
+      </div>
+      <button
+        type="button"
+        :class="[PILULA, 'gap-1.5', filtros.so_ativos ? '!border-sucesso/40 !bg-sucesso-suave !text-sucesso' : '']"
+        :aria-pressed="filtros.so_ativos"
+        title="Só empresas ativas"
+        @click="filtros.so_ativos = !filtros.so_ativos"
+      >
+        <Check v-if="filtros.so_ativos" class="size-4" aria-hidden="true" />
+        Só ativas<span class="sr-only"> (só empresas ativas)</span>
+      </button>
+    </section>
+    <div class="-mt-1 flex flex-wrap items-center gap-x-1 lg:col-start-2 lg:justify-end" data-atalhos-cabecalho>
+      <button
+        v-if="sessao.pode('painel.exportar')"
+        type="button"
+        class="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold sm:min-h-9 text-texto-suave hover:bg-superficie-2 hover:text-texto disabled:opacity-55"
+        :disabled="carregando || baixando || !!erroDatas"
+        :aria-busy="baixando || undefined"
+        @click="exportar"
+      >
+        <Download class="size-4" aria-hidden="true" /> {{ baixando ? 'Exportando…' : 'Exportar CSV' }}
+      </button>
+      <button
+        type="button"
+        class="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold sm:min-h-9 text-texto-suave hover:bg-superficie-2 hover:text-texto"
+        @click="abrirAjuda"
+      >
+        <HelpCircle class="size-4" aria-hidden="true" /> Como ler os números
+      </button>
+    </div>
+  </header>
+  <div v-if="filtros.periodo === 'personalizado'" class="-mt-1 mb-5 grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+    <Campo v-model="filtros.de" rotulo="De" tipo="date" :max="filtros.ate || hoje" class="sm:w-44" :erro="erroDatas && erroDatas.includes('inicial') ? erroDatas : null" />
+    <Campo v-model="filtros.ate" rotulo="Até" tipo="date" :min="filtros.de || undefined" :max="hoje" class="sm:w-44" :erro="erroDatas && !erroDatas.includes('inicial') ? erroDatas : null" />
+  </div>
 
   <!-- Primeira carga -->
-  <div v-if="carregando && !dados" class="grid grid-cols-1 gap-4 sm:grid-cols-3" role="status" aria-label="Carregando o painel">
-    <div v-for="i in 6" :key="i" class="cartao h-44 animate-pulse p-6" :class="i === 1 || i === 5 ? 'sm:col-span-3' : i === 6 ? 'hidden' : ''">
-      <div class="h-3 w-1/3 rounded bg-superficie-2" />
-      <div class="mt-5 h-10 w-1/4 rounded bg-superficie-2" />
-      <div class="mt-5 h-3 w-2/3 rounded bg-superficie-2" />
+  <div v-if="carregando && !dados" class="flex flex-col gap-4" role="status" aria-label="Carregando o painel">
+    <div class="cartao h-72 animate-pulse p-6"><div class="h-3 w-1/4 rounded bg-superficie-2" /><div class="mt-6 h-24 w-1/3 rounded bg-superficie-2" /></div>
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div v-for="i in 4" :key="i" class="cartao h-28 animate-pulse p-5"><div class="h-3 w-1/2 rounded bg-superficie-2" /></div>
     </div>
+    <div class="cartao h-64 animate-pulse" />
     <span class="sr-only">Carregando o painel…</span>
   </div>
 
@@ -233,31 +364,41 @@ onBeforeUnmount(() => {
     {{ erro }} <button type="button" class="link ml-1" @click="carregar">Tentar de novo</button>
   </Alerta>
 
-  <div v-else-if="dados" class="flex flex-col gap-4 transition-opacity" :class="atualizando ? 'opacity-60' : ''" :aria-busy="atualizando || undefined">
+  <div v-else-if="dados" class="@container flex flex-col gap-4 pb-28 transition-opacity sm:gap-5" :class="atualizando ? 'opacity-60' : ''" :aria-busy="atualizando || undefined">
     <Alerta v-if="erro" tom="erro">
       Não deu para atualizar com os filtros novos: {{ erro }} <button type="button" class="link ml-1" @click="carregar">Tentar de novo</button>
     </Alerta>
 
-    <!-- Picos de reclamação dos últimos 7 dias (não dependem dos filtros da tela) -->
-    <FaixaPicos :picos="dados.picos ?? []" :pode-ver-respostas="podeVerRespostas" />
-
     <PrimeirosPassos v-if="verPassos" :passos="passos" @ocultar="esconderPassos" />
 
-    <CartaoNps :nps="dados.nps" :periodo="filtrosNaTela.rotulo" :link-grupo="linkGrupo" />
-    <CartoesIndicadores :variacao="dados.variacao" :periodo="dados.periodo" :csat="dados.csat" :taxa="dados.taxa_resposta" />
-    <BlocoAtencao :atencao="dados.atencao" />
+    <CartaoResumo
+      v-if="manchete"
+      :nps="dados.nps"
+      :variacao="dados.variacao"
+      :titulo="tituloResumo"
+      :texto-anterior="textoAnterior"
+      :manchete="manchete"
+      :acoes="acoes"
+      :link-grupo="linkGrupo"
+      @perguntar="perguntarAoToqqiAI"
+    />
 
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <CartoesIndicadores :atencao="dados.atencao" :csat="dados.csat" :taxa="dados.taxa_resposta" />
+
+    <div class="grid grid-cols-1 items-start gap-4 sm:gap-5 @4xl:grid-cols-[minmax(0,1fr)_minmax(19.5rem,0.5fr)]">
       <section class="cartao flex min-w-0 flex-col gap-3 p-5 sm:p-6" aria-labelledby="t-evolucao">
         <header class="flex items-start justify-between gap-3">
           <div class="min-w-0">
-            <h2 id="t-evolucao" class="text-base font-bold text-texto">Evolução do NPS</h2>
-            <p class="text-sm text-texto-suave">Mês a mês{{ filtrosNaTela.periodo === 'tudo' ? ', nos últimos 6 meses com respostas' : '' }}.</p>
+            <h2 id="t-evolucao" class="text-base font-bold text-texto">{{ tituloEvolucao }}</h2>
+            <p class="text-sm text-texto-suave">
+              <template v-if="evolucao12m">{{ evolucao12m.some((m) => m.no_periodo) && evolucao12m.some((m) => !m.no_periodo) ? 'A faixa marcada com "Período" são os meses do filtro do painel.' : 'Mês a mês.' }}</template>
+              <template v-else>Mês a mês{{ filtrosNaTela.periodo === 'tudo' ? ', nos últimos 6 meses com respostas' : '' }}.</template>
+            </p>
           </div>
           <button
-            v-if="dados.evolucao?.length"
+            v-if="temNpsNaEvolucao"
             type="button"
-            class="-mr-2 inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-texto-suave hover:bg-superficie-2 hover:text-texto"
+            class="-mr-2 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-marca-texto hover:bg-marca-suave"
             :aria-pressed="evolucaoEmTabela"
             @click="evolucaoEmTabela = !evolucaoEmTabela"
           >
@@ -266,15 +407,18 @@ onBeforeUnmount(() => {
             {{ evolucaoEmTabela ? 'Ver gráfico' : 'Ver em tabela' }}
           </button>
         </header>
-        <GraficoEvolucao v-if="dados.evolucao?.length" v-model:tabela="evolucaoEmTabela" :pontos="dados.evolucao" />
+        <GraficoEvolucao v-if="temNpsNaEvolucao" v-model:tabela="evolucaoEmTabela" :pontos="pontosEvolucao" :destaque="!!evolucao12m" />
         <p v-else class="rounded-xl bg-superficie-2 p-4 text-sm text-texto-suave">Ainda não há respostas de NPS para mostrar a evolução.</p>
       </section>
-      <BlocoTemas :temas="dados.temas ?? []" :consulta="consultaNps" :pode-ver-respostas="podeVerRespostas" class="min-w-0" />
+      <CartaoMovimentacao :movimentacao="dados.movimentacao" class="min-w-0" />
     </div>
 
-    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-      <CartaoMovimentacao :movimentacao="dados.movimentacao" class="min-w-0" />
-      <BlocoPalavras :palavras="dados.palavras ?? []" :consulta="consultaRespostas" :pode-ver-respostas="podeVerRespostas" class="min-w-0" />
+    <div class="grid grid-cols-1 items-start gap-4 sm:gap-5 @4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <BlocoTemas :temas="dados.temas ?? []" :consulta="consultaNps" :pode-ver-respostas="podeVerRespostas" class="min-w-0" />
+      <div class="flex min-w-0 flex-col gap-4 sm:gap-5">
+        <BlocoTom v-if="dados.tom" :tom="dados.tom" :texto-anterior="textoAnterior" />
+        <BlocoPalavras :palavras="dados.palavras ?? []" :consulta="consultaRespostas" :pode-ver-respostas="podeVerRespostas" />
+      </div>
     </div>
 
     <BlocoComentarios :comentarios="dados.comentarios ?? []" :consulta="consultaRespostas" :pode-ver-respostas="podeVerRespostas" />
@@ -282,7 +426,7 @@ onBeforeUnmount(() => {
 
     <AjudaPainel v-model:aberta="ajudaAberta" />
     <p v-if="podeReexibirPassos" class="text-center">
-      <button type="button" class="link inline-flex min-h-10 items-center text-sm" @click="mostrarDeNovo">Mostrar primeiros passos</button>
+      <button type="button" class="link inline-flex min-h-11 items-center text-sm" @click="mostrarDeNovo">Mostrar primeiros passos</button>
     </p>
   </div>
 </template>
