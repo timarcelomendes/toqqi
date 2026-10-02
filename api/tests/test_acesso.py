@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from util import SENHA, auth, cadastrar, conta_pronta, entrar, sql, token_do_email
 
 from toqqi.core.email import caixa_memoria
+from toqqi.modulos.acesso import termos
 
 API = "/api/v1"
 
@@ -19,7 +20,7 @@ def test_cadastro_cria_conta_em_teste_e_exige_confirmacao(client, dono):
 
     (conta,) = sql(dono, "select situacao, teste_ate, termos_versao, termos_ip from contas")
     assert conta.situacao == "teste"
-    assert conta.termos_versao == "2026-10" and conta.termos_ip
+    assert conta.termos_versao == str(termos.VERSAO_DOCUMENTOS) and conta.termos_ip
     faltam = conta.teste_ate - datetime.now(timezone.utc)
     assert timedelta(days=13, hours=23) < faltam <= timedelta(days=14)
 

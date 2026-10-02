@@ -3,10 +3,17 @@ import uuid
 from fastapi import APIRouter, Depends, Request, Response
 
 from toqqi.core.deps import Contexto, requer
-from toqqi.core.rate_limit import LIMITE_ENTRAR, LIMITE_SENSIVEL, limiter
+from toqqi.core.rate_limit import (
+    LIMITE_ACEITE,
+    LIMITE_ENTRAR,
+    LIMITE_SENSIVEL,
+    limite_por_usuario,
+    limiter,
+)
 from toqqi.core.security import SENHA_MAX, SENHA_MIN
-from toqqi.modulos.acesso import servico
+from toqqi.modulos.acesso import servico, termos
 from toqqi.modulos.acesso.esquemas import (
+    AceiteIn,
     CadastroIn,
     EmailIn,
     EntrarIn,
@@ -24,16 +31,20 @@ def _ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
+def _agente(request: Request) -> str | None:
+    return request.headers.get("user-agent")
+
+
 @router.post("/auth/cadastro", status_code=201)
 @limiter.limit(LIMITE_SENSIVEL)
 def cadastro(request: Request, dados: CadastroIn):
-    return {"mensagem": servico.cadastrar(dados, _ip(request))}
+    return {"mensagem": servico.cadastrar(dados, _ip(request), _agente(request))}
 
 
 @router.post("/auth/entrar")
 @limiter.limit(LIMITE_ENTRAR)
 def entrar(request: Request, dados: EntrarIn):
-    return servico.entrar(dados, _ip(request), request.headers.get("user-agent"))
+    return servico.entrar(dados, _ip(request), _agente(request))
 
 
 @router.post("/auth/confirmar-email")
@@ -84,6 +95,12 @@ def eu(ctx: Contexto = Depends(requer())):
 @router.patch("/eu")
 def alterar_eu(dados: EuAlterarIn, ctx: Contexto = Depends(requer())):
     return servico.alterar_eu(ctx, dados)
+
+
+@router.post("/eu/aceite")
+@limiter.limit(LIMITE_ACEITE, key_func=limite_por_usuario)
+def aceitar_termos(request: Request, dados: AceiteIn, ctx: Contexto = Depends(requer())):
+    return termos.aceitar(ctx, dados.versao, _ip(request), _agente(request))
 
 
 @router.post("/eu/senha")

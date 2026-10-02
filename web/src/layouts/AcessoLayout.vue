@@ -6,6 +6,7 @@ import Marca from '@/components/app/Marca.vue'
 
 const rota = useRoute()
 const largo = computed(() => rota.name === 'termos' || rota.name === 'privacidade')
+const medio = computed(() => rota.name === 'aceite')
 </script>
 
 <template>
@@ -22,7 +23,7 @@ const largo = computed(() => rota.name === 'termos' || rota.name === 'privacidad
     </header>
 
     <main id="conteudo" class="flex flex-1 items-start justify-center px-4 pb-10 pt-4 sm:items-center sm:pt-0">
-      <div class="w-full" :class="largo ? 'max-w-3xl' : 'max-w-md'">
+      <div class="w-full" :class="largo ? 'max-w-3xl' : medio ? 'max-w-lg' : 'max-w-md'">
         <div class="cartao p-6 sm:p-8">
           <RouterView />
         </div>

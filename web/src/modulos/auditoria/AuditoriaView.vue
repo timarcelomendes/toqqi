@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ChevronDown, ChevronLeft, ChevronRight, History, Search, UserRound } from 'lucide-vue-next'
 import { auditoriaApi, mensagemDoErro, type Gravidade, type ItemAuditoria } from '@/api'
 import { formatarDataHora, hojeIso } from '@/utils/datas'
-import { GRAVIDADES } from '@/utils/rotulos'
+import { GRAVIDADES, rotuloEventoAuditoria } from '@/utils/rotulos'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
@@ -147,7 +147,7 @@ onBeforeUnmount(() => {
             <Etiqueta :tom="GRAVIDADES[item.gravidade]?.tom ?? 'neutro'" ponto class="self-start sm:w-28 sm:justify-center sm:self-auto">
               {{ GRAVIDADES[item.gravidade]?.rotulo ?? item.gravidade }}
             </Etiqueta>
-            <p class="min-w-0 flex-1 font-semibold text-texto">{{ item.rotulo }}</p>
+            <p class="min-w-0 flex-1 font-semibold text-texto">{{ rotuloEventoAuditoria(item) }}</p>
             <p class="flex items-center gap-1.5 text-sm text-texto-suave sm:w-48">
               <UserRound class="size-4 shrink-0 text-texto-fraco" aria-hidden="true" />
               <span class="truncate">{{ item.usuario?.nome ?? 'Sistema' }}</span>

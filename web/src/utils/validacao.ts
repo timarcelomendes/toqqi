@@ -2,9 +2,14 @@ export function emailValido(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())
 }
 
-/** Aceita só caminhos internos no parâmetro "voltar" (evita redirecionar para outro site). */
+/**
+ * Aceita só caminhos internos nos parâmetros de retorno ("voltar" de Entrar, "de" do aceite), para não redirecionar
+ * para outro site: começa com "/", sem "//" nem "\\" em lugar nenhum e sem caracteres de controle. O resto vira `padrao`.
+ */
 export function destinoSeguro(v: unknown, padrao = '/inicio'): string {
-  return typeof v === 'string' && v.startsWith('/') && !v.startsWith('//') ? v : padrao
+  if (typeof v !== 'string' || !v.startsWith('/')) return padrao
+  if (v.includes('//') || v.includes('\\') || /[\u0000-\u001f\u007f]/.test(v)) return padrao
+  return v
 }
 
 /** Remove tudo que não é dígito. */

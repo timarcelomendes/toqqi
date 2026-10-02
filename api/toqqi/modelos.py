@@ -614,3 +614,20 @@ class AsaasRemocao(Base):
     tentativas: Mapped[int] = mapped_column(SmallInteger, server_default="0")
     erro: Mapped[str | None] = mapped_column(Text)
     removida_em: Mapped[datetime | None] = mapped_column(TZ)
+
+
+# ---- aceite dos termos e da política de privacidade (LGPD) -------------------------
+
+class AceiteTermos(Base):
+    """Aceite de uma versão dos Termos de uso e da Política de privacidade (prova: quem, quando, IP, navegador)."""
+    __tablename__ = "aceites_termos"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger)  # nulo quando o membro foi removido em Equipe
+    usuario_email: Mapped[str] = mapped_column(CITEXT)  # cópia do momento do aceite (a prova não depende do usuário)
+    usuario_nome: Mapped[str] = mapped_column(Text)
+    versao: Mapped[int] = mapped_column(Integer)
+    aceito_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    ip: Mapped[str | None] = mapped_column(Text)
+    agente: Mapped[str | None] = mapped_column(Text)  # User-Agent, até 400 caracteres
+    origem: Mapped[str] = mapped_column(Text)  # cadastro | tela

@@ -24,11 +24,10 @@ from toqqi.core.security import (
 )
 from toqqi.core.validacao import DOMINIOS_GRATUITOS, dominio_do_email
 from toqqi.modelos import Conta, DominioLiberado, PerfilPermissao, Sessao, TokenUsoUnico, Usuario
-from toqqi.modulos.acesso import emails
+from toqqi.modulos.acesso import emails, termos
 from toqqi.modulos.formularios.semear import semear_conta
 from toqqi.modulos.imagens.servico import logo_da_conta
 
-TERMOS_VERSAO = "2026-10"
 DIAS_TESTE = 14
 VALIDADE = {"confirmar_email": timedelta(hours=24), "redefinir_senha": timedelta(minutes=30)}
 SESSAO_LEMBRAR = timedelta(days=30)
@@ -76,7 +75,7 @@ def permissoes_do_perfil(s: Session, perfil: str) -> list[str]:
 
 # ---- cadastro ---------------------------------------------------------------
 
-def cadastrar(dados, ip: str | None) -> str:
+def cadastrar(dados, ip: str | None, agente: str | None = None) -> str:
     senha_hash = gerar_hash(dados.senha)  # antes de qualquer consulta: tempo igual nos dois caminhos
     aviso_existente: tuple[str, str] | None = None
     confirmacao: tuple[str, str, str] | None = None
@@ -90,7 +89,10 @@ def cadastrar(dados, ip: str | None) -> str:
                 agora = _agora()
                 conta = Conta(
                     nome=dados.empresa, situacao="teste", teste_ate=agora + timedelta(days=DIAS_TESTE),
-                    termos_aceitos_em=agora, termos_versao=TERMOS_VERSAO, termos_ip=ip,
+                    termos_aceitos_em=agora, termos_ip=ip,
+                    # registro da versão aceita no cadastro da conta; a fonte da versão é termos.VERSAO_DOCUMENTOS
+                    # e a prova de cada pessoa fica em aceites_termos
+                    termos_versao=str(termos.VERSAO_DOCUMENTOS),
                 )
                 s.add(conta)
                 s.flush()
@@ -105,6 +107,8 @@ def cadastrar(dados, ip: str | None) -> str:
                 token = criar_token(s, u.id, conta.id, "confirmar_email")
                 registrar(s, "cadastro_conta", "sucesso", {"empresa": conta.nome, "email": u.email},
                           usuario_id=u.id, conta_id=conta.id)
+                # "Li e aceito" do cadastro (aceite_termos: true, obrigatório): vale como aceite da versão atual
+                termos.gravar(s, u, "cadastro", ip, agente, conta_id=conta.id)
                 confirmacao = (u.nome, u.email, token)
     except IntegrityError:
         # Corrida com outro cadastro do mesmo e-mail: resposta igual, nada criado.
@@ -161,7 +165,7 @@ def entrar(dados, ip: str | None, agente: str | None) -> dict:
         return {
             "token": criar_token_acesso(u.id, u.conta_id, sessao.id, sessao.expira_em),
             "expira_em": sessao.expira_em,
-            "usuario": usuario_json(usuario, preferencias=True),
+            "usuario": {**usuario_json(usuario, preferencias=True), "aceite": termos.aceite_json(s, u.id)},
             "conta": {**conta_json(conta), "logo_url": logo_da_conta(s, u.conta_id)},
             "permissoes": permissoes,
         }
@@ -296,10 +300,12 @@ def sair(ctx: Contexto) -> None:
 
 
 def eu(ctx: Contexto) -> dict:
-    # o logo fica em `imagens` (não vem na leitura da conta feita a cada requisição)
+    # o logo (em `imagens`) e o aceite dos termos não vêm na leitura do contexto feita a cada requisição
     with em_conta(ctx.conta_id) as s:
         logo = logo_da_conta(s, ctx.conta_id)
-    return {"usuario": ctx.usuario, "conta": {**ctx.conta, "logo_url": logo}, "permissoes": ctx.permissoes}
+        aceite = termos.aceite_json(s, ctx.usuario_id)
+    return {"usuario": {**ctx.usuario, "aceite": aceite}, "conta": {**ctx.conta, "logo_url": logo},
+            "permissoes": ctx.permissoes}
 
 
 def alterar_eu(ctx: Contexto, dados) -> dict:
@@ -313,7 +319,8 @@ def alterar_eu(ctx: Contexto, dados) -> dict:
             if campo in dados.model_fields_set and getattr(dados, campo) is not None:
                 setattr(u, campo, getattr(dados, campo))
         s.flush()
-        return usuario_json(u, preferencias=True)
+        # o aceite também vem aqui: o site troca o usuário da sessão pela resposta
+        return {**usuario_json(u, preferencias=True), "aceite": termos.aceite_json(s, u.id)}
 
 
 def trocar_senha(ctx: Contexto, dados) -> str:

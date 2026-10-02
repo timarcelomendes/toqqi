@@ -1,5 +1,6 @@
 import { api } from './cliente'
 import type {
+  Aceite,
   ContaPlataforma,
   DadosSessao,
   Gravidade,
@@ -63,6 +64,8 @@ export const euApi = {
   sessoes: () => api.get<SessaoAparelho[]>('/eu/sessoes'),
   encerrarSessao: (id: SessaoAparelho['id']) => api.delete(`/eu/sessoes/${encodeURIComponent(String(id))}`),
   encerrarOutras: () => api.post<void>('/eu/sessoes/encerrar-outras'),
+  /** Aceita os Termos de uso e a Política de privacidade na versão informada (409 versao_desatualizada se mudou). */
+  aceitar: (versao: number) => api.post<Aceite>('/eu/aceite', { versao }),
 }
 
 export const equipeApi = {

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { ApiError, authApi, euApi } from '@/api'
-import type { Conta, DadosSessao, Permissao, Sessao, Usuario } from '@/api'
+import type { Aceite, Conta, DadosSessao, Permissao, Sessao, Usuario } from '@/api'
 import { apagarConversas } from '@/modulos/assistente/historico'
 
 const CHAVE = 'toqqi.sessao'
@@ -103,8 +103,22 @@ export const useSessaoStore = defineStore('sessao', () => {
     apagarConversas()
   }
 
+  /**
+   * Troca os dados do usuário da sessão pelos que a API devolveu (ex.: PATCH /eu). Mescla com o atual e mantém o
+   * `aceite` quando a resposta não traz: sem ele, a guarda de rotas não saberia mais da situação do aceite.
+   */
   function atualizarUsuario(u: Usuario) {
-    usuario.value = u
+    const atual = usuario.value
+    const novo = atual && atual.id === u.id ? { ...atual, ...u } : { ...u }
+    if (novo.aceite === undefined && atual?.id === u.id && atual.aceite !== undefined) novo.aceite = atual.aceite
+    usuario.value = novo
+    persistir()
+  }
+
+  /** Grava o aceite novo no usuário da sessão (depois de POST /eu/aceite): a guarda de rotas libera o app. */
+  function atualizarAceite(aceite: Aceite) {
+    if (!usuario.value) return
+    usuario.value = { ...usuario.value, aceite }
     persistir()
   }
 
@@ -191,6 +205,7 @@ export const useSessaoStore = defineStore('sessao', () => {
     definirSessao,
     limpar,
     atualizarUsuario,
+    atualizarAceite,
     atualizarConta,
     recarregar,
     recarregarSeAntiga,

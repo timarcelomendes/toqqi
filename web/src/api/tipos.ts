@@ -42,6 +42,18 @@ export interface Usuario {
   /** Etapa 4b (só no próprio usuário, em /eu e no login): e-mails do Toqqi que ele recebe. */
   recebe_resumo_semanal?: boolean
   recebe_alertas?: boolean
+  /** Aceite dos Termos de uso e da Política de privacidade (GET /eu e login). Ver docs/api-aceite-lgpd.md §2. */
+  aceite?: Aceite
+}
+
+/** Situação do aceite dos documentos legais do usuário logado. */
+export interface Aceite {
+  versao_atual: number
+  /** Maior versão aceita (null = nunca aceitou). */
+  versao_aceita: number | null
+  aceito_em: string | null
+  /** versao_aceita é null ou menor que versao_atual. */
+  pendente: boolean
 }
 
 export interface Conta {

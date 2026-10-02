@@ -16,6 +16,8 @@ Contratos implementados (base `/api/v1`):
   clientes, temas, entregas, responsáveis, operação, histórico de uma empresa) e resumo semanal por e-mail;
 - `../docs/api-etapa-5a.md`: assinatura e cobrança pelo Asaas (planos, assinar, trocar de plano, cancelar, webhook,
   situação da conta e liberação dos envios, conferência diária, plataforma).
+- `../docs/api-aceite-lgpd.md`: aceite dos Termos de uso e da Política de privacidade (`aceite` em `GET /eu` e no
+  entrar, `POST /eu/aceite`, aceite gravado no cadastro; versão em `toqqi/modulos/acesso/termos.py`).
 
 ## Isolamento entre contas (RLS)
 O isolamento é garantido pelo próprio PostgreSQL:

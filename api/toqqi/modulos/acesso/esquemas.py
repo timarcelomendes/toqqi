@@ -58,5 +58,9 @@ class TrocarSenhaIn(BaseModel):
     senha_nova: SenhaForte
 
 
+class AceiteIn(BaseModel):
+    versao: Annotated[int, Field(ge=1, le=1_000_000)]
+
+
 class Mensagem(BaseModel):
     mensagem: str

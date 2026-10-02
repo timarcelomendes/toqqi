@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router'
 import type { Permissao } from '@/api/tipos'
 import { avisar } from '@/composables/avisos'
+import { redirecionarAceite } from '@/modulos/geral/legal/aceite'
 import { useSessaoStore } from '@/stores/sessao'
 
 declare module 'vue-router' {
@@ -16,6 +17,8 @@ declare module 'vue-router' {
     admin?: boolean
     /** Trocar só os parâmetros desta rota (ex.: abrir e fechar o painel de uma ação) não rola a página. */
     manterRolagem?: boolean
+    /** A tela leva à seção da âncora sozinha (ex.: /privacidade#cookies): o router não rola quando há âncora. */
+    ancoras?: boolean
   }
 }
 
@@ -31,8 +34,10 @@ const rotas: RouteRecordRaw[] = [
       { path: 'esqueci-senha', name: 'esqueci-senha', component: () => import('@/modulos/acesso/EsqueciSenhaView.vue'), meta: { titulo: 'Esqueci a senha', visitante: true } },
       { path: 'redefinir-senha', name: 'redefinir-senha', component: () => import('@/modulos/acesso/RedefinirSenhaView.vue'), meta: { titulo: 'Nova senha' } },
       { path: 'pedir-acesso', name: 'pedir-acesso', component: () => import('@/modulos/acesso/PedirAcessoView.vue'), meta: { titulo: 'Pedir acesso', visitante: true } },
-      { path: 'termos', name: 'termos', component: () => import('@/modulos/geral/DocumentoLegalView.vue'), props: { tipo: 'termos' }, meta: { titulo: 'Termos de uso' } },
-      { path: 'privacidade', name: 'privacidade', component: () => import('@/modulos/geral/DocumentoLegalView.vue'), props: { tipo: 'privacidade' }, meta: { titulo: 'Política de privacidade' } },
+      { path: 'termos', name: 'termos', component: () => import('@/modulos/geral/DocumentoLegalView.vue'), props: { tipo: 'termos' }, meta: { titulo: 'Termos de uso', ancoras: true } },
+      // Aceite dos termos e da política (docs/api-aceite-lgpd.md §3): bloqueia o app até aceitar; fora do AppLayout.
+      { path: 'aceite', name: 'aceite', component: () => import('@/modulos/geral/AceiteView.vue'), meta: { titulo: 'Termos e privacidade', logado: true } },
+      { path: 'privacidade', name: 'privacidade', component: () => import('@/modulos/geral/DocumentoLegalView.vue'), props: { tipo: 'privacidade' }, meta: { titulo: 'Política de privacidade', ancoras: true } },
     ],
   },
   {
@@ -86,15 +91,16 @@ const rotas: RouteRecordRaw[] = [
 /**
  * Rolagem ao navegar: voltar e avançar devolvem a posição salva; mudar só a query (filtros, página, o painel
  * "Analisar") não rola; outra página vai para o topo. Numa rota com `manterRolagem`, trocar só os parâmetros também
- * não rola. (A paginação leva a tela ao começo da lista por conta própria: ver `Paginacao`.)
+ * não rola. Numa rota com `ancoras` e endereço com âncora, a tela rola até a seção sozinha. (A paginação leva a tela ao começo da lista por conta própria: ver `Paginacao`.)
  */
 export function rolagemAoNavegar(
-  to: Pick<RouteLocationNormalized, 'path' | 'name' | 'meta'>,
+  to: Pick<RouteLocationNormalized, 'path' | 'name' | 'meta'> & { hash?: string },
   from: Pick<RouteLocationNormalized, 'path' | 'name'>,
   salvo: { left: number; top: number } | null,
 ): false | { left?: number; top: number } {
   if (salvo) return salvo
   if (to.path === from.path) return false
+  if (to.hash && to.meta.ancoras) return false
   if (to.name && to.name === from.name && to.meta.manterRolagem) return false
   return { top: 0 }
 }
@@ -144,6 +150,9 @@ router.beforeEach(async (to) => {
     return { name: 'entrar', query: to.fullPath !== '/inicio' ? { voltar: to.fullPath } : {} }
   }
   if (to.meta.visitante && sessao.logado) return { name: 'inicio' }
+  // Aceite pendente: o app fica atrás da tela "Antes de continuar" (termos, privacidade e links de e-mail ficam livres).
+  const aceite = redirecionarAceite(to, { logado: sessao.logado, aceite: sessao.usuario?.aceite })
+  if (aceite) return aceite
   if (to.meta.superadmin && !sessao.superadmin) {
     avisar.atencao('Esta área é só para a equipe da plataforma Toqqi.')
     return { name: 'inicio' }

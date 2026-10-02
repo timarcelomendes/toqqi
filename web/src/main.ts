@@ -5,6 +5,12 @@ import { configurarCliente } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { router } from '@/router'
 import { useSessaoStore } from '@/stores/sessao'
+// Fonte servida pelo próprio site (sem Google Fonts: o navegador não manda o IP a terceiros). Só latin, pesos 400–800.
+import '@fontsource/plus-jakarta-sans/latin-400.css'
+import '@fontsource/plus-jakarta-sans/latin-500.css'
+import '@fontsource/plus-jakarta-sans/latin-600.css'
+import '@fontsource/plus-jakarta-sans/latin-700.css'
+import '@fontsource/plus-jakarta-sans/latin-800.css'
 import './styles/main.css'
 
 const app = createApp(App)

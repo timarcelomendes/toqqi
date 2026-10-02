@@ -1,5 +1,5 @@
 import { formatarDiaMes } from './datas'
-import type { CanalConfig, CanalResposta, EventoWebhook, Gravidade, Perfil, SituacaoContato, SituacaoUsuario, TipoFormulario } from '@/api/tipos'
+import type { CanalConfig, CanalResposta, EventoWebhook, Gravidade, ItemAuditoria, Perfil, SituacaoContato, SituacaoUsuario, TipoFormulario } from '@/api/tipos'
 
 export type Tom = 'neutro' | 'marca' | 'sucesso' | 'atencao' | 'erro' | 'info'
 
@@ -148,4 +148,14 @@ export const EVENTOS_WEBHOOK: Record<EventoWebhook, { rotulo: string; descricao:
 
 export function rotuloEventoWebhook(v: string | null | undefined): string {
   return (v && EVENTOS_WEBHOOK[v as EventoWebhook]?.rotulo) || v || '—'
+}
+
+/**
+ * Nome do evento na Auditoria: o `rotulo` que vem pronto da API; quando o detalhe diz que veio do cadastro
+ * (`origem: "cadastro"`, ex.: `termos_aceitos`), acrescenta " no cadastro". Ver docs/api-aceite-lgpd.md §3.
+ */
+export function rotuloEventoAuditoria(item: Pick<ItemAuditoria, 'evento' | 'rotulo' | 'detalhe'>): string {
+  const nome = item.rotulo || item.evento
+  const origem = item.detalhe && typeof item.detalhe === 'object' ? (item.detalhe as Record<string, unknown>).origem : null
+  return origem === 'cadastro' ? `${nome} no cadastro` : nome
 }

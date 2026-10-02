@@ -62,6 +62,7 @@ ROTULOS = {
     "assinatura_removida_no_asaas": "Assinatura duplicada removida no Asaas",
     "valor_realinhado": "Valor da assinatura corrigido no Asaas",
     "ambiente_asaas_trocado": "Cobrança de teste (sandbox) descartada",
+    "termos_aceitos": "Aceitou os termos e a política de privacidade",
 }
 
 
