@@ -2,7 +2,7 @@
 // prévia do e-mail e conferência antes de salvar. Sem Vue, para testar com facilidade.
 import type { ConfigEnvios, TipoFormulario } from '@/api/tipos'
 
-export type ChaveVariavel = 'nome' | 'empresa' | 'empresa_cliente' | 'link' | 'nota'
+export type ChaveVariavel = 'nome' | 'empresa' | 'empresa_cliente' | 'link' | 'nota' | 'representante'
 
 export interface VariavelMensagem {
   chave: ChaveVariavel
@@ -16,12 +16,16 @@ export const VARIAVEIS: Record<ChaveVariavel, VariavelMensagem> = {
   empresa_cliente: { chave: 'empresa_cliente', texto: '{empresa_cliente}', rotulo: 'Empresa do cliente' },
   link: { chave: 'link', texto: '{link}', rotulo: 'Link da pesquisa' },
   nota: { chave: 'nota', texto: '{nota}', rotulo: 'Nota que o cliente deu' },
+  representante: { chave: 'representante', texto: '{representante}', rotulo: 'Primeiro nome de quem oferece (quem está usando o Toqqi)' },
 }
 
 /** Quais variáveis cada texto aceita (o contrato: {link} só no WhatsApp, {nota} só no agradecimento). */
 export const VARIAVEIS_EMAIL: VariavelMensagem[] = [VARIAVEIS.nome, VARIAVEIS.empresa, VARIAVEIS.empresa_cliente]
 export const VARIAVEIS_WHATSAPP: VariavelMensagem[] = [...VARIAVEIS_EMAIL, VARIAVEIS.link]
 export const VARIAVEIS_AGRADECIMENTO: VariavelMensagem[] = [VARIAVEIS.nome, VARIAVEIS.empresa, VARIAVEIS.nota]
+/** Etapa 5c (Configurações › Crescimento): o convite de indicação e a recompensa; a oferta pelo WhatsApp. */
+export const VARIAVEIS_CONVITE_INDICACAO: VariavelMensagem[] = [VARIAVEIS.nome, VARIAVEIS.empresa]
+export const VARIAVEIS_OFERTA: VariavelMensagem[] = [VARIAVEIS.nome, VARIAVEIS.empresa, VARIAVEIS.empresa_cliente, VARIAVEIS.representante]
 
 export const LIMITE_ASSUNTO = 150
 export const LIMITE_TEXTO = 2000

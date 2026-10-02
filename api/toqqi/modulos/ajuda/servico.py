@@ -25,7 +25,8 @@ log = logging.getLogger("toqqi.ajuda")
 
 CAMINHO = Path(__file__).with_name("conteudo.json")
 TOPICOS = ("primeiros-passos", "contatos", "formularios", "envios", "respostas", "painel", "relatorios",
-           "planos-de-acao", "integracoes", "configuracoes", "equipe", "assinatura", "minha-conta", "assistente")
+           "planos-de-acao", "crescimento", "integracoes", "configuracoes", "equipe", "assinatura", "minha-conta",
+           "assistente")
 BLOCOS = {"paragrafo": "texto", "dica": "texto", "passos": "itens", "lista": "itens"}
 CAMPOS_TOPICO = {"id", "titulo", "resumo", "secoes"}
 CAMPOS_SECAO = {"id", "titulo", "somente_admin", "atalho", "palavras", "blocos"}

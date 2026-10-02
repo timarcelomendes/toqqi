@@ -4,6 +4,9 @@ O evento entra na fila dentro da transação que o gerou (`enfileirar`); a entre
 depois da resposta (quem gerou o evento envolve o trabalho em `coletar_entregas()` e agenda `entregar_lista`)
 ou na rotina de tarefas (`entregar_devidas`). Cada tentativa reserva a entrega por 10 min, faz o POST no IP
 público conferido (core.rede, sem redirecionamento, timeout 10 s) e grava o resultado.
+
+Exclusão a pedido da pessoa (LGPD) de um registro que foi para os webhooks (`esquecer_entregas`, ex.: uma indicação):
+as entregas pendentes somem (não saem mais) e as que já terminaram ficam no histórico com o corpo sem os dados.
 """
 import hashlib
 import hmac
@@ -18,7 +21,7 @@ from datetime import timedelta
 
 import httpx
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from toqqi.core import rede, relogio
@@ -35,7 +38,7 @@ from toqqi.modulos.respostas.eventos import GANCHOS
 
 log = logging.getLogger("toqqi.webhooks")
 
-EVENTOS = ("resposta.criada", "contato.descadastrado")
+EVENTOS = ("resposta.criada", "contato.descadastrado", "indicacao.criada", "indicacao.atualizada")
 MAX_POR_CONTA = 5
 ESPERAS = (timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=30), timedelta(hours=2), timedelta(hours=6))
 MAX_FALHAS_SEGUIDAS = 10
@@ -152,6 +155,26 @@ def _ao_registrar_resposta(s: Session, r: Resposta) -> None:
 GANCHOS.append(_ao_registrar_resposta)
 
 
+ENVELOPE = ("id", "evento", "criado_em", "conta")  # o que fica no corpo de uma entrega esquecida (sem os dados)
+
+
+def esquecer_entregas(s: Session, conta_id: int, prefixo_evento: str, dados_id: int) -> None:
+    """Pedido de exclusão (LGPD) do registro `dados_id` dos eventos `prefixo_evento*` (o corpo leva o registro em
+    `dados`, com `dados.id`), na transação de quem exclui. As entregas pendentes somem: não saem mais (uma tentativa
+    já em andamento termina sem gravar o resultado). As que já terminaram (entregues ou desistidas, que não saem de
+    novo) ficam no histórico de Integrações — data, evento, HTTP — com o corpo reduzido ao envelope e
+    `dados: {id, excluido: true}`."""
+    do_registro = [WebhookEntrega.conta_id == conta_id,
+                   WebhookEntrega.evento.startswith(prefixo_evento, autoescape=True),
+                   WebhookEntrega.corpo["dados"]["id"].astext == str(dados_id)]
+    s.execute(delete(WebhookEntrega).where(*do_registro, WebhookEntrega.status == "pendente")
+              .execution_options(synchronize_session=False))
+    for e in s.scalars(select(WebhookEntrega).where(*do_registro, WebhookEntrega.status != "pendente")
+                       .with_for_update()):
+        e.corpo = {**{k: e.corpo[k] for k in ENVELOPE if k in e.corpo}, "dados": {"id": dados_id, "excluido": True}}
+    s.flush()
+
+
 # ---- entrega ----------------------------------------------------------------
 
 def _desativar(s: Session, w: Webhook) -> None:
@@ -204,6 +227,8 @@ def entregar(conta_id: int, entrega_id: uuid.UUID) -> bool | None:
         status, erro = _postar(url, segredo, evento, str(entrega_id), corpo)
     with em_conta(conta_id) as s:
         e = s.get(WebhookEntrega, entrega_id, with_for_update=True)
+        if e is None:  # esquecida durante a tentativa (`esquecer_entregas`): não há o que gravar
+            return erro is None
         _gravar_tentativa(s, e, s.get(Webhook, e.webhook_id, with_for_update=True), status, erro)
     return erro is None
 

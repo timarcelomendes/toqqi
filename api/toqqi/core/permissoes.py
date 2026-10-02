@@ -21,6 +21,8 @@ CATALOGO: list[tuple[str, str, str]] = [
     ("acoes.ver", "Ver planos de ação", "Planos de ação"),
     ("acoes.tratar", "Tratar planos de ação", "Planos de ação"),
     ("acoes.excluir", "Excluir planos de ação", "Planos de ação"),
+    ("crescimento.ver", "Ver indicações e oportunidades", "Crescimento"),
+    ("crescimento.tratar", "Tratar indicações e registrar ofertas", "Crescimento"),
     ("relatorios.ver", "Ver relatórios", "Relatórios"),
     ("equipe.gerenciar", "Gerenciar a equipe e as permissões", "Administração"),
     ("configuracoes.gerenciar", "Alterar as configurações da conta", "Administração"),
@@ -39,7 +41,7 @@ PADRAO = {
     "gestor": [p for p in TODAS if p not in SOMENTE_ADMIN],
     "consulta": [
         "painel.ver", "contatos.ver", "envios.ver", "formularios.ver",
-        "respostas.ver", "acoes.ver", "acoes.tratar", "relatorios.ver",
+        "respostas.ver", "acoes.ver", "acoes.tratar", "crescimento.ver", "relatorios.ver",
     ],
 }
 

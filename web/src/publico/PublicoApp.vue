@@ -5,7 +5,8 @@ import { ApiError } from '@/api/erros'
 import { publicoApi, type PesquisaPublica } from '@/api/publico'
 import Pesquisa from '@/pesquisa/Pesquisa.vue'
 import { lerParametros } from '@/pesquisa/contexto'
-import type { Respostas, TelaFinal } from '@/pesquisa/tipos'
+import type { ErroIndicacao } from '@/pesquisa/indicacao'
+import type { DadosIndicacao, Respostas, TelaFinal } from '@/pesquisa/tipos'
 
 type Estado = 'carregando' | 'pronto' | 'invalido' | 'ja_respondido' | 'erro'
 
@@ -75,6 +76,22 @@ async function enviar(respostas: Respostas): Promise<TelaFinal | null> {
   }
 }
 
+/** Etapa 5c: indicação feita no cartão da tela final (só no convite individual, /r/:token). */
+async function indicar(dados: DadosIndicacao): Promise<string | void> {
+  try {
+    const r = await publicoApi.indicar(rota!.chave, dados)
+    return r && typeof r === 'object' && typeof r.mensagem === 'string' ? r.mensagem : undefined
+  } catch (e) {
+    const erro: ErroIndicacao =
+      e instanceof ApiError
+        ? e.status === 0
+          ? { mensagem: 'Sem conexão no momento. Confira sua internet e tente de novo.' }
+          : { mensagem: e.mensagem, campos: e.campos, codigo: e.codigo }
+        : {}
+    throw erro
+  }
+}
+
 onMounted(carregar)
 </script>
 
@@ -92,6 +109,7 @@ onMounted(carregar)
       :nota-inicial="params.nota"
       :compacto="params.embed"
       :enviar="enviar"
+      :indicar="rota?.tipo === 'r' ? indicar : undefined"
     />
 
     <section v-else class="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 py-16 text-center">

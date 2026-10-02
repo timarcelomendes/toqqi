@@ -200,9 +200,10 @@ def _html(paragrafos: list[Paragrafo], botao: tuple[str, str] | None,
 
 
 def enviar(para: str, assunto: str, paragrafos: list[Paragrafo], botao: tuple[str, str] | None = None,
-           rodape: tuple[str, str, str] | None = None) -> None:
+           rodape: tuple[str, str, str] | None = None, assunto_no_log: str | None = None) -> None:
     """E-mail do sistema. `paragrafos`: textos (ou Titulo/Link); `botao` = (rótulo, link); `rodape` = (texto,
-    trecho do texto que vira link, link), ex.: o "Minha conta" dos e-mails do painel."""
+    trecho do texto que vira link, link), ex.: o "Minha conta" dos e-mails do painel. `assunto_no_log`: o que vai para
+    o log no lugar do assunto se o envio falhar (assunto com dados de pessoas, como o aviso de indicação)."""
     texto = "\n\n".join(_parte_texto(p) for p in paragrafos)
     if botao:
         texto += f"\n\n{botao[0]}: {botao[1]}"
@@ -213,4 +214,4 @@ def enviar(para: str, assunto: str, paragrafos: list[Paragrafo], botao: tuple[st
     try:
         provedor().enviar(m)
     except Exception:  # noqa: BLE001 - e-mail não pode derrubar o fluxo
-        log.exception("Falha ao enviar e-mail '%s' para %s", assunto, para)
+        log.exception("Falha ao enviar e-mail '%s' para %s", assunto_no_log or assunto, para)

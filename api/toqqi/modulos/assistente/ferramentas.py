@@ -32,6 +32,7 @@ from toqqi.core.deps import Contexto
 from toqqi.core.filtros import data_valida
 from toqqi.core.log_seguro import descrever_erro
 from toqqi.core.relogio import FUSO_NOME
+from toqqi.core.validacao import MAX_ID  # ids são bigint
 from toqqi.modelos import Contato, Empresa, Resposta
 from toqqi.modulos.ajuda import servico as ajuda
 from toqqi.modulos.painel import servico as painel
@@ -47,7 +48,6 @@ VER_COMENTARIOS = ("respostas.ver",)
 SEM_ACESSO = "Seu perfil não tem acesso a estes dados."
 NAO_ENCONTRADA = "Empresa não encontrada."
 NAO_CONSEGUI = "Não consegui consultar esses dados."
-MAX_ID = 2**63 - 1  # ids são bigint
 DIAS_PADRAO = 30
 MAX_DIAS = 366
 MIN_AMOSTRA = 20  # menos respostas de NPS que isso = amostra pequena

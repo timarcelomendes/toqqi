@@ -1,4 +1,4 @@
-// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b, -5a e -5b).
+// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b, -5a, -5b e -5c).
 import type { Contexto, GrupoNota, Pergunta, Tema } from '@/pesquisa/tipos'
 
 export type Perfil = 'admin' | 'gestor' | 'consulta'
@@ -27,6 +27,8 @@ export type Permissao =
   | 'assinatura.gerenciar'
   | 'auditoria.ver'
   | 'zona_risco.usar'
+  | 'crescimento.ver'
+  | 'crescimento.tratar'
   | (string & {})
 
 export interface Usuario {
@@ -631,7 +633,8 @@ export interface ChaveGerada {
   criada_em: string
 }
 
-export type EventoWebhook = 'resposta.criada' | 'contato.descadastrado'
+/** Etapa 5c: `indicacao.criada` e `indicacao.atualizada` (situação mudou). */
+export type EventoWebhook = 'resposta.criada' | 'contato.descadastrado' | 'indicacao.criada' | 'indicacao.atualizada'
 
 export interface Webhook {
   id: Id
@@ -1476,6 +1479,8 @@ export type ChaveAtalho =
   | 'respostas'
   | 'planos_de_acao'
   | 'relatorios'
+  /** Etapa 5c. */
+  | 'crescimento'
   | 'equipe'
   | 'config_empresa'
   | 'config_envios'
@@ -1554,4 +1559,160 @@ export interface RespostaAssistente {
   /** 0 a 2, já filtrados pelas permissões. */
   atalhos: AtalhoAssistente[]
   cota: CotaIa
+}
+
+// ───────────────────────── Etapa 5c (docs/api-etapa-5c.md) ─────────────────────────
+
+/** O convite de indicação da tela final e o corpo da indicação pública ficam com os tipos da pesquisa (página leve). */
+export type { ConviteIndicacao, DadosIndicacao } from '@/pesquisa/tipos'
+
+export type SituacaoIndicacao = 'nova' | 'em_contato' | 'cliente' | 'nao_avancou'
+export type OrigemIndicacao = 'pesquisa' | 'manual'
+
+/** Item de GET /crescimento/indicacoes (mais novas primeiro). */
+export interface Indicacao {
+  id: Id
+  origem: OrigemIndicacao
+  nome: string
+  empresa: string | null
+  /** Só dígitos, com o 55. */
+  telefone: string | null
+  email: string | null
+  observacao: string | null
+  indicador: { contato: Referencia | null; empresa: Referencia | null }
+  /** Quem indicou deixou dizer à pessoa indicada que foi ele. */
+  pode_identificar: boolean
+  responsavel: Referencia | null
+  situacao: SituacaoIndicacao
+  /** Só com 'cliente'. */
+  valor_mensal: ValorDecimal | null
+  /** Só com 'nao_avancou'. */
+  motivo: string | null
+  criada_em: string
+  atualizada_em: string
+}
+
+/** Contagem com os mesmos filtros de período e responsável da lista. */
+export interface ResumoIndicacoes {
+  novas: number
+  em_contato: number
+  clientes: number
+  nao_avancou: number
+  receita_mensal: ValorDecimal | null
+}
+
+export interface PaginaIndicacoes extends Pagina<Indicacao> {
+  resumo: ResumoIndicacoes
+}
+
+export interface FiltrosIndicacoes {
+  situacao?: SituacaoIndicacao
+  responsavel_id?: Id
+  de?: string
+  ate?: string
+  busca?: string
+  pagina?: number
+  por_pagina?: number
+}
+
+/** POST /crescimento/indicacoes (registro à mão, sem `confirmo`). Opcionais vazios vão como null. */
+export interface DadosNovaIndicacao {
+  nome: string
+  empresa: string | null
+  telefone: string | null
+  email: string | null
+  observacao: string | null
+  indicador_contato_id: Id | null
+  indicador_empresa_id: Id | null
+  responsavel_id: Id | null
+}
+
+/** PATCH /crescimento/indicacoes/{id}: 'cliente' pede `valor_mensal` (>= 0); 'nao_avancou' aceita `motivo` (até 300). */
+export interface DadosEdicaoIndicacao {
+  situacao?: SituacaoIndicacao
+  valor_mensal?: number | null
+  motivo?: string | null
+  responsavel_id?: Id | null
+}
+
+export type ListaOportunidade = 'pode_crescer' | 'promotores'
+export type ResultadoOferta = 'aceitou' | 'recusou' | 'sem_resposta'
+/** WhatsApp quando o contato tem telefone; só e-mail → mailto:. */
+export type CanalOferta = 'whatsapp' | 'email'
+
+export interface UltimaOferta {
+  id: Id
+  criada_em: string
+  resultado: ResultadoOferta | null
+  /** Só com 'aceitou'. */
+  valor: ValorDecimal | null
+}
+
+/** Item de GET /crescimento/oportunidades (uma empresa). */
+export interface Oportunidade {
+  empresa: { id: Id; nome: string; valor_mensal: ValorDecimal | null }
+  grupo: Referencia | null
+  responsavel: Referencia | null
+  nps: { valor: number | null; total: number }
+  /** Quem deu a resposta mais recente no período, ativo, fora da lista de descadastro e com telefone ou e-mail. */
+  contato: { id: Id; nome: string; telefone: string | null; email: string | null } | null
+  ultima_resposta: UltimaResposta | null
+  ultima_oferta: UltimaOferta | null
+}
+
+export interface FiltrosOportunidades {
+  lista?: ListaOportunidade
+  grupo_id?: Id
+  responsavel_id?: Id
+  pagina?: number
+}
+
+/** POST /crescimento/ofertas (201) e PATCH /crescimento/ofertas/{id}. */
+export interface Oferta extends UltimaOferta {
+  empresa: Referencia
+  /** null: oferta sem contato, ou o contato foi apagado depois. */
+  contato: Referencia | null
+  lista: ListaOportunidade
+  canal: CanalOferta
+  texto: string
+  /** Quem registrou (null se o usuário foi apagado). */
+  usuario: Referencia | null
+  resultado_em: string | null
+}
+
+/** 422 quando a empresa saiu das oportunidades (ou o contato saiu da lista) depois que a lista abriu. */
+export interface DadosNovaOferta {
+  empresa_id: Id
+  contato_id: Id | null
+  lista: ListaOportunidade
+  /** Por onde a oferta saiu (o link que a tela abriu). */
+  canal: CanalOferta
+  /** Até 2.000 caracteres. */
+  texto: string
+}
+
+/** Corpo parcial: sem `valor`, a API mantém o que já estava (e os resultados que não são 'aceitou' o limpam). */
+export interface DadosResultadoOferta {
+  resultado: ResultadoOferta
+  /** Só com 'aceitou' (>= 0). */
+  valor?: number
+}
+
+/** GET /crescimento/resumo (padrão: últimos 90 dias). */
+export interface ResumoCrescimento {
+  indicacoes: { recebidas: number; clientes: number; taxa: number | null; receita_mensal: ValorDecimal | null }
+  ofertas: { feitas: number; aceitas: number; taxa: number | null; receita: ValorDecimal | null }
+}
+
+/** GET/PUT /crescimento/configuracao. Sem linha no banco, a API devolve os padrões. */
+export interface ConfigCrescimento {
+  indicacoes_ativas: boolean
+  /** Até 120. Variáveis: {empresa} e {nome}. */
+  titulo_convite: string
+  /** Até 500. */
+  texto_convite: string
+  /** Até 300, opcional. */
+  recompensa: string | null
+  /** Até 1.000. Variáveis: {nome}, {empresa}, {empresa_cliente} e {representante}. */
+  texto_oferta: string
 }

@@ -1,15 +1,25 @@
-"""Formato único de erro: {"erro": {"codigo", "mensagem", "campos"}}."""
+"""Formato único de erro: {"erro": {"codigo", "mensagem", "campos"}}.
+
+Valor que o banco recusa por ser inválido para a coluna (id fora do bigint, texto que não vira número, caractere
+inválido, texto longo demais) é dado de quem chamou, não erro nosso: vira 422 `dados_invalidos` em qualquer rota (as
+rotas validam antes; isto é a rede de proteção das que esqueceram). O log registra o erro pelo `core.log_seguro`
+(classe e SQLSTATE, sem os dados)."""
 import logging
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DataError, DBAPIError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from toqqi.core.requisicao import request_id
 
 log = logging.getLogger("toqqi")
+
+# 22003 número fora do intervalo (ex.: id além do bigint), 22P02 representação inválida (texto que não vira número),
+# 22021 caractere inválido para a codificação (ex.: NUL), 22001 texto longo demais para a coluna
+SQLSTATES_DADO_INVALIDO = frozenset({"22003", "22P02", "22021", "22001"})
+MSG_DADO_INVALIDO = "Confira os dados enviados."
 
 
 class AppError(Exception):
@@ -81,6 +91,7 @@ def registrar_handlers(app: FastAPI) -> None:
         mapa = {
             404: ("nao_encontrado", "Não encontramos o que você procurou."),
             405: ("metodo_nao_permitido", "Esta operação não é permitida aqui."),
+            413: ("pedido_grande_demais", "Os dados enviados passam do tamanho permitido."),  # core.limite_corpo
         }
         codigo, msg = mapa.get(exc.status_code, ("erro_http", "Não foi possível concluir o pedido."))
         return resposta_erro(exc.status_code, codigo, msg, headers=getattr(exc, "headers", None))
@@ -89,6 +100,9 @@ def registrar_handlers(app: FastAPI) -> None:
     async def _banco(_: Request, exc: DBAPIError):
         erro = erro_do_banco(exc)
         if erro is not None:
+            if dado_invalido(exc):  # o log_seguro troca a mensagem do banco (que traz o valor) pelo resumo sem dados
+                log.warning("Dado recusado pelo banco, respondido com 422 (request_id=%s)", request_id.get(),
+                            exc_info=exc)
             return resposta_erro(erro.status, erro.codigo, erro.mensagem, erro.campos)
         log.exception("Erro de banco (request_id=%s)", request_id.get())
         return resposta_erro(
@@ -103,15 +117,39 @@ def registrar_handlers(app: FastAPI) -> None:
         )
 
 
+def _tem_nul(valor) -> bool:
+    if isinstance(valor, str):
+        return "\x00" in valor
+    if isinstance(valor, dict):
+        return any(_tem_nul(v) for v in valor.values())
+    if isinstance(valor, (list, tuple)):
+        return any(_tem_nul(v) for v in valor)
+    return False
+
+
+def dado_invalido(exc: DBAPIError) -> bool:
+    """O banco recusou um valor enviado (SQLSTATES_DADO_INVALIDO). O NUL (\\x00) nem chega ao banco: o psycopg recusa
+    o texto antes de enviar, com um DataError sem SQLSTATE — vale como o 22021 quando algum parâmetro tem NUL."""
+    if not isinstance(exc, DataError):
+        return False
+    codigo = getattr(exc.orig, "sqlstate", None)
+    if codigo is not None:
+        return codigo in SQLSTATES_DADO_INVALIDO
+    return _tem_nul(exc.params)
+
+
 def erro_do_banco(exc: DBAPIError) -> AppError | None:
     """Erros de regra levantados pelo próprio banco (gatilhos) viram AppError. O limite de contatos (TQ402) leva o
-    limite em `campos.limite` (o gatilho manda no DETAIL), para a tela oferecer "Ver planos"."""
+    limite em `campos.limite` (o gatilho manda no DETAIL), para a tela oferecer "Ver planos". Valor recusado pelo banco
+    (`dado_invalido`) vira 422 `dados_invalidos`."""
     orig = getattr(exc, "orig", None)
     if getattr(orig, "sqlstate", None) == "TQ402":
         diag = getattr(orig, "diag", None)
         msg = getattr(diag, "message_primary", None) or "Você atingiu o limite de contatos ativos do seu plano."
         limite = getattr(diag, "message_detail", None) or ""
         return AppError(402, "limite_do_plano", msg, {"limite": limite} if limite.isdigit() else None)
+    if dado_invalido(exc):
+        return AppError(422, "dados_invalidos", MSG_DADO_INVALIDO)
     return None
 
 

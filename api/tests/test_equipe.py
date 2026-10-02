@@ -36,7 +36,7 @@ def test_matriz_personalizada_vale_na_hora(client):
     # o mesmo token já enxerga a mudança
     assert client.get(f"{API}/eu", headers=c["h"]).json()["permissoes"] == ["painel.ver", "contatos.editar"]
     cat = client.get(f"{API}/equipe/permissoes", headers=a["h"]).json()["catalogo"]
-    assert len(cat) == 21 and all({"chave", "rotulo", "grupo", "somente_admin"} == set(x) for x in cat)
+    assert len(cat) == 23 and all({"chave", "rotulo", "grupo", "somente_admin"} == set(x) for x in cat)
 
 
 def test_put_permissoes_rejeita_exclusivas_e_desconhecidas(client):

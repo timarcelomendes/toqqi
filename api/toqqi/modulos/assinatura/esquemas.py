@@ -2,19 +2,16 @@
 verificadores, inclusive o CNPJ alfanumérico; e-mail; telefone com DDD), mas todos obrigatórios. O telefone segue a
 regra brasileira, mais estrita que a dos Dados da empresa (o Asaas pede DDD + número, sem o 55): DDD de 11 a 99 e
 celular com 9 dígitos começando com 9 ou fixo com 8 dígitos começando com 2 a 5."""
-import re
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator
 from pydantic_core import PydanticCustomError
 
-from toqqi.core.texto import normalizar_documento, normalizar_telefone, telefone_canonico
-from toqqi.core.validacao import _validar_email
+from toqqi.core.texto import normalizar_documento
+from toqqi.core.validacao import _validar_email, telefone_br
 
 Plano = Literal["essencial", "profissional", "empresa"]
 MAX_RAZAO_SOCIAL = 200
-RE_TELEFONE_BR = re.compile(r"55([1-9][0-9])(9[0-9]{8}|[2-5][0-9]{7})")  # 55 + DDD + celular ou fixo
-MSG_TELEFONE_BR = "Informe um telefone do Brasil com DDD."
 
 
 def _erro(tipo: str, msg: str) -> PydanticCustomError:
@@ -53,13 +50,9 @@ def _telefone(v):
     if _vazio(v) or not isinstance(v, (str, int)):
         raise _erro("telefone", "Informe o telefone com DDD.")
     try:
-        d = telefone_canonico(normalizar_telefone(str(v)))
+        return telefone_br(v)  # a regra brasileira de sempre (core.validacao)
     except ValueError as e:
         raise _erro("telefone", str(e))
-    m = RE_TELEFONE_BR.fullmatch(d)
-    if m is None or not 11 <= int(m.group(1)) <= 99:
-        raise _erro("telefone", MSG_TELEFONE_BR)
-    return d
 
 
 class DadosCobrancaIn(BaseModel):

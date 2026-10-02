@@ -248,6 +248,8 @@ class Convite(Base):
     ultimo_lembrete_em: Mapped[datetime | None] = mapped_column(TZ)
     token_semente: Mapped[str | None] = mapped_column(Text)
     evento: Mapped[str | None] = mapped_column(Text)
+    # etapa 5c: tentativas de indicação aceitas pela página pública (as repetidas também; o limite é por convite)
+    indicacoes_feitas: Mapped[int] = mapped_column(Integer, server_default="0")
 
 
 class Resposta(Base):
@@ -635,3 +637,57 @@ class AceiteTermos(Base):
     revogado_em: Mapped[datetime | None] = mapped_column(TZ)
     revogado_ip: Mapped[str | None] = mapped_column(Text)
     revogado_agente: Mapped[str | None] = mapped_column(Text)  # User-Agent, até 400 caracteres
+# ---- etapa 5c: crescimento (indicações e oportunidades) -------------------------------
+
+class ConfigCrescimento(Base):
+    __tablename__ = "config_crescimento"
+    conta_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, server_default=CONTA_ATUAL)
+    indicacoes_ativas: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    titulo_convite: Mapped[str] = mapped_column(Text)
+    texto_convite: Mapped[str] = mapped_column(Text)
+    recompensa: Mapped[str | None] = mapped_column(Text)
+    texto_oferta: Mapped[str] = mapped_column(Text)
+    atualizado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+class Indicacao(Base):
+    """Pessoa indicada por um promotor (origem 'pesquisa', pelo convite) ou registrada à mão ('manual')."""
+    __tablename__ = "indicacoes"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    origem: Mapped[str] = mapped_column(Text)  # pesquisa | manual
+    convite_id: Mapped[int | None] = mapped_column(BigInteger)
+    resposta_id: Mapped[int | None] = mapped_column(BigInteger)
+    indicador_contato_id: Mapped[int | None] = mapped_column(BigInteger)
+    indicador_empresa_id: Mapped[int | None] = mapped_column(BigInteger)
+    pode_identificar: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    nome: Mapped[str] = mapped_column(Text)
+    empresa: Mapped[str | None] = mapped_column(Text)
+    telefone: Mapped[str | None] = mapped_column(Text)  # só dígitos, com 55
+    email: Mapped[str | None] = mapped_column(CITEXT)
+    observacao: Mapped[str | None] = mapped_column(Text)
+    situacao: Mapped[str] = mapped_column(Text, server_default="nova")  # nova | em_contato | cliente | nao_avancou
+    responsavel_id: Mapped[int | None] = mapped_column(BigInteger)  # responsaveis (carteira), não usuário
+    valor_mensal: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))  # só 'cliente'
+    motivo: Mapped[str | None] = mapped_column(Text)  # só 'nao_avancou'
+    criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    atualizada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    criada_por: Mapped[int | None] = mapped_column(BigInteger)
+    atualizada_por: Mapped[int | None] = mapped_column(BigInteger)
+
+
+class Oferta(Base):
+    """Oferta feita a um cliente feliz (WhatsApp do representante com o texto pronto, ou e-mail), com o resultado."""
+    __tablename__ = "ofertas"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    empresa_id: Mapped[int] = mapped_column(BigInteger)
+    contato_id: Mapped[int | None] = mapped_column(BigInteger)
+    lista: Mapped[str] = mapped_column(Text)  # pode_crescer | promotores
+    canal: Mapped[str] = mapped_column(Text, server_default="whatsapp")  # whatsapp | email
+    texto: Mapped[str] = mapped_column(Text)
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger)
+    criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    resultado: Mapped[str | None] = mapped_column(Text)  # aceitou | recusou | sem_resposta
+    valor: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))  # só 'aceitou'
+    resultado_em: Mapped[datetime | None] = mapped_column(TZ)

@@ -220,7 +220,7 @@
             {
               "tipo": "lista",
               "itens": [
-                "Início, Contatos, Envios, Formulários, Respostas, Planos de ação e Relatórios: o dia a dia.",
+                "Início, Contatos, Envios, Formulários, Respostas, Planos de ação, Crescimento e Relatórios: o dia a dia.",
                 "Administração: Equipe, Configurações, Integrações, Assinatura e Auditoria. Cada item só aparece para quem tem a permissão.",
                 "Ajuda: no rodapé da barra, acima de “Recolher menu”. Use o campo “Buscar na ajuda” para achar um assunto.",
                 "Menu da sua conta: no topo da tela, com “Minha conta” e “Sair”.",
@@ -2190,6 +2190,180 @@
       ]
     },
     {
+      "id": "crescimento",
+      "titulo": "Crescimento",
+      "resumo": "Indicações dos clientes felizes e oportunidades de oferta: retenha quem está insatisfeito e cresça com quem está feliz.",
+      "secoes": [
+        {
+          "id": "o-que-e-o-crescimento",
+          "titulo": "O que é o Crescimento",
+          "somente_admin": false,
+          "atalho": "crescimento",
+          "palavras": [
+            "crescer",
+            "vendas",
+            "indicação",
+            "oportunidade",
+            "oferta",
+            "promotores",
+            "cliente feliz",
+            "expansão",
+            "venda cruzada",
+            "upsell",
+            "representante",
+            "receita nova"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O Crescimento usa as respostas das pesquisas para escolher com quem falar: quem está feliz indica outras empresas e recebe ofertas. O Toqqi escolhe quem abordar e entrega para o canal certo, como o WhatsApp do representante ou uma planilha. Ele não substitui o seu CRM nem o e-mail marketing."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Indicações: pessoas indicadas pelos promotores no fim da pesquisa ou registradas à mão pela equipe.",
+                "Oportunidades: empresas felizes para receber uma oferta, em duas listas, “Pode crescer” e “Promotores recentes”.",
+                "No topo, o resumo dos últimos 90 dias: indicações recebidas, quantas viraram cliente e a receita mensal que veio delas; ofertas feitas e aceitas."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O menu Crescimento aparece para quem tem a permissão “Ver indicações e oportunidades”. Para registrar uma indicação, mudar a situação dela ou registrar uma oferta, é preciso “Tratar indicações e registrar ofertas”. O CSV pede também “Exportar dados do painel”."
+            }
+          ]
+        },
+        {
+          "id": "indicacoes-dos-promotores",
+          "titulo": "Indicações: o convite na pesquisa e a lista",
+          "somente_admin": false,
+          "atalho": "crescimento",
+          "palavras": [
+            "indicar",
+            "indicação",
+            "indicar empresa",
+            "convite de indicação",
+            "recompensa",
+            "prêmio",
+            "quem indicou",
+            "nova indicação",
+            "virou cliente",
+            "não avançou",
+            "registrar indicação",
+            "excluir indicação",
+            "lgpd",
+            "indicação repetida"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Com o convite de indicação ligado, quem responde a pesquisa pelo convite (e-mail, WhatsApp ou link de um contato) com nota 9 ou 10, ou 5 no CSAT, vê no fim um cartão para indicar outra empresa: nome, empresa, WhatsApp ou telefone, e-mail e uma observação. A pessoa confirma que a indicada aceita receber um contato e escolhe se você pode dizer quem indicou. Cada pesquisa aceita até 3 indicações. O link público do formulário não mostra o cartão."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A indicação chega em Crescimento › Indicações com o responsável da empresa de quem indicou, e ele recebe o e-mail “Nova indicação”. Sem responsável com e-mail, o aviso vai para os administradores. Um telefone ou e-mail que já está numa indicação nova ou em contato não cria outra."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Situações: nova, em contato, virou cliente (com o valor mensal) e não avançou (com o motivo, se quiser).",
+                "Filtros: situação, responsável, período e busca por nome, empresa, telefone ou e-mail.",
+                "“Registrar indicação”: para a indicação que chegou por telefone ou numa visita.",
+                "“Excluir (pedido da pessoa)”: apaga a indicação de vez quando a pessoa indicada pede."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "A recompensa é só um texto no convite: o Toqqi não paga nem controla prêmios. A sua empresa combina e paga do jeito dela."
+            }
+          ]
+        },
+        {
+          "id": "oportunidades-de-oferta",
+          "titulo": "Oportunidades: “Pode crescer” e “Promotores recentes”",
+          "somente_admin": false,
+          "atalho": "crescimento",
+          "palavras": [
+            "oportunidade",
+            "oferta",
+            "pode crescer",
+            "promotores recentes",
+            "matriz",
+            "mediana",
+            "oferecer pelo whatsapp",
+            "registrar resultado",
+            "aceitou",
+            "recusou",
+            "sem resposta",
+            "regra de ouro",
+            "contato sugerido",
+            "exportar oportunidades"
+          ],
+          "blocos": [
+            {
+              "tipo": "lista",
+              "itens": [
+                "“Pode crescer”: o mesmo quadrante da matriz NPS × valor de Relatórios › Empresas nos últimos 90 dias (NPS 0 ou mais e valor mensal abaixo da mediana). Vem primeiro o maior NPS e, no empate, o menor valor.",
+                "“Promotores recentes”: empresas com nota 9 ou 10 nos últimos 30 dias, a resposta mais recente primeiro."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Regra de ouro: nunca entram empresas inativas, com detrator (nota 0 a 6) nos últimos 90 dias ou com plano de ação aberto. O contato sugerido é quem respondeu por último, desde que esteja ativo, não tenha saído da lista e tenha telefone ou e-mail."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Crescimento › Oportunidades, escolha a lista e, se quiser, o grupo e o responsável.",
+                "Clique em “Oferecer pelo WhatsApp”: o WhatsApp abre com o texto da oferta pronto para o contato sugerido. Sem telefone, abre um e-mail.",
+                "Depois da conversa, use “Registrar resultado”: aceitou (com o valor), recusou ou sem resposta."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Exportar CSV” baixa a lista para uma planilha ou para o seu CRM. O Toqqi não envia ofertas em massa: cada oferta sai do WhatsApp do representante."
+            }
+          ]
+        },
+        {
+          "id": "configurar-o-crescimento",
+          "titulo": "Ligar o convite de indicação e ajustar os textos",
+          "somente_admin": true,
+          "atalho": null,
+          "palavras": [
+            "configurar indicações",
+            "ligar indicações",
+            "desligar indicações",
+            "título do convite",
+            "texto do convite",
+            "recompensa",
+            "texto da oferta",
+            "variáveis",
+            "prévia",
+            "configurações crescimento"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Configurações › Crescimento, ligue o convite de indicação.",
+                "Ajuste o título e o texto do convite e, se quiser, a recompensa (por exemplo: “Se a indicação virar cliente, você ganha 10% no próximo pedido.”).",
+                "Ajuste o texto da oferta, que vai pronto no WhatsApp do representante.",
+                "Confira a prévia e salve."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "No convite e na recompensa, use {empresa} (o nome da sua empresa) e {nome} (o primeiro nome de quem respondeu). Na oferta, use {nome} (o contato), {empresa}, {empresa_cliente} (a empresa do cliente) e {representante} (o primeiro nome de quem está oferecendo). O botão “Inserir” coloca a variável no texto."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Quem vê o Crescimento lê essas configurações, mas só o administrador muda. O convite só aparece com a assinatura em dia. Desligado, a pesquisa termina como antes e as indicações que já chegaram continuam em Crescimento."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "integracoes",
       "titulo": "Integrações",
       "resumo": "Ligue o Toqqi ao sistema da sua empresa e ao WhatsApp para a pesquisa sair sozinha (só administrador).",
@@ -2224,7 +2398,7 @@
               "itens": [
                 "Chave de integração: a “senha” que o seu sistema usa para pedir uma pesquisa ao Toqqi.",
                 "Como conectar: o passo a passo e os exemplos prontos para o técnico.",
-                "Avisos (webhooks): o Toqqi avisa o seu sistema quando um cliente responde ou sai da lista.",
+                "Avisos (webhooks): o Toqqi avisa o seu sistema quando um cliente responde ou sai da lista e quando chega ou muda uma indicação.",
                 "WhatsApp automático: as pesquisas saem do número da sua empresa, pela plataforma oficial da Meta."
               ]
             },
@@ -2385,14 +2559,14 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "O Toqqi avisa o seu sistema (ou o Zapier, o Make, o n8n) assim que um cliente responde ou sai da lista. Serve, por exemplo, para abrir um chamado quando chega uma nota baixa. Cada conta pode ter até 5 avisos."
+              "texto": "O Toqqi avisa o seu sistema (ou o Zapier, o Make, o n8n) assim que um cliente responde ou sai da lista, quando chega uma indicação e quando a situação de uma indicação muda. Serve, por exemplo, para abrir um chamado quando chega uma nota baixa. Cada conta pode ter até 5 avisos."
             },
             {
               "tipo": "passos",
               "itens": [
                 "Em Integrações › Avisos (webhooks), clique em “Novo aviso”.",
                 "Em “Endereço que recebe os avisos”, cole o endereço do seu sistema. Ele precisa ser seguro (com cadeado) e público.",
-                "Em “Avisar quando”, marque “Nova resposta” e/ou “Cliente saiu da lista” e clique em “Criar aviso”.",
+                "Em “Avisar quando”, marque os eventos que interessam (como “Nova resposta” e “Cliente saiu da lista”) e clique em “Criar aviso”.",
                 "Entregue o “Segredo do aviso” ao técnico: ele aparece só uma vez e serve para conferir que o aviso veio do Toqqi."
               ]
             },
@@ -2841,7 +3015,7 @@
               "itens": [
                 "Administrador: pode tudo, inclusive equipe e configurações.",
                 "Gestor: trabalha no dia a dia com o que o administrador liberar. Por padrão, faz tudo menos o que é só do administrador.",
-                "Consulta: só olha, ideal para quem acompanha resultados. Por padrão, vê painel, contatos, envios, formulários, respostas, planos de ação e relatórios, e pode tratar planos de ação."
+                "Consulta: só olha, ideal para quem acompanha resultados. Por padrão, vê painel, contatos, envios, formulários, respostas, planos de ação, crescimento e relatórios, e pode tratar planos de ação."
               ]
             },
             {
@@ -2956,7 +3130,7 @@
               "tipo": "passos",
               "itens": [
                 "Em Equipe, abra a aba “Permissões”.",
-                "Na tabela, marque ou desmarque cada permissão nas colunas Gestor e Consulta. Elas vêm agrupadas: Painel, Contatos, Envios, Formulários, Respostas, Planos de ação, Relatórios e Administração.",
+                "Na tabela, marque ou desmarque cada permissão nas colunas Gestor e Consulta. Elas vêm agrupadas: Painel, Contatos, Envios, Formulários, Respostas, Planos de ação, Crescimento, Relatórios e Administração.",
                 "Clique em “Salvar permissões” (ou em “Descartar” para voltar ao que estava)."
               ]
             },

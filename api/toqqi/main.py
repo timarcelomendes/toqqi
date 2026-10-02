@@ -1,6 +1,6 @@
-"""Aplicação FastAPI do Toqqi (etapas 1 a 5b: acesso, equipe, cadastros, formulários, páginas públicas, envios,
-integrações, WhatsApp automático, respostas, planos de ação, painel, IA por resposta, relatórios, assinatura, Ajuda e
-assistente)."""
+"""Aplicação FastAPI do Toqqi (etapas 1 a 5c: acesso, equipe, cadastros, formulários, páginas públicas, envios,
+integrações, WhatsApp automático, respostas, planos de ação, painel, IA por resposta, relatórios, assinatura, Ajuda,
+assistente e crescimento)."""
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -12,6 +12,7 @@ from slowapi.errors import RateLimitExceeded
 from toqqi.core.config import config
 from toqqi.core.db import migrar
 from toqqi.core.errors import registrar_handlers
+from toqqi.core.limite_corpo import LimiteDeCorpo
 from toqqi.core.rate_limit import ao_exceder, limiter
 from toqqi.core.requisicao import ip_cliente, request_id
 from toqqi.modulos.acesso.rotas import router as acesso
@@ -24,6 +25,7 @@ from toqqi.modulos.auditoria.rotas import router as auditoria
 from toqqi.modulos.cadastros.rotas import router as cadastros
 from toqqi.modulos.conta.rotas import router as conta
 from toqqi.modulos.contatos.rotas import router as contatos
+from toqqi.modulos.crescimento.rotas import router as crescimento
 from toqqi.modulos.empresas.rotas import router as empresas
 from toqqi.modulos.envios.rotas import router as envios
 from toqqi.modulos.envios.rotas import router_interno as interno
@@ -41,6 +43,9 @@ from toqqi.modulos.whatsapp.rotas import router as whatsapp
 from toqqi.modulos.whatsapp.rotas import router_publico as whatsapp_publico
 
 PREFIXO = "/api/v1"
+# Rotas públicas (sem login) que só recebem pouco texto: o corpo maior que isto é recusado (413) sem ser lido inteiro.
+# A indicação tem poucos campos curtos (nome, empresa, telefone, e-mail e observação de até 500 caracteres).
+LIMITES_DE_CORPO = [("POST", rf"{PREFIXO}/publico/convites/[^/]+/indicacoes", 20 * 1024)]
 log = logging.getLogger("toqqi")
 if not log.handlers:  # mensagens da aplicação (inclusive INFO) aparecem no log do Render
     _h = logging.StreamHandler()
@@ -68,6 +73,7 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, ao_exceder)
     registrar_handlers(app)
+    app.add_middleware(LimiteDeCorpo, rotas=LIMITES_DE_CORPO)
 
     @app.middleware("http")
     async def _id_da_requisicao(request: Request, call_next):
@@ -95,7 +101,7 @@ def create_app() -> FastAPI:
 
     for r in (acesso, equipe, conta, auditoria, plataforma, cadastros, empresas, contatos, importacao,
               formularios, publico, envios, interno, integracoes, whatsapp, integracao, whatsapp_publico,
-              respostas, acoes, painel, relatorios, assinatura, asaas_webhook, ajuda, assistente):
+              respostas, acoes, crescimento, painel, relatorios, assinatura, asaas_webhook, ajuda, assistente):
         app.include_router(r, prefix=PREFIXO)
 
     @app.get(f"{PREFIXO}/saude", tags=["infra"])

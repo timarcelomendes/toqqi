@@ -604,3 +604,35 @@ def inserir_resposta(dono, conta_id: int, formulario_id: int, contato: dict | No
         g=grupo_da_nota(tipo, nota), com=comentario, temas=temas_da_resposta(comentario),
         quando=datetime.combine(quando, time(12), tzinfo=FUSO), arq=arquivada)
     return rid
+
+
+# ---- etapa 5c: crescimento ------------------------------------------------------------
+
+def ligar_indicacoes(client, h: dict, **extra) -> dict:
+    r = client.put(f"{API}/crescimento/configuracao", headers=h, json={"indicacoes_ativas": True, **extra})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def convite_respondido(client, h: dict, contato_id: int, nota: int, formulario: dict | None = None
+                       ) -> tuple[str, dict]:
+    """Link de pesquisa do contato (formulário padrão de NPS, se não vier outro) respondido com `nota` na pergunta
+    principal. Devolve (token do convite, corpo da resposta da página pública)."""
+    f = formulario or form_padrao(client, h)
+    token = link_pesquisa(client, h, contato_id, formulario_id=f["id"])
+    r = client.post(f"{API}/publico/convites/{token}/responder", json={"respostas": {f["perguntas"][0]["id"]: nota}})
+    assert r.status_code == 201, r.text
+    return token, r.json()
+
+
+def indicar(client, token: str, **campos):
+    """POST da indicação pública (com a confirmação marcada, se não vier outra)."""
+    corpo = {"nome": "João Silva", "empresa": "Padaria Real", "telefone": "(11) 98765-4321", "confirmo": True,
+             **campos}
+    return client.post(f"{API}/publico/convites/{token}/indicacoes", json=corpo)
+
+
+def indicacoes(client, h: dict, **filtros) -> dict:
+    r = client.get(f"{API}/crescimento/indicacoes", headers=h, params={"por_pagina": 200, **filtros})
+    assert r.status_code == 200, r.text
+    return r.json()

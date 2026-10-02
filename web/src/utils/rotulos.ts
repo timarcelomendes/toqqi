@@ -144,6 +144,12 @@ export const CANAIS_CONFIG: Record<CanalConfig, { rotulo: string; descricao: str
 export const EVENTOS_WEBHOOK: Record<EventoWebhook, { rotulo: string; descricao: string }> = {
   'resposta.criada': { rotulo: 'Nova resposta', descricao: 'Quando um cliente responde uma pesquisa.' },
   'contato.descadastrado': { rotulo: 'Cliente saiu da lista', descricao: 'Quando alguém pede para não receber mais pesquisas.' },
+  // Etapa 5c
+  'indicacao.criada': { rotulo: 'Nova indicação', descricao: 'Quando chega uma indicação nova, feita pela pesquisa ou registrada pela equipe.' },
+  'indicacao.atualizada': {
+    rotulo: 'Indicação mudou de situação',
+    descricao: 'Quando a equipe marca uma indicação como em contato, virou cliente ou não avançou.',
+  },
 }
 
 export function rotuloEventoWebhook(v: string | null | undefined): string {

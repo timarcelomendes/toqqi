@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // Pré-visualização do editor: a página da pesquisa (como hoje) e, para quem vê os envios, o convite por e-mail e a
 // mensagem do WhatsApp com os textos de Configurações › Envios, o logo e os botões de nota deste formulário.
+// Etapa 5c: com as indicações ligadas, terminar a página com nota de promotor mostra o cartão de indicação de exemplo
+// (com o envio desligado), com os textos de Configurações › Crescimento.
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ImageIcon, RotateCcw } from 'lucide-vue-next'
-import { enviosApi, mensagemDoErro, type ConfigEnvios } from '@/api'
-import type { Pergunta, Tema, TipoFormulario } from '@/api/tipos'
+import { crescimentoApi, enviosApi, mensagemDoErro, type ConfigCrescimento, type ConfigEnvios } from '@/api'
+import type { ConviteIndicacao, Pergunta, Tema, TipoFormulario } from '@/api/tipos'
 import { useSessaoStore } from '@/stores/sessao'
 import { logoParaCliente } from '@/utils/imagens'
 import Pesquisa from '@/pesquisa/Pesquisa.vue'
@@ -13,6 +15,7 @@ import Alerta from '@/components/ui/Alerta.vue'
 import Carregando from '@/components/ui/Carregando.vue'
 import PreviaEmail from '@/modulos/configuracoes/PreviaEmail.vue'
 import PreviaWhatsapp from '@/modulos/configuracoes/PreviaWhatsapp.vue'
+import { previaConvite } from '@/modulos/configuracoes/configCrescimento'
 import { montarPreviaEmail, renderizarMensagem } from '@/modulos/configuracoes/mensagens'
 
 // `titulo`: o rótulo "Pré-visualização" no topo (a janela do celular já tem o próprio título).
@@ -69,6 +72,20 @@ const previaEmail = computed(() =>
   config.value ? montarPreviaEmail(config.value, 'convite', props.tipo, exemplo.value, logo.value.url || null) : null,
 )
 const textoWhatsapp = computed(() => (config.value ? renderizarMensagem(config.value.texto_whatsapp, exemplo.value) : ''))
+
+// Etapa 5c: o convite de indicação de exemplo (GET /crescimento/configuracao pede crescimento.ver ou configuracoes.gerenciar),
+// buscado só quando a pré-visualização termina com nota de promotor, e uma vez só.
+const veCrescimento = computed(() => sessao.pode('crescimento.ver') || sessao.pode('configuracoes.gerenciar'))
+let configCrescimento: Promise<ConfigCrescimento | null> | null = null
+async function indicacaoExemplo(): Promise<ConviteIndicacao | null> {
+  if (!veCrescimento.value) return null
+  configCrescimento ??= crescimentoApi.configuracao().catch(() => {
+    configCrescimento = null
+    return null
+  })
+  const c = await configCrescimento
+  return c?.indicacoes_ativas ? previaConvite(c, { empresa: exemplo.value.empresa, nome: 'Maria Souza' }) : null
+}
 </script>
 
 <template>
@@ -108,6 +125,7 @@ const textoWhatsapp = computed(() => (config.value ? renderizarMensagem(config.v
         :formulario="{ nome, perguntas, tema: temaPrevia }"
         :variaveis="{ empresa: nomeEmpresa, nome: 'Maria Souza', assunto: '', referencia: 'Pedido 12345' }"
         previa
+        :indicacao-exemplo="indicacaoExemplo"
       />
     </div>
     <div v-else class="flex-1 overflow-y-auto p-3" aria-live="polite" data-previa-canal>

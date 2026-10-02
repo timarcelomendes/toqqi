@@ -15,6 +15,8 @@ from toqqi.core.rate_limit import (
     limiter,
 )
 from toqqi.modulos.acoes.automatica import coletar_alertas, enviar_alertas
+from toqqi.modulos.crescimento.esquemas import IndicacaoPublicaIn
+from toqqi.modulos.crescimento.indicacoes import coletar_avisos, enviar_avisos
 from toqqi.modulos.envios import descadastro
 from toqqi.modulos.envios.agradecimento import coletar_envios
 from toqqi.modulos.envios.esquemas import DescadastroPublicoIn
@@ -49,6 +51,17 @@ def responder_convite(request: Request, token: str, dados: ResponderIn, tarefas:
     tarefas.add_task(entregar_lista, entregas)  # webhooks de saída (resposta.criada)
     tarefas.add_task(enviar_alertas, alertas)  # "Alerta de risco" ao responsável (ação alta)
     tarefas.add_task(analisar_com_ia, analises)  # análise do comentário pela IA
+    return resultado
+
+
+@router.post("/convites/{token}/indicacoes", status_code=201)
+@limiter.limit(LIMITE_RESPONDER_CONVITE)
+def indicar(request: Request, token: str, dados: IndicacaoPublicaIn, tarefas: BackgroundTasks):
+    """Indicação do promotor na tela final da pesquisa (etapa 5c). Nada do que a pessoa escreveu vai para o log."""
+    with coletar_entregas() as entregas, coletar_avisos() as avisos:
+        resultado = servico.indicar(token, dados)
+    tarefas.add_task(entregar_lista, entregas)  # webhooks de saída (indicacao.criada), depois do commit
+    tarefas.add_task(enviar_avisos, avisos)  # "Nova indicação" ao responsável (ou aos administradores)
     return resultado
 
 

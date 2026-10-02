@@ -64,6 +64,10 @@ ROTULOS = {
     "ambiente_asaas_trocado": "Cobrança de teste (sandbox) descartada",
     "termos_aceitos": "Aceitou os termos e a política de privacidade",
     "termos_revogados": "Retirou o aceite dos termos e da política de privacidade",
+    "indicacao_registrada": "Indicação registrada à mão",
+    "indicacao_atualizada": "Situação de uma indicação alterada",
+    "indicacao_excluida": "Indicação excluída (pedido da pessoa indicada)",
+    "config_crescimento": "Configurações de crescimento alteradas",
 }
 
 

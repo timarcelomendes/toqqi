@@ -18,12 +18,23 @@ export function formatarDecimal(v: number | string | null | undefined): string {
   return Number.isFinite(n) ? fmtDecimal.format(n) : ''
 }
 
-/** Lê o que a pessoa digitou ("1.250,50", "1250.5", "R$ 30") e devolve número ou null. */
+/** Milhar com ponto: "1.250", "12.500", "1.250.000" (1 a 3 dígitos sem zero na frente, depois grupos de 3). */
+const MILHAR_COM_PONTO = /^-?[1-9]\d{0,2}(?:\.\d{3})+$/
+
+/**
+ * Lê o que a pessoa digitou e devolve o número (arredondado aos centavos) ou null. A vírgula é sempre a decimal
+ * ("1.250,50", "1250,5", "12,5"). Sem vírgula, ponto seguido de exatamente 3 dígitos é milhar ("1.250" = 1250,
+ * "1.250.000") e os outros pontos são decimais ("1.25", "1250.5", "0.500"). Pontos que não formam milhar junto da
+ * vírgula ("1.25,50") ou soltos ("1.2.3") não viram número: a tela pede para conferir em vez de gravar um valor errado.
+ */
 export function lerMoeda(texto: string): number | null {
   let t = texto.replace(/[^\d,.-]/g, '')
   if (!t) return null
-  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.')
-  else if ((t.match(/\./g) ?? []).length > 1) t = t.replace(/\./g, '')
+  if (t.includes(',')) {
+    const [inteiro = '', ...decimais] = t.split(',')
+    if (decimais.length !== 1 || (inteiro.includes('.') && !MILHAR_COM_PONTO.test(inteiro))) return null
+    t = `${inteiro.replace(/\./g, '')}.${decimais[0]}`
+  } else if (MILHAR_COM_PONTO.test(t)) t = t.replace(/\./g, '')
   const n = Number(t)
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : null
 }
@@ -78,6 +89,14 @@ export function telefoneWhatsapp(v: string | null | undefined): string | null {
   const d = apenasDigitos(v ?? '')
   if (d.length < 10) return null
   return d.length === 10 || d.length === 11 ? `55${d}` : d
+}
+
+/**
+ * E-mail em pedaços que terminam no "@" e em cada ponto ("sonia@", "padariaprado.", "com.", "br"): a tela põe um
+ * <wbr> entre eles, para a linha quebrar nesses pontos e não no meio de uma palavra.
+ */
+export function partesEmail(email: string | null | undefined): string[] {
+  return (email ?? '').split(/(?<=[@.])/).filter(Boolean)
 }
 
 export function plural(n: number, um: string, varios: string): string {

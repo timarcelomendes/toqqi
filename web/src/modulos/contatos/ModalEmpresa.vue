@@ -67,9 +67,10 @@ function erro(campo: string) {
 }
 const erroTopo = computed(() => (codigoErro.value === 'nome_em_uso' && !erros.nome ? null : erroGeral.value))
 
+// Valor que não dá para ler fica como foi digitado: ao salvar, o campo pede para conferir (em vez de sumir).
 function aoSairValor() {
   const n = lerMoeda(dados.valor_mensal)
-  dados.valor_mensal = n === null ? '' : formatarDecimal(n)
+  if (n !== null) dados.valor_mensal = formatarDecimal(n)
 }
 
 async function salvar() {

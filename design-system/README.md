@@ -180,6 +180,7 @@ Quem pede movimento reduzido no sistema operacional tem todas as animações pra
 | `Tabela` | Listas de registros. Com `densa`, células mais justas e títulos que quebram linha (tabelas com muitas colunas, como as dos relatórios). |
 | `Paginacao` | Navegar entre páginas de uma lista. Trocar de página leva a tela ao começo da lista (o bloco onde a paginação está), não ao topo da página; dentro de uma caixa com rolagem própria (corpo de uma janela modal), a caixa volta ao começo. |
 | `Medidor` | Quanto de um limite já foi usado (X de Y), como as análises de IA do mês. `role="meter"`; fica âmbar perto do limite e vermelho no limite. Os números ficam escritos ao lado. `fino` deixa a barra mais baixa (cabeçalho do assistente). |
+| `TextoEmail` | Um e-mail que pode quebrar linha em tabelas e cartões estreitos: quebra depois do "@" e dos pontos, e só no meio da palavra como último recurso. |
 | `Carregando` | Esqueleto enquanto os dados chegam. |
 | `EstadoVazio` | Lista sem itens: título, descrição, ícone e ação. |
 

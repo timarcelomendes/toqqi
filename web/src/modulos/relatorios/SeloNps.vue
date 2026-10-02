@@ -5,7 +5,10 @@ import type { NpsResumo } from '@/api/tipos'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
 import { faixaNps, formatarNps, tomNps } from '@/modulos/painel/logica'
 
-const props = withDefaults(defineProps<{ nps: NpsResumo | null | undefined; compacto?: boolean; semRespostas?: string }>(), {
+// Etapa 5c: Oportunidades manda só {valor, total} (a faixa sai do valor).
+type NpsDoSelo = Pick<NpsResumo, 'valor' | 'total'> & { faixa?: NpsResumo['faixa'] }
+
+const props = withDefaults(defineProps<{ nps: NpsDoSelo | null | undefined; compacto?: boolean; semRespostas?: string }>(), {
   compacto: false,
   semRespostas: 'Sem respostas',
 })

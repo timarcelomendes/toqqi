@@ -24,6 +24,7 @@ export const ATALHOS: Record<ChaveAtalho, DefinicaoAtalho> = {
   respostas: { rotulo: 'Respostas', caminho: '/respostas', permissao: 'respostas.ver' },
   planos_de_acao: { rotulo: 'Planos de ação', caminho: '/planos-de-acao', permissao: 'acoes.ver' },
   relatorios: { rotulo: 'Relatórios', caminho: '/relatorios/empresas', permissao: 'relatorios.ver' },
+  crescimento: { rotulo: 'Crescimento', caminho: '/crescimento/indicacoes', permissao: 'crescimento.ver' },
   equipe: { rotulo: 'Equipe', caminho: '/equipe', permissao: 'equipe.gerenciar' },
   config_empresa: { rotulo: 'Dados da empresa', caminho: '/configuracoes/empresa', permissao: 'configuracoes.gerenciar' },
   config_envios: { rotulo: 'Configurações de envio', caminho: '/configuracoes/envios', permissao: 'configuracoes.gerenciar' },

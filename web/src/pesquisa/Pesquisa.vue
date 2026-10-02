@@ -3,11 +3,23 @@
 // e da pré-visualização do editor. Não importa Pinia, router nem ícones externos.
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import CampoPergunta from './CampoPergunta.vue'
+import CartaoIndicacao from './CartaoIndicacao.vue'
 import { corDoTexto, corValida } from './cor'
+import { lerConviteIndicacao, notaDaDireitoAIndicacao } from './indicacao'
 import { faixa, paginasVisiveis, perguntaPrincipal, perguntasVisiveis, respostasParaEnvio } from './logica'
 import { renderizarVariaveis } from './variaveis'
 import { validarPerguntas, validarResposta } from './validacao'
-import { TEMA_PADRAO, type FormularioPublico, type Pergunta, type Respostas, type TelaFinal, type ValorResposta, type Variaveis } from './tipos'
+import {
+  TEMA_PADRAO,
+  type ConviteIndicacao,
+  type DadosIndicacao,
+  type FormularioPublico,
+  type Pergunta,
+  type Respostas,
+  type TelaFinal,
+  type ValorResposta,
+  type Variaveis,
+} from './tipos'
 
 /** Erro que `enviar` pode lançar: mensagem para mostrar e, se houver, erros por pergunta. */
 export interface ErroEnvio {
@@ -27,8 +39,15 @@ const props = withDefaults(
     compacto?: boolean
     /** Pré-visualização do editor: mostra aviso e botão de recomeçar. */
     previa?: boolean
+    /** Etapa 5c: envia uma indicação (convite individual) e devolve a mensagem de obrigado. Sem ela, o cartão é exemplo. */
+    indicar?: (dados: DadosIndicacao) => Promise<string | void>
+    /**
+     * Etapa 5c, pré-visualização: o convite de exemplo, pedido quando a pesquisa termina com nota de promotor (NPS 9–10
+     * ou CSAT 5); null não mostra o cartão (ex.: indicações desligadas na conta).
+     */
+    indicacaoExemplo?: () => Promise<ConviteIndicacao | null>
   }>(),
-  { variaveis: () => ({}), notaInicial: null, compacto: false, previa: false },
+  { variaveis: () => ({}), notaInicial: null, compacto: false, previa: false, indicar: undefined, indicacaoExemplo: undefined },
 )
 
 const tema = computed(() => ({ ...TEMA_PADRAO, ...(props.formulario.tema ?? {}) }))
@@ -50,6 +69,9 @@ const indice = ref(0)
 const enviando = ref(false)
 const erroEnvio = ref<string | null>(null)
 const telaFinal = ref<TelaFinal | null>(null)
+/** Etapa 5c: o convite de indicação da tela final (da API ou, na pré-visualização, o de exemplo). */
+const indicacao = ref<ConviteIndicacao | null>(null)
+let pedidoExemplo = 0
 const raiz = ref<HTMLElement | null>(null)
 const anuncio = ref('')
 let temporizador: ReturnType<typeof setTimeout> | null = null
@@ -77,6 +99,8 @@ function iniciar() {
   limparObjeto(erros)
   erroEnvio.value = null
   telaFinal.value = null
+  indicacao.value = null
+  pedidoExemplo++
   indice.value = 0
   etapa.value = temAbertura.value && props.notaInicial === null ? 'abertura' : 'perguntas'
   const p = principal.value
@@ -209,6 +233,7 @@ async function enviarTudo() {
     telaFinal.value = { titulo_final: tema.value.titulo_final, texto_final: tema.value.texto_final }
     etapa.value = 'final'
     focarTopo()
+    void mostrarIndicacaoExemplo()
     return
   }
   enviando.value = true
@@ -219,6 +244,7 @@ async function enviarTudo() {
       titulo_final: r?.titulo_final || tema.value.titulo_final,
       texto_final: r?.texto_final ?? tema.value.texto_final,
     }
+    indicacao.value = lerConviteIndicacao(r?.indicacao)
     etapa.value = 'final'
     focarTopo()
   } catch (err) {
@@ -234,6 +260,19 @@ async function enviarTudo() {
     }
   } finally {
     enviando.value = false
+  }
+}
+
+/** Pré-visualização: com nota de promotor na pergunta principal, mostra o cartão de indicação de exemplo. */
+async function mostrarIndicacaoExemplo() {
+  const p = principal.value
+  if (!props.indicacaoExemplo || !p || !notaDaDireitoAIndicacao(p.tipo, respostas[p.id])) return
+  const meu = ++pedidoExemplo
+  try {
+    const c = await props.indicacaoExemplo()
+    if (meu === pedidoExemplo && etapa.value === 'final') indicacao.value = c
+  } catch {
+    /* sem o exemplo, a tela final fica como está */
   }
 }
 
@@ -332,6 +371,7 @@ defineExpose({ recomecar: iniciar, irParaPergunta })
           </span>
           <h1 tabindex="-1" data-titulo-tela class="text-2xl font-extrabold text-slate-900 focus:outline-none">{{ v(telaFinal?.titulo_final) }}</h1>
           <p v-if="telaFinal?.texto_final" class="max-w-md whitespace-pre-line text-base text-slate-600">{{ v(telaFinal.texto_final) }}</p>
+          <CartaoIndicacao v-if="indicacao" class="mt-3" :convite="indicacao" :empresa="variaveis.empresa ?? ''" :enviar="indicar" />
           <button v-if="previa" type="button" class="mt-4 text-sm font-semibold text-slate-600 underline underline-offset-4 hover:text-slate-900" @click="iniciar">
             Ver de novo
           </button>

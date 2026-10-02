@@ -225,6 +225,13 @@ onMounted(carregar)
           <code class="font-mono text-xs">convite: {evento, referencia}</code>; em <code class="font-mono text-xs">contato.descadastrado</code>,
           traz <code class="font-mono text-xs">{email_mascarado, contato_id, origem}</code>.
         </p>
+        <p data-formato-indicacoes>
+          Em <code class="font-mono text-xs">indicacao.criada</code> (pela pesquisa ou registrada pela equipe) e
+          <code class="font-mono text-xs">indicacao.atualizada</code> (mudou de situação), <code class="font-mono text-xs">dados</code> traz o item
+          da lista de indicações:
+          <code class="font-mono text-xs [overflow-wrap:anywhere]">{id, origem, nome, empresa, telefone, email, observacao, indicador: {contato, empresa}, pode_identificar, responsavel, situacao, valor_mensal, motivo, criada_em, atualizada_em}</code>;
+          em <code class="font-mono text-xs">indicacao.atualizada</code>, também <code class="font-mono text-xs">situacao_anterior</code>.
+        </p>
         <p>
           Cabeçalhos: <code class="font-mono text-xs">X-Toqqi-Evento</code>, <code class="font-mono text-xs">X-Toqqi-Entrega</code> (id único, use para não
           processar duas vezes) e <code class="font-mono text-xs">X-Toqqi-Assinatura</code> no formato <code class="font-mono text-xs">t=&lt;unix&gt;,v1=&lt;hex&gt;</code>,

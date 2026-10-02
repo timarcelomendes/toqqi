@@ -21,3 +21,9 @@ export function corDoTexto(fundo: string): string {
   const contrastePreto = (l + 0.05) / 0.05
   return contrasteBranco >= contrastePreto || contrasteBranco >= 4.5 ? '#ffffff' : '#111827'
 }
+
+/** Variáveis CSS da cor da pesquisa (botões, foco, fundos suaves), as mesmas da página pública. */
+export function variaveisDaCor(cor: string | null | undefined): Record<string, string> {
+  const c = corValida(cor)
+  return { '--cor': c, '--cor-texto': corDoTexto(c), '--cor-suave': `color-mix(in srgb, ${c} 10%, white)` }
+}

@@ -12,6 +12,8 @@ declare module 'vue-router' {
     /** Página que exige estar logado. */
     logado?: boolean
     permissao?: Permissao
+    /** Basta uma destas permissões (ex.: Configurações › Crescimento, que também abre para quem vê o Crescimento). */
+    algumaPermissao?: Permissao[]
     superadmin?: boolean
     /** Só para o perfil administrador da conta. */
     admin?: boolean
@@ -58,6 +60,9 @@ const rotas: RouteRecordRaw[] = [
       // Etapa 4b: uma tela com 7 abas; a aba e os filtros ficam no endereço (/relatorios/temas?periodo=30).
       { path: 'relatorios', redirect: (to) => ({ path: '/relatorios/empresas', query: to.query }) },
       { path: 'relatorios/:aba', name: 'relatorios', component: () => import('@/modulos/relatorios/RelatoriosView.vue'), meta: { titulo: 'Relatórios', permissao: 'relatorios.ver' } },
+      // Etapa 5c: Crescimento com as abas Indicações e Oportunidades; a aba e os filtros ficam no endereço.
+      { path: 'crescimento', redirect: (to) => ({ path: '/crescimento/indicacoes', query: to.query }) },
+      { path: 'crescimento/:aba', name: 'crescimento', component: () => import('@/modulos/crescimento/CrescimentoView.vue'), meta: { titulo: 'Crescimento', permissao: 'crescimento.ver' } },
       // Etapa 5a: planos, fatura em aberto, trocar de plano, dados de cobrança, cancelar e histórico.
       { path: 'assinatura', name: 'assinatura', component: () => import('@/modulos/assinatura/AssinaturaView.vue'), meta: { titulo: 'Assinatura', permissao: 'assinatura.gerenciar' } },
       // Etapa 5b: tópicos e seções da ajuda (/ajuda/contatos#importar-planilha); trocar de tópico não rola a página (a tela cuida).
@@ -72,6 +77,7 @@ const rotas: RouteRecordRaw[] = [
           if (sessao.pode('configuracoes.gerenciar')) return '/configuracoes/empresa'
           if (sessao.pode('envios.ver')) return '/configuracoes/envios'
           if (sessao.pode('acoes.ver')) return '/configuracoes/acoes'
+          if (sessao.pode('crescimento.ver')) return '/configuracoes/crescimento'
           return '/inicio'
         },
       },
@@ -79,6 +85,13 @@ const rotas: RouteRecordRaw[] = [
       { path: 'configuracoes/seguranca', name: 'seguranca', component: () => import('@/modulos/configuracoes/SegurancaView.vue'), meta: { titulo: 'Segurança', permissao: 'configuracoes.gerenciar' } },
       { path: 'configuracoes/envios', name: 'config-envios', component: () => import('@/modulos/configuracoes/ConfigEnviosView.vue'), meta: { titulo: 'Configurações de envio', permissao: 'envios.ver' } },
       { path: 'configuracoes/acoes', name: 'config-acoes', component: () => import('@/modulos/configuracoes/ConfigAcoesView.vue'), meta: { titulo: 'Configurações dos planos de ação', permissao: 'acoes.ver' } },
+      // Etapa 5c: alterar pede configuracoes.gerenciar; quem vê o Crescimento abre para consultar.
+      {
+        path: 'configuracoes/crescimento',
+        name: 'config-crescimento',
+        component: () => import('@/modulos/configuracoes/ConfigCrescimentoView.vue'),
+        meta: { titulo: 'Configurações de crescimento', algumaPermissao: ['configuracoes.gerenciar', 'crescimento.ver'] },
+      },
       { path: 'configuracoes/ia', name: 'config-ia', component: () => import('@/modulos/configuracoes/IaView.vue'), meta: { titulo: 'Inteligência artificial', permissao: 'configuracoes.gerenciar' } },
       { path: 'integracoes', name: 'integracoes', component: () => import('@/modulos/integracoes/IntegracoesView.vue'), meta: { titulo: 'Integrações', admin: true } },
       { path: 'auditoria', name: 'auditoria', component: () => import('@/modulos/auditoria/AuditoriaView.vue'), meta: { titulo: 'Auditoria', permissao: 'auditoria.ver' } },
@@ -161,7 +174,7 @@ router.beforeEach(async (to) => {
     avisar.atencao('Só um administrador da sua empresa pode abrir essa página.')
     return { name: 'inicio' }
   }
-  if (to.meta.permissao && !sessao.pode(to.meta.permissao)) {
+  if ((to.meta.permissao && !sessao.pode(to.meta.permissao)) || (to.meta.algumaPermissao && !to.meta.algumaPermissao.some((p) => sessao.pode(p)))) {
     avisar.atencao('Seu perfil não tem acesso a essa página. Fale com um administrador da sua empresa.')
     return { name: 'inicio' }
   }

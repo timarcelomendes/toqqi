@@ -14,6 +14,7 @@ from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.errors import AppError
 from toqqi.core.security import hash_token
 from toqqi.modelos import Conta, Contato, Convite, Formulario, Resposta
+from toqqi.modulos.crescimento import indicacoes
 from toqqi.modulos.imagens.servico import logo_para_cliente
 from toqqi.modulos.respostas.convites import CANAL_RESPOSTA, limpar_contexto
 from toqqi.modulos.respostas.registro import (
@@ -86,16 +87,31 @@ def abrir_convite(token: str) -> dict:
 
 
 def responder_convite(token: str, respostas: dict, ip: str | None) -> dict:
+    """{titulo_final, texto_final, indicacao}: `indicacao` = {titulo, texto, recompensa} do convite de indicação
+    (etapa 5c) quando a nota dá direito e as indicações estão ligadas na conta liberada; senão null."""
     conta_id, convite_id = _achar_convite(token)
     with em_conta(conta_id) as s:
         c = s.get(Convite, convite_id, with_for_update=True)  # uma resposta por convite, mesmo em corrida
         if c.respondido_em is not None:
             raise AppError(409, "ja_respondido", "Você já respondeu esta pesquisa. Obrigado!")
         f, contato, v = _dados_convite(s, c)
-        gravar_resposta(s, f, respostas, CANAL_RESPOSTA[c.canal], v, contato=contato, empresa_id=c.empresa_id,
-                        convite_id=c.id, contexto=c.contexto, referencia=c.referencia, ip_hash=ip_hash(ip))
+        r = gravar_resposta(s, f, respostas, CANAL_RESPOSTA[c.canal], v, contato=contato, empresa_id=c.empresa_id,
+                            convite_id=c.id, contexto=c.contexto, referencia=c.referencia, ip_hash=ip_hash(ip))
         c.respondido_em = func.now()
-        return texto_final(f, v)
+        return {**texto_final(f, v), "indicacao": indicacoes.convite_de_indicacao(s, r, v)}
+
+
+def indicar(token: str, dados) -> dict:
+    """Indicação feita na tela final da pesquisa (só pelo convite: o link público não tem a quem atribuir). A repetida
+    (mesmo telefone ou e-mail de uma indicação aberta) responde igual, sem criar outra. Formulário desativado ou
+    arquivado depois da resposta: 409 `indicacao_indisponivel` (como a resposta arquivada)."""
+    conta_id, convite_id = _achar_convite(token)
+    with em_conta(conta_id) as s:
+        c = s.get(Convite, convite_id, with_for_update=True)  # o limite de 3 por convite não corre
+        if not _disponivel(s.get(Formulario, c.formulario_id)):
+            raise indicacoes.indisponivel()
+        indicacoes.criar_publica(s, c, dados)
+    return {"mensagem": indicacoes.MSG_OBRIGADO}
 
 
 # ---- link público do formulário --------------------------------------------

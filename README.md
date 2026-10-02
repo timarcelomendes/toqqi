@@ -35,6 +35,7 @@ Os testes rodam no GitHub a cada envio (`.github/workflows/testes.yml`).
 | 5a. Assinatura e cobrança pelo Asaas | pronta (testada no sandbox) | `docs/api-etapa-5a.md` |
 | 5b. Ajuda e assistente (chat com os dados da conta e a cota de IA do plano) | pronta (falta conferir com a chave da OpenAI) | `docs/api-etapa-5b.md` |
 | Extra: aceite dos Termos e da Política de privacidade (LGPD) e aviso de cookies | pronta (textos são rascunho: revisar com advogado e preencher os `[a confirmar]`) | `docs/api-aceite-lgpd.md` |
+| 5c. Crescimento: indicações dos promotores e oportunidades de oferta | pronta | `docs/api-etapa-5c.md` |
 | 5. Resto: resumo do painel e outras funções de IA, Teams, Fillout, e-mails, auditoria, zona de risco · 6. Troca | depois | — |
 
 ## Publicação (Render)

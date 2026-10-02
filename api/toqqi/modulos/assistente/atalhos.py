@@ -20,6 +20,7 @@ ATALHOS: dict[str, Atalho] = {a.chave: a for a in (
     Atalho("formularios", "Formulários", "/formularios", "formularios.ver"),
     Atalho("respostas", "Respostas", "/respostas", "respostas.ver"),
     Atalho("planos_de_acao", "Planos de ação", "/planos-de-acao", "acoes.ver"),
+    Atalho("crescimento", "Crescimento", "/crescimento/indicacoes", "crescimento.ver"),
     Atalho("relatorios", "Relatórios", "/relatorios/empresas", "relatorios.ver"),
     Atalho("equipe", "Equipe", "/equipe", "equipe.gerenciar"),
     Atalho("config_empresa", "Dados da empresa", "/configuracoes/empresa", "configuracoes.gerenciar"),

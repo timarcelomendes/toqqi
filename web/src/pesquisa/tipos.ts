@@ -73,6 +73,29 @@ export type Respostas = Record<string, ValorResposta>
 export interface TelaFinal {
   titulo_final: string
   texto_final: string
+  /**
+   * Etapa 5c: convite para indicar outra empresa. Só no convite individual, com indicações ligadas na conta e nota
+   * principal de promotor (NPS 9–10) ou CSAT 5. Textos já com as variáveis trocadas.
+   */
+  indicacao?: ConviteIndicacao | null
+}
+
+/** Etapa 5c: o cartão de indicação da tela final (texto puro). */
+export interface ConviteIndicacao {
+  titulo: string
+  texto: string
+  recompensa: string | null
+}
+
+/** Corpo de POST /publico/convites/{token}/indicacoes. Opcionais vazios vão como null; telefone só com dígitos. */
+export interface DadosIndicacao {
+  nome: string
+  empresa: string | null
+  telefone: string | null
+  email: string | null
+  observacao: string | null
+  pode_identificar: boolean
+  confirmo: boolean
 }
 
 export const CAMPOS_CONTEXTO = ['pedido', 'nota_fiscal', 'rota', 'motorista', 'filial', 'transportadora'] as const
