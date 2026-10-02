@@ -161,14 +161,22 @@ export const PRIVACIDADE: DocumentoLegal = {
         {
           tipo: 'p',
           texto:
-            'Usamos a OpenAI (Estados Unidos) em dois recursos. A análise de comentários já vem ligada, e a empresa assinante pode desligá-la em Configurações › IA. O ToqqiAI, o assistente de IA do Toqqi, fica disponível para os usuários da conta enquanto a IA estiver disponível e a assinatura estiver em dia, e só envia dados quando alguém faz uma pergunta.',
+            'Usamos a OpenAI (Estados Unidos) em cinco recursos. A análise de comentários e os passos sugeridos nas ações já vêm ligados, e a empresa assinante pode desligá-los em Configurações › IA. O resumo do painel, o parecer dos relatórios e o ToqqiAI, o assistente de IA do Toqqi, só enviam dados quando alguém da conta pede (clica em gerar o resumo ou o parecer, ou faz uma pergunta). Todos funcionam enquanto a IA estiver disponível e a assinatura estiver em dia.',
         },
         {
           tipo: 'lista',
           itens: [
-            'Análise de respostas: vão para a OpenAI o texto do comentário do cliente (cortado em 500 caracteres), as opções que ele marcou e a nota, para classificar temas e sentimento automaticamente. A empresa pode corrigir o resultado. Não enviamos o nome, o e-mail nem o telefone do cliente nesse recurso.',
+            'Análise de comentários: vão para a OpenAI o texto do comentário do cliente (cortado em 500 caracteres), as opções que ele marcou e a nota, para classificar temas e sentimento automaticamente. A empresa pode corrigir o resultado. Não enviamos o nome, o e-mail nem o telefone do cliente nesse recurso.',
+            'Passos das ações: quando uma ação é criada a partir de uma resposta, vão para a OpenAI o tipo, a nota e o grupo dessa resposta, o comentário do cliente (cortado em 500 caracteres) e as opções que ele marcou, e as últimas 5 respostas da mesma empresa (data, tipo, nota e comentário, cortado em 300 caracteres), para sugerir até 3 passos. Nesse recurso não enviamos o nome da empresa nem do contato, o e-mail, o telefone ou os dados do pedido.',
+            'Resumo do painel: quando alguém pede o resumo, vão para a OpenAI o nome da conta (nas instruções para a IA), o nome do grupo de empresas filtrado, se houver, os números do período e dos filtros escolhidos (NPS, CSAT, taxa de resposta, temas, evolução, ações abertas e vencidas e receita em risco), os nomes das empresas de menor e de maior NPS, os picos de reclamação e até 8 comentários de clientes do período (cortados em 300 caracteres, sem o nome, o e-mail ou o telefone de quem respondeu).',
+            'Parecer dos relatórios: quando alguém pede o parecer, vão para a OpenAI o nome da conta (nas instruções para a IA), o nome do grupo de empresas filtrado, se houver, os números dos relatórios no período e nos filtros escolhidos (empresas, cobertura, receita, matriz NPS × valor, temas, responsáveis e operação) e os desta semana, com nomes de empresas e de responsáveis (por exemplo, as empresas a proteger e os responsáveis com mais receita em risco). Não enviamos nome, e-mail ou telefone de contatos nesse recurso.',
             'ToqqiAI: vão para a OpenAI a pergunta do usuário, as últimas mensagens da conversa e os dados que o ToqqiAI consulta para responder (indicadores, nomes de empresas e contatos, comentários). Esses dados podem incluir nomes e comentários de clientes.',
           ],
+        },
+        {
+          tipo: 'p',
+          texto:
+            'Como desligar: a análise de comentários e os passos das ações se desligam em Configurações › IA. O resumo do painel e o parecer dos relatórios não rodam sozinhos: só quando alguém pede. O último resumo e o último parecer de cada combinação de filtros ficam guardados na conta, com a data e quem gerou, até alguém gerar de novo com os mesmos filtros, e são apagados junto com a conta.',
         },
         {
           tipo: 'p',
@@ -191,7 +199,7 @@ export const PRIVACIDADE: DocumentoLegal = {
           colunas: ['Fornecedor', 'Para quê', 'Onde fica', 'Que dados'],
           linhas: [
             ['Render', 'Hospedagem do sistema e banco de dados', 'Estados Unidos', 'Todos os dados do sistema'],
-            ['OpenAI', 'Inteligência artificial (análise de comentários e ToqqiAI)', 'Estados Unidos', 'Conforme a seção sobre IA, só se o recurso estiver ligado'],
+            ['OpenAI', 'Inteligência artificial (análise de comentários, passos das ações, resumo do painel, parecer dos relatórios e ToqqiAI)', 'Estados Unidos', 'Conforme a seção sobre IA: só com o recurso ligado ou quando alguém da conta pede'],
             ['Asaas', 'Cobrança e pagamentos', 'Brasil', 'Dados de cobrança da empresa assinante'],
             ['ZeptoMail (Zoho)', 'Envio de e-mails (pesquisas e e-mails do sistema)', 'Estados Unidos', 'Nome e e-mail do destinatário, conteúdo da mensagem'],
             ['Resend', 'Envio de e-mails, como provedor alternativo', 'Estados Unidos', 'Nome e e-mail do destinatário, conteúdo da mensagem'],

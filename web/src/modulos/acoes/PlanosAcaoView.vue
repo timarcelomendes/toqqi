@@ -42,6 +42,7 @@ import {
   type FiltrosQuadro,
 } from './logica'
 import { CATEGORIAS, categoriasDoTipo } from '@/modulos/respostas/logica'
+import type { PassosAtualizados } from '@/modulos/ia/logica'
 
 const rota = useRoute()
 const router = useRouter()
@@ -386,6 +387,18 @@ function aoSalvar(r: Acao, anterior: Acao) {
   agendarRecarga()
   if (mudouSituacao) fecharPainel()
 }
+/**
+ * Etapa 5d: o painel releu a ação e os passos da IA mudaram. Guarda os passos na mesma ação (no quadro e no painel), sem
+ * trocar o objeto: trocar refaria o formulário do painel e perderia o que a pessoa está editando.
+ */
+function aoMudarPassos(p: PassosAtualizados) {
+  for (const a of [acharNoQuadro(quadro.value, p.id), acaoAberta.value]) {
+    if (a && String(a.id) === String(p.id)) {
+      a.ia_passos = p.ia_passos
+      a.ia_passos_situacao = p.ia_passos_situacao
+    }
+  }
+}
 /** O painel buscou a ação de novo depois de um erro: o cartão acompanha. */
 function aoRecarregar(nova: Acao) {
   const noQuadro = acharNoQuadro(quadro.value, nova.id)
@@ -598,6 +611,7 @@ onBeforeUnmount(() => {
     @salva="aoSalvar"
     @excluida="aoExcluir"
     @recarregada="aoRecarregar"
+    @passos="aoMudarPassos"
   />
   <ModalNovaAcao v-model:aberto="novaAberta" @criada="aoCriar" />
   <ModalConcluidas v-model:aberto="concluidasAbertas" :filtros="filtrosApi" @abrir="abrir" />

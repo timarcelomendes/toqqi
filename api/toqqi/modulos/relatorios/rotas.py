@@ -6,7 +6,9 @@ from pydantic import BaseModel
 from toqqi.core.deps import Contexto, requer
 from toqqi.core.filtros import DataFiltro
 from toqqi.core.paginacao import Pagina, pagina
+from toqqi.modulos.ia import pareceres
 from toqqi.modulos.relatorios import servico
+from toqqi.modulos.relatorios.parecer_ia import TIPO as PARECER_IA
 from toqqi.modulos.relatorios.regras import FAIXAS_TEMPO, FAIXAS_VALOR, QUADRANTES, ROTULOS_DIMENSAO
 from toqqi.modulos.respostas.esquemas import Busca, Id, Opcional
 from toqqi.modulos.respostas.rotas import csv_resposta
@@ -111,6 +113,19 @@ def empresas_do_responsavel(responsavel_id: int, filtros: Annotated[FiltrosComun
 @router.get("/operacao")
 def operacao(filtros: Annotated[FiltrosComuns, Query()], ctx: Contexto = Depends(VER)):
     return servico.operacao(ctx, filtros)
+
+
+# ---- parecer da IA (etapa 5d) ---------------------------------------------------------
+
+@router.get("/parecer-ia")
+def parecer_ia(filtros: Annotated[FiltrosComuns, Query()], ctx: Contexto = Depends(VER)):
+    return pareceres.estado(ctx, PARECER_IA, pareceres.Recorte.dos_filtros(filtros))
+
+
+@router.post("/parecer-ia")
+def gerar_parecer_ia(dados: FiltrosComuns | None = None, ctx: Contexto = Depends(VER)):
+    # síncrona: segura uma thread da API por até 45 s; as vagas do assistente limitam quantas ao mesmo tempo
+    return pareceres.gerar(ctx, PARECER_IA, pareceres.Recorte.dos_filtros(dados or FiltrosComuns()))
 
 
 @router.get("/operacao/sem-resposta.csv")

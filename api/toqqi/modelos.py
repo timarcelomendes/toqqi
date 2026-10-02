@@ -67,6 +67,10 @@ class Conta(Base):
     # cópia do primeiro vencimento da assinatura ativa (null sem assinatura ativa): a regra de "liberada" sai só da
     # linha da conta, lida a cada requisição
     primeiro_vencimento: Mapped[date | None] = mapped_column(Date)
+    # etapa 5d: como a IA escreve (Configurações › IA) e os passos sugeridos nas ações
+    ia_modelo: Mapped[str] = mapped_column(Text, server_default="equilibrado")  # rapido | equilibrado | detalhado
+    ia_estilo: Mapped[str] = mapped_column(Text, server_default="equilibrada")  # objetiva | equilibrada | criativa
+    ia_passos_acoes: Mapped[bool] = mapped_column(Boolean, server_default="true")
 
 
 class Usuario(Base):
@@ -485,6 +489,12 @@ class Acao(Base):
     iniciada_em: Mapped[datetime | None] = mapped_column(TZ)
     concluida_em: Mapped[datetime | None] = mapped_column(TZ)
     concluida_por: Mapped[int | None] = mapped_column(BigInteger)
+    # etapa 5d: passos sugeridos pela IA (null = a ação não passa pela IA)
+    ia_passos: Mapped[list | None] = mapped_column(JSONB(none_as_null=True))  # 1 a 3 textos, só com 'pronta'
+    ia_passos_situacao: Mapped[str | None] = mapped_column(Text)  # pendente | pronta | falhou | limite
+    ia_passos_em: Mapped[datetime | None] = mapped_column(TZ)
+    ia_passos_tentativas: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    ia_passos_reservada_em: Mapped[datetime | None] = mapped_column(TZ)
 
 
 class ConfigAcoes(Base):
@@ -526,6 +536,21 @@ class IaUsoMensal(Base):
     cota_usada: Mapped[int] = mapped_column(Integer, server_default="0")
     cota_tokens_entrada: Mapped[int] = mapped_column(BigInteger, server_default="0")
     cota_tokens_saida: Mapped[int] = mapped_column(BigInteger, server_default="0")
+
+
+class IaParecer(Base):
+    """Etapa 5d: o último resumo do painel ou parecer dos relatórios gerado para um recorte (filtros canônicos)."""
+    __tablename__ = "ia_pareceres"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    tipo: Mapped[str] = mapped_column(Text)  # painel | relatorios
+    chave: Mapped[str] = mapped_column(Text)  # filtros canônicos: de=…|ate=…|grupo=…|ativos=1
+    filtros: Mapped[dict] = mapped_column(JSONB)  # {de, ate, grupo_id, so_ativos}
+    conteudo: Mapped[dict] = mapped_column(JSONB)
+    modelo: Mapped[str] = mapped_column(Text)  # o nível: rapido | equilibrado | detalhado
+    estilo: Mapped[str] = mapped_column(Text)
+    gerado_por: Mapped[int | None] = mapped_column(BigInteger)
+    gerado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
 
 
 class AlertaPico(Base):

@@ -1,15 +1,28 @@
 import re
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import urlsplit, urlunsplit
 
-from pydantic import BaseModel, BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, Field, model_validator
 from pydantic_core import PydanticCustomError
 
+from toqqi.core.ia_texto import NIVEIS, VALORES_ESTILO
 from toqqi.core.validacao import Documento, EmailOpcional, Telefone, TextoAte, dominio_valido
+
+MSG_IA_VAZIO = "Envie pelo menos uma configuração para mudar."
 
 
 class IaIn(BaseModel):
-    analise_respostas: bool
+    """PUT /conta/ia (etapa 5d): corpo parcial; só os campos enviados (não nulos) mudam, e pelo menos um vem."""
+    analise_respostas: bool | None = None
+    modelo: Literal[NIVEIS] | None = None  # type: ignore[valid-type]
+    estilo: Literal[VALORES_ESTILO] | None = None  # type: ignore[valid-type]
+    passos_acoes: bool | None = None
+
+    @model_validator(mode="after")
+    def _pelo_menos_um(self):
+        if all(getattr(self, campo) is None for campo in type(self).model_fields):
+            raise PydanticCustomError("toqqi_ia", MSG_IA_VAZIO)
+        return self
 
 
 class SegurancaIn(BaseModel):

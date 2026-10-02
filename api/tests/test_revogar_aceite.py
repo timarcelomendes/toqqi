@@ -11,8 +11,10 @@ from alembic import command
 from toqqi.core.auditoria import ROTULOS
 from toqqi.core.db import RAIZ_API
 from toqqi.core.rate_limit import limiter
+from toqqi.modulos.acesso import termos
 
 UA = "Mozilla/5.0 (Windows NT 10.0) Chrome/120.0 Safari/537.36"
+V = termos.VERSAO_DOCUMENTOS  # a versão atual
 MSG = "Aceite retirado. Para voltar a usar o Toqqi, entre de novo e aceite os termos."
 
 
@@ -23,7 +25,7 @@ def _aceite(client, h) -> dict:
 
 
 def _aceitar(client, h):
-    return client.post(f"{API}/eu/aceite", headers={**h, "User-Agent": UA}, json={"versao": 1})
+    return client.post(f"{API}/eu/aceite", headers={**h, "User-Agent": UA}, json={"versao": V})
 
 
 def _revogar(client, h, corpo=None, ua: str | None = "Navegador da retirada"):
@@ -81,16 +83,15 @@ def test_revogar_deixa_pendente_e_encerra_todas_as_sessoes(client, admin, dono):
 
 
 def test_revogar_marca_todas_as_linhas_em_vigor(client, admin, dono, monkeypatch):
-    from toqqi.modulos.acesso import termos
-    monkeypatch.setattr(termos, "VERSAO_DOCUMENTOS", 2)
-    assert client.post(f"{API}/eu/aceite", headers=admin["h"], json={"versao": 2}).status_code == 200
+    monkeypatch.setattr(termos, "VERSAO_DOCUMENTOS", V + 1)
+    assert client.post(f"{API}/eu/aceite", headers=admin["h"], json={"versao": V + 1}).status_code == 200
     assert _revogar(client, admin["h"]).status_code == 200
     linhas = sql(dono, "select versao, revogado_em is not null from aceites_termos where usuario_id = :u "
                        "order by versao", u=admin["usuario"]["id"])
-    assert [tuple(x) for x in linhas] == [(1, True), (2, True)]
+    assert [tuple(x) for x in linhas] == [(V, True), (V + 1, True)]
     (aud,) = sql(dono, "select detalhe, gravidade, usuario_id, conta_id from auditoria "
                        "where evento = 'termos_revogados'")
-    assert aud.detalhe == {"versao": 2}
+    assert aud.detalhe == {"versao": V + 1}
     assert (aud.usuario_id, aud.conta_id) == (admin["usuario"]["id"], admin["conta"]["id"])
 
 
@@ -102,11 +103,11 @@ def test_aceitar_de_novo_cria_linha_nova(client, gestor, dono):
     r = _aceitar(client, h)
     assert r.status_code == 200, r.text
     corpo = r.json()
-    assert corpo["versao_aceita"] == 1 and corpo["pendente"] is False and corpo["revogado_em"] is None
+    assert corpo["versao_aceita"] == V and corpo["pendente"] is False and corpo["revogado_em"] is None
     assert _aceite(client, h) == corpo
     linhas = sql(dono, "select versao, origem, revogado_em is not null as revogada from aceites_termos "
                        "where usuario_id = :u order by id", u=gid)
-    assert [tuple(x) for x in linhas] == [(1, "tela", True), (1, "tela", False)]  # o histórico fica inteiro
+    assert [tuple(x) for x in linhas] == [(V, "tela", True), (V, "tela", False)]  # o histórico fica inteiro
     eventos = sql(dono, "select evento from auditoria where usuario_id = :u and evento like 'termos_%' order by id",
                   u=gid)
     assert [e for (e,) in eventos] == ["termos_aceitos", "termos_revogados", "termos_aceitos"]
@@ -200,11 +201,11 @@ def test_rls_retirada_nao_cruza_contas(client, admin, app_engine):
 def test_indice_unico_parcial(admin, dono):
     u, c = admin["usuario"]["id"], admin["conta"]["id"]
     inserir = ("insert into aceites_termos (conta_id, usuario_id, usuario_email, usuario_nome, versao, origem) "
-               "values (:c, :u, 'ana@alfa.com.br', 'Ana', 1, 'tela')")
+               "values (:c, :u, 'ana@alfa.com.br', 'Ana', :v, 'tela')")
     with pytest.raises(IntegrityError):  # duas linhas em vigor da mesma versão: não
-        sql(dono, inserir, c=c, u=u)
+        sql(dono, inserir, c=c, u=u, v=V)
     sql(dono, "update aceites_termos set revogado_em = now() where usuario_id = :u", u=u)
-    sql(dono, inserir, c=c, u=u)  # com a anterior revogada: sim
+    sql(dono, inserir, c=c, u=u, v=V)  # com a anterior revogada: sim
     with pytest.raises(IntegrityError):  # o navegador da retirada também é cortado em 400
         sql(dono, "update aceites_termos set revogado_agente = repeat('x', 401) where usuario_id = :u", u=u)
 

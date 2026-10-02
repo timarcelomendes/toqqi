@@ -328,7 +328,7 @@ describe('tela "Antes de continuar"', () => {
     expect(botao(w, 'aceitar').element.disabled).toBe(false)
     await botao(w, 'aceitar').trigger('click')
     await flushPromises()
-    expect(api.chamadas.map((c) => [c.metodo, c.caminho, c.corpo])).toEqual([['POST', '/eu/aceite', { versao: 1 }]])
+    expect(api.chamadas.map((c) => [c.metodo, c.caminho, c.corpo])).toEqual([['POST', '/eu/aceite', { versao: VERSAO_DOCUMENTOS }]])
     expect(useSessaoStore().usuario?.aceite).toEqual(EM_DIA)
     expect(router.currentRoute.value.fullPath).toBe('/contatos?pagina=2')
   })
@@ -343,10 +343,10 @@ describe('tela "Antes de continuar"', () => {
     expect(router.currentRoute.value.path).toBe('/inicio')
   })
 
-  it('versão nova: texto de atualização', async () => {
+  it('versão nova: texto de atualização, com a data em que a versão 2 passou a valer', async () => {
     entrar({ versao_atual: 2, versao_aceita: 1, aceito_em: '2026-01-01T12:00:00Z', pendente: true })
     const w = await abrir(AceiteView, '/aceite')
-    expect(t(w.get('[data-teste="abertura"]').text())).toMatch(/^Atualizamos os Termos de uso e a Política de privacidade em \d{2}\/\d{2}\/\d{4}\./)
+    expect(t(w.get('[data-teste="abertura"]').text())).toMatch(/^Atualizamos os Termos de uso e a Política de privacidade em 02\/10\/2026\./)
   })
 
   it('409 com a API na mesma versão do site: recarrega /eu, desmarca e mostra o aviso; fica na tela', async () => {

@@ -10,7 +10,8 @@ resposta; o banco garante com índice único parcial):
 - CSAT insatisfeito (1–2): alta, hoje + prazo_detrator, "[CSAT {nota}] Cliente insatisfeito: {assunto}".
 
 `alvo` = empresa, senão contato, senão "cliente sem cadastro"; `assunto` = contexto.assunto, senão o assunto do
-convite, senão `alvo`. Responsável = responsável da empresa. Hoje = data em São Paulo (`relogio`).
+convite, senão `alvo`. Responsável = responsável da empresa. Hoje = data em São Paulo (`relogio`). Etapa 5d: a ação
+nova pode ficar com os passos da IA pendentes (`acoes.passos.marcar`; quem grava usa também `coletar_passos()`).
 
 Descrição: o comentário do cliente (só o que ele escreveu), as opções que marcou, o contato (só o nome: a ação já
 leva ao cadastro) e o contexto do pedido.
@@ -33,6 +34,7 @@ from sqlalchemy.orm import Session
 from toqqi.core import email, relogio
 from toqqi.core.config import config
 from toqqi.modelos import Acao, Contato, Convite, Empresa, Formulario, Responsavel, Resposta
+from toqqi.modulos.acoes import passos
 from toqqi.modulos.acoes.configuracao import obter
 from toqqi.modulos.envios.configuracao import provedor_ok
 from toqqi.modulos.formularios.servico import ROTULOS_CONTEXTO
@@ -164,6 +166,7 @@ def criar_acao_automatica(s: Session, r: Resposta) -> Acao | None:
                 tipo_nota=r.tipo_nota, nota=r.nota, criada_em=agora, atualizada_em=agora)
     s.add(acao)
     s.flush()
+    passos.marcar(s, r.conta_id, acao, r)  # etapa 5d: passos sugeridos pela IA, depois do commit
     if prioridade == "alta" and acao.responsavel_id is not None:
         responsavel = s.get(Responsavel, acao.responsavel_id)
         lista = _coletados.get()

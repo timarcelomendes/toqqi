@@ -6,7 +6,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Check, ChevronDown, Download, HelpCircle, LineChart, Table2 } from 'lucide-vue-next'
-import { mensagemDoErro, painelApi, type FiltrosPainel, type GrupoNota, type Id, type Painel } from '@/api'
+import { mensagemDoErro, painelApi, type FiltrosGeracaoIa, type FiltrosPainel, type GrupoNota, type Id, type Painel } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { useAssistenteStore } from '@/stores/assistente'
 import { useCadastrosStore } from '@/stores/cadastros'
@@ -23,6 +23,7 @@ import BlocoTemas from './BlocoTemas.vue'
 import BlocoTom from './BlocoTom.vue'
 import CartaoMovimentacao from './CartaoMovimentacao.vue'
 import CartaoResumo from './CartaoResumo.vue'
+import CartaoResumoIa from './CartaoResumoIa.vue'
 import CartoesIndicadores from './CartoesIndicadores.vue'
 import GraficoEvolucao from './GraficoEvolucao.vue'
 import PrimeirosPassos from './PrimeirosPassos.vue'
@@ -143,6 +144,11 @@ const consultaRespostas = computed(() => {
   return q
 })
 const consultaNps = computed(() => ({ ...consultaRespostas.value, tipo_nota: 'nps' }))
+/** Etapa 5d: o resumo da IA é dos mesmos filtros dos números na tela (lê de novo quando eles mudam). */
+const filtrosResumo = computed<FiltrosGeracaoIa>(() => {
+  const f = filtrosNaTela.value
+  return { ...f.intervalo, ...(f.grupo_id !== '' ? { grupo_id: f.grupo_id } : {}), so_ativos: f.so_ativos }
+})
 const podeVerRespostas = computed(() => sessao.pode('respostas.ver'))
 function linkGrupo(g: GrupoNota) {
   return podeVerRespostas.value ? { path: '/respostas', query: { ...consultaNps.value, categoria: g } } : undefined
@@ -382,6 +388,7 @@ onBeforeUnmount(() => {
       :link-grupo="linkGrupo"
       @perguntar="perguntarAoToqqiAI"
     />
+    <CartaoResumoIa :filtros="filtrosResumo" :periodo="filtrosNaTela.rotulo" />
 
     <CartoesIndicadores :atencao="dados.atencao" :csat="dados.csat" :taxa="dados.taxa_resposta" />
 

@@ -71,8 +71,9 @@ export function lerErroApi(status: number, corpo: unknown): ApiError {
   const codigo = erro && typeof erro.codigo === 'string' && erro.codigo ? erro.codigo : codigoPadrao(status)
   let mensagem =
     erro && typeof erro.mensagem === 'string' && erro.mensagem.trim() ? erro.mensagem : mensagemPadrao(status)
-  // 429 sempre com o mesmo texto, simples e direto.
-  if (status === 429) mensagem = MENSAGEM_MUITAS_TENTATIVAS
+  // 429 sempre com o mesmo texto, simples e direto. Menos o `aguarde` do resumo e do parecer da IA (etapa 5d), que diz
+  // quantos segundos faltam ("Aguarde 12 s para gerar de novo.") ou que outro já está sendo gerado.
+  if (status === 429 && codigo !== 'aguarde') mensagem = MENSAGEM_MUITAS_TENTATIVAS
   return new ApiError(status, codigo, mensagem, erro ? lerCampos(erro.campos) : {})
 }
 

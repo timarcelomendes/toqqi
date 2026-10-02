@@ -88,6 +88,11 @@ para que o IP real do cliente seja usado no limite de tentativas, nas sessões e
 | `IA_MODELO` | Modelo da OpenAI (padrão `gpt-5-mini`) |
 | `IA_ESFORCO` | `reasoning.effort` enviado (padrão `minimal`; vazio = não manda `reasoning`) |
 | `IA_BASE_URL` | Endereço base da API da OpenAI (padrão `https://api.openai.com`) |
+| `IA_ASSISTENTE_MODELO` / `IA_ASSISTENTE_ESFORCO` | Modelo e `reasoning.effort` do assistente (padrão `gpt-5-mini` / `low`); também os do nível Equilibrado quando os dele estão vazios |
+| `IA_COTA_CORTESIA` | Análises de IA por mês (cota do plano) das contas em cortesia (padrão `500`) |
+| `IA_MODELO_RAPIDO` / `IA_ESFORCO_RAPIDO` | Nível "Rápido e econômico" de Configurações › IA (padrão `gpt-5-nano` / `minimal`). Ao trocar o modelo, confira o esforço: `minimal` só existe na família `gpt-5`; nos modelos 5.1 em diante o menor é `none` (com `minimal`, toda chamada desse nível volta 400) |
+| `IA_MODELO_EQUILIBRADO` / `IA_ESFORCO_EQUILIBRADO` | Nível "Equilibrado" (o padrão das contas); vazios (padrão) = os do assistente |
+| `IA_MODELO_DETALHADO` / `IA_ESFORCO_DETALHADO` | Nível "Mais detalhado" (padrão `gpt-5` / `low`). Em qualquer nível, esforço vazio = não manda `reasoning`; os níveis valem para o assistente, o resumo do painel, o parecer dos relatórios e os passos das ações (a análise de cada resposta segue com `IA_MODELO`/`IA_ESFORCO`) |
 | `ASAAS_API_KEY` | Chave de API do Asaas (da plataforma), na toqqi-api (e no toqqi-tarefas, se o Cron Job estiver ligado). Vazia = sem cobrança online |
 | `ASAAS_WEBHOOK_TOKEN` | Token do webhook do Asaas (cabeçalho `asaas-access-token`), só em toqqi-api. Vazio = webhook desligado (404) |
 | `ASAAS_URL` | Opcional: sobrepõe o endereço da API do Asaas (Asaas falso local). Vazio = o endereço segue a chave |
@@ -501,6 +506,26 @@ repetido) e `GET /simular/estado`. Aceita também as listas pela referência (`G
   Asaas por um aviso). Com a chave de sandbox e dados de produção, nada é apagado (ver "Trocar a chave").
 - Quem fica sem assinatura sem nunca ter pago volta ao plano `profissional` (o do teste), em qualquer caminho
   (cancelar, removida no Asaas, troca de ambiente).
+
+## Etapa 5d: IA sob demanda (resumo do painel, parecer dos relatórios, passos das ações), modelo e estilo
+Contrato em `../docs/api-etapa-5d.md`; migração `0013_ia_sob_demanda` (colunas em `contas` e `acoes`, tabela
+`ia_pareceres` com RLS forçado).
+- **Chamada única** (`core/ia_texto.py`): Responses API com formato JSON estrito, 45 s, `store: false`, dados num JSON
+  entre `<dados>` e `</dados>`. Também guarda os níveis de modelo (§5.2, variáveis `IA_MODELO_*`/`IA_ESFORCO_*`) e as
+  linhas de estilo (§5.3), usados pelo assistente (`core/ia_conversa.py`), pelo resumo, pelo parecer e pelos passos.
+- **Resumo e parecer** (`modulos/ia/pareceres.py`, com os dados e o formato em `painel/resumo_ia.py` e
+  `relatorios/parecer_ia.py`): 1 análise da cota do plano por geração (devolvida se falhar); vagas do assistente; a
+  trava "em andamento" é da memória de cada processo e a espera de 30 s sai do `gerado_em` no banco (só gerações bem
+  sucedidas contam). O último de cada recorte fica em `ia_pareceres` (upsert pela chave canônica dos filtros).
+- **Passos das ações** (`modulos/acoes/passos.py`): fora da cota do plano, só no teto de segurança mensal; pendentes
+  ao criar a ação de uma resposta, sugeridos depois do commit (coletor `coletar_passos()` nas rotas que gravam
+  respostas e no POST /acoes) ou pela tarefa `ia`, que passa a devolver `{analisadas, falharam, limite, passos:
+  {prontas, falharam, limite}}`.
+- **Provedor `memoria` no teste integrado** (a API em outro processo, sem `programar`): o resumo, o parecer e os passos
+  respondem com frases montadas a partir dos números recebidos; marcas no texto enviado mudam isso — `[ia:falha]`
+  (falha transitória: 503 no resumo/parecer, tentativa nos passos), `[ia:recusa]` (a IA recusa: 503 / passos
+  'falhou' na hora) e `[ia:demora=N]` (responde depois de N segundos, até 30). Num comentário de cliente (resumo e
+  passos) ou no nome da conta (resumo e parecer).
 
 ## Estrutura
 ```

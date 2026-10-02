@@ -23,6 +23,11 @@ resposta fica para a tarefa `ia`) e com tempo limite de 15 s, para não segurar 
 
 A análise de cada resposta não gasta a cota de IA do plano (etapa 5): só o teto de segurança mensal abaixo. A cota
 do plano (`ia.cota`, gasta pelo assistente) aparece em Configurações › IA (`cota`).
+
+Configurações › IA (etapa 5d): o estado ganha o nível do modelo e o estilo da conta (com as opções e os textos de
+`ia_texto`) e o interruptor dos passos das ações. O PUT é parcial (só os campos enviados mudam); desligar a análise
+cancela as respostas pendentes e desligar os passos cancela as ações pendentes; a auditoria `config_ia` leva só os
+campos que mudaram (nada mudou, nada vai).
 """
 import logging
 import threading
@@ -37,14 +42,14 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from toqqi.core import ia, relogio
+from toqqi.core import ia, ia_texto, relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError
 from toqqi.core.filtros import inicio_do_dia
 from toqqi.core.log_seguro import descrever_erro
-from toqqi.modelos import Conta, Formulario, IaUsoMensal, Resposta
+from toqqi.modelos import Acao, Conta, Formulario, IaUsoMensal, Resposta
 from toqqi.modulos.assinatura.regras import liberada
 from toqqi.modulos.ia import cota
 from toqqi.modulos.ia.regras import MIN_LETRAS, ia_ativa, passa_pela_ia, teto_mensal, texto_qualifica
@@ -346,7 +351,10 @@ def _estado(s: Session, conta: Conta) -> dict:
     return {"disponivel": ia.disponivel(), "provedor": ia.nome_provedor(),
             "analise_respostas": conta.ia_analise_respostas, "mes": mes.strftime("%Y-%m"),
             "analises": uso.analises if uso else 0, "limite": teto_mensal(conta), "pendentes": pendentes,
-            "falharam_no_mes": falharam, "cota": cota.estado(s, conta)}
+            "falharam_no_mes": falharam, "cota": cota.estado(s, conta),
+            # etapa 5d: como a IA escreve e os passos das ações
+            "modelo": conta.ia_modelo, "estilo": conta.ia_estilo, "passos_acoes": conta.ia_passos_acoes,
+            "modelos": ia_texto.opcoes_json(ia_texto.MODELOS), "estilos": ia_texto.opcoes_json(ia_texto.ESTILOS)}
 
 
 def obter(ctx: Contexto) -> dict:
@@ -354,16 +362,31 @@ def obter(ctx: Contexto) -> dict:
         return _estado(s, s.get(Conta, ctx.conta_id))
 
 
-def salvar(ctx: Contexto, ligar: bool) -> dict:
-    """Liga ou desliga a análise da conta; desligar cancela as pendentes (voltam a não passar pela IA)."""
+# campo do PUT /conta/ia → coluna de `contas`
+CAMPOS_CONFIG = {"analise_respostas": "ia_analise_respostas", "modelo": "ia_modelo", "estilo": "ia_estilo",
+                 "passos_acoes": "ia_passos_acoes"}
+
+
+def salvar(ctx: Contexto, dados) -> dict:
+    """PUT /conta/ia: só os campos enviados (não nulos) mudam. Desligar a análise cancela as respostas pendentes
+    (voltam a não passar pela IA); desligar os passos cancela as ações pendentes. Auditoria só com o que mudou."""
+    from toqqi.modulos.acoes.passos import cancelar_pendentes  # aqui: acoes.passos importa este módulo
+
+    novos = {c: getattr(dados, c) for c in CAMPOS_CONFIG if getattr(dados, c, None) is not None}
     with em_conta(ctx.conta_id) as s:
         conta = s.get(Conta, ctx.conta_id, with_for_update=True)
-        if conta.ia_analise_respostas != ligar:
-            conta.ia_analise_respostas = ligar
-            if not ligar:
-                s.execute(update(Resposta).where(Resposta.conta_id == ctx.conta_id, Resposta.ia_situacao == "pendente")
-                          .values(ia_situacao=None, ia_tentativas=0))
-            registrar(s, "config_ia", "info", {"analise_respostas": ligar}, usuario_id=ctx.usuario_id)
+        mudou = {}
+        for campo, coluna in CAMPOS_CONFIG.items():
+            if campo in novos and getattr(conta, coluna) != novos[campo]:
+                setattr(conta, coluna, novos[campo])
+                mudou[campo] = novos[campo]
+        if mudou.get("analise_respostas") is False:
+            s.execute(update(Resposta).where(Resposta.conta_id == ctx.conta_id, Resposta.ia_situacao == "pendente")
+                      .values(ia_situacao=None, ia_tentativas=0))
+        if mudou.get("passos_acoes") is False:
+            cancelar_pendentes(s, ctx.conta_id)
+        if mudou:
+            registrar(s, "config_ia", "info", mudou, usuario_id=ctx.usuario_id)
             s.flush()
         return _estado(s, conta)
 
@@ -385,7 +408,10 @@ def analisar_recentes(ctx: Contexto) -> dict:
         if not liberada(conta):
             raise _indisponivel("A análise com IA volta a funcionar quando a assinatura estiver em dia.")
         estado = _estado(s, conta)
-        saldo = estado["limite"] - estado["analises"] - estado["pendentes"]
+        # os passos das ações pendentes também vão consumir o teto (etapa 5d)
+        passos_pendentes = s.scalar(select(func.count()).select_from(Acao).where(
+            Acao.conta_id == ctx.conta_id, Acao.ia_passos_situacao == "pendente")) or 0
+        saldo = estado["limite"] - estado["analises"] - estado["pendentes"] - passos_pendentes
         marcadas = 0
         if saldo > 0:
             letras = func.length(func.regexp_replace(Resposta.comentario_cliente, "[^[:alpha:]]", "", "g"))
@@ -401,5 +427,5 @@ def analisar_recentes(ctx: Contexto) -> dict:
                         ia_sentimento=None, ia_resumo=None, ia_modelo=None, ia_em=None)
                 .execution_options(synchronize_session=False)).rowcount
         registrar(s, "ia_analisar_recentes", "info", {"marcadas": marcadas}, usuario_id=ctx.usuario_id)
-        restantes = max(0, estado["limite"] - estado["analises"] - estado["pendentes"] - marcadas)
+        restantes = max(0, saldo - marcadas)
         return {"marcadas": marcadas, "restantes_no_mes": restantes}

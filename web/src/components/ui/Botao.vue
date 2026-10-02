@@ -20,6 +20,11 @@ const props = withDefaults(
     href?: string
     /** Botão só com ícone: informe o texto para leitores de tela. */
     somenteIcone?: string
+    /**
+     * Desabilitado ou carregando sem sair do Tab (aria-disabled em vez de disabled): o foco não cai no <body> quando o
+     * botão desliga logo depois do clique. Quem usa ignora o clique enquanto ele estiver inativo.
+     */
+    focavel?: boolean
   }>(),
   { variante: 'primario', tamanho: 'md', tipo: 'button' },
 )
@@ -55,7 +60,8 @@ const inativo = computed(() => props.desabilitado || props.carregando)
     v-else
     :type="tipo"
     :class="classes"
-    :disabled="inativo"
+    :disabled="inativo && !focavel"
+    :aria-disabled="inativo && focavel ? 'true' : undefined"
     :aria-busy="carregando || undefined"
     :aria-label="somenteIcone"
     :title="somenteIcone"

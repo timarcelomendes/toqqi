@@ -16,6 +16,9 @@ fica no log; se ler a cota falhar, vai a calculada a partir da reserva.
 
 Nada da conversa é guardado (o histórico vem do navegador) e nada vai para a auditoria. O log leva só o status, o
 tipo de falha, o número de consultas e os tokens: nunca a pergunta, a resposta ou os dados.
+
+Etapa 5d: a conversa usa o nível de modelo da conta (`contas.ia_modelo`) e as instruções ganham a linha do estilo
+(`contas.ia_estilo`), lidos na mesma transação da reserva.
 """
 import logging
 import re
@@ -167,14 +170,14 @@ def _responder(ctx: Contexto, pergunta: str, historico: list[MensagemIn] | None)
         reserva = cota.reservar(s, conta)
         if reserva is None:
             raise AppError(409, "cota_esgotada", MSG_COTA)
-        nome_conta = conta.nome
+        nome_conta, nivel, estilo = conta.nome, conta.ia_modelo, conta.ia_estilo
     mensagens = [{"role": "user" if m.papel == "usuario" else "assistant", "content": m.texto}
                  for m in historico or []]
     resultado = None
     try:
         resultado = ia_conversa.conversar(
-            instrucoes(nome_conta, relogio.hoje()), mensagens, pergunta, ferramentas.DEFINICOES, ESQUEMA,
-            lambda nome, argumentos: ferramentas.executar(ctx, nome, argumentos))
+            instrucoes(nome_conta, relogio.hoje(), estilo), mensagens, pergunta, ferramentas.DEFINICOES, ESQUEMA,
+            lambda nome, argumentos: ferramentas.executar(ctx, nome, argumentos), nivel)
         resposta = RECUSA if resultado.recusa else limpar_resposta(resultado.resposta)
         if not resposta:
             raise ia_conversa.Falha("transitoria", "resposta vazia", resultado)

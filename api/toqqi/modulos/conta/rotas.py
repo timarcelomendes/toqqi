@@ -54,7 +54,7 @@ def obter_ia(ctx: Contexto = Depends(GERENCIAR)):
 
 @router.put("/ia")
 def salvar_ia(dados: IaIn, ctx: Contexto = Depends(GERENCIAR)):
-    return ia.salvar(ctx, dados.analise_respostas)
+    return ia.salvar(ctx, dados)
 
 
 @router.post("/ia/analisar-recentes")

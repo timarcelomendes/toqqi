@@ -1,7 +1,9 @@
-"""Instruções do assistente (§5.3), em português, com o nome da conta e a data de hoje."""
+"""Instruções do assistente (§5.3), em português, com o nome da conta, a data de hoje e a linha do estilo da conta
+(etapa 5d, `ia_texto.com_estilo`: nenhuma no estilo equilibrado)."""
 from datetime import date
 
 from toqqi.core.ia import sem_controle
+from toqqi.core.ia_texto import com_estilo
 from toqqi.modulos.assistente.atalhos import ATALHOS
 
 DIAS_DA_SEMANA = ("segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo")
@@ -48,7 +50,7 @@ def nome_da_conta(nome: str | None) -> str:
     return " ".join(sem_controle(nome or "").replace('"', "'").split())[:100] or "sem nome"
 
 
-def instrucoes(conta: str | None, hoje: date) -> str:
-    return MODELO.format(
+def instrucoes(conta: str | None, hoje: date, estilo: str | None = None) -> str:
+    return com_estilo(MODELO.format(
         conta=nome_da_conta(conta), dia_da_semana=DIAS_DA_SEMANA[hoje.weekday()], hoje=hoje.strftime("%d/%m/%Y"),
-        hoje_iso=hoje.isoformat(), atalhos="; ".join(f"{a.chave} ({a.rotulo})" for a in ATALHOS.values()))
+        hoje_iso=hoje.isoformat(), atalhos="; ".join(f"{a.chave} ({a.rotulo})" for a in ATALHOS.values())), estilo)

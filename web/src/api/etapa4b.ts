@@ -3,6 +3,7 @@
 import { api, baixarArquivo } from './cliente'
 import type {
   ConfigIa,
+  DadosConfigIa,
   EmpresaDaCarteira,
   FiltrosRelatorio,
   FiltrosRelatorioEmpresas,
@@ -68,6 +69,11 @@ export const iaApi = {
   obter: () => api.get<ConfigIa>('/conta/ia'),
   /** Desligar cancela as análises pendentes da conta. */
   salvar: (analise_respostas: boolean) => api.put<ConfigIa>('/conta/ia', { analise_respostas }),
+  /**
+   * Etapa 5d: só os campos que mudaram (modelo, estilo, passos_acoes ou analise_respostas). Devolve o estado inteiro;
+   * 422 `dados_invalidos` sem nenhum campo ou com valor fora da lista. Desligar os passos cancela os pendentes da conta.
+   */
+  atualizar: (dados: DadosConfigIa) => api.put<ConfigIa>('/conta/ia', dados),
   /** Põe na fila os comentários dos últimos 90 dias sem análise (409 `ia_indisponivel`). */
   analisarRecentes: () => api.post<ResultadoAnalisarRecentes>('/conta/ia/analisar-recentes'),
 }

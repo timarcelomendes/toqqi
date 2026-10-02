@@ -45,6 +45,15 @@ class Config(BaseSettings):
     IA_ASSISTENTE_MODELO: str = "gpt-5-mini"
     IA_ASSISTENTE_ESFORCO: str = "low"  # vazio = não manda `reasoning`
     IA_COTA_CORTESIA: int = Field(default=500, ge=0)
+    # Níveis de modelo (etapa 5d, Configurações › IA): valem para o assistente, o resumo do painel, o parecer dos
+    # relatórios e os passos das ações (a análise de cada resposta segue com IA_MODELO/IA_ESFORCO). Esforço vazio =
+    # não manda `reasoning`; no equilibrado, vazio = o do assistente (IA_ASSISTENTE_MODELO/IA_ASSISTENTE_ESFORCO).
+    IA_MODELO_RAPIDO: str = "gpt-5-nano"
+    IA_ESFORCO_RAPIDO: str = "minimal"
+    IA_MODELO_EQUILIBRADO: str = ""
+    IA_ESFORCO_EQUILIBRADO: str = ""
+    IA_MODELO_DETALHADO: str = "gpt-5"
+    IA_ESFORCO_DETALHADO: str = "low"
     # Cobrança (Asaas). Só no painel do Render: ASAAS_API_KEY em toqqi-api e toqqi-tarefas; ASAAS_WEBHOOK_TOKEN só
     # em toqqi-api. O endereço segue a chave ($aact_prod_ → produção; o resto → sandbox); ASAAS_URL sobrepõe
     # (Asaas falso local, testes). Sem chave, a tela de assinatura avisa que a cobrança online não está disponível.

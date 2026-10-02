@@ -636,3 +636,57 @@ def indicacoes(client, h: dict, **filtros) -> dict:
     r = client.get(f"{API}/crescimento/indicacoes", headers=h, params={"por_pagina": 200, **filtros})
     assert r.status_code == 200, r.text
     return r.json()
+
+
+# ---- etapa 5d: IA sob demanda e passos das ações -----------------------------------------
+
+SEM_PASSOS = {"prontas": 0, "falharam": 0, "limite": 0}
+
+
+def sem_passos(dono, conta_id: int) -> None:
+    """Desliga os passos da IA nas ações da conta direto no banco (sem auditoria): para os testes de outras partes
+    da IA (análise por resposta) não contarem o teto gasto pelos passos."""
+    sql(dono, "update contas set ia_passos_acoes = false where id = :c", c=conta_id)
+
+
+def tarefa_ia() -> dict:
+    """Tarefa `ia` sem os passos (que precisam estar parados): {analisadas, falharam, limite}."""
+    from toqqi import tarefas
+
+    r = tarefas.executar("ia")["ia"]
+    assert r.pop("passos") == SEM_PASSOS
+    return r
+
+
+def estado_ia(client, h: dict, tipo: str = "painel", **filtros):
+    """GET /painel/resumo-ia (tipo painel) ou /relatorios/parecer-ia (tipo relatorios)."""
+    caminho = "painel/resumo-ia" if tipo == "painel" else "relatorios/parecer-ia"
+    return client.get(f"{API}/{caminho}", headers=h, params=filtros)
+
+
+def gerar_ia(client, h: dict, tipo: str = "painel", **corpo):
+    """POST /painel/resumo-ia (tipo painel) ou /relatorios/parecer-ia (tipo relatorios), com os filtros no corpo."""
+    caminho = "painel/resumo-ia" if tipo == "painel" else "relatorios/parecer-ia"
+    return client.post(f"{API}/{caminho}", headers=h, json=corpo)
+
+
+def acao(client, h: dict, acao_id: int) -> dict:
+    r = client.get(f"{API}/acoes/{acao_id}", headers=h)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def passos_da_acao(dono, acao_id: int) -> dict:
+    """{situacao, passos, tentativas, reservada, em} direto do banco."""
+    (x,) = sql(dono, "select ia_passos_situacao, ia_passos, ia_passos_tentativas, ia_passos_reservada_em, "
+                     "ia_passos_em from acoes where id = :a", a=acao_id)
+    return dict(zip(("situacao", "passos", "tentativas", "reservada", "em"), x, strict=True))
+
+
+def teto_do_mes(dono, conta_id: int) -> tuple[int, int, int]:
+    """(analises, tokens_entrada, tokens_saida) do teto de segurança no mês atual (São Paulo)."""
+    from toqqi.core import relogio
+
+    linhas = sql(dono, "select analises, tokens_entrada, tokens_saida from ia_uso_mensal where conta_id = :c "
+                       "and mes = :m", c=conta_id, m=relogio.hoje().replace(day=1))
+    return tuple(linhas[0]) if linhas else (0, 0, 0)

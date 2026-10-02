@@ -48,6 +48,26 @@ const sugestoesIniciais = computed(() => (assistente.disponivel ? (assistente.es
 
 /** Com uma barra de salvar presa ao rodapé, o botão e o painel (preso ao canto) sobem acima dela. */
 const estiloBotao = computed(() => (folga.value ? { bottom: `${folga.value + (telaCheia.value ? 16 : 24)}px` } : undefined))
+
+/**
+ * O botão fica por cima da página. O fim do conteúdo já tem folga para ele (pb-24/sm:pb-28 no AppLayout), mas um controle
+ * no meio da página pode estar no canto, debaixo dele (ex.: "Gerar resumo" no painel, a 1280×900, sem rolar). Com o
+ * botão na tela, a página guarda embaixo a altura dele (e a da barra de salvar presa ao rodapé, que ele acompanha) como
+ * scroll-padding: o controle que recebe o foco pelo teclado (Tab) rola para cima dele, em vez de ficar escondido
+ * (WCAG 2.4.11). Com o painel aberto, o botão não aparece e a folga sai.
+ */
+const ALTURA_BOTAO = 48
+const MARGEM_FOCO = 16
+const folgaDoFoco = computed(() =>
+  assistente.visivel && !assistente.aberto ? folga.value + (telaCheia.value ? 16 : 24) + ALTURA_BOTAO + MARGEM_FOCO : 0,
+)
+watch(
+  folgaDoFoco,
+  (px) => {
+    document.documentElement.style.scrollPaddingBottom = px ? `${px}px` : ''
+  },
+  { immediate: true },
+)
 const estiloPainel = computed(() =>
   folga.value && !telaCheia.value ? { bottom: `${folga.value + 24}px`, height: `min(40rem, calc(100dvh - 6rem - ${folga.value}px))` } : undefined,
 )
@@ -234,6 +254,7 @@ onBeforeUnmount(() => {
   consulta?.removeEventListener?.('change', aoMudarTela)
   assistente.pararDeAcompanhar()
   if (travada) liberarRolagem()
+  document.documentElement.style.scrollPaddingBottom = ''
 })
 </script>
 

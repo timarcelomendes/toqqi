@@ -1,15 +1,17 @@
 <script setup lang="ts">
 // Relatórios (etapa 4b): 7 abas com os filtros comuns (período, grupo de empresas, só empresas ativas) e os de cada
 // aba, tudo no endereço (dá para compartilhar o link). "Exportar CSV" para quem tem painel.exportar, nas abas com CSV.
+// Etapa 5d: "Parecer da IA" no cabeçalho (o parecer dos filtros comuns, num painel lateral; some sem IA na plataforma e
+// na aba do histórico de uma empresa, que não mostra os filtros comuns de grupo e de só ativas).
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Download } from 'lucide-vue-next'
-import { mensagemDoErro, relatoriosApi } from '@/api'
+import { mensagemDoErro, parecerIaApi, relatoriosApi, type FiltrosGeracaoIa } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { useCadastrosStore } from '@/stores/cadastros'
 import { useSessaoStore } from '@/stores/sessao'
 import { hojeIso } from '@/utils/datas'
-import { PERIODOS, erroPeriodoEscolhido, intervaloDoPeriodo } from '@/utils/periodo'
+import { PERIODOS, erroPeriodoEscolhido, intervaloDoPeriodo, rotuloPeriodo } from '@/utils/periodo'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Abas from '@/components/ui/Abas.vue'
 import Botao from '@/components/ui/Botao.vue'
@@ -23,6 +25,9 @@ import AbaHistorico from './AbaHistorico.vue'
 import AbaOperacao from './AbaOperacao.vue'
 import AbaResponsaveis from './AbaResponsaveis.vue'
 import AbaTemas from './AbaTemas.vue'
+import ParecerIa from './ParecerIa.vue'
+import { TEXTOS_PARECER, descreverFiltrosIa, falarParecer, normalizarParecer } from '@/modulos/ia/logica'
+import { usarGeracaoIa } from '@/modulos/ia/usarGeracaoIa'
 import {
   ABAS_RELATORIO,
   ABA_PADRAO,
@@ -148,6 +153,35 @@ watch(
 /** Onde a aba pode pôr um filtro dela, na mesma linha dos filtros comuns. */
 const alvoFiltrosAba = ref<HTMLElement | null>(null)
 
+// ── Parecer da IA (etapa 5d) ────────────────────────────────────────────────
+// Lê ao abrir a tela (para saber se o botão aparece) e, com o painel aberto (ou enquanto nenhuma leitura deu certo), a
+// cada troca dos filtros comuns.
+const parecerAberto = ref(false)
+const filtrosParecer = computed<FiltrosGeracaoIa | null>(() => (erroDatas.value ? null : comunsParaApi(filtros.value, hoje)))
+const parecer = usarGeracaoIa({
+  obter: parecerIaApi.obter,
+  gerar: parecerIaApi.gerar,
+  conteudo: normalizarParecer,
+  filtros: () => filtrosParecer.value,
+  ativo: () => parecerAberto.value,
+  textos: TEXTOS_PARECER,
+  falar: falarParecer,
+})
+/**
+ * O botão some sem IA na plataforma e na aba "Histórico de uma empresa": ela não mostra os filtros comuns de grupo e de
+ * só ativas, e o parecer usaria filtros que a pessoa não vê.
+ */
+const mostrarParecer = computed(() => parecer.visivel && aba.value !== 'historico')
+// O botão sumiu (a IA saiu da plataforma, ou a aba mudou pelo voltar do navegador): o painel fecha junto.
+watch(mostrarParecer, (v) => {
+  if (!v) parecerAberto.value = false
+})
+const descricaoParecer = computed(() => {
+  const f = filtros.value
+  const grupo = f.grupo_id === '' ? null : (cadastros.listas.grupos.find((g) => String(g.id) === String(f.grupo_id))?.nome ?? 'escolhido')
+  return descreverFiltrosIa(rotuloPeriodo(f.periodo, { de: f.de, ate: f.ate }), grupo, f.so_ativos)
+})
+
 // ── Exportar ────────────────────────────────────────────────────────────────
 const baixando = ref(false)
 const csv = computed<{ rotulo: string } | null>(() => {
@@ -181,8 +215,9 @@ onMounted(() => {
 
 <template>
   <CabecalhoPagina titulo="Relatórios" :descricao="descricao">
-    <template v-if="csv" #acoes>
-      <Botao variante="secundario" :carregando="baixando" :desabilitado="!!erroDatas" @click="exportar">
+    <template v-if="csv || mostrarParecer" #acoes>
+      <ParecerIa v-if="mostrarParecer" v-model:aberto="parecerAberto" :geracao="parecer" :descricao="descricaoParecer" :desabilitado="!!erroDatas" />
+      <Botao v-if="csv" variante="secundario" :carregando="baixando" :desabilitado="!!erroDatas" @click="exportar">
         <Download v-if="!baixando" class="size-4" aria-hidden="true" /> {{ csv.rotulo }}
       </Botao>
     </template>

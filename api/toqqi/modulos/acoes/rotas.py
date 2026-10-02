@@ -1,11 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response
 
 from toqqi.core.deps import Contexto, requer
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.modulos.acoes import servico
 from toqqi.modulos.acoes.esquemas import AcaoAlterarIn, AcaoIn, ConfigAcoesIn, FiltrosAcoes, FiltrosListaAcoes
+from toqqi.modulos.acoes.passos import coletar_passos, sugerir_passos
 
 router = APIRouter(prefix="/acoes", tags=["acoes"])
 VER = requer("acoes.ver")
@@ -34,8 +35,11 @@ def listar(filtros: Annotated[FiltrosListaAcoes, Query()], pg: Pagina = Depends(
 
 
 @router.post("", status_code=201)
-def criar(dados: AcaoIn, ctx: Contexto = Depends(TRATAR)):
-    return servico.criar(ctx, dados)
+def criar(dados: AcaoIn, tarefas: BackgroundTasks, ctx: Contexto = Depends(TRATAR)):
+    with coletar_passos() as passos:
+        resultado = servico.criar(ctx, dados)
+    tarefas.add_task(sugerir_passos, passos)  # passos sugeridos pela IA (ação de uma resposta), depois do commit
+    return resultado
 
 
 @router.get("/{acao_id}")

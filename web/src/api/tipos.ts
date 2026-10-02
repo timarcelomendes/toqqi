@@ -1,4 +1,4 @@
-// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b, -5a, -5b e -5c).
+// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b, -5a, -5b, -5c e -5d).
 import type { Contexto, GrupoNota, Pergunta, Tema } from '@/pesquisa/tipos'
 
 export type Perfil = 'admin' | 'gestor' | 'consulta'
@@ -873,6 +873,12 @@ export interface Acao {
   concluida_em: string | null
   criado_por: Referencia | null
   concluida_por: Referencia | null
+  /**
+   * Etapa 5d: até 3 passos sugeridos pela IA ao criar a ação de uma resposta, e a situação (null = sem passos: nada
+   * aparece). Opcionais: a API anterior à 5d não manda.
+   */
+  ia_passos?: string[] | null
+  ia_passos_situacao?: SituacaoPassosIa | null
 }
 
 export interface TotaisQuadro {
@@ -1100,6 +1106,21 @@ export interface ConfigIa {
   falharam_no_mes: number
   /** Etapa 5b: cota de IA do plano no mês (cada pergunta ao assistente usa 1; a análise de cada resposta não entra). */
   cota?: CotaIa
+  /** Etapa 5d: como a IA escreve (assistente, resumo, parecer e passos) e se as ações ganham passos sugeridos. */
+  modelo?: NivelModeloIa | (string & {})
+  estilo?: EstiloIa | (string & {})
+  passos_acoes?: boolean
+  /** Etapa 5d: as opções, com os textos da API (na ordem). */
+  modelos?: OpcaoIa[]
+  estilos?: OpcaoIa[]
+}
+
+/** PUT /conta/ia (etapa 5d): só os campos que mudaram (pelo menos um). Devolve o estado inteiro. */
+export interface DadosConfigIa {
+  analise_respostas?: boolean
+  modelo?: NivelModeloIa | (string & {})
+  estilo?: EstiloIa | (string & {})
+  passos_acoes?: boolean
 }
 
 export interface ResultadoAnalisarRecentes {
@@ -1749,4 +1770,86 @@ export interface ConfigCrescimento {
   recompensa: string | null
   /** Até 1.000. Variáveis: {nome}, {empresa}, {empresa_cliente} e {representante}. */
   texto_oferta: string
+}
+
+// ───────────────────────── Etapa 5d (docs/api-etapa-5d.md) ─────────────────────────
+
+/** Nível do modelo da conta (Configurações › IA). */
+export type NivelModeloIa = 'rapido' | 'equilibrado' | 'detalhado'
+/** Estilo da escrita da IA (Configurações › IA). */
+export type EstiloIa = 'objetiva' | 'equilibrada' | 'criativa'
+
+/** Uma opção de modelo ou de estilo, com os textos da API (GET /conta/ia). */
+export interface OpcaoIa {
+  valor: string
+  rotulo: string
+  descricao: string
+}
+
+/** Situação dos passos sugeridos pela IA numa ação. */
+export type SituacaoPassosIa = 'pendente' | 'pronta' | 'falhou' | 'limite'
+
+/**
+ * Filtros do resumo do painel e do parecer dos relatórios: os mesmos de GET /painel e os comuns dos relatórios. Sem
+ * `de`/`ate` = todo o período; `so_ativos` vazio = true.
+ */
+export interface FiltrosGeracaoIa {
+  de?: string
+  ate?: string
+  grupo_id?: Id | ''
+  so_ativos?: boolean
+}
+
+/** Corpo do POST: os quatro filtros, com null no que não foi escolhido. */
+export interface CorpoGeracaoIa {
+  de: string | null
+  ate: string | null
+  grupo_id: Id | null
+  so_ativos: boolean
+}
+
+/** Resumo do painel: uma frase cada (até 300 caracteres). */
+export interface ConteudoResumoIa {
+  melhorar: string
+  funciona: string
+  proximo_passo: string
+}
+
+/** Parecer dos relatórios: 2 a 3 frases (até 600) e 1 a 3 recomendações para a semana (até 200 cada). */
+export interface ConteudoParecerIa {
+  resumo: string
+  recomendacoes: string[]
+}
+
+/** O último resumo (ou parecer) salvo para os mesmos filtros. */
+export interface ItemGeracaoIa<C = unknown> {
+  conteudo: C
+  filtros: Record<string, unknown>
+  gerado_em: string
+  /** null: o usuário foi removido. */
+  gerado_por: Referencia | null
+  modelo: NivelModeloIa | (string & {})
+  /** "Rápido e econômico" | "Equilibrado" | "Mais detalhado". */
+  modelo_rotulo: string
+  estilo: EstiloIa | (string & {})
+}
+
+/** GET /painel/resumo-ia e GET /relatorios/parecer-ia. */
+export interface EstadoGeracaoIa<C = unknown> {
+  /** Como GET /assistente: false com o motivo. */
+  disponivel: boolean
+  motivo: MotivoAssistente | (string & {}) | null
+  /** null sem IA na plataforma. */
+  cota: CotaIa | null
+  /** O salvo para os mesmos filtros, ou null (vem mesmo com `disponivel: false`). */
+  item: ItemGeracaoIa<C> | null
+  /** A última geração deste tipo na conta (qualquer filtro) + 30 s, se ainda no futuro; senão null. */
+  pode_gerar_em: string | null
+}
+
+/** POST /painel/resumo-ia e POST /relatorios/parecer-ia (200). Gasta 1 análise da cota (devolvida se falhar). */
+export interface ResultadoGeracaoIa<C = unknown> {
+  item: ItemGeracaoIa<C>
+  cota: CotaIa
+  pode_gerar_em: string | null
 }

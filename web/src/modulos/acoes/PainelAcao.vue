@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Painel lateral de uma ação: ver e editar tudo (título, descrição, o que foi feito, responsável, prioridade,
 // prazo, situação, empresa) e ver a resposta que deu origem. Concluir pede responsável e o que foi feito.
+// Etapa 5d: abaixo da descrição, os passos sugeridos pela IA (relê a ação enquanto estão sendo sugeridos).
 import { computed, nextTick, reactive, ref, toRaw, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { ArrowRight, MessageSquareText, MoreHorizontal, Trash2 } from 'lucide-vue-next'
@@ -24,6 +25,8 @@ import Selecao from '@/components/ui/Selecao.vue'
 import CampoEmpresa from '@/modulos/contatos/CampoEmpresa.vue'
 import SeloNota from '@/modulos/respostas/SeloNota.vue'
 import { rotuloCategoria } from '@/modulos/respostas/logica'
+import type { PassosAtualizados } from '@/modulos/ia/logica'
+import PassosIa from './PassosIa.vue'
 import SeletorPrioridade from './SeletorPrioridade.vue'
 import {
   COLUNAS,
@@ -49,7 +52,7 @@ const props = withDefaults(
   }>(),
   { carregando: false, erroCarga: null, concluir: false, errosIniciais: null },
 )
-const emit = defineEmits<{ fechar: []; salva: [Acao, Acao]; excluida: [Acao]; recarregada: [Acao] }>()
+const emit = defineEmits<{ fechar: []; salva: [Acao, Acao]; excluida: [Acao]; recarregada: [Acao]; passos: [PassosAtualizados] }>()
 
 const sessao = useSessaoStore()
 const cadastros = useCadastrosStore()
@@ -347,6 +350,8 @@ const origem = computed(() => {
         </fieldset>
         <p v-if="!podeTratar" class="text-sm text-texto-fraco">Seu perfil pode ver as ações, mas não mudar.</p>
       </form>
+
+      <PassosIa :acao="acao" @atualizada="emit('passos', $event)" />
 
       <!-- Resposta que deu origem -->
       <section v-if="acao.resposta" aria-labelledby="t-origem">

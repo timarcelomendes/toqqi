@@ -1,11 +1,12 @@
 """Conversa com a IA usando ferramentas (assistente, etapa 5b): OpenAI Responses API por httpx, sem SDK, como o
 adaptador da 4b (`core.ia`, de onde vêm o `transporte`, a classificação dos erros HTTP e a disponibilidade).
 
-Cada chamada: `POST {IA_BASE_URL}/v1/responses` com `model` (IA_ASSISTENTE_MODELO), `instructions`, `input` (o
-histórico como mensagens {role, content} e a pergunta), `tools` (funções em modo estrito), `tool_choice`,
-`parallel_tool_calls: true`, `text.format` (JSON Schema estrito), `reasoning` (IA_ASSISTENTE_ESFORCO; vazio = não
-manda), `max_output_tokens: 2000`, `store: false` e `include: ["reasoning.encrypted_content"]`: a OpenAI não guarda
-nada e o raciocínio volta cifrado para seguir no laço.
+Cada chamada: `POST {IA_BASE_URL}/v1/responses` com `model` e `reasoning` do nível da conta (etapa 5d,
+`ia_texto.modelo_do_nivel`: o equilibrado, padrão, usa IA_ASSISTENTE_MODELO e IA_ASSISTENTE_ESFORCO; esforço vazio =
+não manda `reasoning`), `instructions`, `input` (o histórico como mensagens {role, content} e a pergunta), `tools`
+(funções em modo estrito), `tool_choice`, `parallel_tool_calls: true`, `text.format` (JSON Schema estrito),
+`max_output_tokens: 2000`, `store: false` e `include: ["reasoning.encrypted_content"]`: a OpenAI não guarda nada e o
+raciocínio volta cifrado para seguir no laço.
 
 Laço: se a saída traz itens `function_call` ({call_id, name, arguments}), cada um é executado por `executar(nome,
 argumentos)` (um dict; problema de uso já vem como {"erro": …}), e o `input` ganha TODOS os itens da saída, como
@@ -39,7 +40,7 @@ from datetime import date, timedelta
 
 import httpx
 
-from toqqi.core import ia, relogio
+from toqqi.core import ia, ia_texto, relogio
 from toqqi.core.config import config
 from toqqi.core.texto import sem_acento
 
@@ -84,10 +85,9 @@ class Falha(Exception):
 # ---- corpo da chamada -------------------------------------------------------------------
 
 def corpo_da_chamada(instrucoes: str, entrada: list, ferramentas: list[dict], esquema: dict,
-                     tool_choice: str) -> dict:
-    cfg = config()
+                     tool_choice: str, nivel: str | None = None) -> dict:
     corpo = {
-        "model": cfg.IA_ASSISTENTE_MODELO,
+        "model": "",
         "instructions": instrucoes,
         "input": entrada,
         "tools": ferramentas,
@@ -98,9 +98,7 @@ def corpo_da_chamada(instrucoes: str, entrada: list, ferramentas: list[dict], es
         "store": False,
         "include": ["reasoning.encrypted_content"],
     }
-    if cfg.IA_ASSISTENTE_ESFORCO.strip():
-        corpo["reasoning"] = {"effort": cfg.IA_ASSISTENTE_ESFORCO.strip()}
-    return corpo
+    return ia_texto.aplicar_nivel(corpo, nivel)  # model e reasoning do nível da conta (sem nível: equilibrado)
 
 
 # ---- OpenAI ---------------------------------------------------------------------------------
@@ -188,9 +186,9 @@ def _consultar(executar: Executar, item: dict) -> dict:
 # ---- conversa ---------------------------------------------------------------------------------
 
 def conversar(instrucoes: str, mensagens: list[dict], pergunta: str, ferramentas: list[dict], esquema: dict,
-              executar: Executar) -> Resultado:
-    """Uma pergunta (com o histórico em `mensagens`, já no formato {role, content}). Levanta `Falha`; outra exceção
-    sobe com `andamento` (o `Resultado` até ali, com os tokens já gastos)."""
+              executar: Executar, nivel: str | None = None) -> Resultado:
+    """Uma pergunta (com o histórico em `mensagens`, já no formato {role, content}), no nível de modelo da conta.
+    Levanta `Falha`; outra exceção sobe com `andamento` (o `Resultado` até ali, com os tokens já gastos)."""
     chamar = _provedor()
     entrada: list = [*mensagens, {"role": "user", "content": pergunta}]
     andamento = Resultado()
@@ -202,7 +200,8 @@ def conversar(instrucoes: str, mensagens: list[dict], pergunta: str, ferramentas
                 raise ia.FalhaIA("transitoria", "tempo total esgotado")
             ultima = n == MAX_CHAMADAS
             sem_consultas = ultima or andamento.consultas >= MAX_CONSULTAS  # já usou as 4: agora é responder
-            corpo = corpo_da_chamada(instrucoes, entrada, ferramentas, esquema, "none" if sem_consultas else "auto")
+            corpo = corpo_da_chamada(instrucoes, entrada, ferramentas, esquema, "none" if sem_consultas else "auto",
+                                     nivel)
             dados = chamar(corpo, min(TEMPO_CHAMADA, restante))
             andamento.chamadas += 1
             uso = dados.get("usage") if isinstance(dados.get("usage"), dict) else {}

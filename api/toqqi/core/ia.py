@@ -111,6 +111,14 @@ def sem_controle(texto: str) -> str:
                    if unicodedata.category(ch) != "Cs")
 
 
+def tirar_marcas(texto: str, marcas: re.Pattern) -> str:
+    """Tira as marcas (`<comentario>`, `<dados>`…) até não sobrar nenhuma: uma passada só deixaria escapar a marca
+    aninhada ("<</dados>/dados>" viraria "< /dados>")."""
+    while marcas.search(texto):
+        texto = marcas.sub(" ", texto)
+    return texto
+
+
 def letras(texto: str | None) -> int:
     return sum(1 for ch in texto or "" if ch.isalpha())
 
@@ -133,7 +141,7 @@ class Entrada:
         opcoes = " ".join(", ".join(o.strip() for o in self.opcoes if o and o.strip()).split())
         if opcoes:
             linhas.append(f"Opções marcadas: {cortar(opcoes, MAX_OPCOES)}")
-        comentario = " ".join(_MARCAS.sub(" ", self.comentario or "").split())
+        comentario = " ".join(tirar_marcas(self.comentario or "", _MARCAS).split())
         linhas.append(f"<comentario>{cortar(comentario, MAX_COMENTARIO)}</comentario>")
         return "\n".join(linhas)
 

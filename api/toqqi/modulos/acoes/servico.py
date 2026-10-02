@@ -1,5 +1,6 @@
 """Planos de ação: quadro A fazer → Em andamento → Concluído, lista, criação, edição (mover e concluir),
-exclusão e configuração dos prazos das ações automáticas."""
+exclusão e configuração dos prazos das ações automáticas. Etapa 5d: a ação manual criada a partir de uma resposta pode
+ficar com os passos da IA pendentes (`acoes.passos`); editar ou mover a ação não mexe nos passos."""
 from sqlalchemy import String, and_, case, cast, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
@@ -11,6 +12,7 @@ from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.filtros import entre_datas
 from toqqi.core.paginacao import Pagina
 from toqqi.modelos import Acao, Contato, Empresa, Responsavel, Resposta, Usuario
+from toqqi.modulos.acoes import passos
 from toqqi.modulos.acoes.configuracao import config_json, obter
 from toqqi.modulos.acoes.regras import ABERTAS, ordem_urgencia, peso_prioridade, prazo_selo, vencida
 from toqqi.modulos.empresas.servico import conferir_referencias, ref
@@ -64,6 +66,8 @@ def acao_json(x, hoje) -> dict:
         "criada_em": a.criada_em, "atualizada_em": a.atualizada_em, "iniciada_em": a.iniciada_em,
         "concluida_em": a.concluida_em, "criado_por": ref(a.criado_por, x.criador_nome),
         "concluida_por": ref(a.concluida_por, x.concluiu_nome),
+        # etapa 5d: passos sugeridos pela IA (lista só com 'pronta'; situação nula = a ação não passa pela IA)
+        "ia_passos": a.ia_passos, "ia_passos_situacao": a.ia_passos_situacao,
     }
 
 
@@ -185,6 +189,7 @@ def criar(ctx: Contexto, dados) -> dict:
                  atualizada_em=agora)
         s.add(a)
         s.flush()
+        passos.marcar(s, ctx.conta_id, a, resposta)  # quem chama usa coletar_passos() e agenda depois do commit
         return _uma(s, a.id)
 
 

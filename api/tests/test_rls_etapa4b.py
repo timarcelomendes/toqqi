@@ -17,7 +17,9 @@ from util import (
     lista_respostas,
     registrar_resposta,
     segunda,
+    sem_passos,
     sql,
+    tarefa_ia,
 )
 
 from toqqi import tarefas
@@ -53,6 +55,7 @@ def ab(client, dono):
     eb = criar_empresa(client, hb, "Empresa B", responsavel_id=rb["id"], valor_mensal="900.00")
     cb = criar_contato(client, hb, nome="Contato B", email="cb@b.com.br", empresa_id=eb["id"])
     b.update(resp=rb, empresa=eb, contato=cb)
+    sem_passos(dono, b["conta"]["id"])  # etapa 5d: os passos da ação gastariam o teto também
     # resposta à mão com comentário: a IA (provedor de testes) analisa depois do commit e conta no uso do mês de B
     r = registrar_resposta(client, hb, cb["id"], 2, comentario="A entrega atrasou de novo")
     assert r.status_code == 201, r.text
@@ -177,7 +180,7 @@ def test_tarefas_de_uma_conta_nao_olham_a_outra(client, dono, monkeypatch):
     sql(dono, "insert into resumos_semanais (conta_id, semana) values (:b, :s)", b=idb, s=hoje - timedelta(days=7))
     sql(dono, "update respostas set ia_situacao = 'pendente' where conta_id = :b", b=idb)
     caixa_memoria.clear()
-    assert tarefas.executar("ia")["ia"] == {"analisadas": 3, "falharam": 0, "limite": 0}
+    assert tarefa_ia() == {"analisadas": 3, "falharam": 0, "limite": 0}
     assert sql(dono, "select conta_id, analises from ia_uso_mensal") == [(idb, 3)]
     assert tarefas.executar("picos")["picos"] == {"picos": 1, "emails": 1}  # só A
     assert tarefas.executar("resumo")["resumo"] == {"contas": 1, "emails": 1}  # só A

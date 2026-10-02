@@ -348,7 +348,9 @@ describe('Configurações › IA: cota do plano', () => {
     expect(medidor.attributes('aria-valuenow')).toBe('12')
     expect(medidor.attributes('aria-valuemax')).toBe('500')
     expect(medidor.attributes('aria-valuetext')).toBe('12 de 500 análises usadas em outubro de 2026')
-    expect(t(bloco.text())).toContain('Cada pergunta ao ToqqiAI usa 1 análise. A análise de cada resposta não entra nesta conta.')
+    expect(t(bloco.text())).toContain(
+      'Cada pergunta ao ToqqiAI, cada resumo do painel e cada parecer dos relatórios usam 1 análise. A análise de cada resposta e os passos das ações não entram nesta conta.',
+    )
     // O cartão da cota (gasta pelo ToqqiAI) tem o ícone dele, não um ícone genérico.
     expect(bloco.get('svg').attributes('data-icone-toqqiai')).toBe('simbolo')
     expect(bloco.find('.lucide-bot-message-square').exists()).toBe(false)
@@ -357,7 +359,7 @@ describe('Configurações › IA: cota do plano', () => {
 
   it('cota esgotada avisa; servidor sem a cota não mostra o bloco', async () => {
     const w = await abrirIa({ ...CONFIG, cota: { usadas: 2000, limite: 2000, restantes: 0, mes: '2026-10' } })
-    expect(t(w.get('[data-cota-plano] [role="status"]').text())).toContain('A cota deste mês acabou: o ToqqiAI volta a responder no dia 1º.')
+    expect(t(w.get('[data-cota-plano] [role="status"]').text())).toContain('A cota deste mês acabou: o ToqqiAI, o resumo do painel e o parecer dos relatórios voltam no dia 1º.')
     expect(t(w.get('[data-cota-texto]').text())).toBe('2.000 de 2.000 análises usadas em outubro de 2026')
     w.unmount()
     setActivePinia(createPinia())
@@ -405,7 +407,13 @@ describe('Configurações › IA: o que é enviado à IA', () => {
     await flushPromises()
     const bloco = w.get('[data-ia-privacidade]')
     expect(t(bloco.get('h2').text())).toBe('O que é enviado à IA')
-    expect(bloco.findAll('h3').map((h3) => t(h3.text()))).toEqual(['Na análise dos comentários', 'No ToqqiAI'])
+    // Etapa 5d: também os passos das ações e o resumo do painel e o parecer dos relatórios.
+    expect(bloco.findAll('h3').map((h3) => t(h3.text()))).toEqual([
+      'Na análise dos comentários',
+      'Nos passos das ações',
+      'No resumo do painel e no parecer dos relatórios',
+      'No ToqqiAI',
+    ])
     // O "Nunca o nome… a empresa do cliente" vale só para a análise dos comentários.
     const analise = bloco.get('[data-envio-analise]')
     expect(t(analise.text())).toContain('Nunca o nome, o e-mail, o telefone, a empresa do cliente ou os dados do pedido.')

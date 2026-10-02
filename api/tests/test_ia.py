@@ -18,10 +18,11 @@ from util import (
     lista_respostas,
     membro,
     registrar_resposta,
+    sem_passos,
     sql,
+    tarefa_ia,
 )
 
-from toqqi import tarefas
 from toqqi.core import ia, relogio
 from toqqi.core.config import config
 from toqqi.modelos import Conta
@@ -33,8 +34,10 @@ CHAVE = "sk-teste-0123456789abcdef"
 
 
 @pytest.fixture
-def admin(client):
-    return conta_pronta(client, "ana@alfa.com.br", empresa="Alfa Distribuidora")
+def admin(client, dono):
+    a = conta_pronta(client, "ana@alfa.com.br", empresa="Alfa Distribuidora")
+    sem_passos(dono, a["conta"]["id"])  # etapa 5d: aqui só a análise por resposta gasta o teto (passos: outro teste)
+    return a
 
 
 @pytest.fixture
@@ -308,14 +311,14 @@ def test_tres_falhas_transitorias_viram_falhou(client, admin, dono):
     estado = _ia(dono, rid)
     assert (estado["situacao"], estado["tentativas"], estado["reservada"]) == ("pendente", 1, None)
     assert _uso(dono, admin["conta"]["id"])[0] == 0  # a falha devolve o saldo
-    assert tarefas.executar("ia")["ia"] == {"analisadas": 0, "falharam": 1, "limite": 0}
+    assert tarefa_ia() == {"analisadas": 0, "falharam": 1, "limite": 0}
     assert _ia(dono, rid)["tentativas"] == 2
-    assert tarefas.executar("ia")["ia"] == {"analisadas": 0, "falharam": 1, "limite": 0}
+    assert tarefa_ia() == {"analisadas": 0, "falharam": 1, "limite": 0}
     estado = _ia(dono, rid)
     assert (estado["situacao"], estado["tentativas"]) == ("falhou", 3) and estado["em"] is not None
     assert estado["temas"] == ["prazo_entrega", "preco_condicoes"]  # ficam os temas por palavras-chave
     assert client.get(f"{API}/respostas/{rid}", headers=h).json()["ia"]["situacao"] == "falhou"
-    assert tarefas.executar("ia")["ia"] == {"analisadas": 0, "falharam": 0, "limite": 0}  # não volta para a fila
+    assert tarefa_ia() == {"analisadas": 0, "falharam": 0, "limite": 0}  # não volta para a fila
     assert _uso(dono, admin["conta"]["id"])[0] == 0
     assert client.get(f"{API}/conta/ia", headers=h).json()["falharam_no_mes"] == 1
 
@@ -336,7 +339,7 @@ def test_erro_de_configuracao_nao_conta_tentativa_e_para_a_rodada(client, admin,
     ia.memoria.programar(ia.FalhaIA("configuracao", "HTTP 401 (invalid_api_key)"))
     caplog.clear()
     with caplog.at_level(logging.INFO, logger="toqqi.ia"):
-        assert tarefas.executar("ia")["ia"] == {"analisadas": 0, "falharam": 0, "limite": 0}
+        assert tarefa_ia() == {"analisadas": 0, "falharam": 0, "limite": 0}
     assert len(ia.memoria.chamadas) == 1  # parou na primeira
     for rid in (a, b):
         estado = _ia(dono, rid)
@@ -346,7 +349,7 @@ def test_erro_de_configuracao_nao_conta_tentativa_e_para_a_rodada(client, admin,
     assert len(erros) == 1 and "OPENAI_API_KEY" in erros[0].getMessage()
     assert "Frete" not in caplog.text and CHAVE not in caplog.text
     # chave consertada: a próxima rodada analisa as duas
-    assert tarefas.executar("ia")["ia"] == {"analisadas": 2, "falharam": 0, "limite": 0}
+    assert tarefa_ia() == {"analisadas": 2, "falharam": 0, "limite": 0}
 
 
 def test_reserva_impede_duas_rodadas_de_analisar_a_mesma(client, admin, dono, monkeypatch):
@@ -357,11 +360,11 @@ def test_reserva_impede_duas_rodadas_de_analisar_a_mesma(client, admin, dono, mo
     reserva = servico._reservar(conta, rid)
     assert isinstance(reserva, servico.Reserva) and _ia(dono, rid)["reservada"] is not None
     assert servico._reservar(conta, rid) is None  # outra rodada não pega
-    assert tarefas.executar("ia")["ia"] == {"analisadas": 0, "falharam": 0, "limite": 0}
+    assert tarefa_ia() == {"analisadas": 0, "falharam": 0, "limite": 0}
     assert _uso(dono, conta)[0] == 1
     # reserva esquecida (queda do processo) volta para a fila depois de 5 minutos
     fixar_relogio(monkeypatch, relogio.agora() + timedelta(minutes=6))
-    assert tarefas.executar("ia")["ia"]["analisadas"] == 1
+    assert tarefa_ia()["analisadas"] == 1
     assert _ia(dono, rid)["situacao"] == "analisada"
     assert _uso(dono, conta)[0] == 1  # quem assume a reserva vencida não consome o teto de novo
 
@@ -471,11 +474,14 @@ def test_configuracao_desligar_cancela_pendentes(client, admin, dono):
     registrar_resposta(client, h, c["id"], 3, comentario="Frete caro")
     pendente = _pendente_sem_analisar(client, dono, h, c["id"], 9, "Vendedor atencioso")
     mes = relogio.hoje().strftime("%Y-%m")
-    assert client.get(f"{API}/conta/ia", headers=h).json() == {
+    estado = client.get(f"{API}/conta/ia", headers=h).json()
+    assert {k: v for k, v in estado.items() if k not in ("modelos", "estilos")} == {
         "disponivel": True, "provedor": "Memória", "analise_respostas": True, "mes": mes, "analises": 1,
         "limite": 1000, "pendentes": 1, "falharam_no_mes": 0,
         # etapa 5b: cota do plano (só o assistente gasta; a análise por resposta fica fora dela)
-        "cota": {"usadas": 0, "limite": 500, "restantes": 500, "mes": mes}}
+        "cota": {"usadas": 0, "limite": 500, "restantes": 500, "mes": mes},
+        # etapa 5d: como a IA escreve e os passos das ações (desligados pelo `admin` destes testes)
+        "modelo": "equilibrado", "estilo": "equilibrada", "passos_acoes": False}
     r = client.put(f"{API}/conta/ia", headers=h, json={"analise_respostas": False})
     assert r.status_code == 200 and r.json()["analise_respostas"] is False and r.json()["pendentes"] == 0
     assert _ia(dono, pendente)["situacao"] is None
@@ -540,7 +546,7 @@ def test_analisar_recentes(client, admin, dono):
     assert pendentes == {"Retorno demorado", "Frete caro", "Vendedor ótimo"}
     ev = [i for i in client.get(f"{API}/auditoria", headers=h).json()["itens"] if i["evento"] == "ia_analisar_recentes"]
     assert ev[0]["detalhe"] == {"marcadas": 3}
-    assert tarefas.executar("ia")["ia"] == {"analisadas": 3, "falharam": 0, "limite": 0}
+    assert tarefa_ia() == {"analisadas": 3, "falharam": 0, "limite": 0}
     # mais saldo: as que faltam dos últimos 90 dias (não a de 95 dias, nem a arquivada, nem a sem texto)
     sql(dono, "update ia_uso_mensal set analises = 0 where conta_id = :c", c=conta)
     assert client.post(f"{API}/conta/ia/analisar-recentes", headers=h).json() == {
@@ -636,9 +642,9 @@ def test_banco_recusar_o_resultado_conta_tentativa_devolve_o_saldo_e_nao_vaza_te
     assert "SEGREDO" not in caplog.text and "23514" in caplog.text  # só o resumo do erro (SQLSTATE), sem dados
     # mais duas recusas: vira falhou e sai da fila (não gasta o teto rodada após rodada)
     for _ in range(2):
-        tarefas.executar("ia")
+        tarefa_ia()
     assert (_ia(dono, rid)["situacao"], _ia(dono, rid)["tentativas"]) == ("falhou", 3)
-    assert tarefas.executar("ia")["ia"] == {"analisadas": 0, "falharam": 0, "limite": 0}
+    assert tarefa_ia() == {"analisadas": 0, "falharam": 0, "limite": 0}
     assert _uso(dono, admin["conta"]["id"])[0] == 0
 
 
@@ -665,7 +671,7 @@ def test_segundo_plano_com_vagas_limitadas_e_tempo_menor(client, admin, dono, mo
     finally:
         for _ in range(servico.MAX_SEGUNDO_PLANO):
             servico._vagas.release()
-    assert tarefas.executar("ia")["ia"]["analisadas"] == 1
+    assert tarefa_ia()["analisadas"] == 1
     assert tempos == [servico.TEMPO_SEGUNDO_PLANO, ia.TEMPO_LIMITE]
 
 
@@ -687,11 +693,11 @@ def test_outros_4xx_contam_tentativa_mas_401_403_404_nao(client, admin, dono, op
     for tentativas in (2, 3):
         openai.pedidos.clear()
         openai.respostas.append(erro(400, "unsupported_value"))
-        assert tarefas.executar("ia")["ia"] == {"analisadas": 0, "falharam": 0, "limite": 0}
+        assert tarefa_ia() == {"analisadas": 0, "falharam": 0, "limite": 0}
         assert len(openai.pedidos) == 1 and _ia(dono, a)["tentativas"] == tentativas
     assert _ia(dono, a)["situacao"] == "falhou"
     for status, codigo in ((403, "forbidden"), (404, "model_not_found")):
         openai.respostas.append(erro(status, codigo))
-        tarefas.executar("ia")
+        tarefa_ia()
         assert (_ia(dono, b)["situacao"], _ia(dono, b)["tentativas"]) == ("pendente", 0)
-    assert tarefas.executar("ia")["ia"]["analisadas"] == 1 and _ia(dono, b)["situacao"] == "analisada"
+    assert tarefa_ia()["analisadas"] == 1 and _ia(dono, b)["situacao"] == "analisada"

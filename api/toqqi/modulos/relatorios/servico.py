@@ -619,41 +619,33 @@ def _dias(ultimo_envio, hoje: date) -> int:
     return (hoje - ultimo_envio.astimezone(relogio.FUSO).date()).days
 
 
-def operacao(ctx: Contexto, f) -> dict:
-    _validar_periodo(f.de, f.ate)
-    hoje = relogio.hoje()
+def numeros_operacao(s: Session, ctx: Contexto, f, hoje: date) -> dict:
+    """Os números da aba Operação (sem a lista de contatos sem resposta). Também usado pelo parecer da IA."""
     filtro = _filtro_respostas(ctx, f)
-    with em_conta(ctx.conta_id) as s:
-        sem_jit(s)
-        taxa = _taxa_resposta(s, filtro)
-        canais = []
-        for canal in ("email", "whatsapp"):
-            t = _taxa_resposta(s, filtro, canal)
-            canais.append({"canal": canal, "convidados": t["convidados"], "responderam": t["responderam"],
-                           "percentual": t["percentual"]})
-        com_empresa = [Acao.conta_id == ctx.conta_id, *filtro.empresa(Acao.empresa_id)]
-        fim_do_prazo = func.timezone(FUSO_NOME, cast(Acao.prazo + 1, DateTime))
-        concluidas, tempo, com_prazo, no_prazo = s.execute(
-            select(func.count(), func.avg(func.extract("epoch", Acao.concluida_em - Acao.criada_em)),
-                   func.count().filter(Acao.prazo.is_not(None)),
-                   func.count().filter(Acao.prazo.is_not(None), Acao.concluida_em < fim_do_prazo))
-            .select_from(Acao).outerjoin(Empresa, Empresa.id == Acao.empresa_id)
-            .where(*com_empresa, Acao.situacao == "concluida", Acao.concluida_em.is_not(None),
-                   *entre_datas(Acao.concluida_em, f.de, f.ate))).one()
-        abertas, vencidas = s.execute(
-            select(func.count(), func.count().filter(Acao.prazo < hoje)).select_from(Acao)
-            .outerjoin(Empresa, Empresa.id == Acao.empresa_id).where(*com_empresa, aberta())).one()
-        intervalo = config_envios(s, criar=False).intervalo_dias
-        conds = _sem_resposta(ctx, filtro)
-        data_envio = cast(func.timezone(FUSO_NOME, Contato.ultimo_envio), Date)
-        limite = hoje - timedelta(days=intervalo)
-        total, atrasados = s.execute(select(func.count(), func.count().filter(data_envio < limite))
-                                     .select_from(Contato).outerjoin(Empresa, Empresa.id == Contato.empresa_id)
-                                     .where(*conds)).one()
-        linhas = s.execute(select(Contato.id, Contato.nome, Contato.email, Contato.empresa_id,
-                                  Empresa.nome.label("empresa_nome"), Contato.ultimo_envio)
-                           .select_from(Contato).outerjoin(Empresa, Empresa.id == Contato.empresa_id).where(*conds)
-                           .order_by(Contato.ultimo_envio, Contato.id).limit(MAX_SEM_RESPOSTA)).all()
+    taxa = _taxa_resposta(s, filtro)
+    canais = []
+    for canal in ("email", "whatsapp"):
+        t = _taxa_resposta(s, filtro, canal)
+        canais.append({"canal": canal, "convidados": t["convidados"], "responderam": t["responderam"],
+                       "percentual": t["percentual"]})
+    com_empresa = [Acao.conta_id == ctx.conta_id, *filtro.empresa(Acao.empresa_id)]
+    fim_do_prazo = func.timezone(FUSO_NOME, cast(Acao.prazo + 1, DateTime))
+    concluidas, tempo, com_prazo, no_prazo = s.execute(
+        select(func.count(), func.avg(func.extract("epoch", Acao.concluida_em - Acao.criada_em)),
+               func.count().filter(Acao.prazo.is_not(None)),
+               func.count().filter(Acao.prazo.is_not(None), Acao.concluida_em < fim_do_prazo))
+        .select_from(Acao).outerjoin(Empresa, Empresa.id == Acao.empresa_id)
+        .where(*com_empresa, Acao.situacao == "concluida", Acao.concluida_em.is_not(None),
+               *entre_datas(Acao.concluida_em, f.de, f.ate))).one()
+    abertas, vencidas = s.execute(
+        select(func.count(), func.count().filter(Acao.prazo < hoje)).select_from(Acao)
+        .outerjoin(Empresa, Empresa.id == Acao.empresa_id).where(*com_empresa, aberta())).one()
+    intervalo = config_envios(s, criar=False).intervalo_dias
+    data_envio = cast(func.timezone(FUSO_NOME, Contato.ultimo_envio), Date)
+    limite = hoje - timedelta(days=intervalo)
+    total, atrasados = s.execute(select(func.count(), func.count().filter(data_envio < limite))
+                                 .select_from(Contato).outerjoin(Empresa, Empresa.id == Contato.empresa_id)
+                                 .where(*_sem_resposta(ctx, filtro))).one()
     return {
         "taxa_resposta": taxa,
         "canais": canais,
@@ -661,12 +653,28 @@ def operacao(ctx: Contexto, f) -> dict:
                   "tempo_medio_dias": None if tempo is None else float(ind.arredondar(Decimal(tempo) / 86400, 1)),
                   "no_prazo_percentual": ind.percentual(no_prazo, com_prazo), "abertas": abertas,
                   "vencidas": vencidas},
-        "sem_resposta": {"total": total, "atrasados": atrasados, "intervalo_dias": intervalo, "itens": [
-            {"contato": {"id": x.id, "nome": x.nome, "email": x.email},
-             "empresa": {"id": x.empresa_id, "nome": x.empresa_nome} if x.empresa_id else None,
-             "ultimo_envio": x.ultimo_envio, "dias": _dias(x.ultimo_envio, hoje),
-             "atrasado": _dias(x.ultimo_envio, hoje) > intervalo} for x in linhas]},
+        "sem_resposta": {"total": total, "atrasados": atrasados, "intervalo_dias": intervalo},
     }
+
+
+def operacao(ctx: Contexto, f) -> dict:
+    _validar_periodo(f.de, f.ate)
+    hoje = relogio.hoje()
+    with em_conta(ctx.conta_id) as s:
+        sem_jit(s)
+        numeros = numeros_operacao(s, ctx, f, hoje)
+        linhas = s.execute(select(Contato.id, Contato.nome, Contato.email, Contato.empresa_id,
+                                  Empresa.nome.label("empresa_nome"), Contato.ultimo_envio)
+                           .select_from(Contato).outerjoin(Empresa, Empresa.id == Contato.empresa_id)
+                           .where(*_sem_resposta(ctx, _filtro_respostas(ctx, f)))
+                           .order_by(Contato.ultimo_envio, Contato.id).limit(MAX_SEM_RESPOSTA)).all()
+    intervalo = numeros["sem_resposta"]["intervalo_dias"]
+    numeros["sem_resposta"]["itens"] = [
+        {"contato": {"id": x.id, "nome": x.nome, "email": x.email},
+         "empresa": {"id": x.empresa_id, "nome": x.empresa_nome} if x.empresa_id else None,
+         "ultimo_envio": x.ultimo_envio, "dias": _dias(x.ultimo_envio, hoje),
+         "atrasado": _dias(x.ultimo_envio, hoje) > intervalo} for x in linhas]
+    return numeros
 
 
 def sem_resposta_csv(ctx: Contexto, f) -> str:

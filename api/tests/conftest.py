@@ -37,7 +37,7 @@ from toqqi.core.email import caixa_memoria  # noqa: E402
 from toqqi.core.rate_limit import limiter  # noqa: E402
 from toqqi.main import create_app  # noqa: E402
 
-TABELAS = ("aceites_termos, asaas_remocoes, asaas_eventos, cobrancas, assinaturas, ia_uso_mensal, alertas_pico, resumos_semanais, imagens, acoes, config_acoes, envios, descadastros, config_envios, importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
+TABELAS = ("ia_pareceres, aceites_termos, asaas_remocoes, asaas_eventos, cobrancas, assinaturas, ia_uso_mensal, alertas_pico, resumos_semanais, imagens, acoes, config_acoes, envios, descadastros, config_envios, importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
            "perfis_contato, cargos, auditoria, dominios_liberados, perfil_permissoes, tokens_uso_unico, sessoes, usuarios, contas")
 
 
@@ -90,7 +90,7 @@ def sem_rede(monkeypatch):
     testes."""
     import httpx
 
-    from toqqi.core import asaas, ia, ia_conversa, rede
+    from toqqi.core import asaas, ia, ia_conversa, ia_texto, rede
     from toqqi.modulos.ajuda import servico as ajuda
     from toqqi.modulos.assistente.limite import limite
     from toqqi.modulos.whatsapp import graph
@@ -104,6 +104,7 @@ def sem_rede(monkeypatch):
     monkeypatch.setattr(rede, "enviar_post", recusar)
     ia.memoria.limpar()  # provedor de IA dos testes (IA_PROVEDOR=memoria): sem chamadas nem falhas programadas
     ia_conversa.memoria.limpar()  # o mesmo para o assistente (sem programa = padrão por palavras)
+    ia_texto.memoria.limpar()  # o mesmo para o resumo, o parecer e os passos (sem programa = padrão do formato)
     limite.zerar()  # perguntas por minuto (os ids de usuário recomeçam a cada teste)
     ajuda.limpar_cache()
 

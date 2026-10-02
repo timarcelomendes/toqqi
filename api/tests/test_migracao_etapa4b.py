@@ -6,7 +6,7 @@ import pytest
 from alembic.config import Config as AlembicConfig
 from conftest import OWNER_URL
 from sqlalchemy.exc import DBAPIError, IntegrityError
-from util import API, conta_pronta, criar_contato, registrar_resposta, sql
+from util import API, conta_pronta, criar_contato, registrar_resposta, sem_passos, sql
 
 from alembic import command
 from toqqi.core.db import RAIZ_API
@@ -35,8 +35,9 @@ def _funcoes(dono) -> set[str]:
 
 
 @pytest.fixture
-def resposta(client):
+def resposta(client, dono):
     a = conta_pronta(client, "ana@alfa.com.br", empresa="Alfa")
+    sem_passos(dono, a["conta"]["id"])  # etapa 5d: os passos da ação automática gastariam o teto também
     c = criar_contato(client, a["h"], nome="Paula")
     r = registrar_resposta(client, a["h"], c["id"], 3, comentario="Atrasou e o preço subiu")
     assert r.status_code == 201, r.text
@@ -117,6 +118,7 @@ def test_descer_e_subir_a_0007(client, resposta, dono):
         sql(dono, "update respostas set temas = '{atendimento}' where id = :r", r=r)
     finally:
         command.upgrade(cfg, "head")
+    sem_passos(dono, conta)  # a coluna da 0013 voltou com o padrão (ligado)
     assert COLUNAS_RESPOSTAS <= _colunas(dono, "respostas")
     assert _funcoes(dono) == set(FUNCOES)
     assert sql(dono, "select ia_situacao, ia_tentativas, temas_reclamacao, temas_elogio from respostas where id = :r",

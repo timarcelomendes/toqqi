@@ -2,6 +2,8 @@
 // Configurações › IA (etapa 4b): se a IA está ligada na plataforma, a chave da conta ("Analisar comentários com
 // IA"), o uso do mês contra o teto de segurança, a fila, o "analisar os últimos 90 dias" e o que vai para a IA.
 // Etapa 5b: a cota de IA do plano (cada pergunta ao assistente usa 1 análise).
+// Etapa 5d: "Como a IA escreve" (modelo, estilo e os passos sugeridos nas ações); o resumo do painel e o parecer dos
+// relatórios também gastam a cota.
 import { computed, onMounted, ref, watch } from 'vue'
 import { Gauge, History, ShieldCheck, Sparkles } from 'lucide-vue-next'
 import { ApiError, iaApi, mensagemDoErro, type ConfigIa, type CotaIa } from '@/api'
@@ -20,6 +22,7 @@ import Interruptor from '@/components/ui/Interruptor.vue'
 import Medidor from '@/components/ui/Medidor.vue'
 import { formatarMes } from '@/modulos/painel/logica'
 import { TEMAS_PADRAO } from '@/modulos/respostas/logica'
+import ComoIaEscreve from './ComoIaEscreve.vue'
 import NavConfiguracoes from './NavConfiguracoes.vue'
 
 const sessao = useSessaoStore()
@@ -113,6 +116,10 @@ const textoCota = computed(() =>
 const restantes = computed(() => (dados.value ? Math.max(0, dados.value.limite - dados.value.analises - dados.value.pendentes) : 0))
 const noLimite = computed(() => !!dados.value && dados.value.limite > 0 && dados.value.analises >= dados.value.limite)
 const podeAnalisarRecentes = computed(() => !!dados.value?.disponivel && !!dados.value?.analise_respostas)
+/** Etapa 5d: a API manda o modelo, o estilo e os passos (a anterior não manda: a seção não aparece). */
+const temEscrita = computed(
+  () => !!dados.value && (Array.isArray(dados.value.modelos) || Array.isArray(dados.value.estilos) || typeof dados.value.passos_acoes === 'boolean'),
+)
 
 async function analisarRecentes() {
   if (!podeAnalisarRecentes.value || analisando.value) return
@@ -145,7 +152,7 @@ onMounted(carregar)
   <NavConfiguracoes />
   <CabecalhoPagina
     titulo="Inteligência artificial"
-    descricao="A IA lê o comentário de cada cliente, resume numa frase e diz o sentimento geral e os temas citados, com o sentimento sobre cada um."
+    descricao="A IA lê o comentário de cada cliente, resume o painel e os relatórios quando alguém pede, sugere passos nas ações e responde no ToqqiAI."
   />
 
   <Carregando v-if="carregando" :linhas="4" />
@@ -167,10 +174,18 @@ onMounted(carregar)
           {{ formatarMes(cota.mes, 'longo') }}
         </p>
         <Medidor :valor="cota.usadas" :maximo="cota.limite" rotulo="Análises da cota do plano usadas neste mês" :texto="textoCota" />
-        <p class="text-sm text-texto-suave">Cada pergunta ao ToqqiAI usa 1 análise. A análise de cada resposta não entra nesta conta.</p>
-        <Alerta v-if="cota.limite > 0 && cota.restantes <= 0" tom="atencao">A cota deste mês acabou: o ToqqiAI volta a responder no dia 1º.</Alerta>
+        <p class="text-sm text-texto-suave">
+          Cada pergunta ao ToqqiAI, cada resumo do painel e cada parecer dos relatórios usam 1 análise. A análise de cada resposta e os passos
+          das ações não entram nesta conta.
+        </p>
+        <Alerta v-if="cota.limite > 0 && cota.restantes <= 0" tom="atencao">
+          A cota deste mês acabou: o ToqqiAI, o resumo do painel e o parecer dos relatórios voltam no dia 1º.
+        </Alerta>
       </div>
     </section>
+
+    <!-- Como a IA escreve (etapa 5d) -->
+    <ComoIaEscreve v-if="temEscrita" :dados="dados" @salvo="receber" />
 
     <!-- Situação e a chave da conta -->
     <section class="cartao grid grid-cols-1 gap-6 p-5 sm:p-6 md:grid-cols-3" aria-labelledby="t-ia-situacao">
@@ -204,7 +219,10 @@ onMounted(carregar)
       <div>
         <div class="mb-3 flex size-10 items-center justify-center rounded-xl bg-marca-suave text-marca-texto"><Gauge class="size-5" aria-hidden="true" /></div>
         <h2 id="t-ia-uso" class="text-base font-bold text-texto">Uso do mês</h2>
-        <p class="mt-1 text-sm text-texto-suave">A análise de cada resposta não gasta a cota de IA do plano. O limite de segurança protege a conta de um uso fora do normal.</p>
+        <p class="mt-1 text-sm text-texto-suave">
+          A análise de cada resposta e os passos sugeridos nas ações não gastam a cota de IA do plano. Este limite de segurança protege a conta de um
+          uso fora do normal.
+        </p>
       </div>
       <div class="flex min-w-0 flex-col gap-4 md:col-span-2">
         <div class="flex flex-col gap-2">
@@ -216,7 +234,9 @@ onMounted(carregar)
           </p>
           <Medidor :valor="dados.analises" :maximo="dados.limite" rotulo="Análises usadas neste mês" :texto="`${formatarNumero(dados.analises)} de ${formatarNumero(dados.limite)} análises`" />
         </div>
-        <Alerta v-if="noLimite" tom="atencao">Limite do mês atingido: as respostas novas ficam com os temas pelas palavras-chave até o mês virar.</Alerta>
+        <Alerta v-if="noLimite" tom="atencao">
+          Limite do mês atingido: até o mês virar, as respostas novas ficam com os temas pelas palavras-chave e as ações novas, sem passos sugeridos.
+        </Alerta>
         <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
           <div class="rounded-xl bg-superficie-2 p-3">
             <dt class="text-texto-fraco">Na fila</dt>
@@ -263,12 +283,12 @@ onMounted(carregar)
       </div>
     </section>
 
-    <!-- O que é enviado: na análise de cada comentário e no assistente (que consulta os dados da conta para responder) -->
+    <!-- O que é enviado: na análise de cada comentário, nos passos das ações, no resumo e no parecer e no assistente -->
     <section class="cartao grid grid-cols-1 gap-6 p-5 sm:p-6 md:grid-cols-3" aria-labelledby="t-ia-privacidade" data-ia-privacidade>
       <div>
         <div class="mb-3 flex size-10 items-center justify-center rounded-xl bg-marca-suave text-marca-texto"><ShieldCheck class="size-5" aria-hidden="true" /></div>
         <h2 id="t-ia-privacidade" class="text-base font-bold text-texto">O que é enviado à IA</h2>
-        <p class="mt-1 text-sm text-texto-suave">Só o necessário para entender o comentário ou responder à pergunta.</p>
+        <p class="mt-1 text-sm text-texto-suave">Só o necessário para cada recurso.</p>
       </div>
       <div class="flex min-w-0 flex-col gap-5 md:col-span-2">
         <div class="flex flex-col gap-2" data-envio-analise>
@@ -278,6 +298,25 @@ onMounted(carregar)
             <li><strong class="font-semibold">Nunca</strong> o nome, o e-mail, o telefone, a empresa do cliente ou os dados do pedido.</li>
             <li>O provedor{{ dados.provedor ? ` (${dados.provedor})` : '' }} não guarda a conversa.</li>
             <li>Os temas saem só desta lista: {{ TEMAS_PADRAO.map((t) => t.rotulo).join(', ') }}.</li>
+          </ul>
+        </div>
+        <div class="flex flex-col gap-2" data-envio-passos>
+          <h3 class="text-sm font-bold text-texto">Nos passos das ações</h3>
+          <ul class="flex list-disc flex-col gap-2 pl-5 text-sm text-texto">
+            <li>O tipo, a nota e o grupo da resposta, o comentário do cliente (até 500 caracteres) e as opções que ele marcou.</li>
+            <li>As últimas 5 respostas da mesma empresa: data, tipo, nota e comentário (até 300 caracteres).</li>
+            <li><strong class="font-semibold">Nunca</strong> o nome da empresa ou do contato, o e-mail, o telefone ou os dados do pedido.</li>
+          </ul>
+        </div>
+        <div class="flex flex-col gap-2" data-envio-resumo>
+          <h3 class="text-sm font-bold text-texto">No resumo do painel e no parecer dos relatórios</h3>
+          <ul class="flex list-disc flex-col gap-2 pl-5 text-sm text-texto">
+            <li>
+              Só quando alguém pede: o nome da sua conta, os números do período e dos filtros da tela (com o nome do grupo escolhido) e nomes de
+              empresas e de responsáveis.
+            </li>
+            <li>No resumo, até 8 comentários do período (até 300 caracteres), sem o nome, o e-mail ou o telefone de quem respondeu.</li>
+            <li>O texto gerado fica guardado na conta até alguém gerar de novo com os mesmos filtros.</li>
           </ul>
         </div>
         <div class="flex flex-col gap-2" data-envio-assistente>

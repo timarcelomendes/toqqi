@@ -50,8 +50,25 @@ export const TERMOS: DocumentoLegal = {
         },
         {
           tipo: 'p',
-          texto:
-            'Também há recursos de inteligência artificial (IA). A análise de comentários já vem ligada, e a Empresa pode desligá-la em Configurações › IA. Ela classifica temas e sentimento automaticamente, e a Empresa pode corrigir o resultado. O ToqqiAI, o assistente de IA do Toqqi, fica disponível para os usuários da conta enquanto a IA estiver disponível e a assinatura estiver em dia, e só envia dados quando alguém faz uma pergunta.',
+          texto: 'Também há cinco recursos de inteligência artificial (IA):',
+        },
+        {
+          tipo: 'lista',
+          itens: [
+            'Análise de comentários: classifica os temas e o sentimento de cada comentário automaticamente. A Empresa pode corrigir o resultado.',
+            'Passos das ações: sugere até 3 passos quando uma ação é criada a partir de uma resposta.',
+            'Resumo do painel: resume em três frases os números do período e dos filtros da tela.',
+            'Parecer dos relatórios: resume os números do período e dos filtros da tela e recomenda o que fazer na semana.',
+            'ToqqiAI: o assistente de IA do Toqqi, que responde perguntas sobre os números da conta e sobre como usar o Toqqi.',
+          ],
+        },
+        {
+          tipo: 'p',
+          texto: [
+            'A análise de comentários e os passos das ações já vêm ligados, e a Empresa pode desligá-los em Configurações › IA. O resumo do painel, o parecer dos relatórios e o ToqqiAI só rodam quando alguém da conta pede, e cada resumo, parecer ou pergunta usa 1 análise da cota de IA do plano. Todos funcionam enquanto a IA estiver disponível e a assinatura estiver em dia. O que cada recurso envia à IA está na ',
+            { texto: 'Política de privacidade', href: '/privacidade#inteligencia-artificial' },
+            '.',
+          ],
         },
         {
           tipo: 'p',

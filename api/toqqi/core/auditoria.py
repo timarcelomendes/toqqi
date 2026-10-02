@@ -49,7 +49,7 @@ ROTULOS = {
     "dados_empresa_alterados": "Dados da empresa alterados",
     "logo_alterado": "Logo da empresa alterado",
     "logo_removido": "Logo da empresa removido",
-    "config_ia": "Análise de comentários com IA ligada ou desligada",
+    "config_ia": "Configurações de IA alteradas",
     "ia_analisar_recentes": "Comentários dos últimos 90 dias enviados para análise da IA",
     "assinatura_criada": "Assinatura criada",
     "plano_alterado": "Plano da assinatura alterado",

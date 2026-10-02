@@ -169,6 +169,20 @@ export const useAssistenteStore = defineStore('assistente', () => {
     if (c.restantes <= 0) bloquear('cota_esgotada')
   }
 
+  /**
+   * Etapa 5d: o resumo do painel e o parecer dos relatórios gastam a mesma cota. A tela que gerou manda a cota que veio na
+   * resposta, e o assistente (e Configurações › IA, que acompanha esta) mostra o mesmo "Restam X de Y". Sem o estado do
+   * assistente (a busca falhou), não há o que atualizar.
+   */
+  function receberCota(c: CotaIa) {
+    if (estado.value) atualizarCota(c)
+  }
+
+  /** Etapa 5d: o resumo ou o parecer recebeu 409 `cota_esgotada`: o assistente também para de aceitar perguntas. */
+  function marcarCotaEsgotada() {
+    if (estado.value && estado.value.motivo !== 'ia_indisponivel') bloquear('cota_esgotada')
+  }
+
   async function enviar(indice: number, historico: MensagemHistorico[]) {
     const msg = mensagens.value[indice]
     if (!msg) return
@@ -268,5 +282,7 @@ export const useAssistenteStore = defineStore('assistente', () => {
     abrir,
     fechar,
     marcarRevelada,
+    receberCota,
+    marcarCotaEsgotada,
   }
 })

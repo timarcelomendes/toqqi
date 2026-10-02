@@ -14,6 +14,7 @@ from toqqi.core.rate_limit import limiter
 from toqqi.modulos.acesso import termos
 
 UA = "Mozilla/5.0 (Windows NT 10.0) Chrome/120.0 Safari/537.36"
+V = termos.VERSAO_DOCUMENTOS  # a versão atual (a seguinte, V + 1, faz o papel de "versão nova")
 
 
 def _aceite(client, h) -> dict:
@@ -22,7 +23,7 @@ def _aceite(client, h) -> dict:
     return r.json()["usuario"]["aceite"]
 
 
-def _aceitar(client, h, versao: int = 1, ua: str | None = UA):
+def _aceitar(client, h, versao: int = V, ua: str | None = UA):
     headers = {**h, "User-Agent": ua} if ua else h
     return client.post(f"{API}/eu/aceite", headers=headers, json={"versao": versao})
 
@@ -48,7 +49,7 @@ def test_versao_igual_a_do_site():
 
 
 def test_eu_sem_aceite_fica_pendente(client, gestor):
-    assert _aceite(client, gestor["h"]) == {"versao_atual": 1, "versao_aceita": None, "aceito_em": None,
+    assert _aceite(client, gestor["h"]) == {"versao_atual": V, "versao_aceita": None, "aceito_em": None,
                                             "pendente": True, "revogado_em": None}
     assert gestor["usuario"]["aceite"]["pendente"] is True  # a resposta de entrar já traz o aceite
 
@@ -57,17 +58,17 @@ def test_aceitar_grava_e_tira_a_pendencia(client, gestor, dono):
     r = _aceitar(client, gestor["h"])
     assert r.status_code == 200, r.text
     corpo = r.json()
-    assert corpo["versao_atual"] == 1 and corpo["versao_aceita"] == 1 and corpo["pendente"] is False
+    assert corpo["versao_atual"] == V and corpo["versao_aceita"] == V and corpo["pendente"] is False
     assert corpo["aceito_em"]
     assert _aceite(client, gestor["h"]) == corpo
     (linha,) = sql(dono, "select usuario_id, usuario_email, usuario_nome, conta_id, versao, ip, agente, origem "
                          "from aceites_termos where usuario_id = :u", u=gestor["usuario"]["id"])
-    assert linha.versao == 1 and linha.origem == "tela" and linha.conta_id == gestor["conta"]["id"]
+    assert linha.versao == V and linha.origem == "tela" and linha.conta_id == gestor["conta"]["id"]
     assert (linha.usuario_email, linha.usuario_nome) == ("gil@alfa.com.br", "Membro gestor")
     assert linha.ip == "testclient" and linha.agente == UA
     (aud,) = sql(dono, "select detalhe, usuario_id from auditoria where evento = 'termos_aceitos' and usuario_id = :u",
                  u=gestor["usuario"]["id"])
-    assert aud.detalhe == {"versao": 1}
+    assert aud.detalhe == {"versao": V}
     # entrar de novo: a resposta já vem sem pendência
     assert entrar(client, "gil@alfa.com.br").json()["usuario"]["aceite"]["pendente"] is False
 
@@ -89,7 +90,7 @@ def test_agente_longo_e_cortado_em_400(client, gestor, dono):
 
 
 def test_versao_errada_da_409(client, gestor, dono):
-    r = _aceitar(client, gestor["h"], versao=2)
+    r = _aceitar(client, gestor["h"], versao=V + 1)
     assert r.status_code == 409
     assert r.json()["erro"]["codigo"] == "versao_desatualizada"
     assert r.json()["erro"]["mensagem"] == "Os termos foram atualizados. Recarregue a página para ver a versão nova."
@@ -103,27 +104,27 @@ def test_versao_errada_da_409(client, gestor, dono):
 def test_cadastro_grava_o_aceite(client, admin, dono):
     assert admin["usuario"]["aceite"]["pendente"] is False  # entrar
     a = _aceite(client, admin["h"])
-    assert a["versao_aceita"] == 1 and a["pendente"] is False and a["aceito_em"]
+    assert a["versao_aceita"] == V and a["pendente"] is False and a["aceito_em"]
     (linha,) = sql(dono, "select conta_id, versao, ip, origem from aceites_termos where usuario_id = :u",
                    u=admin["usuario"]["id"])
-    assert (linha.conta_id, linha.versao, linha.origem) == (admin["conta"]["id"], 1, "cadastro") and linha.ip
+    assert (linha.conta_id, linha.versao, linha.origem) == (admin["conta"]["id"], V, "cadastro") and linha.ip
     (aud,) = sql(dono, "select detalhe, conta_id from auditoria where evento = 'termos_aceitos'")
-    assert aud.detalhe == {"versao": 1, "origem": "cadastro"} and aud.conta_id == admin["conta"]["id"]
+    assert aud.detalhe == {"versao": V, "origem": "cadastro"} and aud.conta_id == admin["conta"]["id"]
     # aceitar pela tela depois do cadastro não grava de novo
     assert _aceitar(client, admin["h"]).json() == a
     assert sql(dono, "select count(*) from aceites_termos")[0][0] == 1
 
 
 def test_versao_nova_volta_a_pedir_o_aceite(client, admin, dono, monkeypatch):
-    monkeypatch.setattr(termos, "VERSAO_DOCUMENTOS", 2)
+    monkeypatch.setattr(termos, "VERSAO_DOCUMENTOS", V + 1)
     a = _aceite(client, admin["h"])
-    assert (a["versao_atual"], a["versao_aceita"], a["pendente"]) == (2, 1, True)
-    assert _aceitar(client, admin["h"], versao=1).status_code == 409
-    r = _aceitar(client, admin["h"], versao=2)
-    assert r.status_code == 200 and r.json()["versao_aceita"] == 2 and r.json()["pendente"] is False
+    assert (a["versao_atual"], a["versao_aceita"], a["pendente"]) == (V + 1, V, True)
+    assert _aceitar(client, admin["h"], versao=V).status_code == 409
+    r = _aceitar(client, admin["h"], versao=V + 1)
+    assert r.status_code == 200 and r.json()["versao_aceita"] == V + 1 and r.json()["pendente"] is False
     versoes = sql(dono, "select versao, origem from aceites_termos where usuario_id = :u order by versao",
                   u=admin["usuario"]["id"])
-    assert [tuple(x) for x in versoes] == [(1, "cadastro"), (2, "tela")]  # o histórico fica
+    assert [tuple(x) for x in versoes] == [(V, "cadastro"), (V + 1, "tela")]  # o histórico fica
 
 
 def test_superadmin_aceita_como_qualquer_usuario(client):
@@ -215,6 +216,6 @@ def test_remover_membro_mantem_a_prova_do_aceite(client, admin, gestor, dono):
     (linha,) = sql(dono, "select usuario_id, usuario_email, usuario_nome, versao, origem, conta_id "
                          "from aceites_termos where usuario_email = 'gil@alfa.com.br'")
     assert linha.usuario_id is None and linha.usuario_nome == "Membro gestor"
-    assert (linha.versao, linha.origem, linha.conta_id) == (1, "tela", admin["conta"]["id"])
+    assert (linha.versao, linha.origem, linha.conta_id) == (V, "tela", admin["conta"]["id"])
     # o aceite do admin (cadastro) não é afetado
     assert _aceite(client, admin["h"])["pendente"] is False

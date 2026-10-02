@@ -273,6 +273,63 @@ describe('botão do assistente', () => {
     expect(w.find('button[data-botao-assistente]').exists()).toBe(true)
     expect(w.get('main#conteudo').classes()).toEqual(expect.arrayContaining(['pb-24', 'sm:pb-28']))
   })
+
+  it('o foco pelo teclado não fica atrás do botão: a página guarda embaixo a altura dele (scroll-padding), só com o botão na tela', async () => {
+    const raiz = document.documentElement
+    entrar()
+    apiFalsa({ 'GET /assistente': () => ESTADO() })
+    const w = await montar()
+    // Tela larga: 24 px do canto + 48 do botão + 16 de margem.
+    expect(raiz.style.scrollPaddingBottom).toBe('88px')
+    // Painel aberto: o botão some (e o painel é outra coisa); fechado, volta.
+    await abrir(w)
+    expect(raiz.style.scrollPaddingBottom).toBe('')
+    await w.get('button[aria-label="Fechar o ToqqiAI"]').trigger('click')
+    await flushPromises()
+    expect(raiz.style.scrollPaddingBottom).toBe('88px')
+    w.unmount()
+    expect(raiz.style.scrollPaddingBottom).toBe('')
+
+    // Celular: o botão fica a 16 px do canto.
+    telas({ larga: false })
+    const celular = await montar()
+    expect(raiz.style.scrollPaddingBottom).toBe('80px')
+    celular.unmount()
+
+    // Sem IA na plataforma, sem botão: nada muda.
+    setActivePinia(createPinia())
+    entrar()
+    apiFalsa({ 'GET /assistente': () => ESTADO({ disponivel: false, motivo: 'ia_indisponivel', cota: null }) })
+    await montar()
+    expect(raiz.style.scrollPaddingBottom).toBe('')
+  })
+
+  it('com uma barra de salvar presa ao rodapé (data-barra-fixa), o scroll-padding soma a altura dela, como o botão sobe', async () => {
+    const raiz = document.documentElement
+    entrar()
+    apiFalsa({ 'GET /assistente': () => ESTADO() })
+    router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:qualquer(.*)*', component: { render: () => h('div', 'página') } }] })
+    await router.push('/configuracoes/empresa')
+    await router.isReady()
+    // A barra (64 px) encostada no rodapé da janela.
+    const barra = { top: window.innerHeight - 64, bottom: window.innerHeight, height: 64 } as DOMRect
+    const Pagina = defineComponent({
+      mounted() {
+        const el = (this as { $el: HTMLElement }).$el.querySelector<HTMLElement>('[data-barra-fixa]')!
+        el.getBoundingClientRect = () => barra
+      },
+      render: () => h('div', [h('p', 'formulário'), h('div', { 'data-barra-fixa': '' }, [h('button', 'Salvar')])]),
+    })
+    const w = mount(defineComponent({ render: () => h('div', [h('main', { id: 'conteudo', tabindex: '-1' }, [h(Pagina)]), h(AssistenteFlutuante)]) }), {
+      global: { plugins: [router] },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    await new Promise((r) => setTimeout(r, 40)) // a medida da barra sai no quadro seguinte
+    await flushPromises()
+    expect(w.get('button[data-botao-assistente]').attributes('style')).toContain('bottom: 88px') // 64 + 24
+    expect(raiz.style.scrollPaddingBottom).toBe('152px') // 64 + 24 + 48 + 16
+  })
 })
 
 describe('abrir e fechar', () => {

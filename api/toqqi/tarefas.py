@@ -5,11 +5,16 @@ Também disponíveis em POST /api/v1/interno/tarefas (cabeçalho X-Tarefas-Token
 `toqqi-tarefas` do Render roda este comando a cada 15 minutos; cada tarefa decide por conta se é hora de agir.
 `tudo` roda na ordem: assinaturas, pendentes, robô, lembretes, webhooks, ia, picos, resumo (assinaturas primeiro,
 para a liberação dos envios já valer; a IA antes dos picos, para eles já usarem as análises novas).
+
+A tarefa `ia` analisa as respostas pendentes e, depois, no mesmo tempo da rodada, sugere os passos das ações
+pendentes (etapa 5d): {analisadas, falharam, limite, passos: {prontas, falharam, limite}}.
 """
 import json
 import logging
 import sys
+import time as relogio_real
 
+from toqqi.modulos.acoes import passos
 from toqqi.modulos.assinatura import conferencia as assinaturas
 from toqqi.modulos.envios import automacao
 from toqqi.modulos.ia import servico as ia
@@ -34,7 +39,8 @@ def executar(qual: str = "tudo") -> dict:
     if qual in ("webhooks", "tudo"):
         resultado["webhooks"] = webhooks.entregar_devidas()
     if qual in ("ia", "tudo"):
-        resultado["ia"] = ia.executar()
+        inicio = relogio_real.monotonic()
+        resultado["ia"] = {**ia.executar(), "passos": passos.executar(inicio)}
     if qual in ("picos", "tudo"):
         resultado["picos"] = emails.picos()
     if qual in ("resumo", "tudo"):

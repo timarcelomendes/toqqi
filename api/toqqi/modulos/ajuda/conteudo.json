@@ -1355,6 +1355,7 @@
                 "A situação do contato passa a Respondeu.",
                 "Se “Agradecer quem responde” estiver ligado em Configurações › Envios, o cliente que tem e-mail recebe um agradecimento com texto conforme a nota.",
                 "Pela nota, o Toqqi cria um plano de ação sozinho (veja o tópico Planos de ação).",
+                "Com a IA ligada, essa ação ganha até 3 passos sugeridos pela IA, a partir do comentário.",
                 "Se a ação é de prioridade alta e a empresa tem responsável com e-mail, ele recebe um e-mail com o título “Alerta de risco”."
               ]
             },
@@ -1369,7 +1370,7 @@
     {
       "id": "painel",
       "titulo": "Início e painel",
-      "resumo": "Os números do Início: NPS, CSAT, taxa de resposta, ações em aberto, receita em risco e picos de reclamação.",
+      "resumo": "Os números do Início: NPS, CSAT, taxa de resposta, ações em aberto, receita em risco, picos de reclamação e o resumo da IA.",
       "secoes": [
         {
           "id": "o-que-mostra-o-inicio",
@@ -1399,6 +1400,7 @@
               "itens": [
                 "Picos de reclamação (só quando houver) e Primeiros passos (enquanto faltar algum).",
                 "NPS do período, Variação do NPS, Satisfação (CSAT) e Taxa de resposta.",
+                "Resumo da IA, logo abaixo do NPS: três frases sobre o período, geradas quando você pede (só com a inteligência artificial ligada na plataforma).",
                 "Precisa de atenção: ações abertas, vencidas e receita em risco.",
                 "Evolução do NPS mês a mês e Assuntos mais citados.",
                 "Movimentação, Palavras mais citadas, Comentários recentes e Empresas (menor e maior NPS)."
@@ -1473,6 +1475,52 @@
             {
               "tipo": "paragrafo",
               "texto": "“NPS dos decisores” é a mesma conta só com os contatos que têm o perfil “Decisor” no cadastro, ou seja, quem decide a compra."
+            }
+          ]
+        },
+        {
+          "id": "resumo-da-ia-no-inicio",
+          "titulo": "Resumo da IA no Início",
+          "somente_admin": false,
+          "atalho": "inicio",
+          "palavras": [
+            "resumo da ia",
+            "inteligência artificial",
+            "gerar resumo",
+            "gerar de novo",
+            "três frases",
+            "o que precisa melhorar",
+            "o que está funcionando",
+            "próximo passo",
+            "ia no painel",
+            "análise do período"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O cartão “Resumo da IA”, logo abaixo do NPS, resume o período em três frases: o que precisa melhorar, o que está funcionando e o próximo passo. A IA lê os números do Início com os filtros da tela (período, grupo de empresas e “Só empresas ativas”) e até 8 comentários recentes desse recorte."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Escolha o período e os filtros do Início.",
+                "Clique em “Gerar resumo”. A IA leva alguns segundos (“Lendo os números do período…”).",
+                "Leia as três frases: “Precisa melhorar”, “Está funcionando” e “Próximo passo”."
+              ]
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Cada geração usa 1 análise da cota de IA do plano. Se der erro, a análise volta para a cota.",
+                "O resumo fica salvo para aqueles filtros até alguém gerar de novo. O rodapé mostra quando ele foi gerado, por quem e com qual modelo.",
+                "Depois de gerar, “Gerar de novo” espera 30 segundos, e a espera vale para a conta toda.",
+                "Sem respostas de NPS nem de CSAT no período, o Toqqi avisa e não gasta a análise.",
+                "Com a assinatura pausada ou a cota do mês esgotada, o cartão explica e não gera."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "O resumo é uma leitura dos números feita por inteligência artificial: confira os detalhes no próprio Início e nos Relatórios antes de uma decisão importante."
             }
           ]
         },
@@ -1623,7 +1671,8 @@
             "grupo de empresas",
             "empresas ativas",
             "análise",
-            "gráficos"
+            "gráficos",
+            "parecer da ia"
           ],
           "blocos": [
             {
@@ -1649,6 +1698,10 @@
             {
               "tipo": "paragrafo",
               "texto": "Os filtros ficam no endereço da página: copie o link para mostrar o mesmo relatório a um colega. Com a permissão “Exportar dados do painel”, o botão “Exportar CSV” baixa a tabela inteira, não só a página que você vê. Ele existe em Empresas, Entregas, Responsáveis e Histórico de uma empresa. Na Operação, o botão é “Exportar contatos sem resposta (CSV)”. Grupos de clientes e Temas não têm CSV."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O botão “Parecer da IA”, no alto da tela, resume o recorte filtrado e sugere o que fazer na semana (veja Parecer da IA)."
             }
           ]
         },
@@ -1963,6 +2016,46 @@
               "texto": "Depois vem a “Evolução do NPS”, mês a mês (até os 24 meses mais recentes), e a “Linha do tempo”: as respostas da mais recente para a mais antiga, com nota, contato e cargo, canal, comentário, temas, análise da IA e ação. “Abrir a resposta” leva ao painel de análise em Respostas. A linha do tempo mostra até 500 respostas; o CSV traz todas."
             }
           ]
+        },
+        {
+          "id": "parecer-da-ia",
+          "titulo": "Parecer da IA: resumo e recomendações da semana",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "parecer",
+            "parecer da ia",
+            "inteligência artificial",
+            "recomendações",
+            "o que fazer esta semana",
+            "resumo dos relatórios",
+            "análise da carteira",
+            "gerar parecer",
+            "prioridades"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Relatórios, o botão “Parecer da IA” abre um painel ao lado com um resumo de 2 a 3 frases e até 3 recomendações para a semana. A IA lê os números dos relatórios com os filtros da tela (período, grupo de empresas e “Só empresas ativas”): empresas e receita em risco, a matriz NPS × valor, temas e picos, responsáveis, operação e o que aconteceu nos últimos 7 dias."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Escolha o período e os filtros no alto de Relatórios.",
+                "Clique em “Parecer da IA”.",
+                "Clique em “Gerar parecer” e leia o “Resumo” e as “Recomendações da semana”."
+              ]
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Cada parecer usa 1 análise da cota de IA do plano; se der erro, a análise volta.",
+                "O parecer fica salvo para aqueles filtros até alguém gerar de novo. Entre uma geração e outra, a conta espera 30 segundos.",
+                "Vão para a IA só números e nomes de empresas e de responsáveis, nunca comentários nem dados dos contatos.",
+                "O botão não aparece se a inteligência artificial não estiver ligada na plataforma."
+              ]
+            }
+          ]
         }
       ]
     },
@@ -2013,6 +2106,10 @@
             {
               "tipo": "paragrafo",
               "texto": "Cada resposta gera no máximo uma ação automática. Respostas registradas à mão seguem a mesma regra. Respostas importadas do histórico não criam ação."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Com a IA ligada, a ação que nasce de uma resposta com comentário ganha até 3 passos sugeridos pela IA (veja Passos sugeridos pela IA)."
             }
           ]
         },
@@ -2098,6 +2195,47 @@
           ]
         },
         {
+          "id": "passos-sugeridos-pela-ia",
+          "titulo": "Passos sugeridos pela IA",
+          "somente_admin": false,
+          "atalho": "planos_de_acao",
+          "palavras": [
+            "passos",
+            "passos sugeridos",
+            "sugestão da ia",
+            "inteligência artificial",
+            "o que fazer",
+            "como resolver",
+            "copiar passos",
+            "ia nas ações",
+            "próximos passos"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Quando uma ação nasce de uma resposta (a ação automática ou a criada com “Criar ação” em Respostas), a IA sugere até 3 passos concretos para a equipe resolver nesta semana o que o cliente apontou. Ela lê o comentário do cliente, as opções que ele marcou e as últimas 5 respostas da mesma empresa."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "No painel da ação, abaixo da descrição, fica o bloco “Passos sugeridos pela IA”. O botão de copiar leva os passos numerados.",
+                "Enquanto a IA trabalha, aparece “A IA está sugerindo os passos…”; em geral leva poucos segundos.",
+                "Se nem a resposta nem as anteriores da empresa têm comentário, a ação fica sem passos.",
+                "Se a IA não conseguir, aparece “A IA não conseguiu sugerir passos para esta ação.”. Se o limite mensal de segurança acabou, aparece “O limite mensal de análises automáticas foi atingido.”.",
+                "Editar, mover ou concluir a ação não muda os passos."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Os passos não gastam a cota de IA do plano: contam só no limite mensal de segurança, como a análise de cada comentário. Para a IA vão a nota, o tipo de pesquisa, os comentários e as datas, nunca o nome da empresa ou do contato, e-mail, telefone ou dados do pedido. Para desligar, o administrador usa “Sugerir passos nas ações” em Configurações › IA."
+            },
+            {
+              "tipo": "dica",
+              "texto": "São sugestões da IA: confira antes de seguir e ajuste ao que a sua empresa pode cumprir."
+            }
+          ]
+        },
+        {
           "id": "criar-uma-acao-a-mao",
           "titulo": "Criar uma ação à mão",
           "somente_admin": false,
@@ -2123,7 +2261,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "O botão “Nova ação” aparece para quem tem a permissão “Tratar planos de ação”. Também dá para criar a ação de uma resposta: em Respostas, abra “Analisar” e clique em “Criar ação”. Se a resposta já tem ação, o botão é “Abrir ação”."
+              "texto": "O botão “Nova ação” aparece para quem tem a permissão “Tratar planos de ação”. Também dá para criar a ação de uma resposta: em Respostas, abra “Analisar” e clique em “Criar ação”. Se a resposta já tem ação, o botão é “Abrir ação”. A ação criada a partir de uma resposta também pode ganhar passos sugeridos pela IA."
             }
           ]
         },
@@ -2686,7 +2824,7 @@
     {
       "id": "configuracoes",
       "titulo": "Configurações",
-      "resumo": "Dados da empresa, segurança, envios, planos de ação e inteligência artificial (só administrador muda).",
+      "resumo": "Dados da empresa, segurança, envios, planos de ação e inteligência artificial (modelo, estilo, passos e cota; só administrador muda).",
       "secoes": [
         {
           "id": "o-que-tem-em-configuracoes",
@@ -2716,7 +2854,7 @@
                 "Segurança: tempo de sessão e domínios de e-mail liberados.",
                 "Envios: quando, com que frequência e com quais palavras a pesquisa chega aos clientes.",
                 "Planos de ação: prazos das ações automáticas.",
-                "IA: análise dos comentários e cota de inteligência artificial."
+                "IA: análise dos comentários, como a IA escreve (modelo e estilo), passos nas ações e cota de inteligência artificial."
               ]
             },
             {
@@ -2725,7 +2863,7 @@
             },
             {
               "tipo": "dica",
-              "texto": "Em Empresa, Envios e Planos de ação, “Salvar alterações” fica numa barra fixa embaixo da tela e, se você for para outra tela com algo não salvo, o Toqqi pergunta “Sair sem salvar?”. Em Segurança, “Salvar alterações” fica no fim da página, sem barra fixa, e o Toqqi não avisa se você sair sem salvar. Em IA não há “Salvar alterações”: o interruptor “Analisar comentários com IA” vale na hora."
+              "texto": "Em Empresa, Envios e Planos de ação, “Salvar alterações” fica numa barra fixa embaixo da tela e, se você for para outra tela com algo não salvo, o Toqqi pergunta “Sair sem salvar?”. Em Segurança, “Salvar alterações” fica no fim da página, sem barra fixa, e o Toqqi não avisa se você sair sem salvar. Em IA não há “Salvar alterações”: cada escolha (interruptores, modelo e estilo) vale na hora."
             }
           ]
         },
@@ -2954,6 +3092,43 @@
           ]
         },
         {
+          "id": "ia-modelo-estilo-e-passos",
+          "titulo": "IA: modelo, estilo e passos nas ações",
+          "somente_admin": true,
+          "atalho": "config_ia",
+          "palavras": [
+            "modelo",
+            "estilo",
+            "como a ia escreve",
+            "rápido e econômico",
+            "equilibrado",
+            "mais detalhado",
+            "objetiva",
+            "criativa",
+            "tom da ia",
+            "sugerir passos nas ações",
+            "desligar passos"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "A seção “Como a IA escreve” vale para o ToqqiAI, o resumo do Início, o parecer dos Relatórios e os passos das ações. A análise de cada comentário não muda."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Modelo: “Rápido e econômico” (respostas curtas e rápidas), “Equilibrado” (o padrão, bom para o dia a dia) ou “Mais detalhado” (análises mais cuidadosas, que podem demorar um pouco mais). Todos usam 1 análise por pergunta ou por geração.",
+                "Estilo: “Objetiva” (frases curtas, só o essencial), “Equilibrada” (claro e cordial, o padrão) ou “Criativa” (tom mais próximo e ideias práticas). Em nenhum estilo a IA inventa números.",
+                "“Sugerir passos nas ações”: ligado, a ação criada a partir de uma resposta ganha até 3 passos sugeridos pela IA, sem gastar a cota do plano. Desligado, as ações que ainda esperavam os passos ficam sem eles."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Cada escolha é salva na hora, com um aviso de sucesso; se der erro, a escolha anterior volta. Resumos e pareceres já gerados continuam mostrando o modelo com que foram feitos."
+            }
+          ]
+        },
+        {
           "id": "ia-cota-do-plano-e-privacidade",
           "titulo": "IA: cota do plano e o que é enviado",
           "somente_admin": true,
@@ -2968,16 +3143,33 @@
             "toqqiai",
             "assistente",
             "renova",
-            "dia 1"
+            "dia 1",
+            "resumo do início",
+            "parecer",
+            "passos das ações"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "A seção “Cota de IA do plano” mostra quantas análises você usou no mês, como “120 de 500”, e renova no dia 1º. Cada pergunta ao ToqqiAI usa 1 análise. A análise automática de cada resposta não entra nessa conta. A cota é de 100 análises no Essencial, 500 no Profissional e 2.000 no Empresa."
+              "texto": "A seção “Cota de IA do plano” mostra quantas análises você usou no mês, como “120 de 500”, e renova no dia 1º. Cada pergunta ao ToqqiAI, cada resumo do Início e cada parecer dos Relatórios usam 1 análise (se der erro, ela volta). A análise automática de cada resposta e os passos das ações não entram nessa conta: contam só no limite mensal de segurança. A cota é de 100 análises no Essencial, 500 no Profissional e 2.000 no Empresa."
             },
             {
               "tipo": "paragrafo",
-              "texto": "Na análise dos comentários (seção “O que é enviado à IA”), vai só o texto que o cliente escreveu (até 500 caracteres), as opções que ele marcou e a nota. Nunca vão nome, e-mail, telefone, empresa ou dados do pedido. O provedor não guarda a conversa. Os temas vêm só da lista fixa de 6. O ToqqiAI funciona de outro jeito: veja o tópico ToqqiAI."
+              "texto": "O que cada recurso envia ao provedor de IA:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Análise dos comentários: só o texto que o cliente escreveu (até 500 caracteres), as opções que ele marcou e a nota. Os temas vêm só da lista fixa de 6.",
+                "Passos das ações: a nota, o tipo de pesquisa, o comentário e as opções marcadas da resposta e as últimas 5 respostas da mesma empresa (data, nota e comentário).",
+                "Resumo do Início: os números do período, os nomes das empresas de menor e maior NPS e até 8 comentários recentes, com data e nota.",
+                "Parecer dos Relatórios: os números dos relatórios, com nomes de empresas e de responsáveis, sem comentários.",
+                "ToqqiAI: veja o tópico ToqqiAI."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Nunca vão o nome, o e-mail ou o telefone dos contatos, nem os dados do pedido. O provedor não guarda a conversa. Os passos se desligam em “Sugerir passos nas ações”; o resumo e o parecer só rodam quando alguém pede."
             }
           ]
         }
@@ -3709,6 +3901,10 @@
             {
               "tipo": "paragrafo",
               "texto": "O botão não aparece se a inteligência artificial não estiver ligada na plataforma. Com a assinatura pausada ou a cota do mês esgotada, ele aparece, mas avisa que não dá para perguntar agora."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O modelo e o estilo da escrita seguem a escolha do administrador em Configurações › IA (“Como a IA escreve”)."
             }
           ]
         },
@@ -3830,7 +4026,8 @@
                 "Pergunta que dá erro e fica sem resposta não gasta a análise: ela é devolvida.",
                 "Se o ToqqiAI responde, a análise foi usada, mesmo quando a resposta é recusar um assunto.",
                 "A cota renova no dia 1º de cada mês.",
-                "A análise automática de cada comentário (Configurações › IA) não entra nesta conta, e o interruptor “Analisar comentários com IA” não liga nem desliga o ToqqiAI."
+                "O resumo do Início e o parecer dos Relatórios usam a mesma cota: 1 análise por geração.",
+                "A análise automática de cada comentário e os passos das ações não entram nesta conta, e o interruptor “Analisar comentários com IA” não liga nem desliga o ToqqiAI."
               ]
             },
             {
