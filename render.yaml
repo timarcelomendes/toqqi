@@ -40,7 +40,7 @@ services:
       - key: API_PUBLIC_URL
         value: https://toqqi-api.onrender.com
       - key: EMAIL_PROVIDER         # "console" até configurar o ZeptoMail; depois "zeptomail" + ZEPTOMAIL_TOKEN
-        value: console
+        value: zeptomail
       - key: AMBIENTE
         value: producao
       - key: TAREFAS_TOKEN          # protege POST /interno/tarefas (rodar robô e lembretes à mão)
