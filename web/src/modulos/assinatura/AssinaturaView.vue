@@ -45,6 +45,7 @@ import {
   resumoPrimeiraFatura,
   situacaoCobranca,
   situacaoNaTela,
+  textoPeriodo,
   validarCobranca,
   type FormCobranca,
 } from './logica'
@@ -403,7 +404,8 @@ onBeforeUnmount(() => {
           </div>
           <p class="mt-1.5 text-sm text-texto-suave">
             <strong class="font-semibold text-texto">{{ formatarMoeda(fatura.valor) }}</strong>,
-            {{ fatura.situacao === 'vencida' ? 'venceu em' : 'vence em' }} {{ formatarData(fatura.vencimento) }}.
+            {{ fatura.situacao === 'vencida' ? 'venceu em' : 'vence em' }} {{ formatarData(fatura.vencimento) }}
+            e cobre de <span class="whitespace-nowrap" data-periodo>{{ textoPeriodo(fatura.vencimento) }}</span>.
             {{ futura ? 'Se quiser pagar antes, na fatura você escolhe Pix, boleto ou cartão.' : 'Na fatura, você escolhe Pix, boleto ou cartão.' }}
           </p>
           <p v-if="outrasAbertas.length" class="mt-1 text-sm text-texto-suave" data-outras-abertas>

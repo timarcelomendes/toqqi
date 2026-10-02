@@ -7,6 +7,7 @@ import {
   chaveDoAviso,
   corpoCobranca,
   efeitoTroca,
+  fimDoPeriodo,
   formCobrancaDe,
   linkDaCobranca,
   mensagemCancelamento,
@@ -20,6 +21,7 @@ import {
   situacaoCobranca,
   situacaoNaTela,
   textoDepois,
+  textoPeriodo,
   textoDoAviso,
   faturaFutura,
   faturasPagas,
@@ -93,15 +95,29 @@ describe('datas da assinatura (São Paulo)', () => {
     expect(textoDepois('2026-10-31')).toBe('Depois, todo dia 31 (ou no último dia do mês, nos meses mais curtos).')
   })
 
+  it('período coberto por uma fatura: do vencimento até a véspera do mesmo dia no mês seguinte (como o pago_ate)', () => {
+    expect(fimDoPeriodo('2026-10-16')).toBe('2026-11-15')
+    expect(fimDoPeriodo('2026-11-01')).toBe('2026-11-30')
+    expect(fimDoPeriodo('2026-12-16')).toBe('2027-01-15')
+    expect(fimDoPeriodo('2026-10-31')).toBe('2026-11-29') // 31/11 não existe: o mês seguinte começa em 30/11
+    expect(fimDoPeriodo('2027-01-31')).toBe('2027-02-27')
+    expect(fimDoPeriodo('2028-01-31')).toBe('2028-02-28') // ano bissexto
+    expect(textoPeriodo('2026-10-16')).toBe('16/10 a 15/11/2026')
+    expect(textoPeriodo('2026-12-01')).toBe('01/12 a 31/12/2026')
+    expect(textoPeriodo('2026-12-16')).toBe('16/12/2026 a 15/01/2027')
+    expect(textoPeriodo('2026-10-16', true)).toBe('16/10 a 15/11') // no histórico, logo abaixo do vencimento
+    expect(textoPeriodo('2026-12-16', true)).toBe('16/12 a 15/01')
+  })
+
   it('resumo da primeira fatura como no contrato', () => {
     const r = resumoPrimeiraFatura(PROFISSIONAL, { teste_ate: '2026-10-15T14:30:00-03:00', pago_ate: null }, AGORA)
-    expect(t(r.texto)).toBe('Primeira fatura de R$ 349,00 com vencimento em 15/10/2026, no fim do teste. Depois, todo dia 15.')
+    expect(t(r.texto)).toBe('Primeira fatura de R$ 349,00 com vencimento em 15/10/2026, no fim do teste. Ela cobre de 15/10 a 14/11/2026. Depois, todo dia 15.')
     expect(r.envios).toBeNull()
     const vencido = resumoPrimeiraFatura(ESSENCIAL, { teste_ate: '2026-09-20T10:00:00-03:00', pago_ate: null }, AGORA)
-    expect(t(vencido.texto)).toBe('Primeira fatura de R$ 149,00 com vencimento amanhã, 02/10/2026. Depois, todo dia 2.')
+    expect(t(vencido.texto)).toBe('Primeira fatura de R$ 149,00 com vencimento amanhã, 02/10/2026. Ela cobre de 02/10 a 01/11/2026. Depois, todo dia 2.')
     expect(vencido.envios).toBe('Os envios voltam assim que o pagamento for confirmado: Pix e cartão em segundos, boleto em até 3 dias úteis.')
     const pago = resumoPrimeiraFatura(EMPRESA, { teste_ate: null, pago_ate: '2026-11-14' }, AGORA)
-    expect(t(pago.texto)).toBe('Primeira fatura de R$ 799,00 com vencimento em 15/11/2026, no dia seguinte ao fim do período já pago. Depois, todo dia 15.')
+    expect(t(pago.texto)).toBe('Primeira fatura de R$ 799,00 com vencimento em 15/11/2026, no dia seguinte ao fim do período já pago. Ela cobre de 15/11 a 14/12/2026. Depois, todo dia 15.')
     const hoje = resumoPrimeiraFatura(PROFISSIONAL, { teste_ate: '2026-10-01T20:00:00-03:00', pago_ate: null }, AGORA)
     expect(t(hoje.texto)).toContain('com vencimento hoje, 01/10/2026, no fim do teste.')
   })

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// Histórico de cobranças (as 12 mais recentes): vencimento, valor, forma, situação e o link da fatura no Asaas
-// (abre em nova aba). Tabela a partir de 640 px; cartões no celular.
+// Histórico de cobranças (as 12 mais recentes): vencimento (com o período que a fatura cobre logo abaixo), valor,
+// forma, situação (com o dia do pagamento logo abaixo) e o link da fatura no Asaas (abre em nova aba). Tabela a partir
+// de 640 px; cartões no celular.
 import { computed } from 'vue'
 import { ExternalLink, Receipt } from 'lucide-vue-next'
 import type { CobrancaAssinatura } from '@/api/tipos'
@@ -9,7 +10,7 @@ import { formatarMoeda } from '@/utils/formatos'
 import EstadoVazio from '@/components/ui/EstadoVazio.vue'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
 import Tabela, { type Coluna } from '@/components/ui/Tabela.vue'
-import { linkDaCobranca, rotuloForma, situacaoCobranca } from './logica'
+import { linkDaCobranca, rotuloForma, situacaoCobranca, textoPeriodo } from './logica'
 
 const props = defineProps<{ cobrancas: CobrancaAssinatura[] }>()
 
@@ -22,7 +23,6 @@ const colunas: Coluna[] = [
   { chave: 'valor', rotulo: 'Valor', alinhar: 'direita' },
   { chave: 'forma', rotulo: 'Forma' },
   { chave: 'situacao', rotulo: 'Situação' },
-  { chave: 'pago_em', rotulo: 'Paga em', classe: 'hidden md:table-cell' },
   { chave: 'link', rotulo: 'Fatura', rotuloOculto: true, alinhar: 'direita' },
 ]
 const chave = (c: Linha) => c.posicao
@@ -34,7 +34,8 @@ const chave = (c: Linha) => c.posicao
     <div class="hidden sm:block">
       <Tabela :colunas="colunas" :linhas="linhas" :chave="chave" legenda="Histórico de cobranças">
         <template #cel-vencimento="{ linha: c }">
-          <span class="whitespace-nowrap font-semibold text-texto">{{ formatarData(c.vencimento) }}</span>
+          <span class="block whitespace-nowrap font-semibold text-texto">{{ formatarData(c.vencimento) }}</span>
+          <span class="block whitespace-nowrap text-xs text-texto-suave" data-periodo>cobre {{ textoPeriodo(c.vencimento, true) }}</span>
         </template>
         <template #cel-valor="{ linha: c }">
           <span class="whitespace-nowrap tabular-nums text-texto">{{ formatarMoeda(c.valor) }}</span>
@@ -44,9 +45,7 @@ const chave = (c: Linha) => c.posicao
         </template>
         <template #cel-situacao="{ linha: c }">
           <Etiqueta :tom="situacaoCobranca(c.situacao).tom" ponto>{{ situacaoCobranca(c.situacao).rotulo }}</Etiqueta>
-        </template>
-        <template #cel-pago_em="{ linha: c }">
-          <span class="whitespace-nowrap text-texto-suave">{{ formatarData(c.pago_em) }}</span>
+          <span v-if="c.pago_em" class="mt-1 hidden whitespace-nowrap text-xs text-texto-suave md:block" data-pago-em>em {{ formatarData(c.pago_em) }}</span>
         </template>
         <template #cel-link="{ linha: c }">
           <a v-if="c.link" :href="c.link" target="_blank" rel="noopener noreferrer" class="link inline-flex items-center gap-1 whitespace-nowrap">
@@ -65,6 +64,7 @@ const chave = (c: Linha) => c.posicao
           </p>
           <Etiqueta :tom="situacaoCobranca(c.situacao).tom" ponto>{{ situacaoCobranca(c.situacao).rotulo }}</Etiqueta>
         </div>
+        <p class="text-sm text-texto-suave" data-periodo>Cobre de {{ textoPeriodo(c.vencimento) }}</p>
         <p v-if="rotuloForma(c) !== '—' || c.pago_em" class="text-sm text-texto-suave">
           {{ rotuloForma(c) }}<template v-if="c.pago_em"> · paga em {{ formatarData(c.pago_em) }}</template>
         </p>

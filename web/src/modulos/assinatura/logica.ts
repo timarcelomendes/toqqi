@@ -64,6 +64,33 @@ export function primeiroVencimento(
   return candidatos.reduce((a, b) => (b.data > a.data ? b : a))
 }
 
+/** Mesmo dia no mês seguinte (31/01 → 28/02 ou 29/02), como `mais_um_mes` na API. */
+function maisUmMes(iso: string): string {
+  const a = Number(iso.slice(0, 4))
+  const m = Number(iso.slice(5, 7))
+  const d = Number(iso.slice(8, 10))
+  const ano = m === 12 ? a + 1 : a
+  const mes = m === 12 ? 1 : m + 1
+  const ultimo = new Date(Date.UTC(ano, mes, 0)).getUTCDate() // último dia do mês `mes` (1 a 12)
+  return `${ano}-${String(mes).padStart(2, '0')}-${String(Math.min(d, ultimo)).padStart(2, '0')}`
+}
+
+/** Último dia coberto por uma fatura: vencimento + 1 mês − 1 dia (a regra do `pago_ate` na API). */
+export function fimDoPeriodo(vencimento: string): string {
+  return somarDias(maisUmMes(vencimento), -1)
+}
+
+/**
+ * Período coberto por uma fatura: "16/10 a 15/11/2026" (mesmo ano) ou "16/12/2026 a 15/01/2027". `curto` (no
+ * histórico, logo abaixo do vencimento, que já mostra o ano): "16/10 a 15/11", "16/12 a 15/01".
+ */
+export function textoPeriodo(vencimento: string, curto = false): string {
+  const fim = fimDoPeriodo(vencimento)
+  if (curto) return `${formatarDiaMes(vencimento)} a ${formatarDiaMes(fim)}`
+  const inicio = vencimento.slice(0, 4) === fim.slice(0, 4) ? formatarDiaMes(vencimento) : formatarData(vencimento)
+  return `${inicio} a ${formatarData(fim)}`
+}
+
 /** "Depois, todo dia 15." (dias 29 a 31 não existem em todo mês: aí a fatura vem no último dia.) */
 export function textoDepois(vencimento: string): string {
   const dia = Number(vencimento.slice(8, 10))
@@ -76,7 +103,8 @@ export const TEMPO_CONFIRMACAO = 'Pix e cartão em segundos, boleto em até 3 di
 export const INTERVALO_ESPERA_MS = 10_000
 export const LIMITE_ESPERA_MS = 120_000
 
-/** Resumo da primeira fatura no formulário de assinar ("Primeira fatura de R$ 349,00 com vencimento em…"). */
+/** Resumo da primeira fatura no formulário de assinar ("Primeira fatura de R$ 349,00 com vencimento em…", o período
+ * que ela cobre e o dia das próximas). */
 export function resumoPrimeiraFatura(
   plano: Pick<PlanoAssinatura, 'preco'>,
   conta: { teste_ate: string | null; pago_ate: string | null },
@@ -93,7 +121,7 @@ export function resumoPrimeiraFatura(
         : `em ${formatarData(data)}`
   const porque = motivo === 'teste' ? ', no fim do teste' : motivo === 'pago' ? ', no dia seguinte ao fim do período já pago' : ''
   return {
-    texto: `Primeira fatura de ${valor} com vencimento ${quando}${porque}. ${textoDepois(data)}`,
+    texto: `Primeira fatura de ${valor} com vencimento ${quando}${porque}. Ela cobre de ${textoPeriodo(data)}. ${textoDepois(data)}`,
     // Sem teste nem período pago, os envios estão parados até o pagamento.
     envios: motivo === 'amanha' ? `Os envios voltam assim que o pagamento for confirmado: ${TEMPO_CONFIRMACAO}.` : null,
     vencimento: data,

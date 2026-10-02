@@ -128,11 +128,13 @@ pago; `data` = `pago_ate`), `cancelada_encerrada`.
   - Sem assinatura: situação atual (teste com a data de fim, teste encerrado, cancelada), uso (contatos ativos), os 3 planos em
     cartões (preço, limite de contatos, "envios, formulários e usuários ilimitados"), escolher um → formulário de cobrança
     preenchido com os dados da empresa (razão social, CPF/CNPJ com máscara, e-mail de cobrança, telefone com máscara) e o resumo
-    ("Primeira fatura de R$ 349,00 com vencimento em 15/10/2026, no fim do teste. Depois, todo dia 15.") → "Assinar".
+    ("Primeira fatura de R$ 349,00 com vencimento em 15/10/2026, no fim do teste. Ela cobre de 15/10 a 14/11/2026. Depois,
+    todo dia 15.") → "Assinar".
   - Com assinatura: plano e situação (selo), a fatura em aberto com "Pagar" (abre a fatura do Asaas em nova aba: Pix, boleto ou
     cartão), próximo vencimento, "Trocar de plano" (mostra o novo valor e o efeito nas faturas em aberto; plano menor com contatos
     demais avisa antes), "Dados de cobrança" (editar), "Cancelar assinatura" (confirmação: "Você continua usando até 14/11/2026.
-    Sem multa."), histórico de cobranças (vencimento, valor, forma, situação, link).
+    Sem multa."), histórico de cobranças (vencimento com o período que a fatura cobre, valor, forma, situação com o dia do
+    pagamento, link).
   - Asaas não configurado (`disponivel: false`): aviso "A cobrança online ainda não está disponível. Fale com a equipe Toqqi."
   - Depois de assinar, a tela busca de novo a cada 10 s por até 2 min enquanto a fatura estiver em aberto (o Pix confirma rápido) e
     atualiza a sessão quando a conta fica ativa.
@@ -189,7 +191,10 @@ Detalhes na seção "Etapa 5a" de `api/README.md` e `web/README.md`.
 - **Telas**: depois de pagar, a confirmação vale para a fatura esperada mesmo com a do mês seguinte já em aberto, que
   aparece como "Próxima fatura"; a sessão (aviso do topo) acompanha a tela de Assinatura e é buscada de novo ao voltar para
   a aba (no máximo a cada 3 min); campos com máscara não cortam o que é colado; com a conta pausada, Envios não oferece o
-  WhatsApp e quem não é admin lê "Fale com o administrador da conta." no lugar do atalho.
+  WhatsApp e quem não é admin lê "Fale com o administrador da conta." no lugar do atalho. O período que cada fatura cobre
+  (do vencimento até a véspera do mesmo dia no mês seguinte, a regra do `pago_ate`) aparece no resumo antes de assinar, na
+  fatura em aberto ("vence em 16/10/2026 e cobre de 16/10 a 15/11/2026") e no histórico ("cobre 16/10 a 15/11", abaixo do
+  vencimento); no histórico, o dia do pagamento fica abaixo da situação (no lugar da coluna "Paga em").
 - **Para conferir no sandbox**: se o PUT com `value` muda a cobrança; vencimento nos dias 29–31; se o Asaas aceita o CNPJ
   alfanumérico. Limitação conhecida: as chamadas ao Asaas acontecem com a linha da conta travada (fica para depois).
 
