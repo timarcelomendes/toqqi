@@ -29,8 +29,8 @@ export function esperaDaTentativa(n: number): number {
 
 export const MENSAGEM_LIMITE_PERGUNTAS = 'Muitas perguntas em pouco tempo. Aguarde um minuto e tente de novo.'
 export const MENSAGEM_COTA_ESGOTADA = 'O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.'
-export const MENSAGEM_CONTA_PAUSADA = 'O assistente volta quando a assinatura estiver em dia.'
-export const MENSAGEM_INDISPONIVEL = 'O assistente está indisponível no momento. Tente de novo em instantes.'
+export const MENSAGEM_CONTA_PAUSADA = 'O ToqqiAI volta quando a assinatura estiver em dia.'
+export const MENSAGEM_INDISPONIVEL = 'O ToqqiAI está indisponível no momento. Tente de novo em instantes.'
 
 export type BlocoTexto = { tipo: 'paragrafo'; linhas: string[] } | { tipo: 'lista'; itens: string[] }
 

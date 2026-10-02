@@ -58,7 +58,7 @@ describe('erros da pergunta', () => {
   it('409 desliga a caixa; "Tentar de novo" só com 503 ia_indisponivel, 429 e sem conexão', () => {
     const cota = lerErroPergunta(new ApiError(409, 'cota_esgotada', 'O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.'))
     expect(cota).toEqual({ mensagem: 'O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.', repetir: false, bloqueio: 'cota_esgotada' })
-    expect(lerErroPergunta(new ApiError(409, 'conta_pausada', 'O assistente volta quando a assinatura estiver em dia.')).bloqueio).toBe('conta_pausada')
+    expect(lerErroPergunta(new ApiError(409, 'conta_pausada', 'O ToqqiAI volta quando a assinatura estiver em dia.')).bloqueio).toBe('conta_pausada')
     // O cliente troca o texto de todo 429; vale o do contrato.
     expect(lerErroPergunta(new ApiError(429, 'limite_perguntas', 'Muitas tentativas. Aguarde um minuto.'))).toEqual({ mensagem: MENSAGEM_LIMITE_PERGUNTAS, repetir: true, bloqueio: null })
     expect(lerErroPergunta(new ApiError(503, 'ia_indisponivel', 'Indisponível.'))).toEqual({ mensagem: 'Indisponível.', repetir: true, bloqueio: null })
@@ -74,7 +74,7 @@ describe('erros da pergunta', () => {
   it('explica a caixa desligada pelo motivo', () => {
     expect(explicacaoIndisponivel(true, null)).toBeNull()
     expect(explicacaoIndisponivel(false, 'cota_esgotada')).toContain('renova no dia 1º')
-    expect(explicacaoIndisponivel(false, 'conta_pausada')).toBe('O assistente volta quando a assinatura estiver em dia.')
+    expect(explicacaoIndisponivel(false, 'conta_pausada')).toBe('O ToqqiAI volta quando a assinatura estiver em dia.')
     expect(explicacaoIndisponivel(false, 'outro')).toContain('indisponível')
   })
 })

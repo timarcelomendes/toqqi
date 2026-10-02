@@ -65,7 +65,8 @@ se o Cron Job estiver ligado), e não no `render.yaml`. Sem ela, tudo funciona e
 `docs/api-etapa-4b.md` e `api/README.md`. A mesma chave liga o **assistente** (botão no canto das telas): modelo e esforço
 em `IA_ASSISTENTE_MODELO` e `IA_ASSISTENTE_ESFORCO`, cota da cortesia em `IA_COTA_CORTESIA` (no `render.yaml`). Ele manda à
 OpenAI a pergunta, as últimas mensagens e os dados consultados (inclusive nomes e comentários): cite na política de
-privacidade. Detalhes em `docs/api-etapa-5b.md`.
+privacidade. Detalhes em `docs/api-etapa-5b.md`. Para o usuário, o assistente se chama **ToqqiAI** e usa o ícone da
+marca (`web/src/components/app/IconeToqqiAI.vue`, 02/10); rotas, chaves e variáveis seguem com "assistente".
 
 **Cobrança (Asaas)**: `ASAAS_API_KEY` no painel do Render na toqqi-api (e no toqqi-tarefas, se o Cron Job estiver ligado); `ASAAS_WEBHOOK_TOKEN` só na
 toqqi-api (32 a 255 caracteres, sem espaços). No Asaas, o webhook de cobranças aponta para

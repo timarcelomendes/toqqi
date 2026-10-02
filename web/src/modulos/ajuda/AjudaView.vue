@@ -4,10 +4,11 @@
 // Telas largas: tópicos à esquerda (fixos ao rolar); celular: a lista de tópicos e o conteúdo abaixo.
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
-import { Search, SearchX, Sparkles } from 'lucide-vue-next'
+import { Search, SearchX } from 'lucide-vue-next'
 import { ajudaApi, mensagemDoErro, type ConteudoAjuda, type TopicoAjuda } from '@/api'
 import { useAssistenteStore } from '@/stores/assistente'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
+import IconeToqqiAI from '@/components/app/IconeToqqiAI.vue'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Campo from '@/components/ui/Campo.vue'
@@ -122,7 +123,7 @@ async function abrirResultado(navegar: Navegar, e: MouseEvent, r: ResultadoAjuda
   irParaSecao(r.secao.id)
 }
 
-/** "Pergunte ao assistente": abre o chat com o que foi procurado na caixa de texto (sem enviar: cada pergunta gasta 1 análise). */
+/** "Pergunte ao ToqqiAI": abre o chat com o que foi procurado na caixa de texto (sem enviar: cada pergunta gasta 1 análise). */
 function perguntarAoAssistente(texto?: string) {
   assistente.abrir(texto)
 }
@@ -198,7 +199,7 @@ onMounted(carregar)
           <h2 id="t-resultados" class="sr-only">Nenhum resultado</h2>
           <EstadoVazio :icone="SearchX" titulo="Nenhum resultado" :descricao="`Não achamos “${termo}” na ajuda. Tente outras palavras ou escolha um tópico.`">
             <Botao v-if="assistente.disponivel" variante="secundario" data-perguntar-assistente @click="perguntarAoAssistente(termo)">
-              <Sparkles class="size-4" aria-hidden="true" /> Pergunte ao assistente
+              <IconeToqqiAI class="size-4" /> Pergunte ao ToqqiAI
             </Botao>
           </EstadoVazio>
         </div>
@@ -221,10 +222,10 @@ onMounted(carregar)
         data-rodape-ajuda
       >
         <p class="text-sm text-texto-suave">
-          <strong class="font-semibold text-texto">Ainda com dúvida?</strong> O assistente responde sobre o uso do Toqqi e sobre os resultados dos seus clientes.
+          <strong class="font-semibold text-texto">Ainda com dúvida?</strong> O ToqqiAI responde sobre o uso do Toqqi e sobre os resultados dos seus clientes.
         </p>
         <Botao variante="secundario" class="shrink-0" @click="perguntarAoAssistente()">
-          <Sparkles class="size-4" aria-hidden="true" /> Pergunte ao assistente
+          <IconeToqqiAI class="size-4" /> Pergunte ao ToqqiAI
         </Botao>
       </aside>
     </div>

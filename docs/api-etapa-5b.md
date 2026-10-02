@@ -11,6 +11,12 @@ datas ISO 8601, dias de regra em America/Sao_Paulo (`toqqi.core.relogio`), NPS e
   meses", "este ano", "setembro") e compara com o período anterior; **cada pergunta gasta 1 análise da cota mensal do plano**
   e a tela mostra "Restam X de Y"; pergunta que falha devolve a análise; o chat também responde **dúvidas de uso** a partir da
   Ajuda e indica a tela certa.
+- **Nome e ícone (02/10)**: pedido do Marcelo, "O assistente de IA deve se chamar ToqqiAI, altere todas referências no
+  sistema" e "considere o ícone da ferramenta". Para o usuário, o assistente é o **ToqqiAI** ("ToqqiAI, o assistente de IA do
+  Toqqi" na primeira menção), com o símbolo da marca como ícone (`web/src/components/app/IconeToqqiAI.vue`, variantes
+  `simbolo` e `selo`; `design-system/README.md` §1). Rotas (`/assistente`), chaves (`toqqi.assistente.*`), variáveis
+  (`IA_ASSISTENTE_*`), códigos de erro e nomes no código continuam "assistente"; as mensagens citadas abaixo passam a dizer
+  "O ToqqiAI volta…" e "O ToqqiAI está indisponível…".
 - **Ajuda**: um conteúdo só, guardado na API (`api/toqqi/modulos/ajuda/conteudo.json`), servido em `GET /ajuda` para a tela e
   consultado pelo assistente.
 - **Assistente**: OpenAI Responses API com ferramentas (function calling), por httpx, sem SDK, como o adaptador da 4b.

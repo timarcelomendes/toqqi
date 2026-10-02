@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Assistente (docs/api-etapa-5b.md §6.2): botão no canto inferior direito de todas as telas logadas (some sem IA na
+// ToqqiAI, o assistente de IA (docs/api-etapa-5b.md §6.2): botão no canto inferior direito de todas as telas logadas (some sem IA na
 // plataforma e na impressão) e o painel da conversa. Telas largas e altas: 400 px preso ao canto, sem bloquear a página;
 // celular (ou tela baixa: celular deitado, zoom de 200%): tela cheia, com o foco preso dentro. Esc fecha; ao abrir, o foco
 // vai para a caixa de texto; ao fechar, volta para quem abriu (o botão ou, se ele sumiu, o conteúdo da página). O foco
@@ -8,12 +8,13 @@
 // cabeçalho (z-30, que tem o menu da conta) e dos menus suspensos (z-40); em tela cheia (modal), o painel fica em z-[45].
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { CircleAlert, RotateCcw, SendHorizontal, Sparkles, SquarePen, X } from 'lucide-vue-next'
+import { CircleAlert, RotateCcw, SendHorizontal, SquarePen, X } from 'lucide-vue-next'
 import { focaveis } from '@/composables/focoPreso'
 import { liberarRolagem, travarRolagem } from '@/composables/rolagem'
 import { useAssistenteStore } from '@/stores/assistente'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarNumero } from '@/utils/formatos'
+import IconeToqqiAI from '@/components/app/IconeToqqiAI.vue'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Medidor from '@/components/ui/Medidor.vue'
@@ -243,15 +244,15 @@ onBeforeUnmount(() => {
       v-show="!assistente.aberto"
       ref="botao"
       type="button"
-      aria-label="Assistente"
+      aria-label="ToqqiAI"
       aria-haspopup="dialog"
       class="fixed bottom-4 right-4 z-[25] flex size-12 items-center justify-center gap-2 rounded-full bg-marca-forte text-white shadow-lg transition-[bottom,background-color] duration-150 hover:bg-marca-hover motion-reduce:transition-none painel:bottom-6 painel:right-6 sm:w-auto sm:px-5"
       :style="estiloBotao"
       data-botao-assistente
       @click="assistente.abrir()"
     >
-      <Sparkles class="size-5 shrink-0" aria-hidden="true" />
-      <span class="hidden text-sm font-semibold sm:inline">Assistente</span>
+      <IconeToqqiAI class="size-5" />
+      <span class="hidden text-sm font-semibold sm:inline">ToqqiAI</span>
     </button>
 
     <section
@@ -271,17 +272,15 @@ onBeforeUnmount(() => {
       <!-- Cabeçalho: nome, cota do mês e as ações -->
       <header class="shrink-0 border-b border-borda px-4 pb-3 pt-3">
         <div class="flex items-center gap-2">
-          <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-marca-suave text-marca-texto" aria-hidden="true">
-            <Sparkles class="size-4" />
-          </span>
-          <h2 id="t-assistente" class="min-w-0 flex-1 truncate text-base font-bold text-texto">Assistente</h2>
+          <IconeToqqiAI variante="selo" class="size-8" />
+          <h2 id="t-assistente" class="min-w-0 flex-1 truncate text-base font-bold text-texto">ToqqiAI</h2>
           <Botao variante="fantasma" tamanho="sm" :desabilitado="!assistente.mensagens.length || assistente.enviando" data-nova-conversa @click="novaConversa">
             <SquarePen class="size-4" aria-hidden="true" /> Nova conversa
           </Botao>
           <button
             type="button"
             class="-mr-1.5 flex size-9 shrink-0 items-center justify-center rounded-lg text-texto-fraco hover:bg-superficie-2 hover:text-texto"
-            aria-label="Fechar o assistente"
+            aria-label="Fechar o ToqqiAI"
             @click="fechar"
           >
             <X class="size-5" aria-hidden="true" />
@@ -345,7 +344,8 @@ onBeforeUnmount(() => {
               @sugestao="usarSugestao"
             />
           </template>
-          <li v-if="assistente.enviando" class="flex items-center gap-2.5 text-sm text-texto-suave" data-consultando>
+          <li v-if="assistente.enviando" class="flex items-center gap-2 text-sm text-texto-suave" data-consultando>
+            <IconeToqqiAI variante="selo" class="size-6" />
             <span class="flex gap-1 rounded-2xl rounded-bl-md bg-superficie-2 px-3 py-3" aria-hidden="true">
               <span class="size-1.5 animate-pulse rounded-full bg-texto-fraco" />
               <span class="size-1.5 animate-pulse rounded-full bg-texto-fraco [animation-delay:150ms]" />

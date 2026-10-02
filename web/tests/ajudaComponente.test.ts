@@ -263,21 +263,30 @@ describe('Ajuda: busca', () => {
     expect(document.activeElement?.id).toBe('t-ajuda-grupos')
   })
 
-  it('nada encontrado: "Nenhum resultado" e "Pergunte ao assistente", que abre o chat com o termo na caixa (sem enviar)', async () => {
+  it('nada encontrado: "Nenhum resultado" e "Pergunte ao ToqqiAI" (com o símbolo da marca), que abre o chat com o termo na caixa (sem enviar)', async () => {
     entrar(['contatos.ver'])
     const api = apiFalsa({ 'GET /ajuda': () => AJUDA, 'GET /assistente': () => ESTADO })
     const w = await abrirAjuda('/ajuda')
     await busca(w).setValue('boleto vencido')
     expect(w.findAll('[data-resultado]')).toHaveLength(0)
     expect(t(w.get('[data-resultados]').text())).toContain('Nenhum resultado')
-    await w.get('button[data-perguntar-assistente]').trigger('click')
+    const perguntar = w.get('button[data-perguntar-assistente]')
+    expect(t(perguntar.text())).toBe('Pergunte ao ToqqiAI')
+    expect(perguntar.get('svg').attributes('data-icone-toqqiai')).toBe('simbolo')
+    expect(perguntar.get('svg').attributes('aria-hidden')).toBe('true')
+    expect(perguntar.find('.lucide-sparkles').exists()).toBe(false)
+    // O rodapé também chama o ToqqiAI pelo nome, com o mesmo ícone.
+    const rodape = w.get('[data-rodape-ajuda]')
+    expect(t(rodape.text())).toBe('Ainda com dúvida? O ToqqiAI responde sobre o uso do Toqqi e sobre os resultados dos seus clientes. Pergunte ao ToqqiAI')
+    expect(rodape.get('button svg').attributes('data-icone-toqqiai')).toBe('simbolo')
+    await perguntar.trigger('click')
     await flushPromises()
     expect(useAssistenteStore().aberto).toBe(true)
     expect(w.get<HTMLTextAreaElement>('#assistente-pergunta').element.value).toBe('boleto vencido')
     expect(api.chamadas.filter((c) => c.metodo === 'POST')).toHaveLength(0)
   })
 
-  it('sem o assistente disponível, sem "Pergunte ao assistente" (nem o rodapé)', async () => {
+  it('sem o ToqqiAI disponível, sem "Pergunte ao ToqqiAI" (nem o rodapé)', async () => {
     entrar(['contatos.ver'])
     apiFalsa({ 'GET /ajuda': () => AJUDA, 'GET /assistente': () => ({ disponivel: false, motivo: 'ia_indisponivel', cota: null, sugestoes: [] }) })
     const w = await abrirAjuda('/ajuda')
@@ -339,13 +348,16 @@ describe('Configurações › IA: cota do plano', () => {
     expect(medidor.attributes('aria-valuenow')).toBe('12')
     expect(medidor.attributes('aria-valuemax')).toBe('500')
     expect(medidor.attributes('aria-valuetext')).toBe('12 de 500 análises usadas em outubro de 2026')
-    expect(t(bloco.text())).toContain('Cada pergunta ao assistente usa 1 análise. A análise de cada resposta não entra nesta conta.')
+    expect(t(bloco.text())).toContain('Cada pergunta ao ToqqiAI usa 1 análise. A análise de cada resposta não entra nesta conta.')
+    // O cartão da cota (gasta pelo ToqqiAI) tem o ícone dele, não um ícone genérico.
+    expect(bloco.get('svg').attributes('data-icone-toqqiai')).toBe('simbolo')
+    expect(bloco.find('.lucide-bot-message-square').exists()).toBe(false)
     expect(bloco.find('[role="status"]').exists()).toBe(false)
   })
 
   it('cota esgotada avisa; servidor sem a cota não mostra o bloco', async () => {
     const w = await abrirIa({ ...CONFIG, cota: { usadas: 2000, limite: 2000, restantes: 0, mes: '2026-10' } })
-    expect(t(w.get('[data-cota-plano] [role="status"]').text())).toContain('A cota deste mês acabou')
+    expect(t(w.get('[data-cota-plano] [role="status"]').text())).toContain('A cota deste mês acabou: o ToqqiAI volta a responder no dia 1º.')
     expect(t(w.get('[data-cota-texto]').text())).toBe('2.000 de 2.000 análises usadas em outubro de 2026')
     w.unmount()
     setActivePinia(createPinia())
@@ -383,7 +395,7 @@ describe('Configurações › IA: cota do plano', () => {
 })
 
 describe('Configurações › IA: o que é enviado à IA', () => {
-  it('separa a análise dos comentários do assistente, que manda a conversa e os dados que consulta', async () => {
+  it('separa a análise dos comentários do ToqqiAI, que manda a conversa e os dados que consulta', async () => {
     entrar(['configuracoes.gerenciar'], 'admin')
     apiFalsa({ 'GET /conta/ia': () => ({ disponivel: true, provedor: 'OpenAI', analise_respostas: true, mes: '2026-10', analises: 0, limite: 500, pendentes: 0, falharam_no_mes: 0 }) })
     router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:qualquer(.*)*', component: IaView }] })
@@ -393,7 +405,7 @@ describe('Configurações › IA: o que é enviado à IA', () => {
     await flushPromises()
     const bloco = w.get('[data-ia-privacidade]')
     expect(t(bloco.get('h2').text())).toBe('O que é enviado à IA')
-    expect(bloco.findAll('h3').map((h3) => t(h3.text()))).toEqual(['Na análise dos comentários', 'No assistente'])
+    expect(bloco.findAll('h3').map((h3) => t(h3.text()))).toEqual(['Na análise dos comentários', 'No ToqqiAI'])
     // O "Nunca o nome… a empresa do cliente" vale só para a análise dos comentários.
     const analise = bloco.get('[data-envio-analise]')
     expect(t(analise.text())).toContain('Nunca o nome, o e-mail, o telefone, a empresa do cliente ou os dados do pedido.')

@@ -115,15 +115,23 @@ afterEach(() => {
 })
 
 describe('botão do assistente', () => {
-  it('busca GET /assistente ao entrar e mostra o botão "Assistente" no canto (some na impressão)', async () => {
+  it('busca GET /assistente ao entrar e mostra o botão "ToqqiAI" no canto, com o símbolo da marca (some na impressão)', async () => {
     entrar()
     const api = apiFalsa({ 'GET /assistente': () => ESTADO() })
     const w = await montar()
     expect(chamadas(api, 'GET', '/assistente')).toHaveLength(1)
     const b = botaoFlutuante(w)
     expect(b.exists()).toBe(true)
-    expect(b.attributes('aria-label')).toBe('Assistente')
-    expect(t(b.text())).toBe('Assistente')
+    expect(b.attributes('aria-label')).toBe('ToqqiAI')
+    expect(t(b.text())).toBe('ToqqiAI')
+    // Ícone: o símbolo da marca em traço (currentColor, branco sobre o coral do botão), decorativo; nada de ícone genérico.
+    const icone = b.get('svg')
+    expect(icone.attributes('data-icone-toqqiai')).toBe('simbolo')
+    expect(icone.attributes('aria-hidden')).toBe('true')
+    expect(icone.attributes('stroke')).toBe('currentColor')
+    expect(icone.classes()).toContain('size-5')
+    expect(b.findAll('svg')).toHaveLength(1)
+    expect(b.find('.lucide').exists()).toBe(false)
     expect(b.classes()).toEqual(expect.arrayContaining(['fixed', 'bottom-4', 'right-4']))
     expect(b.element.closest('.print\\:hidden')).not.toBeNull()
     expect(painel(w).exists()).toBe(false)
@@ -278,7 +286,13 @@ describe('abrir e fechar', () => {
     const p = painel(w)
     expect(p.exists()).toBe(true)
     expect(p.attributes('aria-labelledby')).toBe('t-assistente')
-    expect(t(w.get('#t-assistente').text())).toBe('Assistente')
+    expect(t(w.get('#t-assistente').text())).toBe('ToqqiAI')
+    // Ao lado do título, o selo da marca (decorativo: o nome já está escrito).
+    const selo = p.get('header [data-icone-toqqiai]')
+    expect(selo.attributes('data-icone-toqqiai')).toBe('selo')
+    expect(selo.attributes('aria-hidden')).toBe('true')
+    expect(selo.classes()).toContain('size-8')
+    expect(p.get('header').find('.lucide-sparkles').exists()).toBe(false)
     expect(p.attributes('aria-modal')).toBeUndefined() // tela larga: não bloqueia a página
     expect(chamadas(api, 'GET', '/assistente')).toHaveLength(2)
     expect(document.activeElement).toBe(caixa(w).element)
@@ -302,7 +316,7 @@ describe('abrir e fechar', () => {
     apiFalsa({ 'GET /assistente': () => ESTADO() })
     const w = await montar()
     await abrir(w)
-    await w.get('button[aria-label="Fechar o assistente"]').trigger('click')
+    await w.get('button[aria-label="Fechar o ToqqiAI"]').trigger('click')
     await flushPromises()
     expect(painel(w).exists()).toBe(false)
     expect(document.activeElement).toBe(botaoFlutuante(w).element)
@@ -333,7 +347,7 @@ describe('abrir e fechar', () => {
     await abrir(w)
     expect(painel(w).attributes('aria-modal')).toBe('true')
     expect(document.body.style.overflow).toBe('hidden')
-    await w.get('button[aria-label="Fechar o assistente"]').trigger('click')
+    await w.get('button[aria-label="Fechar o ToqqiAI"]').trigger('click')
     await flushPromises()
     expect(document.body.style.overflow).toBe('')
   })
@@ -348,7 +362,7 @@ describe('abrir e fechar', () => {
     await abrir(w)
     const p = painel(w).element as HTMLElement
     expect(document.activeElement).toBe(p)
-    const fechar = w.get('button[aria-label="Fechar o assistente"]').element
+    const fechar = w.get('button[aria-label="Fechar o ToqqiAI"]').element
     expect(teclar('Tab', { shiftKey: true }).defaultPrevented).toBe(true)
     expect(document.activeElement).toBe(fechar)
     p.focus()
@@ -422,6 +436,7 @@ describe('conversa', () => {
     expect(caixa(w).element.value).toBe('')
     expect(t(w.get('[data-papel="usuario"]').text())).toBe('Você: Qual o NPS da Alfa nos últimos 90 dias?')
     expect(t(w.get('[data-consultando]').text())).toBe('Consultando os dados…')
+    expect(w.get('[data-consultando] [data-icone-toqqiai]').attributes('data-icone-toqqiai')).toBe('selo')
     expect(t(w.get('[data-anuncio]').text())).toBe('Consultando os dados…')
     expect(w.get('[data-nova-conversa]').attributes('disabled')).toBeDefined()
 
@@ -429,6 +444,11 @@ describe('conversa', () => {
     await flushPromises()
     expect(w.find('[data-consultando]').exists()).toBe(false)
     const resposta = w.get('[data-papel="assistente"]')
+    // Identificada como do ToqqiAI: o selo da marca ao lado (decorativo) e o nome para leitores de tela.
+    const avatar = resposta.get('[data-avatar]')
+    expect(avatar.attributes('data-icone-toqqiai')).toBe('selo')
+    expect(avatar.attributes('aria-hidden')).toBe('true')
+    expect(resposta.get('.sr-only').text()).toBe('ToqqiAI:')
     // Quebras de linha mantidas e as linhas "- " em lista.
     expect(resposta.find('p').text()).toBe('O NPS de 02/09 a 01/10/2026 é 42, com 120 respostas.\nNo período anterior foi 37.')
     expect(resposta.findAll('[data-texto] li').map((li) => li.text())).toEqual(['subiu 5 pontos', '30 respostas a mais'])
@@ -512,7 +532,7 @@ describe('conversa', () => {
     await abrir(w)
     await perguntar(w, 'Qual o NPS?')
     const completo = RESPOSTA().resposta
-    const visivel = () => w.get('[data-papel="assistente"]').text().replace(/^Assistente:\s*/, '')
+    const visivel = () => w.get('[data-papel="assistente"]').text().replace(/^ToqqiAI:\s*/, '')
     expect(visivel().length).toBeLessThan(10)
     expect(w.find('[data-papel="assistente"] [data-atalhos]').exists()).toBe(false)
     vi.advanceTimersByTime(200)
@@ -577,7 +597,7 @@ describe('erros', () => {
       'GET /assistente': () => ESTADO(),
       'POST /assistente/perguntar': () =>
         ++vez === 1
-          ? erroApi(503, 'ia_indisponivel', 'O assistente está indisponível no momento. Tente de novo em instantes.')
+          ? erroApi(503, 'ia_indisponivel', 'O ToqqiAI está indisponível no momento. Tente de novo em instantes.')
           : new Promise<RespostaAssistente>((r) => (soltar = r)),
     })
     const w = await montar()
@@ -617,12 +637,12 @@ describe('erros', () => {
     let vez = 0
     const api = apiFalsa({
       'GET /assistente': () => ESTADO(),
-      'POST /assistente/perguntar': () => (++vez === 1 ? erroApi(503, 'ia_indisponivel', 'O assistente está indisponível no momento. Tente de novo em instantes.') : RESPOSTA()),
+      'POST /assistente/perguntar': () => (++vez === 1 ? erroApi(503, 'ia_indisponivel', 'O ToqqiAI está indisponível no momento. Tente de novo em instantes.') : RESPOSTA()),
     })
     const w = await montar()
     await abrir(w)
     await perguntar(w, 'Primeira')
-    expect(t(w.get('[data-erro]').text())).toContain('O assistente está indisponível no momento. Tente de novo em instantes.')
+    expect(t(w.get('[data-erro]').text())).toContain('O ToqqiAI está indisponível no momento. Tente de novo em instantes.')
     // Outra pergunta: a que falhou fica na tela, sem "Tentar de novo", e não vai no histórico.
     await perguntar(w, 'Segunda')
     expect(chamadas(api, 'POST', '/assistente/perguntar')[1]!.corpo).toEqual({ pergunta: 'Segunda', historico: [] })
@@ -656,7 +676,7 @@ describe('erros', () => {
     expect(botaoFlutuante(w).exists()).toBe(true)
     await abrir(w)
     expect(caixa(w).element.disabled).toBe(true)
-    expect(t(w.get('[data-bloqueio]').text())).toBe('O assistente volta quando a assinatura estiver em dia.')
+    expect(t(w.get('[data-bloqueio]').text())).toBe('O ToqqiAI volta quando a assinatura estiver em dia.')
     expect(w.find('[data-bloqueio] a').exists()).toBe(false)
     expect(w.find('[data-sugestoes]').exists()).toBe(false)
     // Sem caixa ativa, o foco fica no painel.
@@ -667,7 +687,7 @@ describe('erros', () => {
     entrar()
     apiFalsa({
       'GET /assistente': () => ESTADO(),
-      'POST /assistente/perguntar': () => erroApi(409, 'conta_pausada', 'O assistente volta quando a assinatura estiver em dia.'),
+      'POST /assistente/perguntar': () => erroApi(409, 'conta_pausada', 'O ToqqiAI volta quando a assinatura estiver em dia.'),
     })
     const w = await montar()
     await abrir(w)

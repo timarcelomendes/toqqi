@@ -37,10 +37,10 @@ from toqqi.modulos.ia import cota
 
 log = logging.getLogger("toqqi.assistente")
 
-MSG_PAUSADA = "O assistente volta quando a assinatura estiver em dia."
+MSG_PAUSADA = "O ToqqiAI volta quando a assinatura estiver em dia."
 MSG_COTA = "O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º."
 MSG_LIMITE = "Muitas perguntas em pouco tempo. Aguarde um minuto e tente de novo."
-MSG_INDISPONIVEL = "O assistente está indisponível no momento. Tente de novo em instantes."
+MSG_INDISPONIVEL = "O ToqqiAI está indisponível no momento. Tente de novo em instantes."
 RECUSA = "Só consigo ajudar com a satisfação dos seus clientes e com o uso do Toqqi."
 MAX_RESPOSTA = 2000
 MAX_SUGESTAO = 80

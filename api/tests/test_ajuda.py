@@ -87,6 +87,32 @@ def test_dica_de_configuracoes_diz_onde_fica_o_salvar():
     assert ia.startswith("IA não há “Salvar alterações”")
 
 
+
+def test_assistente_se_chama_toqqiai_na_ajuda():
+    """Pedido de 02/10: para o usuário, o assistente é o ToqqiAI. O id do tópico continua `assistente` (endereço
+    /ajuda/assistente); "assistente" só fica nas palavras de busca e na apresentação ("o assistente de IA do Toqqi")."""
+    if not ajuda.CAMINHO.exists():
+        pytest.skip("api/toqqi/modulos/ajuda/conteudo.json ainda não existe")
+    dados = json.loads(ajuda.CAMINHO.read_text(encoding="utf-8"))
+    topico, = [t for t in dados["topicos"] if t["id"] == "assistente"]
+    assert topico["titulo"] == "ToqqiAI"
+    primeira = topico["secoes"][0]
+    assert primeira["titulo"] == "O que é o ToqqiAI e como abrir"
+    assert primeira["blocos"][0]["texto"].startswith("O ToqqiAI, o assistente de IA do Toqqi, é um chat")
+    textos = []
+    for t in dados["topicos"]:
+        textos += [t["titulo"], t["resumo"]]
+        for secao in t["secoes"]:
+            textos.append(secao["titulo"])
+            for b in secao["blocos"]:
+                textos += [b["texto"]] if "texto" in b else b["itens"]
+    com_assistente = [x for x in textos if "assistente" in x.lower()]
+    assert com_assistente == [primeira["blocos"][0]["texto"]]
+    assert "Toqqi AI" not in " ".join(textos)
+    assert ajuda.buscar("toqqiai")[0]["titulo"] == "O que é o ToqqiAI e como abrir"
+    for termo in ("assistente", "como abrir o assistente", "chat"):  # quem ainda procura pelo nome antigo também acha
+        assert ajuda.buscar(termo)[0]["titulo"] == "O que é o ToqqiAI e como abrir"
+
 # ---- GET /ajuda ------------------------------------------------------------------------------------
 
 def test_get_ajuda_para_todos_os_perfis(client, exemplo):

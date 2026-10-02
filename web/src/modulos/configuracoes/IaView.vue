@@ -3,7 +3,7 @@
 // IA"), o uso do mês contra o teto de segurança, a fila, o "analisar os últimos 90 dias" e o que vai para a IA.
 // Etapa 5b: a cota de IA do plano (cada pergunta ao assistente usa 1 análise).
 import { computed, onMounted, ref, watch } from 'vue'
-import { BotMessageSquare, Gauge, History, ShieldCheck, Sparkles } from 'lucide-vue-next'
+import { Gauge, History, ShieldCheck, Sparkles } from 'lucide-vue-next'
 import { ApiError, iaApi, mensagemDoErro, type ConfigIa, type CotaIa } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
@@ -11,6 +11,7 @@ import { useAssistenteStore } from '@/stores/assistente'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarNumero, plural } from '@/utils/formatos'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
+import IconeToqqiAI from '@/components/app/IconeToqqiAI.vue'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Carregando from '@/components/ui/Carregando.vue'
@@ -156,7 +157,7 @@ onMounted(carregar)
     <!-- Cota de IA do plano (etapa 5b) -->
     <section v-if="cota" class="cartao grid grid-cols-1 gap-6 p-5 sm:p-6 md:grid-cols-3" aria-labelledby="t-ia-cota" data-cota-plano>
       <div>
-        <div class="mb-3 flex size-10 items-center justify-center rounded-xl bg-marca-suave text-marca-texto"><BotMessageSquare class="size-5" aria-hidden="true" /></div>
+        <div class="mb-3 flex size-10 items-center justify-center rounded-xl bg-marca-suave text-marca-texto"><IconeToqqiAI class="size-5" /></div>
         <h2 id="t-ia-cota" class="text-base font-bold text-texto">Cota de IA do plano</h2>
         <p class="mt-1 text-sm text-texto-suave">Renova no dia 1º de cada mês.</p>
       </div>
@@ -166,8 +167,8 @@ onMounted(carregar)
           {{ formatarMes(cota.mes, 'longo') }}
         </p>
         <Medidor :valor="cota.usadas" :maximo="cota.limite" rotulo="Análises da cota do plano usadas neste mês" :texto="textoCota" />
-        <p class="text-sm text-texto-suave">Cada pergunta ao assistente usa 1 análise. A análise de cada resposta não entra nesta conta.</p>
-        <Alerta v-if="cota.limite > 0 && cota.restantes <= 0" tom="atencao">A cota deste mês acabou: o assistente volta a responder no dia 1º.</Alerta>
+        <p class="text-sm text-texto-suave">Cada pergunta ao ToqqiAI usa 1 análise. A análise de cada resposta não entra nesta conta.</p>
+        <Alerta v-if="cota.limite > 0 && cota.restantes <= 0" tom="atencao">A cota deste mês acabou: o ToqqiAI volta a responder no dia 1º.</Alerta>
       </div>
     </section>
 
@@ -280,7 +281,7 @@ onMounted(carregar)
           </ul>
         </div>
         <div class="flex flex-col gap-2" data-envio-assistente>
-          <h3 class="text-sm font-bold text-texto">No assistente</h3>
+          <h3 class="text-sm font-bold text-texto">No ToqqiAI</h3>
           <ul class="flex list-disc flex-col gap-2 pl-5 text-sm text-texto">
             <li>A pergunta, as últimas mensagens da conversa e o nome da sua conta.</li>
             <li>Os dados que ele consulta para responder: números, nomes de empresas e de contatos e comentários dos clientes.</li>

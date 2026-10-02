@@ -161,13 +161,13 @@ export const PRIVACIDADE: DocumentoLegal = {
         {
           tipo: 'p',
           texto:
-            'Usamos a OpenAI (Estados Unidos) em dois recursos. A análise de comentários já vem ligada, e a empresa assinante pode desligá-la em Configurações › IA. O assistente fica disponível para os usuários da conta enquanto a IA estiver disponível e a assinatura estiver em dia, e só envia dados quando alguém faz uma pergunta.',
+            'Usamos a OpenAI (Estados Unidos) em dois recursos. A análise de comentários já vem ligada, e a empresa assinante pode desligá-la em Configurações › IA. O ToqqiAI, o assistente de IA do Toqqi, fica disponível para os usuários da conta enquanto a IA estiver disponível e a assinatura estiver em dia, e só envia dados quando alguém faz uma pergunta.',
         },
         {
           tipo: 'lista',
           itens: [
             'Análise de respostas: vão para a OpenAI o texto do comentário do cliente (cortado em 500 caracteres), as opções que ele marcou e a nota, para classificar temas e sentimento automaticamente. A empresa pode corrigir o resultado. Não enviamos o nome, o e-mail nem o telefone do cliente nesse recurso.',
-            'Assistente: vão para a OpenAI a pergunta do usuário, as últimas mensagens da conversa e os dados que o assistente consulta para responder (indicadores, nomes de empresas e contatos, comentários). Esses dados podem incluir nomes e comentários de clientes.',
+            'ToqqiAI: vão para a OpenAI a pergunta do usuário, as últimas mensagens da conversa e os dados que o ToqqiAI consulta para responder (indicadores, nomes de empresas e contatos, comentários). Esses dados podem incluir nomes e comentários de clientes.',
           ],
         },
         {
@@ -191,7 +191,7 @@ export const PRIVACIDADE: DocumentoLegal = {
           colunas: ['Fornecedor', 'Para quê', 'Onde fica', 'Que dados'],
           linhas: [
             ['Render', 'Hospedagem do sistema e banco de dados', 'Estados Unidos', 'Todos os dados do sistema'],
-            ['OpenAI', 'Inteligência artificial (análise e assistente)', 'Estados Unidos', 'Conforme a seção sobre IA, só se o recurso estiver ligado'],
+            ['OpenAI', 'Inteligência artificial (análise de comentários e ToqqiAI)', 'Estados Unidos', 'Conforme a seção sobre IA, só se o recurso estiver ligado'],
             ['Asaas', 'Cobrança e pagamentos', 'Brasil', 'Dados de cobrança da empresa assinante'],
             ['ZeptoMail (Zoho)', 'Envio de e-mails (pesquisas e e-mails do sistema)', 'Estados Unidos', 'Nome e e-mail do destinatário, conteúdo da mensagem'],
             ['Resend', 'Envio de e-mails, como provedor alternativo', 'Estados Unidos', 'Nome e e-mail do destinatário, conteúdo da mensagem'],
@@ -272,7 +272,7 @@ export const PRIVACIDADE: DocumentoLegal = {
             ],
             [
               'toqqi.assistente.{conta}.{usuário}',
-              'Guardar a conversa com o assistente (as últimas 20 mensagens), só neste navegador.',
+              'Guardar a conversa com o ToqqiAI (as últimas 20 mensagens), só neste navegador.',
               'sessionStorage',
               'Até fechar a aba, usar "Nova conversa" ou sair da conta.',
             ],

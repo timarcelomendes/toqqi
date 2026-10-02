@@ -206,6 +206,7 @@
             "recolher menu",
             "celular",
             "sair",
+            "toqqiai",
             "assistente",
             "minha conta",
             "onde fica",
@@ -224,7 +225,7 @@
                 "Administração: Equipe, Configurações, Integrações, Assinatura e Auditoria. Cada item só aparece para quem tem a permissão.",
                 "Ajuda: no rodapé da barra, acima de “Recolher menu”. Use o campo “Buscar na ajuda” para achar um assunto.",
                 "Menu da sua conta: no topo da tela, com “Minha conta” e “Sair”.",
-                "Assistente: botão no canto inferior direito, para tirar dúvidas de uso e perguntar sobre os resultados."
+                "ToqqiAI: botão no canto inferior direito, para tirar dúvidas de uso e perguntar sobre os resultados."
               ]
             },
             {
@@ -2964,6 +2965,7 @@
             "privacidade",
             "dados enviados",
             "segurança dos dados",
+            "toqqiai",
             "assistente",
             "renova",
             "dia 1"
@@ -2971,11 +2973,11 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "A seção “Cota de IA do plano” mostra quantas análises você usou no mês, como “120 de 500”, e renova no dia 1º. Cada pergunta ao assistente usa 1 análise. A análise automática de cada resposta não entra nessa conta. A cota é de 100 análises no Essencial, 500 no Profissional e 2.000 no Empresa."
+              "texto": "A seção “Cota de IA do plano” mostra quantas análises você usou no mês, como “120 de 500”, e renova no dia 1º. Cada pergunta ao ToqqiAI usa 1 análise. A análise automática de cada resposta não entra nessa conta. A cota é de 100 análises no Essencial, 500 no Profissional e 2.000 no Empresa."
             },
             {
               "tipo": "paragrafo",
-              "texto": "Na análise dos comentários (seção “O que é enviado à IA”), vai só o texto que o cliente escreveu (até 500 caracteres), as opções que ele marcou e a nota. Nunca vão nome, e-mail, telefone, empresa ou dados do pedido. O provedor não guarda a conversa. Os temas vêm só da lista fixa de 6. O assistente funciona de outro jeito: veja o tópico Assistente."
+              "texto": "Na análise dos comentários (seção “O que é enviado à IA”), vai só o texto que o cliente escreveu (até 500 caracteres), as opções que ele marcou e a nota. Nunca vão nome, e-mail, telefone, empresa ou dados do pedido. O provedor não guarda a conversa. Os temas vêm só da lista fixa de 6. O ToqqiAI funciona de outro jeito: veja o tópico ToqqiAI."
             }
           ]
         }
@@ -3233,7 +3235,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Com os envios pausados, o Toqqi não manda pesquisas nem lembretes, não analisa comentários com IA e o assistente não responde. Nada é apagado: seus dados continuam guardados, e tudo volta quando o pagamento é confirmado."
+              "texto": "Com os envios pausados, o Toqqi não manda pesquisas nem lembretes, não analisa comentários com IA e o ToqqiAI não responde. Nada é apagado: seus dados continuam guardados, e tudo volta quando o pagamento é confirmado."
             }
           ]
         },
@@ -3322,7 +3324,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Ao chegar no limite, o Toqqi mostra “Você chegou ao limite do seu plano”, e o administrador pode clicar em “Ver planos”. A cota de análises de IA do assistente e a franquia de WhatsApp automático também dependem do plano: veja os tópicos Assistente e Integrações."
+              "texto": "Ao chegar no limite, o Toqqi mostra “Você chegou ao limite do seu plano”, e o administrador pode clicar em “Ver planos”. A cota de análises de IA do ToqqiAI e a franquia de WhatsApp automático também dependem do plano: veja os tópicos ToqqiAI e Integrações."
             }
           ]
         },
@@ -3661,12 +3663,12 @@
     },
     {
       "id": "assistente",
-      "titulo": "Assistente",
+      "titulo": "ToqqiAI",
       "resumo": "O chat que responde sobre os resultados dos seus clientes e sobre o uso do Toqqi: o que sabe, períodos, cota e cuidados.",
       "secoes": [
         {
           "id": "o-que-e-o-assistente",
-          "titulo": "O que é o assistente e como abrir",
+          "titulo": "O que é o ToqqiAI e como abrir",
           "somente_admin": false,
           "atalho": null,
           "palavras": [
@@ -3675,6 +3677,8 @@
             "inteligência artificial",
             "robô",
             "chatbot",
+            "toqqiai",
+            "botão toqqiai",
             "botão assistente",
             "perguntar",
             "abrir o chat",
@@ -3687,12 +3691,12 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "O assistente é um chat com inteligência artificial. Você pergunta em português, do seu jeito, e ele responde com os números da sua conta ou explica como usar o Toqqi. Todos os perfis podem usar, e cada pergunta respeita as permissões de quem pergunta."
+              "texto": "O ToqqiAI, o assistente de IA do Toqqi, é um chat com inteligência artificial. Você pergunta em português, do seu jeito, e ele responde com os números da sua conta ou explica como usar o Toqqi. Todos os perfis podem usar, e cada pergunta respeita as permissões de quem pergunta."
             },
             {
               "tipo": "passos",
               "itens": [
-                "Clique no botão “Assistente”, no canto inferior direito de qualquer tela. No celular, o botão mostra só o ícone e o chat abre em tela cheia.",
+                "Clique no botão “ToqqiAI”, no canto inferior direito de qualquer tela. No celular, o botão mostra só o ícone e o chat abre em tela cheia.",
                 "Escreva na caixa “Faça uma pergunta” ou clique numa das sugestões.",
                 "Aperte Enter para enviar. Para quebrar a linha, use Shift+Enter.",
                 "Para fechar o chat, clique no X ou aperte Esc."
@@ -3700,7 +3704,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Na Ajuda, o botão “Pergunte ao assistente” também abre o chat. Se você buscou algo e não achou, o texto da busca vai para a caixa, mas só é enviado quando você aperta Enter."
+              "texto": "Na Ajuda, o botão “Pergunte ao ToqqiAI” também abre o chat. Se você buscou algo e não achou, o texto da busca vai para a caixa, mas só é enviado quando você aperta Enter."
             },
             {
               "tipo": "paragrafo",
@@ -3710,7 +3714,7 @@
         },
         {
           "id": "o-que-o-assistente-responde",
-          "titulo": "O que o assistente sabe responder",
+          "titulo": "O que o ToqqiAI sabe responder",
           "somente_admin": false,
           "atalho": null,
           "palavras": [
@@ -3779,7 +3783,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Se você não disser o período, o assistente usa os últimos 30 dias. Dá para pedir até 12 meses, em palavras comuns: “últimos 6 meses”, “este ano”, “setembro”. Um pedido mais longo é cortado nos últimos 12 meses, e ele explica isso na resposta."
+              "texto": "Se você não disser o período, o ToqqiAI usa os últimos 30 dias. Dá para pedir até 12 meses, em palavras comuns: “últimos 6 meses”, “este ano”, “setembro”. Um pedido mais longo é cortado nos últimos 12 meses, e ele explica isso na resposta."
             },
             {
               "tipo": "paragrafo",
@@ -3791,7 +3795,7 @@
             },
             {
               "tipo": "dica",
-              "texto": "Número diferente do Início? O Início abre em 90 dias e o assistente usa 30. Peça o mesmo período nos dois."
+              "texto": "Número diferente do Início? O Início abre em 90 dias e o ToqqiAI usa 30. Peça o mesmo período nos dois."
             }
           ]
         },
@@ -3818,15 +3822,15 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Cada pergunta ao assistente usa 1 análise da cota mensal do seu plano: 100 no Essencial, 500 no Profissional e 2.000 no Empresa. No alto do chat, aparece “Restam X de Y análises este mês”."
+              "texto": "Cada pergunta ao ToqqiAI usa 1 análise da cota mensal do seu plano: 100 no Essencial, 500 no Profissional e 2.000 no Empresa. No alto do chat, aparece “Restam X de Y análises este mês”."
             },
             {
               "tipo": "lista",
               "itens": [
                 "Pergunta que dá erro e fica sem resposta não gasta a análise: ela é devolvida.",
-                "Se o assistente responde, a análise foi usada, mesmo quando a resposta é recusar um assunto.",
+                "Se o ToqqiAI responde, a análise foi usada, mesmo quando a resposta é recusar um assunto.",
                 "A cota renova no dia 1º de cada mês.",
-                "A análise automática de cada comentário (Configurações › IA) não entra nesta conta, e o interruptor “Analisar comentários com IA” não liga nem desliga o assistente."
+                "A análise automática de cada comentário (Configurações › IA) não entra nesta conta, e o interruptor “Analisar comentários com IA” não liga nem desliga o ToqqiAI."
               ]
             },
             {
@@ -3861,7 +3865,7 @@
             {
               "tipo": "lista",
               "itens": [
-                "Diga o cliente pelo nome. Pode ser só uma parte dele, sem se preocupar com acentos ou maiúsculas. Se houver vários parecidos, o assistente pergunta qual você quer.",
+                "Diga o cliente pelo nome. Pode ser só uma parte dele, sem se preocupar com acentos ou maiúsculas. Se houver vários parecidos, o ToqqiAI pergunta qual você quer.",
                 "Diga o período: “nos últimos 90 dias”, “em setembro”. Sem isso, valem os últimos 30 dias.",
                 "Pergunte uma coisa por vez. Perguntas curtas e objetivas dão respostas melhores.",
                 "Para seguir no mesmo assunto, pergunte em seguida, como “e dos detratores?”. Ele lembra das últimas 8 mensagens da conversa.",
@@ -3910,13 +3914,13 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Para responder, o assistente envia ao provedor de IA a sua pergunta, as últimas mensagens da conversa e os dados que consultou: nomes de clientes, números e, se você pedir comentários, o texto, a nota e o nome da empresa e do contato de cada um."
+              "texto": "Para responder, o ToqqiAI envia ao provedor de IA a sua pergunta, as últimas mensagens da conversa e os dados que consultou: nomes de clientes, números e, se você pedir comentários, o texto, a nota e o nome da empresa e do contato de cada um."
             }
           ]
         },
         {
           "id": "mensagens-e-problemas-do-assistente",
-          "titulo": "Mensagens do assistente e o que fazer",
+          "titulo": "Mensagens do ToqqiAI e o que fazer",
           "somente_admin": false,
           "atalho": null,
           "palavras": [
@@ -3939,11 +3943,11 @@
             {
               "tipo": "lista",
               "itens": [
-                "O botão “Assistente” não aparece: a inteligência artificial não está ligada na plataforma.",
-                "“O assistente volta quando a assinatura estiver em dia.”: a assinatura está pausada. O administrador vê o link “Ver assinatura”.",
+                "O botão “ToqqiAI” não aparece: a inteligência artificial não está ligada na plataforma.",
+                "“O ToqqiAI volta quando a assinatura estiver em dia.”: a assinatura está pausada. O administrador vê o link “Ver assinatura”.",
                 "“O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.”: a cota acabou. O administrador vê o link “Ver uso em Configurações › IA”.",
                 "“Muitas perguntas em pouco tempo. Aguarde um minuto e tente de novo.”: o limite é de 8 perguntas por minuto.",
-                "“O assistente está indisponível no momento. Tente de novo em instantes.”: falha temporária. Clique em “Tentar de novo”. A análise é devolvida.",
+                "“O ToqqiAI está indisponível no momento. Tente de novo em instantes.”: falha temporária. Clique em “Tentar de novo”. A análise é devolvida.",
                 "“Só consigo ajudar com a satisfação dos seus clientes e com o uso do Toqqi.”: a pergunta fugiu do assunto."
               ]
             },

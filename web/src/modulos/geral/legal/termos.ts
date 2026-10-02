@@ -51,7 +51,7 @@ export const TERMOS: DocumentoLegal = {
         {
           tipo: 'p',
           texto:
-            'Também há recursos de inteligência artificial (IA). A análise de comentários já vem ligada, e a Empresa pode desligá-la em Configurações › IA. Ela classifica temas e sentimento automaticamente, e a Empresa pode corrigir o resultado. O assistente de perguntas fica disponível para os usuários da conta enquanto a IA estiver disponível e a assinatura estiver em dia, e só envia dados quando alguém faz uma pergunta.',
+            'Também há recursos de inteligência artificial (IA). A análise de comentários já vem ligada, e a Empresa pode desligá-la em Configurações › IA. Ela classifica temas e sentimento automaticamente, e a Empresa pode corrigir o resultado. O ToqqiAI, o assistente de IA do Toqqi, fica disponível para os usuários da conta enquanto a IA estiver disponível e a assinatura estiver em dia, e só envia dados quando alguém faz uma pergunta.',
         },
         {
           tipo: 'p',

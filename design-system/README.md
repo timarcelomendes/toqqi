@@ -8,7 +8,7 @@ Este diretório é a referência da identidade visual da Toqqi: marca, cores, ti
 | Arquivos oficiais da marca (SVG e PNG) | `design-system/marca/` |
 | Tokens (cores, fonte, raio, sombra, modo escuro) | `web/src/styles/main.css` |
 | Componentes básicos reutilizáveis | `web/src/components/ui/` |
-| Peças específicas do produto (marca, menu, cabeçalho) | `web/src/components/app/` |
+| Peças específicas do produto (marca, ícone do ToqqiAI, menu, cabeçalho) | `web/src/components/app/` |
 
 Se um valor mudar no código, atualize este documento no mesmo commit.
 
@@ -48,6 +48,13 @@ As letras da logo estão convertidas em contornos, então não dependem da fonte
 - Não esticar, inclinar, contornar ou aplicar sombra.
 - Não reescrever "toqqi" com outra fonte. Use sempre os arquivos ou o componente.
 - O nome é sempre em minúsculas na logo: **toqqi**. Em texto corrido, escreva "Toqqi".
+
+### ToqqiAI (o assistente de IA)
+- **Nome**: o chat que responde sobre os dados da conta e dúvidas de uso se chama **ToqqiAI**, sempre assim, junto e com "AI" em maiúsculas (nunca "Toqqi AI", "ToqqiAi" ou "toqqiai"). É masculino: "o ToqqiAI", "Pergunte ao ToqqiAI", "do ToqqiAI". Na primeira menção de um texto longo (Ajuda, Política de privacidade, Termos), apresente como "ToqqiAI, o assistente de IA do Toqqi". Só o texto que o usuário vê usa o nome: rotas (`/assistente`), pastas, chaves (`toqqi.assistente.*`) e variáveis (`IA_ASSISTENTE_*`) continuam como estão.
+- **Ícone**: o próprio símbolo da marca (qq + sorriso), desenhado por `web/src/components/app/IconeToqqiAI.vue` com a geometria de `marca/toqqi-simbolo.svg`. Use-o onde algo representa o ToqqiAI, no lugar de ícones genéricos de IA (`Sparkles`, `BotMessageSquare`); a análise de comentários continua com `Sparkles`, porque é outra função.
+  - `variante="simbolo"` (padrão): só o traço, em `currentColor`, para ficar no lugar de um ícone lucide (`class="size-4"` ou `size-5`). O traço é um pouco mais grosso que o do arquivo oficial (22/19 em vez de 20/17) para continuar legível a 16 px; o `viewBox` (`-2.5 -2.5 147 138`) enquadra só o símbolo, sem cortar nem distorcer. Ex.: botão flutuante (branco sobre `marca-forte`), "Pergunte ao ToqqiAI" na Ajuda, cartão da cota em Configurações › IA.
+  - `variante="selo"`: o ícone do app (quadrado arredondado coral `#FF5A36` com o símbolo branco, igual a `marca/toqqi-icone.svg`), para identificar o ToqqiAI: cabeçalho do painel (`size-8`) e avatar das respostas e do "Consultando os dados…" (`size-6`). Não use o selo abaixo de 16 px.
+  - Decorativo por padrão (`aria-hidden="true"`), porque quase sempre vem ao lado do nome escrito; com `rotulo="ToqqiAI"`, vira `role="img"` com esse nome.
 
 ---
 
@@ -179,7 +186,7 @@ Quem pede movimento reduzido no sistema operacional tem todas as animações pra
 | `Etiqueta` | Status curto (ativa, pausada, rascunho), com ponto opcional. |
 | `Tabela` | Listas de registros. Com `densa`, células mais justas e títulos que quebram linha (tabelas com muitas colunas, como as dos relatórios). |
 | `Paginacao` | Navegar entre páginas de uma lista. Trocar de página leva a tela ao começo da lista (o bloco onde a paginação está), não ao topo da página; dentro de uma caixa com rolagem própria (corpo de uma janela modal), a caixa volta ao começo. |
-| `Medidor` | Quanto de um limite já foi usado (X de Y), como as análises de IA do mês. `role="meter"`; fica âmbar perto do limite e vermelho no limite. Os números ficam escritos ao lado. `fino` deixa a barra mais baixa (cabeçalho do assistente). |
+| `Medidor` | Quanto de um limite já foi usado (X de Y), como as análises de IA do mês. `role="meter"`; fica âmbar perto do limite e vermelho no limite. Os números ficam escritos ao lado. `fino` deixa a barra mais baixa (cabeçalho do ToqqiAI). |
 | `TextoEmail` | Um e-mail que pode quebrar linha em tabelas e cartões estreitos: quebra depois do "@" e dos pontos, e só no meio da palavra como último recurso. |
 | `Carregando` | Esqueleto enquanto os dados chegam. |
 | `EstadoVazio` | Lista sem itens: título, descrição, ícone e ação. |
