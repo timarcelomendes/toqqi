@@ -54,6 +54,11 @@ export interface Aceite {
   aceito_em: string | null
   /** versao_aceita é null ou menor que versao_atual. */
   pendente: boolean
+  /**
+   * Data da retirada do aceite mais recente, quando ela é posterior ao último aceite em vigor (senão null). Opcional:
+   * a API anterior à §5 de docs/api-aceite-lgpd.md não manda o campo.
+   */
+  revogado_em?: string | null
 }
 
 export interface Conta {

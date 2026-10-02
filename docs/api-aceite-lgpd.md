@@ -139,3 +139,53 @@ Português claro, frases curtas, sem juridiquês desnecessário; quem lê é o d
   dados (operador, instruções, suboperadores, sigilo, incidentes, devolução e exclusão no fim); disponibilidade sem garantia de
   100%; limitação de responsabilidade `[a confirmar]`; propriedade intelectual; suspensão por violação; mudanças nos termos
   (aviso e novo aceite na tela); lei brasileira e foro `[a confirmar: comarca]`.
+
+## 5. Retirar o aceite (pedido do Marcelo em 02/10, 12:01)
+O aceite dos Termos não é consentimento (a base é a execução do contrato), mas a pessoa pode retirá-lo quando quiser: o efeito é
+sair e só voltar a usar o Toqqi aceitando de novo. A prova não some: o aceite antigo fica, com a data em que foi retirado.
+
+- **Banco** (migração nova `0011_revogacao_aceite`; a 0010 fica como está): `aceites_termos` ganha `revogado_em timestamptz`,
+  `revogado_ip text`, `revogado_agente text` (até 400). O UNIQUE `(usuario_id, versao)` vira índice único parcial
+  `(usuario_id, versao) WHERE revogado_em IS NULL`: aceitar de novo depois de retirar cria uma linha nova; o histórico fica inteiro.
+  `downgrade` volta o UNIQUE (apagando antes as linhas revogadas duplicadas, se houver).
+- **Situação** (`Aceite`): `versao_aceita`/`aceito_em` olham só linhas sem `revogado_em`; campo novo `revogado_em: iso|null` = a
+  data da revogação mais recente, quando ela é posterior ao último aceite em vigor (senão null). `pendente` como antes.
+- `POST /eu/aceite/revogar` (qualquer usuário logado, inclusive superadmin), corpo `{confirmar: true}` (sem ele: 422
+  `{confirmar: "Confirme que quer retirar o aceite."}`) → 200 `{mensagem}`:
+  - marca `revogado_em = now()`, IP (`_ip`) e navegador em **todas** as linhas em vigor do usuário; sem nenhuma em vigor → 409
+    `sem_aceite`, "Você não tem um aceite em vigor para retirar.";
+  - encerra **todas** as sessões do usuário, inclusive a atual (mesma função usada na troca de senha);
+  - auditoria `termos_revogados` `{versao}` com rótulo "Retirou o aceite dos termos e da política de privacidade";
+  - limite: o mesmo do aceite (20/min por usuário).
+  - Mensagem: "Aceite retirado. Para voltar a usar o Toqqi, entre de novo e aceite os termos."
+- `POST /eu/aceite` depois de retirar: grava um aceite novo normalmente (auditoria `termos_aceitos` de novo).
+- **Site**:
+  - Minha conta › Privacidade: abaixo da frase do aceite, botão secundário de perigo **"Retirar meu aceite"** → diálogo de
+    confirmação (o componente de confirmação que o site já usa): título "Retirar o aceite?"; texto "Você vai sair do Toqqi em todos
+    os aparelhos. Para voltar a usar, será preciso aceitar os Termos de uso e a Política de privacidade de novo. O registro do seu
+    aceite anterior continua guardado, como prova."; para o perfil administrador, mais uma frase: "Se você for o único
+    administrador, ninguém conseguirá mudar as configurações da conta até você voltar e aceitar. Para encerrar o uso do Toqqi pela
+    empresa, cancele a assinatura." (com link para `/assinatura` quando tem `assinatura.gerenciar`); botões "Retirar e sair"
+    (perigo) e "Cancelar". Ao confirmar: chama a rota, limpa a sessão local como o "Sair" e vai para `/entrar` com o aviso de
+    sucesso da mensagem da API. 409: mensagem na tela e recarrega `/eu`.
+  - Tela de aceite: quando `revogado_em` não é nulo, a frase de abertura vira "Você retirou o seu aceite em {dd/mm/aaaa}. Para
+    voltar a usar o Toqqi, leia e aceite os Termos de uso e a Política de privacidade." (o resto igual).
+  - Auditoria: o rótulo vem da API como os outros.
+- **Política de privacidade**: na seção de bases legais (ou em "Seus direitos"), um parágrafo: "O aceite destes documentos não é
+  um consentimento: ele formaliza o contrato de uso do Toqqi. Mesmo assim, você pode retirá-lo quando quiser em Minha conta ›
+  Privacidade › Retirar meu aceite. Ao retirar, você sai do Toqqi e só volta a usá-lo aceitando de novo; guardamos o registro do
+  aceite anterior e da retirada como prova, pelo tempo descrito em Retenção. Para encerrar o uso pela empresa, o administrador
+  cancela a assinatura." (com link `/minha-conta`). Nos Termos, seção de mudanças/encerramento, uma frase equivalente.
+
+### 5.1 Ajustes depois da revisão (02/10)
+- `confirmar` só aceita `true` de verdade (StrictBool): ausente, `null` ou `false` → a mensagem do contrato; texto ou número →
+  a mensagem padrão de "verdadeiro ou falso".
+- Quem retirou o aceite (e não aceitou de novo) **deixa de receber** o resumo semanal e os alertas de pico
+  (`relatorios/emails.destinatarios`). Quem ainda não viu a tela de aceite continua recebendo.
+- O `downgrade` da 0011 recusa (RAISE) se houver aceite retirado sem um aceite novo, porque sem as colunas ele voltaria a valer.
+- 409 em Minha conta: recarrega `/eu` e, com o aceite pendente, vai para `/aceite`.
+- Política: o aceite "registra que você conhece e concorda com as regras de uso do Toqqi, contratado pela sua empresa"; retirar não
+  apaga conta nem dados (aponta para Seus direitos); histórico dos aceites guardado com base no exercício regular de direitos
+  (art. 7º, VI) por `[a confirmar: prazo, sugerido 5 anos depois do fim da conta]`.
+- O limite de 20/min da retirada é a mesma taxa do aceite, contada à parte.
+

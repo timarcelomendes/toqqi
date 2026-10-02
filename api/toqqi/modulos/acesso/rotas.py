@@ -20,6 +20,7 @@ from toqqi.modulos.acesso.esquemas import (
     EuAlterarIn,
     PedirAcessoIn,
     RedefinirIn,
+    RevogarAceiteIn,
     TokenIn,
     TrocarSenhaIn,
 )
@@ -101,6 +102,12 @@ def alterar_eu(dados: EuAlterarIn, ctx: Contexto = Depends(requer())):
 @limiter.limit(LIMITE_ACEITE, key_func=limite_por_usuario)
 def aceitar_termos(request: Request, dados: AceiteIn, ctx: Contexto = Depends(requer())):
     return termos.aceitar(ctx, dados.versao, _ip(request), _agente(request))
+
+
+@router.post("/eu/aceite/revogar")
+@limiter.limit(LIMITE_ACEITE, key_func=limite_por_usuario)
+def revogar_aceite(request: Request, dados: RevogarAceiteIn, ctx: Contexto = Depends(requer())):
+    return {"mensagem": termos.revogar(ctx, _ip(request), _agente(request))}
 
 
 @router.post("/eu/senha")

@@ -57,8 +57,14 @@ export function redirecionarAceite(
   return { path: '/aceite', query: de !== PADRAO ? { de } : {} }
 }
 
-/** Primeira frase da tela: muda quando a pessoa já aceitou uma versão anterior (é uma versão nova). */
+/**
+ * Primeira frase da tela: muda quando a pessoa retirou o aceite (§5, tem precedência) ou quando já aceitou uma versão
+ * anterior (é uma versão nova).
+ */
 export function textoAbertura(aceite: Aceite | null | undefined, vigenteDesde = VIGENTE_DESDE): string {
+  if (aceite?.revogado_em) {
+    return `Você retirou o seu aceite em ${formatarData(aceite.revogado_em)}. Para voltar a usar o Toqqi, leia e aceite os Termos de uso e a Política de privacidade.`
+  }
   if (aceite && aceite.versao_aceita !== null && aceite.versao_aceita !== undefined) {
     return `Atualizamos os Termos de uso e a Política de privacidade em ${formatarData(vigenteDesde)}.`
   }
@@ -76,4 +82,29 @@ export function textoAceiteRegistrado(aceite: Aceite | null | undefined, formata
     return 'Ainda não há registro do seu aceite dos Termos de uso e da Política de privacidade.'
   }
   return `Você aceitou os Termos de uso e a Política de privacidade (versão ${aceite.versao_aceita}) em ${formatarDataHora(aceite.aceito_em)}.`
+}
+
+/** Há um aceite em vigor para retirar (Minha conta › Privacidade › "Retirar meu aceite")? */
+export function temAceiteEmVigor(aceite: Aceite | null | undefined): boolean {
+  return !!aceite && aceite.versao_aceita !== null && aceite.versao_aceita !== undefined && !!aceite.aceito_em
+}
+
+/** Pedaço do texto do diálogo: texto puro ou link interno. */
+export type PedacoTexto = string | { texto: string; para: string }
+
+/** Textos do diálogo "Retirar o aceite?" (docs/api-aceite-lgpd.md §5). */
+export const TEXTO_RETIRAR_ACEITE =
+  'Você vai sair do Toqqi em todos os aparelhos. Para voltar a usar, será preciso aceitar os Termos de uso e a Política de privacidade de novo. O registro do seu aceite anterior continua guardado, como prova.'
+
+/**
+ * Frase extra do diálogo, só para o perfil administrador; "cancele a assinatura" vira link para /assinatura quando a
+ * pessoa tem a permissão `assinatura.gerenciar`. Devolve null para os outros perfis.
+ */
+export function complementoRetirarAceite(admin: boolean, podeAssinatura: boolean): PedacoTexto[] | null {
+  if (!admin) return null
+  const inicio =
+    'Se você for o único administrador, ninguém conseguirá mudar as configurações da conta até você voltar e aceitar. Para encerrar o uso do Toqqi pela empresa, '
+  return podeAssinatura
+    ? [inicio, { texto: 'cancele a assinatura', para: '/assinatura' }, '.']
+    : [`${inicio}cancele a assinatura.`]
 }

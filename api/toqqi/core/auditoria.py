@@ -63,6 +63,7 @@ ROTULOS = {
     "valor_realinhado": "Valor da assinatura corrigido no Asaas",
     "ambiente_asaas_trocado": "Cobrança de teste (sandbox) descartada",
     "termos_aceitos": "Aceitou os termos e a política de privacidade",
+    "termos_revogados": "Retirou o aceite dos termos e da política de privacidade",
 }
 
 

@@ -27,6 +27,7 @@ from toqqi.core.email import Link, Titulo
 from toqqi.core.filtros import inicio_do_dia
 from toqqi.core.ia import cortar
 from toqqi.modelos import (
+    AceiteTermos,
     Acao,
     AlertaPico,
     Conta,
@@ -71,13 +72,19 @@ def rodape(conta_nome: str) -> tuple[str, str, str]:
 
 
 def destinatarios(s: Session, preferencia: str) -> list[str]:
-    """E-mails de quem recebe: ativo, e-mail confirmado, `painel.ver` (admin sempre) e a preferência ligada."""
+    """E-mails de quem recebe: ativo, e-mail confirmado, `painel.ver` (admin sempre) e a preferência ligada.
+    Quem retirou o aceite dos termos (e não aceitou de novo) não recebe (docs/api-aceite-lgpd.md §5). Quem ainda não
+    viu a tela de aceite continua recebendo: só aceita na próxima vez que entrar."""
     pode_ver = (select(PerfilPermissao.perfil)
                 .where(PerfilPermissao.conta_id == Usuario.conta_id, PerfilPermissao.perfil == Usuario.perfil,
                        PerfilPermissao.permissao == "painel.ver").exists())
+    em_vigor = select(AceiteTermos.id).where(AceiteTermos.usuario_id == Usuario.id,
+                                             AceiteTermos.revogado_em.is_(None)).exists()
+    retirou = select(AceiteTermos.id).where(AceiteTermos.usuario_id == Usuario.id,
+                                            AceiteTermos.revogado_em.is_not(None)).exists()
     return list(s.scalars(select(Usuario.email).where(
         Usuario.situacao == "ativo", Usuario.email_confirmado.is_(True), getattr(Usuario, preferencia).is_(True),
-        or_(Usuario.perfil == "admin", pode_ver)).order_by(Usuario.id)))
+        or_(Usuario.perfil == "admin", pode_ver), or_(em_vigor, ~retirou)).order_by(Usuario.id)))
 
 
 def _contas_em_dia() -> list[int]:

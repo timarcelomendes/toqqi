@@ -1,8 +1,13 @@
 import { reactive } from 'vue'
 
+/** Pedaço de um parágrafo extra do diálogo: texto, ou link interno do site (fecha o diálogo ao clicar). */
+export type PedacoConfirmacao = string | { texto: string; para: string }
+
 export interface OpcoesConfirmacao {
   titulo: string
   mensagem?: string
+  /** Parágrafo extra, abaixo da mensagem, que pode ter links internos (texto puro, sem HTML). */
+  complemento?: PedacoConfirmacao[]
   confirmar?: string
   cancelar?: string
   perigo?: boolean
@@ -27,6 +32,7 @@ export function confirmar(opcoes: OpcoesConfirmacao): Promise<boolean> {
       confirmar: undefined,
       cancelar: undefined,
       mensagem: undefined,
+      complemento: undefined,
       perigo: false,
       ...opcoes,
       aberto: true,

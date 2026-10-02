@@ -49,7 +49,7 @@ def test_versao_igual_a_do_site():
 
 def test_eu_sem_aceite_fica_pendente(client, gestor):
     assert _aceite(client, gestor["h"]) == {"versao_atual": 1, "versao_aceita": None, "aceito_em": None,
-                                            "pendente": True}
+                                            "pendente": True, "revogado_em": None}
     assert gestor["usuario"]["aceite"]["pendente"] is True  # a resposta de entrar já traz o aceite
 
 

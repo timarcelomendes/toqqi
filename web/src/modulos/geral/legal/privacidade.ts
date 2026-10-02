@@ -144,6 +144,14 @@ export const PRIVACIDADE: DocumentoLegal = {
           texto:
             'Hoje não usamos o consentimento como base legal. Para os dados dos clientes da empresa assinante, quem define a base legal é a empresa controladora (por exemplo, execução de contrato ou legítimo interesse). Cabe a ela ter essa base para contatar os clientes e atender os pedidos deles. O Toqqi ajuda, por exemplo com o descadastro e a exclusão de contatos.',
         },
+        {
+          tipo: 'p',
+          texto: [
+            'O aceite destes documentos não é um consentimento: ele registra que você conhece e concorda com as regras de uso do Toqqi, contratado pela sua empresa. Mesmo assim, você pode retirá-lo quando quiser em ',
+            { texto: 'Minha conta › Privacidade › Retirar meu aceite', href: '/minha-conta' },
+            '. Ao retirar, você sai do Toqqi e só volta a usá-lo aceitando de novo; guardamos o registro do aceite anterior e da retirada como prova, pelo tempo descrito em Retenção, e você deixa de receber os e-mails do Toqqi. Retirar o aceite não apaga a sua conta nem os seus dados: para isso, veja Seus direitos. Para encerrar o uso pela empresa, o administrador cancela a assinatura.',
+          ],
+        },
       ],
     },
     {
@@ -301,7 +309,7 @@ export const PRIVACIDADE: DocumentoLegal = {
             'Dados fiscais e de cobrança: pelo prazo legal [a confirmar: prazo fiscal aplicável, em geral 5 anos].',
             'Respostas e contatos dos clientes: a empresa assinante controla e pode apagar quando quiser. Ao excluir um contato, o nome e o e-mail ficam no registro de auditoria por [a confirmar: prazo de guarda da auditoria], e o e-mail ou telefone fica na lista de descadastro, para continuarmos respeitando o pedido da pessoa.',
             'Cópias de segurança (backups): [a confirmar: se há backups e por quanto tempo].',
-            'Histórico dos aceites dos termos: guardado como prova, mesmo quando o texto muda e mesmo depois que um usuário é removido da equipe (guardamos o e-mail e o nome de quem aceitou).',
+            'Histórico dos aceites dos termos (e das retiradas do aceite): guardado como prova, mesmo quando o texto muda, mesmo depois de o aceite ser retirado e mesmo depois que um usuário é removido da equipe (guardamos o e-mail e o nome de quem aceitou), com base no exercício regular de direitos (art. 7º, VI), por [a confirmar: prazo, sugerido 5 anos depois do fim da conta].',
           ],
         },
       ],

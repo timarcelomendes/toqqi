@@ -266,6 +266,14 @@ export const TERMOS: DocumentoLegal = {
           texto:
             'Se você não concordar com a versão nova, não precisa aceitar: o administrador da conta pode cancelar a assinatura na tela Assinatura, que continua disponível sem o aceite, ou pedir por contato@toqqi.com. Não cobraremos o período seguinte. Os demais usuários não conseguem usar o site até aceitar.',
         },
+        {
+          tipo: 'p',
+          texto: [
+            'Você também pode retirar o seu aceite destes Termos e da Política de privacidade quando quiser, em ',
+            { texto: 'Minha conta › Privacidade › Retirar meu aceite', href: '/minha-conta' },
+            '. Ao retirar, você sai do Toqqi em todos os aparelhos e só volta a usá-lo aceitando de novo; guardamos o registro do aceite anterior e da retirada como prova. Retirar o aceite não cancela a assinatura: para encerrar o uso pela Empresa, o administrador cancela a assinatura.',
+          ],
+        },
       ],
     },
     {

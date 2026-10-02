@@ -66,6 +66,11 @@ export const euApi = {
   encerrarOutras: () => api.post<void>('/eu/sessoes/encerrar-outras'),
   /** Aceita os Termos de uso e a Política de privacidade na versão informada (409 versao_desatualizada se mudou). */
   aceitar: (versao: number) => api.post<Aceite>('/eu/aceite', { versao }),
+  /**
+   * Retira o aceite em vigor (docs/api-aceite-lgpd.md §5). A API encerra todas as sessões, inclusive esta: depois disso
+   * o site só limpa a sessão local (não chama /auth/sair). 409 `sem_aceite` se não houver aceite em vigor.
+   */
+  revogarAceite: () => api.post<Mensagem>('/eu/aceite/revogar', { confirmar: true }),
 }
 
 export const equipeApi = {

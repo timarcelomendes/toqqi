@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, StrictBool
 from pydantic_core import PydanticCustomError
 
 from toqqi.core.validacao import Email, SenhaForte, Texto, normalizar_email
@@ -60,6 +60,18 @@ class TrocarSenhaIn(BaseModel):
 
 class AceiteIn(BaseModel):
     versao: Annotated[int, Field(ge=1, le=1_000_000)]
+
+
+def _confirmar_obrigatorio(v: bool | None) -> bool:
+    if v is not True:
+        raise PydanticCustomError("toqqi_confirmar", "Confirme que quer retirar o aceite.")
+    return v
+
+
+class RevogarAceiteIn(BaseModel):
+    # StrictBool: só `true` de verdade (não "yes", "true" nem 1); ausente cai na mesma mensagem.
+    confirmar: Annotated[StrictBool | None, AfterValidator(_confirmar_obrigatorio)] = Field(default=None,
+                                                                                            validate_default=True)
 
 
 class Mensagem(BaseModel):

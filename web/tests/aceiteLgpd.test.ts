@@ -11,7 +11,7 @@ import { defineComponent, h } from 'vue'
 import type { Aceite } from '@/api/tipos'
 import { useSessaoStore } from '@/stores/sessao'
 import { router as rotasDoApp, rolagemAoNavegar } from '@/router'
-import { destinoDepoisDoAceite, redirecionarAceite, textoAbertura, textoAceiteRegistrado, textoVersao } from '@/modulos/geral/legal/aceite'
+import { complementoRetirarAceite, destinoDepoisDoAceite, redirecionarAceite, textoAbertura, textoAceiteRegistrado, textoVersao } from '@/modulos/geral/legal/aceite'
 import { idDaAncora, tipoDeLink } from '@/modulos/geral/legal/documento'
 import type { DocumentoLegal } from '@/modulos/geral/legal/tipos'
 import { VERSAO_DOCUMENTOS } from '@/modulos/geral/legal/versao'
@@ -20,6 +20,9 @@ import { destinoSeguro } from '@/utils/validacao'
 import AceiteView from '@/modulos/geral/AceiteView.vue'
 import DocumentoLegalView from '@/modulos/geral/DocumentoLegalView.vue'
 import SecaoPrivacidade from '@/modulos/conta/SecaoPrivacidade.vue'
+import DialogoConfirmacao from '@/components/ui/DialogoConfirmacao.vue'
+import { estadoConfirmacao, responderConfirmacao } from '@/composables/confirmacao'
+import { avisos } from '@/composables/avisos'
 import { apiFalsa } from './apiFalsa'
 
 const t = (s: string) => s.replace(/ /g, ' ').replace(/\s+/g, ' ').trim()
@@ -512,5 +515,180 @@ describe('Minha conta: cartão Privacidade', () => {
     )
     expect(w.get('a[href="/termos"]').text()).toBe('Termos de uso')
     expect(w.get('a[href="/privacidade"]').text()).toBe('Política de privacidade')
+  })
+})
+
+// ───────────── §5: retirar o aceite (Minha conta › Privacidade) e a abertura da tela depois de retirar ─────────────
+describe('retirar o aceite', () => {
+  // O cartão e o diálogo de confirmação do App (o mesmo componente que o site inteiro usa).
+  const CartaoComDialogo = defineComponent({ render: () => [h(SecaoPrivacidade), h(DialogoConfirmacao)] })
+  const MENSAGEM = 'Aceite retirado. Para voltar a usar o Toqqi, entre de novo e aceite os termos.'
+  const SEM_ACEITE = 'Você não tem um aceite em vigor para retirar.'
+
+  afterEach(() => {
+    if (estadoConfirmacao.aberto) responderConfirmacao(false)
+    avisos.splice(0)
+  })
+
+  function comPerfil(perfil: 'admin' | 'gestor' | 'consulta', permissoes: string[] = []) {
+    const s = entrar(EM_DIA, permissoes)
+    s.usuario = { ...s.usuario!, perfil }
+    return s
+  }
+
+  async function abrirCartao() {
+    const w = await abrir(CartaoComDialogo, '/minha-conta')
+    router.addRoute({ path: '/entrar', name: 'entrar', component: { render: () => h('div', 'entrar') } })
+    return w
+  }
+  const dialogo = () => document.querySelector<HTMLElement>('[role="alertdialog"]')
+  const botaoDialogo = (rotulo: string) =>
+    [...(dialogo()?.querySelectorAll('button') ?? [])].find((b) => t(b.textContent ?? '') === rotulo) as HTMLButtonElement
+
+  it('o botão abre o diálogo com o título, o texto e os botões do contrato', async () => {
+    comPerfil('gestor')
+    const api = apiFalsa({})
+    const w = await abrirCartao()
+    expect(t(w.get('[data-teste="retirar-aceite"]').text())).toBe('Retirar meu aceite')
+    await w.get('[data-teste="retirar-aceite"]').trigger('click')
+    await flushPromises()
+    expect(estadoConfirmacao.aberto).toBe(true)
+    expect(t(dialogo()!.querySelector('h2')!.textContent!)).toBe('Retirar o aceite?')
+    expect(t(dialogo()!.textContent!)).toContain(
+      'Você vai sair do Toqqi em todos os aparelhos. Para voltar a usar, será preciso aceitar os Termos de uso e a Política de privacidade de novo. O registro do seu aceite anterior continua guardado, como prova.',
+    )
+    expect(botaoDialogo('Retirar e sair')).toBeTruthy()
+    expect(botaoDialogo('Cancelar')).toBeTruthy()
+    expect(botaoDialogo('Retirar e sair').className).toContain('bg-red-700') // variante perigo
+    expect(api.chamadas).toHaveLength(0)
+  })
+
+  it('a frase extra aparece só para o administrador', async () => {
+    comPerfil('gestor', ['assinatura.gerenciar'])
+    let w = await abrirCartao()
+    await w.get('[data-teste="retirar-aceite"]').trigger('click')
+    await flushPromises()
+    expect(document.querySelector('[data-teste="confirmacao-complemento"]')).toBeNull()
+    expect(dialogo()!.textContent).not.toContain('único administrador')
+    responderConfirmacao(false)
+    w.unmount()
+
+    setActivePinia(createPinia())
+    comPerfil('admin', ['assinatura.gerenciar'])
+    w = await abrirCartao()
+    await w.get('[data-teste="retirar-aceite"]').trigger('click')
+    await flushPromises()
+    expect(t(document.querySelector('[data-teste="confirmacao-complemento"]')!.textContent!)).toBe(
+      'Se você for o único administrador, ninguém conseguirá mudar as configurações da conta até você voltar e aceitar. Para encerrar o uso do Toqqi pela empresa, cancele a assinatura.',
+    )
+  })
+
+  it('o link para /assinatura só aparece com a permissão assinatura.gerenciar', async () => {
+    comPerfil('admin', ['assinatura.gerenciar'])
+    let w = await abrirCartao()
+    await w.get('[data-teste="retirar-aceite"]').trigger('click')
+    await flushPromises()
+    const link = document.querySelector<HTMLAnchorElement>('[data-teste="confirmacao-complemento"] a')!
+    expect(link.getAttribute('href')).toBe('/assinatura')
+    expect(t(link.textContent!)).toBe('cancele a assinatura')
+    responderConfirmacao(false)
+    w.unmount()
+
+    setActivePinia(createPinia())
+    comPerfil('admin', ['contatos.ver'])
+    w = await abrirCartao()
+    await w.get('[data-teste="retirar-aceite"]').trigger('click')
+    await flushPromises()
+    expect(document.querySelector('[data-teste="confirmacao-complemento"]')).not.toBeNull()
+    expect(document.querySelector('[data-teste="confirmacao-complemento"] a')).toBeNull()
+    expect(complementoRetirarAceite(false, true)).toBeNull()
+  })
+
+  it('confirmar chama a rota com {confirmar: true}, limpa a sessão como o Sair e vai para Entrar com o aviso', async () => {
+    const s = comPerfil('admin', ['assinatura.gerenciar'])
+    const api = apiFalsa({ 'POST /eu/aceite/revogar': () => ({ mensagem: MENSAGEM }) })
+    const w = await abrirCartao()
+    await w.get('[data-teste="retirar-aceite"]').trigger('click')
+    await flushPromises()
+    botaoDialogo('Retirar e sair').click()
+    await flushPromises()
+    expect(api.chamadas.map((c) => [c.metodo, c.caminho, c.corpo])).toEqual([['POST', '/eu/aceite/revogar', { confirmar: true }]])
+    // A API já encerrou as sessões: não chama /auth/sair, só limpa o que está no navegador.
+    expect(s.logado).toBe(false)
+    expect(s.token).toBeNull()
+    expect(sessionStorage.getItem('toqqi.sessao')).toBeNull()
+    expect(localStorage.getItem('toqqi.sessao')).toBeNull()
+    expect(router.currentRoute.value.path).toBe('/entrar')
+    expect(avisos.map((a) => [a.tipo, a.mensagem])).toEqual([['sucesso', MENSAGEM]])
+  })
+
+  it('cancelar não chama a API e mantém a sessão', async () => {
+    const s = comPerfil('admin')
+    const api = apiFalsa({ 'POST /eu/aceite/revogar': () => ({ mensagem: MENSAGEM }) })
+    const w = await abrirCartao()
+    await w.get('[data-teste="retirar-aceite"]').trigger('click')
+    await flushPromises()
+    botaoDialogo('Cancelar').click()
+    await flushPromises()
+    expect(estadoConfirmacao.aberto).toBe(false)
+    expect(api.chamadas).toHaveLength(0)
+    expect(s.logado).toBe(true)
+    expect(router.currentRoute.value.path).toBe('/minha-conta')
+  })
+
+  it('409: mostra a mensagem da API, recarrega /eu e continua logado', async () => {
+    const s = comPerfil('gestor')
+    const api = apiFalsa({
+      'POST /eu/aceite/revogar': () =>
+        new Response(JSON.stringify({ erro: { codigo: 'sem_aceite', mensagem: SEM_ACEITE } }), { status: 409 }),
+      'GET /eu': () => ({
+        usuario: { ...s.usuario!, aceite: { versao_atual: 1, versao_aceita: null, aceito_em: null, pendente: true, revogado_em: '2026-10-02T15:00:00Z' } },
+        conta: s.conta,
+        permissoes: [],
+      }),
+    })
+    const w = await abrirCartao()
+    await w.get('[data-teste="retirar-aceite"]').trigger('click')
+    await flushPromises()
+    botaoDialogo('Retirar e sair').click()
+    await flushPromises()
+    expect(api.chamadas.map((c) => `${c.metodo} ${c.caminho}`)).toEqual(['POST /eu/aceite/revogar', 'GET /eu'])
+    expect(t(w.get('[data-teste="erro-retirar"]').text())).toBe(SEM_ACEITE)
+    expect(s.logado).toBe(true)
+    expect(s.usuario?.aceite?.revogado_em).toBe('2026-10-02T15:00:00Z')
+    expect(w.find('[data-teste="retirar-aceite"]').exists()).toBe(false) // sem aceite em vigor, sem botão
+    expect(router.currentRoute.value.path).toBe('/minha-conta')
+  })
+
+  it('tela de aceite depois de retirar: abertura com a data da retirada (o resto igual)', async () => {
+    const revogado: Aceite = { versao_atual: 1, versao_aceita: null, aceito_em: null, pendente: true, revogado_em: '2026-10-02T15:00:00Z' }
+    expect(textoAbertura(revogado)).toBe(
+      'Você retirou o seu aceite em 02/10/2026. Para voltar a usar o Toqqi, leia e aceite os Termos de uso e a Política de privacidade.',
+    )
+    // revogado_em nulo ou ausente: como antes.
+    expect(textoAbertura({ ...revogado, revogado_em: null })).toBe('Para usar o Toqqi, leia e aceite os Termos de uso e a Política de privacidade.')
+    expect(textoAbertura(PENDENTE)).toBe('Para usar o Toqqi, leia e aceite os Termos de uso e a Política de privacidade.')
+
+    entrar(revogado)
+    const w = await abrir(AceiteView, '/aceite')
+    expect(t(w.get('[data-teste="abertura"]').text())).toBe(
+      'Você retirou o seu aceite em 02/10/2026. Para voltar a usar o Toqqi, leia e aceite os Termos de uso e a Política de privacidade. Eles explicam como tratamos os seus dados e os dos seus clientes, seguindo a LGPD.',
+    )
+    expect(w.findAll('ul li')).toHaveLength(3)
+    expect(w.find('[data-teste="aceitar"]').exists()).toBe(true)
+  })
+
+  it('a Política e os Termos falam da retirada, com link para Minha conta', async () => {
+    for (const tipo of ['privacidade', 'termos'] as const) {
+      const w = await abrir(DocumentoLegalView, tipo === 'privacidade' ? '/privacidade' : '/aceite', { tipo })
+      const link = w.findAll('a[href="/minha-conta"]')
+      expect(link.length).toBeGreaterThan(0)
+      expect(t(link[0]!.text())).toBe('Minha conta › Privacidade › Retirar meu aceite')
+      w.unmount()
+    }
+    const w = await abrir(DocumentoLegalView, '/privacidade', { tipo: 'privacidade' })
+    expect(t(w.get('section#finalidades-e-bases-legais').text())).toContain(
+      'O aceite destes documentos não é um consentimento: ele registra que você conhece e concorda com as regras de uso do Toqqi, contratado pela sua empresa. Mesmo assim, você pode retirá-lo quando quiser em Minha conta › Privacidade › Retirar meu aceite. Ao retirar, você sai do Toqqi e só volta a usá-lo aceitando de novo; guardamos o registro do aceite anterior e da retirada como prova, pelo tempo descrito em Retenção, e você deixa de receber os e-mails do Toqqi. Retirar o aceite não apaga a sua conta nem os seus dados: para isso, veja Seus direitos. Para encerrar o uso pela empresa, o administrador cancela a assinatura.',
+    )
   })
 })

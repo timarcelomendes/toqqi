@@ -631,3 +631,7 @@ class AceiteTermos(Base):
     ip: Mapped[str | None] = mapped_column(Text)
     agente: Mapped[str | None] = mapped_column(Text)  # User-Agent, até 400 caracteres
     origem: Mapped[str] = mapped_column(Text)  # cadastro | tela
+    # retirada do aceite: a linha fica como prova; aceitar de novo cria uma linha nova (único parcial em vigor)
+    revogado_em: Mapped[datetime | None] = mapped_column(TZ)
+    revogado_ip: Mapped[str | None] = mapped_column(Text)
+    revogado_agente: Mapped[str | None] = mapped_column(Text)  # User-Agent, até 400 caracteres
