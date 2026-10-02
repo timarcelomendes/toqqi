@@ -53,6 +53,12 @@ services:
         sync: false
       - key: SUPERADMIN_EMAILS
         sync: false                 # o Render pergunta na criação
+      - key: IA_ASSISTENTE_MODELO   # assistente (etapa 5b); a OPENAI_API_KEY fica só no painel do Render
+        value: gpt-5-mini
+      - key: IA_ASSISTENTE_ESFORCO
+        value: low
+      - key: IA_COTA_CORTESIA       # análises de IA por mês das contas em cortesia (cota do plano)
+        value: "500"
       - key: ADMIN_INICIAL_EMAIL
         sync: false
       - key: ADMIN_INICIAL_SENHA

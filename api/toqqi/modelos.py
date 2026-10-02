@@ -520,6 +520,10 @@ class IaUsoMensal(Base):
     analises: Mapped[int] = mapped_column(Integer, server_default="0")
     tokens_entrada: Mapped[int] = mapped_column(BigInteger, server_default="0")
     tokens_saida: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    # etapa 5b: cota de IA do plano (hoje só o assistente gasta), separada do teto da análise por resposta acima
+    cota_usada: Mapped[int] = mapped_column(Integer, server_default="0")
+    cota_tokens_entrada: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    cota_tokens_saida: Mapped[int] = mapped_column(BigInteger, server_default="0")
 
 
 class AlertaPico(Base):

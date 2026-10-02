@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { ApiError, authApi, euApi } from '@/api'
 import type { Conta, DadosSessao, Permissao, Sessao, Usuario } from '@/api'
+import { apagarConversas } from '@/modulos/assistente/historico'
 
 const CHAVE = 'toqqi.sessao'
 
@@ -98,6 +99,8 @@ export const useSessaoStore = defineStore('sessao', () => {
     permissoes.value = []
     if (aviso !== undefined) avisoEntrar.value = aviso
     persistir()
+    // Etapa 5b: a conversa com o assistente fica só nesta sessão do navegador; ao sair, some.
+    apagarConversas()
   }
 
   function atualizarUsuario(u: Usuario) {

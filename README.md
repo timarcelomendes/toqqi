@@ -32,8 +32,9 @@ Os testes rodam no GitHub a cada envio (`.github/workflows/testes.yml`).
 | 4a. Respostas, planos de ação e painel | pronta | `docs/api-etapa-4a.md` |
 | Extra: dados da empresa e logo (Configurações › Empresa) | pronta | `docs/api-dados-empresa.md` |
 | 4b. Relatórios, IA por resposta, picos de reclamação e resumo semanal | pronta | `docs/api-etapa-4b.md` |
-| 5a. Assinatura e cobrança pelo Asaas | pronta (falta o teste no sandbox) | `docs/api-etapa-5a.md` |
-| 5. Resto: IA sob demanda e assistente, Teams, Fillout, e-mails, auditoria, zona de risco · 6. Troca | depois | — |
+| 5a. Assinatura e cobrança pelo Asaas | pronta (testada no sandbox) | `docs/api-etapa-5a.md` |
+| 5b. Ajuda e assistente (chat com os dados da conta e a cota de IA do plano) | pronta (falta conferir com a chave da OpenAI) | `docs/api-etapa-5b.md` |
+| 5. Resto: resumo do painel e outras funções de IA, Teams, Fillout, e-mails, auditoria, zona de risco · 6. Troca | depois | — |
 
 ## Publicação (Render)
 O arquivo `render.yaml` cria tudo de uma vez: no Render, **New > Blueprint** e escolha este repositório.
@@ -55,7 +56,10 @@ lembretes, envios pendentes, webhooks, análise de comentários com IA, alerta d
 
 **IA (OpenAI)**: a chave `OPENAI_API_KEY` vai no painel do Render, em *Environment*, nos **dois** serviços (toqqi-api e
 toqqi-tarefas), e não no `render.yaml`. Sem ela, tudo funciona e os temas seguem por palavras-chave. Detalhes em
-`docs/api-etapa-4b.md` e `api/README.md`.
+`docs/api-etapa-4b.md` e `api/README.md`. A mesma chave liga o **assistente** (botão no canto das telas): modelo e esforço
+em `IA_ASSISTENTE_MODELO` e `IA_ASSISTENTE_ESFORCO`, cota da cortesia em `IA_COTA_CORTESIA` (no `render.yaml`). Ele manda à
+OpenAI a pergunta, as últimas mensagens e os dados consultados (inclusive nomes e comentários): cite na política de
+privacidade. Detalhes em `docs/api-etapa-5b.md`.
 
 **Cobrança (Asaas)**: `ASAAS_API_KEY` no painel do Render em toqqi-api e toqqi-tarefas; `ASAAS_WEBHOOK_TOKEN` só na
 toqqi-api (32 a 255 caracteres, sem espaços). No Asaas, o webhook de cobranças aponta para

@@ -90,17 +90,22 @@ def sem_rede(monkeypatch):
     testes."""
     import httpx
 
-    from toqqi.core import asaas, ia, rede
+    from toqqi.core import asaas, ia, ia_conversa, rede
+    from toqqi.modulos.ajuda import servico as ajuda
+    from toqqi.modulos.assistente.limite import limite
     from toqqi.modulos.whatsapp import graph
 
     def recusar(*_a, **_k):
         raise httpx.ConnectError("rede bloqueada nos testes")
 
     monkeypatch.setattr(graph, "transporte", httpx.MockTransport(recusar))
-    monkeypatch.setattr(ia, "transporte", httpx.MockTransport(recusar))
+    monkeypatch.setattr(ia, "transporte", httpx.MockTransport(recusar))  # a conversa do assistente usa o mesmo
     monkeypatch.setattr(asaas, "transporte", httpx.MockTransport(recusar))
     monkeypatch.setattr(rede, "enviar_post", recusar)
     ia.memoria.limpar()  # provedor de IA dos testes (IA_PROVEDOR=memoria): sem chamadas nem falhas programadas
+    ia_conversa.memoria.limpar()  # o mesmo para o assistente (sem programa = padrão por palavras)
+    limite.zerar()  # perguntas por minuto (os ids de usuário recomeçam a cada teste)
+    ajuda.limpar_cache()
 
 
 @pytest.fixture

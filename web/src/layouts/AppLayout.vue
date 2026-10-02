@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronDown, CreditCard, LogOut, Menu, UserRound, X } from 'lucide-vue-next'
 import { useSessaoStore } from '@/stores/sessao'
+import { useAssistenteStore } from '@/stores/assistente'
 import { useFocoPreso } from '@/composables/focoPreso'
 import { useMenuLateral } from '@/composables/menuLateral'
 import { formatarData, diasAte } from '@/utils/datas'
@@ -12,9 +13,11 @@ import AvisoCobranca from '@/components/app/AvisoCobranca.vue'
 import BotaoTema from '@/components/app/BotaoTema.vue'
 import ItemMenu from '@/components/app/ItemMenu.vue'
 import MenuSuspenso from '@/components/ui/MenuSuspenso.vue'
+import AssistenteFlutuante from '@/modulos/assistente/AssistenteFlutuante.vue'
 import BarraLateral from './BarraLateral.vue'
 
 const sessao = useSessaoStore()
+const assistente = useAssistenteStore()
 const router = useRouter()
 const rota = useRoute()
 const { recolhido } = useMenuLateral()
@@ -154,8 +157,17 @@ async function sair() {
     <!-- Etapa 5a: teste acabando, fatura atrasada, envios pausados... (conta.cobranca.aviso) -->
     <AvisoCobranca />
 
-    <main id="conteudo" tabindex="-1" class="mx-auto w-full max-w-6xl px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-10">
+    <!-- Com o botão do assistente no canto, o fim do conteúdo ganha folga para ele não cobrir a última ação. -->
+    <main
+      id="conteudo"
+      tabindex="-1"
+      class="mx-auto w-full max-w-6xl px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-10"
+      :class="assistente.visivel ? 'pb-24 sm:pb-28 print:pb-6' : ''"
+    >
       <RouterView />
     </main>
+
+    <!-- Etapa 5b: botão do assistente (canto inferior direito) e o painel da conversa -->
+    <AssistenteFlutuante />
   </div>
 </template>

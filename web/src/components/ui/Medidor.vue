@@ -13,6 +13,8 @@ const props = withDefaults(
     texto?: string
     /** A partir de qual fração muda para atenção (padrão 0,9). No limite, vira erro. */
     alerta?: number
+    /** Barra mais fina, para cabeçalhos compactos (ex.: a cota no painel do assistente). */
+    fino?: boolean
   }>(),
   { alerta: 0.9 },
 )
@@ -31,7 +33,8 @@ const cor = computed(() =>
     :aria-valuemax="Math.max(0, maximo)"
     :aria-valuenow="Math.min(Math.max(0, valor), Math.max(0, maximo))"
     :aria-valuetext="texto ?? `${valor} de ${maximo}`"
-    class="h-2.5 w-full overflow-hidden rounded-full bg-borda-forte"
+    class="w-full overflow-hidden rounded-full bg-borda-forte"
+    :class="fino ? 'h-1.5' : 'h-2.5'"
   >
     <div class="h-full rounded-full transition-[width] duration-300" :class="cor" :style="{ width: `${fracao * 100}%` }" />
   </div>

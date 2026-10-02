@@ -6,7 +6,7 @@ import { useSessaoStore } from '@/stores/sessao'
 import { useMenuLateral } from '@/composables/menuLateral'
 import logo from '@/assets/logo.svg'
 import Marca from '@/components/app/Marca.vue'
-import { filtrarNavegacao, itemAtivo, navegacaoAdministracao, navegacaoPrincipal, type ItemNavegacao } from './navegacao'
+import { filtrarNavegacao, itemAtivo, navegacaoAdministracao, navegacaoPrincipal, navegacaoRodape, type ItemNavegacao } from './navegacao'
 
 /** `recolhivel`: barra fixa do computador, que pode ficar só com os ícones. A gaveta do celular fica sempre aberta. */
 const props = withDefaults(defineProps<{ recolhivel?: boolean }>(), { recolhivel: false })
@@ -88,8 +88,17 @@ const classeDica =
         </ul>
       </div>
     </nav>
-    <div v-if="recolhivel" class="shrink-0 border-t border-borda p-3">
+    <div class="flex shrink-0 flex-col gap-0.5 border-t border-borda p-3">
+      <!-- Ajuda (etapa 5b): também na gaveta do celular, que não tem o botão de recolher. -->
+      <RouterLink v-for="item in navegacaoRodape" :key="chave(item)" v-slot="{ href, navigate, isActive }" :to="item.para" custom>
+        <a :href="href" :class="classes(ativoNa(item, isActive))" :aria-current="ativoNa(item, isActive) ? 'page' : undefined" @click="(e) => { navigate(e); $emit('navegou') }">
+          <component :is="item.icone" class="size-5 shrink-0" aria-hidden="true" />
+          <span :class="compacto ? 'sr-only' : 'flex-1'">{{ item.rotulo }}</span>
+          <span v-if="compacto" aria-hidden="true" :class="classeDica">{{ item.rotulo }}</span>
+        </a>
+      </RouterLink>
       <button
+        v-if="recolhivel"
         type="button"
         :class="classes(false)"
         class="w-full"

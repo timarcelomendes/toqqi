@@ -55,6 +55,8 @@ const rotas: RouteRecordRaw[] = [
       { path: 'relatorios/:aba', name: 'relatorios', component: () => import('@/modulos/relatorios/RelatoriosView.vue'), meta: { titulo: 'Relatórios', permissao: 'relatorios.ver' } },
       // Etapa 5a: planos, fatura em aberto, trocar de plano, dados de cobrança, cancelar e histórico.
       { path: 'assinatura', name: 'assinatura', component: () => import('@/modulos/assinatura/AssinaturaView.vue'), meta: { titulo: 'Assinatura', permissao: 'assinatura.gerenciar' } },
+      // Etapa 5b: tópicos e seções da ajuda (/ajuda/contatos#importar-planilha); trocar de tópico não rola a página (a tela cuida).
+      { path: 'ajuda/:topico?', name: 'ajuda', component: () => import('@/modulos/ajuda/AjudaView.vue'), meta: { titulo: 'Ajuda', manterRolagem: true } },
       { path: 'minha-conta', name: 'minha-conta', component: () => import('@/modulos/conta/MinhaContaView.vue'), meta: { titulo: 'Minha conta' } },
       { path: 'equipe', name: 'equipe', component: () => import('@/modulos/equipe/EquipeView.vue'), meta: { titulo: 'Equipe', permissao: 'equipe.gerenciar' } },
       {

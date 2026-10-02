@@ -473,7 +473,9 @@ def test_configuracao_desligar_cancela_pendentes(client, admin, dono):
     mes = relogio.hoje().strftime("%Y-%m")
     assert client.get(f"{API}/conta/ia", headers=h).json() == {
         "disponivel": True, "provedor": "Memória", "analise_respostas": True, "mes": mes, "analises": 1,
-        "limite": 1000, "pendentes": 1, "falharam_no_mes": 0}
+        "limite": 1000, "pendentes": 1, "falharam_no_mes": 0,
+        # etapa 5b: cota do plano (só o assistente gasta; a análise por resposta fica fora dela)
+        "cota": {"usadas": 0, "limite": 500, "restantes": 500, "mes": mes}}
     r = client.put(f"{API}/conta/ia", headers=h, json={"analise_respostas": False})
     assert r.status_code == 200 and r.json()["analise_respostas"] is False and r.json()["pendentes"] == 0
     assert _ia(dono, pendente)["situacao"] is None

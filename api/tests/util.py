@@ -3,6 +3,7 @@ import itertools
 import json
 import re
 from datetime import date, datetime, time, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from toqqi.core.email import caixa_memoria
@@ -538,3 +539,68 @@ def situacao_conta(dono, conta_id: int) -> tuple:
     """(situacao, pago_ate, atrasada_desde, primeiro_vencimento) direto do banco."""
     return tuple(sql(dono, "select situacao, pago_ate, atrasada_desde, primeiro_vencimento from contas where id = :c",
                      c=conta_id)[0])
+
+
+# ---- etapa 5b: Ajuda e assistente -----------------------------------------------------
+
+AJUDA_EXEMPLO = Path(__file__).with_name("dados") / "ajuda_exemplo.json"
+
+
+def perguntar(client, h: dict, pergunta: str = "Como importo meus contatos?", historico: list | None = None):
+    corpo = {"pergunta": pergunta}
+    if historico is not None:
+        corpo["historico"] = historico
+    return client.post(f"{API}/assistente/perguntar", headers=h, json=corpo)
+
+
+def contexto_de(sessao: dict, permissoes: list[str] | None = None):
+    """Contexto de quem entrou (`conta_pronta`/`membro`), para chamar os serviços direto. Sem `permissoes`, as do
+    perfil padrão (admin: todas)."""
+    import uuid
+
+    from toqqi.core.deps import Contexto
+    from toqqi.core.permissoes import PADRAO, TODAS
+
+    perfil = sessao["usuario"]["perfil"]
+    if permissoes is None:
+        permissoes = list(TODAS) if perfil == "admin" else list(PADRAO[perfil])
+    return Contexto(usuario_id=sessao["usuario"]["id"], conta_id=sessao["conta"]["id"], sessao_id=uuid.uuid4(),
+                    email=sessao["usuario"]["email"], perfil=perfil, superadmin=False, permissoes=permissoes)
+
+
+def cota_do_mes(dono, conta_id: int, mes: date | None = None) -> tuple[int, int, int]:
+    """(cota_usada, cota_tokens_entrada, cota_tokens_saida) do mês (padrão: o atual, São Paulo)."""
+    from toqqi.core import relogio
+
+    mes = mes or relogio.hoje().replace(day=1)
+    linhas = sql(dono, "select cota_usada, cota_tokens_entrada, cota_tokens_saida from ia_uso_mensal "
+                       "where conta_id = :c and mes = :m", c=conta_id, m=mes)
+    return tuple(linhas[0]) if linhas else (0, 0, 0)
+
+
+def usar_cota(dono, conta_id: int, usadas: int, mes: date | None = None) -> None:
+    from toqqi.core import relogio
+
+    sql(dono, "insert into ia_uso_mensal (conta_id, mes, cota_usada) values (:c, :m, :u) on conflict (conta_id, mes) "
+              "do update set cota_usada = excluded.cota_usada", c=conta_id, m=mes or relogio.hoje().replace(day=1),
+        u=usadas)
+
+
+def inserir_resposta(dono, conta_id: int, formulario_id: int, contato: dict | None, nota: int, quando: date,
+                     tipo: str = "nps", comentario: str = "", arquivada: bool = False, empresa_id: int | None = None
+                     ) -> int:
+    """Resposta direto no banco (dono, modo sistema), ao meio-dia (São Paulo) de `quando`."""
+    from toqqi.modulos.formularios.validacao import grupo_da_nota
+    from toqqi.modulos.respostas.registro import temas_da_resposta
+
+    if empresa_id is None and contato and contato.get("empresa"):
+        empresa_id = contato["empresa"]["id"]
+    (rid,), = sql(dono, """
+        insert into respostas (conta_id, formulario_id, contato_id, empresa_id, canal, origem, nota, tipo_nota,
+                               grupo, comentario, comentario_cliente, temas, respondida_em, arquivada)
+        values (:conta, :f, :c, :e, 'manual', 'manual', :n, :t, :g, :com, :com, :temas, :quando, :arq)
+        returning id
+    """, conta=conta_id, f=formulario_id, c=contato["id"] if contato else None, e=empresa_id, n=nota, t=tipo,
+        g=grupo_da_nota(tipo, nota), com=comentario, temas=temas_da_resposta(comentario),
+        quando=datetime.combine(quando, time(12), tzinfo=FUSO), arq=arquivada)
+    return rid

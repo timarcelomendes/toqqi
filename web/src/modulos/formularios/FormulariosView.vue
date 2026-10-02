@@ -124,7 +124,8 @@ onMounted(carregar)
           </h2>
           <p v-if="f.descricao" class="mt-0.5 line-clamp-2 text-sm text-texto-suave">{{ f.descricao }}</p>
         </div>
-        <MenuSuspenso v-if="podeEditar" :rotulo="`Ações para ${f.nome}`" class="relative z-10">
+        <!-- Sem z-index: o menu aberto (z-40) fica acima do botão do assistente (z-[25]); "relative" já põe o gatilho acima do link do cartão. -->
+        <MenuSuspenso v-if="podeEditar" :rotulo="`Ações para ${f.nome}`" class="relative">
           <template #gatilho="{ props }">
             <button v-bind="props" type="button" class="-mr-2 -mt-1 flex size-9 items-center justify-center rounded-lg text-texto-fraco hover:bg-superficie-2 hover:text-texto disabled:opacity-50" :disabled="ocupado === f.id">
               <MoreHorizontal class="size-5" aria-hidden="true" />

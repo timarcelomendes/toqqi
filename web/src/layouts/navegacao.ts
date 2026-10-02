@@ -1,6 +1,7 @@
 import type { Component } from 'vue'
 import {
   BarChart3,
+  CircleQuestionMark,
   ClipboardList,
   CreditCard,
   FileText,
@@ -48,6 +49,9 @@ export const navegacaoAdministracao: ItemNavegacao[] = [
   { rotulo: 'Auditoria', para: '/auditoria', icone: History, permissao: 'auditoria.ver' },
   { rotulo: 'Plataforma', para: '/plataforma', icone: Building2, superadmin: true },
 ]
+
+/** Etapa 5b: no rodapé da barra, acima de "Recolher menu" (para todos os logados). */
+export const navegacaoRodape: ItemNavegacao[] = [{ rotulo: 'Ajuda', para: '/ajuda', icone: CircleQuestionMark }]
 
 /**
  * O item fica marcado na própria página e nas de dentro (ex.: /contatos/123 marca Contatos).

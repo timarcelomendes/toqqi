@@ -2,7 +2,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,6 +40,11 @@ class Config(BaseSettings):
     IA_MODELO: str = "gpt-5-mini"
     IA_ESFORCO: str = "minimal"  # vazio = não manda `reasoning`
     IA_BASE_URL: str = "https://api.openai.com"
+    # Assistente (etapa 5b): mesma chave e mesmo provedor da IA por resposta; cada pergunta gasta 1 análise da cota
+    # mensal do plano (Essencial 100, Profissional 500, Empresa 2.000; cortesia = IA_COTA_CORTESIA).
+    IA_ASSISTENTE_MODELO: str = "gpt-5-mini"
+    IA_ASSISTENTE_ESFORCO: str = "low"  # vazio = não manda `reasoning`
+    IA_COTA_CORTESIA: int = Field(default=500, ge=0)
     # Cobrança (Asaas). Só no painel do Render: ASAAS_API_KEY em toqqi-api e toqqi-tarefas; ASAAS_WEBHOOK_TOKEN só
     # em toqqi-api. O endereço segue a chave ($aact_prod_ → produção; o resto → sandbox); ASAAS_URL sobrepõe
     # (Asaas falso local, testes). Sem chave, a tela de assinatura avisa que a cobrança online não está disponível.

@@ -160,7 +160,7 @@ onMounted(carregar)
 
     <!-- Barra de salvar -->
     <Transition enter-from-class="translate-y-full opacity-0" enter-active-class="transition duration-200" leave-active-class="transition duration-150" leave-to-class="translate-y-full opacity-0">
-      <div v-if="alterado" class="sticky bottom-4 z-20">
+      <div v-if="alterado" data-barra-fixa class="sticky bottom-4 z-20">
         <div class="flex flex-col gap-3 rounded-2xl border border-borda bg-superficie p-4 shadow-xl sm:flex-row sm:items-center" role="region" aria-label="Alterações não salvas">
           <p class="flex-1 text-sm font-semibold text-texto">Você tem alterações não salvas.</p>
           <div class="flex gap-2">

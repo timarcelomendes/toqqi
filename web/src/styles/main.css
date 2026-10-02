@@ -3,6 +3,10 @@
 /* Modo escuro controlado pela classe .dark no <html> */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Telas largas e altas, com espaço para o painel do assistente preso ao canto (abaixo disso, tela cheia). A mesma
+   consulta de MIDIA_PAINEL (src/modulos/assistente/logica.ts), que decide o modo no script. */
+@custom-variant painel (@media (min-width: 640px) and (min-height: 560px));
+
 /* Paleta fixa da marca e tokens semânticos (que mudam no modo escuro) */
 @theme {
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;

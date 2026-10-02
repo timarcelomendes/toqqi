@@ -21,7 +21,8 @@ consumiu o teto e nunca devolveu: quem a assume não consome de novo (herda o co
 Logo depois de gravar (`analisar`), no máximo 4 análises ao mesmo tempo por processo, sem esperar vaga (sem vaga, a
 resposta fica para a tarefa `ia`) e com tempo limite de 15 s, para não segurar as threads da API; a tarefa usa 30 s.
 
-A análise de cada resposta não gasta a cota de IA do plano (etapa 5): só o teto de segurança mensal abaixo.
+A análise de cada resposta não gasta a cota de IA do plano (etapa 5): só o teto de segurança mensal abaixo. A cota
+do plano (`ia.cota`, gasta pelo assistente) aparece em Configurações › IA (`cota`).
 """
 import logging
 import threading
@@ -45,6 +46,7 @@ from toqqi.core.filtros import inicio_do_dia
 from toqqi.core.log_seguro import descrever_erro
 from toqqi.modelos import Conta, Formulario, IaUsoMensal, Resposta
 from toqqi.modulos.assinatura.regras import liberada
+from toqqi.modulos.ia import cota
 from toqqi.modulos.ia.regras import MIN_LETRAS, ia_ativa, passa_pela_ia, teto_mensal, texto_qualifica
 from toqqi.modulos.respostas import temas as temas_mod
 from toqqi.modulos.respostas.eventos import GANCHOS
@@ -344,7 +346,7 @@ def _estado(s: Session, conta: Conta) -> dict:
     return {"disponivel": ia.disponivel(), "provedor": ia.nome_provedor(),
             "analise_respostas": conta.ia_analise_respostas, "mes": mes.strftime("%Y-%m"),
             "analises": uso.analises if uso else 0, "limite": teto_mensal(conta), "pendentes": pendentes,
-            "falharam_no_mes": falharam}
+            "falharam_no_mes": falharam, "cota": cota.estado(s, conta)}
 
 
 def obter(ctx: Contexto) -> dict:

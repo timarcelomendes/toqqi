@@ -1,0 +1,3785 @@
+{
+  "versao": 1,
+  "topicos": [
+    {
+      "id": "primeiros-passos",
+      "titulo": "Primeiros passos",
+      "resumo": "Do cadastro à primeira resposta: o que fazer primeiro e o que significam NPS e CSAT.",
+      "secoes": [
+        {
+          "id": "o-que-e-o-toqqi",
+          "titulo": "O que é o Toqqi",
+          "somente_admin": false,
+          "atalho": "inicio",
+          "palavras": [
+            "visão geral",
+            "introdução",
+            "para que serve",
+            "sobre o sistema",
+            "funcionalidades",
+            "pesquisa de satisfação",
+            "começar"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O Toqqi mede a satisfação dos seus clientes e ajuda sua equipe a agir sobre o que eles dizem. Você cadastra os clientes, envia a pesquisa por e-mail ou WhatsApp, acompanha notas e comentários e trata quem ficou insatisfeito."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Contatos: seus clientes, as empresas deles e os responsáveis da sua equipe.",
+                "Formulários e Envios: você monta a pesquisa e escolhe quem recebe.",
+                "Respostas e Início: mostram as notas, os comentários e o NPS.",
+                "Planos de ação: as respostas de clientes insatisfeitos viram tarefas com responsável e prazo.",
+                "Relatórios: comparam empresas, temas e períodos."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O que aparece no menu depende do seu perfil de acesso: administrador, gestor ou consulta."
+            }
+          ]
+        },
+        {
+          "id": "criar-conta-e-entrar",
+          "titulo": "Criar a conta e entrar",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "cadastro",
+            "cadastrar",
+            "registrar",
+            "login",
+            "acessar",
+            "teste grátis",
+            "14 dias",
+            "confirmar email",
+            "email de confirmação",
+            "nova conta",
+            "senha forte"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Na tela de entrada, clique em “Criar conta”.",
+                "Preencha Nome da empresa, Seu nome, E-mail de trabalho e uma senha. O WhatsApp é opcional.",
+                "Marque “Li e aceito os termos” e clique em “Começar 14 dias grátis”.",
+                "Abra o e-mail que enviamos e clique no link para confirmar. Sem confirmar, você não entra.",
+                "Volte à tela de entrada, informe e-mail e senha e clique em “Entrar”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O teste dura 14 dias e não pede cartão. Quem cria a conta vira administrador. A senha precisa ter de 8 a 70 caracteres, com letra maiúscula, número e símbolo."
+            },
+            {
+              "tipo": "dica",
+              "texto": "O e-mail de confirmação não chegou? Olhe a caixa de spam ou promoções e use o botão “Reenviar e-mail”."
+            }
+          ]
+        },
+        {
+          "id": "problemas-para-entrar",
+          "titulo": "Problemas para entrar",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "esqueci a senha",
+            "recuperar senha",
+            "redefinir senha",
+            "email não confirmado",
+            "reenviar confirmação",
+            "acesso pendente",
+            "acesso bloqueado",
+            "link expirado",
+            "não consigo entrar",
+            "login",
+            "pedir acesso",
+            "aprovação"
+          ],
+          "blocos": [
+            {
+              "tipo": "lista",
+              "itens": [
+                "Esqueci a senha: na tela de entrada, clique em “Esqueci a senha”, informe o e-mail e clique em “Enviar link”. O link vale por pouco tempo. Se expirar, peça outro.",
+                "Falta confirmar seu e-mail: clique em “Reenviar confirmação” e olhe também o spam.",
+                "Seu acesso está aguardando aprovação: um administrador da sua empresa precisa aprovar você na tela Equipe. Depois disso, é só entrar.",
+                "Acesso bloqueado: fale com o administrador da sua empresa.",
+                "Muitas tentativas: aguarde um minuto e tente de novo."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Sua empresa já usa o Toqqi e você ainda não tem acesso? Na tela de entrada, clique em “Pedir acesso à minha empresa” e use o e-mail corporativo (Gmail e Hotmail não valem). O pedido só funciona se a empresa liberou o domínio do e-mail; um administrador analisa e aprova."
+            }
+          ]
+        },
+        {
+          "id": "roteiro-da-primeira-pesquisa",
+          "titulo": "Roteiro da primeira pesquisa",
+          "somente_admin": false,
+          "atalho": "inicio",
+          "palavras": [
+            "começar",
+            "primeiro envio",
+            "checklist",
+            "passo a passo",
+            "tutorial",
+            "implantação",
+            "onboarding",
+            "configurar",
+            "como começo"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "No Início, o cartão “Primeiros passos” mostra o que falta fazer. A ordem é esta:"
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Cadastrar seus clientes: em Contatos, clique em “Importar planilha” ou em “Novo contato”.",
+                "Ligar os envios: em Configurações › Envios, confira o texto do convite e ligue o envio das pesquisas.",
+                "Enviar a primeira pesquisa: em Envios, escolha os contatos e dispare por e-mail ou WhatsApp.",
+                "Receber a primeira resposta: quando alguém responder, a nota e o comentário aparecem em Respostas e no Início."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Sua conta já vem com dois formulários prontos: “Pesquisa NPS” e “Satisfação pós-entrega” (CSAT). Para criar outros, use Formulários."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Para testar, cadastre seu próprio e-mail como contato e envie a pesquisa para você."
+            }
+          ]
+        },
+        {
+          "id": "nps-e-csat",
+          "titulo": "NPS e CSAT: o que significam",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "nota",
+            "promotores",
+            "neutros",
+            "detratores",
+            "net promoter score",
+            "cálculo",
+            "como calcula",
+            "escala",
+            "zero a dez",
+            "satisfação do cliente",
+            "faixas",
+            "insatisfeitos"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O NPS pergunta, de 0 a 10, o quanto a pessoa recomendaria sua empresa. As notas formam três grupos: promotores (9 e 10), neutros (7 e 8) e detratores (0 a 6)."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "NPS = % de promotores menos % de detratores. Os neutros só entram no total de respostas. O resultado vai de −100 a 100 e é arredondado para o número inteiro. Exemplo: em 100 respostas, 60 promotores e 20 detratores dão NPS 40."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "As faixas são: Excelente (75 ou mais), Muito bom (50 a 74), Pode melhorar (0 a 49) e Crítico (abaixo de 0)."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O CSAT pergunta, de 1 a 5, o quanto a pessoa ficou satisfeita. O Toqqi mostra o % de notas 4 e 5 e a nota média. Notas 1 e 2 são de insatisfeitos, 3 é neutro e 4 e 5 são de satisfeitos."
+            }
+          ]
+        },
+        {
+          "id": "onde-fica-cada-coisa",
+          "titulo": "Onde fica cada coisa",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "menu",
+            "navegação",
+            "barra lateral",
+            "recolher menu",
+            "celular",
+            "sair",
+            "assistente",
+            "minha conta",
+            "onde fica",
+            "não encontro",
+            "item sumiu"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O menu fica na barra lateral. No celular, ele abre pelo botão de menu no topo da tela."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Início, Contatos, Envios, Formulários, Respostas, Planos de ação e Relatórios: o dia a dia.",
+                "Administração: Equipe, Configurações, Integrações, Assinatura e Auditoria. Cada item só aparece para quem tem a permissão.",
+                "Ajuda: no rodapé da barra, acima de “Recolher menu”. Use o campo “Buscar na ajuda” para achar um assunto.",
+                "Menu da sua conta: no topo da tela, com “Minha conta” e “Sair”.",
+                "Assistente: botão no canto inferior direito, para tirar dúvidas de uso e perguntar sobre os resultados."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Um item não aparece? Seu perfil não tem a permissão. Peça a um administrador, em Equipe."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "contatos",
+      "titulo": "Contatos",
+      "resumo": "Seus clientes, as empresas deles e quem cuida de cada carteira: cadastrar, importar e organizar.",
+      "secoes": [
+        {
+          "id": "contatos-empresas-e-responsaveis",
+          "titulo": "Contatos, empresas e responsáveis: o que é cada um",
+          "somente_admin": false,
+          "atalho": "contatos",
+          "palavras": [
+            "clientes",
+            "cadastro",
+            "carteira",
+            "abas",
+            "lista de clientes",
+            "buscar contato",
+            "filtrar",
+            "pesquisar cliente",
+            "agenda"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "A tela Contatos tem quatro abas: Contatos, Empresas, Responsáveis e Mais cadastros."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Contatos: as pessoas que recebem as pesquisas.",
+                "Empresas: seus clientes. Agrupam os contatos e permitem ver a satisfação por cliente.",
+                "Responsáveis: quem da sua equipe cuida de uma carteira de clientes.",
+                "Mais cadastros: listas de Grupos, Segmentos, Perfis de contato e Cargos."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Na aba Contatos, busque por nome, e-mail, telefone ou código. Em “Filtros”, filtre por Empresa, Grupo, Responsável e Perfil. A lista mostra os Ativos; use “Inativos” ou “Todos” para ver os outros. Clique no nome para abrir os detalhes e o histórico de respostas da pessoa."
+            }
+          ]
+        },
+        {
+          "id": "cadastrar-e-editar-contato",
+          "titulo": "Cadastrar, editar e excluir um contato",
+          "somente_admin": false,
+          "atalho": "contatos",
+          "palavras": [
+            "novo contato",
+            "adicionar cliente",
+            "criar contato",
+            "editar contato",
+            "apagar contato",
+            "remover contato",
+            "telefone",
+            "whatsapp",
+            "email",
+            "código externo",
+            "erp",
+            "crm"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Contatos, clique em “Novo contato”.",
+                "Preencha o Nome e pelo menos um destes: E-mail ou Telefone / WhatsApp.",
+                "Se quiser, escolha a Empresa (dá para criar na hora), o Cargo e o Perfil.",
+                "Confira “Recebe pesquisas” e “Contato ativo” e clique em “Cadastrar contato”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Para mudar depois, abra o menu da linha (os três pontos) e clique em “Editar”. Em “Mais opções” fica o Código no seu sistema, o código do cliente no seu ERP ou CRM."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O e-mail não pode se repetir na conta. O telefone leva DDD; com 10 ou 11 dígitos, o Toqqi acrescenta o 55 do Brasil."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Excluir” apaga o contato e as respostas dele, e não dá para desfazer. Se só quer parar de enviar, desative o contato."
+            }
+          ]
+        },
+        {
+          "id": "importar-planilha-de-contatos",
+          "titulo": "Importar contatos de uma planilha",
+          "somente_admin": false,
+          "atalho": "importar_contatos",
+          "palavras": [
+            "importação",
+            "excel",
+            "csv",
+            "xlsx",
+            "planilha modelo",
+            "subir lista",
+            "carregar clientes",
+            "mapear colunas",
+            "em massa",
+            "upload",
+            "trazer clientes"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Contatos, clique em “Importar planilha” e deixe marcado “Contatos”.",
+                "Clique em “Baixar planilha modelo” para partir dela, ou em “Já tenho minha planilha”.",
+                "Escolha o arquivo (ou arraste) e clique em “Continuar”.",
+                "Em “O que é cada coluna?”, confira o que o Toqqi reconheceu e ajuste. Use “Não importar” nas colunas que não servem.",
+                "Escolha como reconhecer quem já está cadastrado: pelo e-mail, pelo código do seu sistema ou pelo telefone.",
+                "Clique em “Conferir”, veja o resultado e clique em “Importar”."
+              ]
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Uma pessoa por linha, com nome e e-mail ou telefone. A primeira linha traz o nome das colunas.",
+                "Aceita .csv, .xlsx e .xls de até 5 MB (cerca de 20 mil linhas).",
+                "Empresas, grupos, cargos e responsáveis que ainda não existem são criados sozinhos."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "importacao-conferencia-e-problemas",
+          "titulo": "Importação: conferência, atualização e linhas com problema",
+          "somente_admin": false,
+          "atalho": "importar_contatos",
+          "palavras": [
+            "erro na importação",
+            "linhas com problema",
+            "duplicado",
+            "atualizar existentes",
+            "mesma pessoa",
+            "limite do plano",
+            "arquivo expirou",
+            "planilha com erro"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Depois de “Conferir”, o Toqqi mostra quantas linhas estão Prontas, quantas têm problema, quantos contatos são novos e quantos serão atualizados. As linhas com problema aparecem com o motivo."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "“Atualizar quem já existe” ligado: os dados da planilha substituem os do cadastro. Desligado: quem já existe fica como está.",
+                "“Grupo para esta importação” coloca as empresas da planilha num grupo, útil para separar uma carteira ou filial.",
+                "“Importar só as linhas sem problema” deixa de fora as linhas com erro, para você corrigir e importar depois."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A importação é tudo ou nada: se o limite de contatos ativos do plano não comportar a planilha, nada é gravado."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Mudou algo depois de conferir? Clique em “Conferir de novo”. A análise do arquivo vale por 1 hora; depois, envie a planilha outra vez."
+            }
+          ]
+        },
+        {
+          "id": "empresas-e-responsaveis",
+          "titulo": "Empresas e responsáveis pela carteira",
+          "somente_admin": false,
+          "atalho": "contatos",
+          "palavras": [
+            "cliente",
+            "cnpj",
+            "cpf",
+            "valor mensal",
+            "cliente desde",
+            "carteira",
+            "empresa inativa",
+            "gerente de contas",
+            "teams",
+            "contrato",
+            "receita"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Na aba Empresas, clique em “Nova empresa”. Só o Nome é obrigatório. Os outros campos ajudam nos relatórios: CNPJ ou CPF, Código no seu sistema, Grupo, Segmento, Responsável pela carteira, Valor mensal e Cliente desde."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O Valor mensal é o que a empresa paga por mês. A “Receita em risco” soma o valor mensal das empresas que tiveram pelo menos um detrator no período. Desligue “Empresa ativa” quando o cliente sair: ele continua no histórico, mas some dos filtros do dia a dia."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Na aba Responsáveis, clique em “Novo responsável” e informe Nome, Função e E-mail. Os planos de ação de uma empresa nascem com o responsável dela. Excluir uma empresa ou um responsável não apaga contatos nem respostas."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "No cadastro do responsável, o campo “Aviso no Microsoft Teams” guarda o endereço do webhook de um canal, e “Testar Teams” envia uma mensagem de teste. O Toqqi ainda não manda avisos automáticos por esse canal."
+            }
+          ]
+        },
+        {
+          "id": "grupos-segmentos-perfis-e-cargos",
+          "titulo": "Grupos, segmentos, perfis de contato e cargos",
+          "somente_admin": false,
+          "atalho": "contatos",
+          "palavras": [
+            "perfil de contato",
+            "decisor",
+            "influenciador",
+            "agrupar empresas",
+            "ramo",
+            "rede",
+            "classificar clientes",
+            "organizar",
+            "mais cadastros"
+          ],
+          "blocos": [
+            {
+              "tipo": "lista",
+              "itens": [
+                "Grupos: juntam empresas parecidas, como Rede Sul ou Clientes VIP.",
+                "Segmentos: o ramo de cada empresa, como Supermercado ou Farmácia.",
+                "Perfis de contato: o papel da pessoa na compra, como Decisor ou Influenciador.",
+                "Cargos: a função do contato, como Comprador ou Gerente de loja."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Crie, renomeie e exclua direto na aba Mais cadastros. Renomear atualiza tudo que usa o item. Excluir não apaga empresas nem contatos: eles só ficam sem aquele item."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Perfil de contato não é o perfil de acesso da equipe (administrador, gestor ou consulta). O Início usa o perfil “Decisor” para calcular o NPS dos decisores."
+            }
+          ]
+        },
+        {
+          "id": "contato-ativo-e-limite-do-plano",
+          "titulo": "Contato ativo, inativo e limite do plano",
+          "somente_admin": false,
+          "atalho": "contatos",
+          "palavras": [
+            "desativar contato",
+            "reativar",
+            "limite de contatos",
+            "plano",
+            "não quer receber",
+            "cota",
+            "passou do limite",
+            "você chegou ao limite do seu plano"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Contato ativo recebe pesquisas e conta no limite do plano. Contato inativo não recebe nada e não conta no limite. Para desativar, edite o contato e desligue “Contato ativo”."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Recebe pesquisas” é outro botão: desligue quando a pessoa pediu para não receber mais."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Limite de contatos ativos: Essencial 300, Profissional 1.500 e Empresa sem limite. No limite, o Toqqi não deixa cadastrar, importar nem reativar contatos. Troque de plano em Assinatura ou desative quem você não usa mais."
+            }
+          ]
+        },
+        {
+          "id": "gerar-link-de-pesquisa",
+          "titulo": "Gerar um link de pesquisa para um contato",
+          "somente_admin": false,
+          "atalho": "contatos",
+          "palavras": [
+            "link individual",
+            "convite individual",
+            "copiar link",
+            "enviar à mão",
+            "whatsapp manual",
+            "pedido",
+            "nota fiscal",
+            "entrega",
+            "assunto",
+            "contexto"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Contatos, abra o menu da linha e clique em “Gerar link de pesquisa”. O botão também fica nos detalhes do contato.",
+                "Escolha o Formulário (sem escolher, vale o padrão de NPS) e, se quiser, o Assunto, que aparece no lugar de {assunto} nas perguntas.",
+                "Para saber de qual entrega a pessoa fala, clique em “Adicionar informações do pedido ou da entrega” e preencha Pedido, Nota fiscal, Rota, Motorista, Filial ou Transportadora.",
+                "Clique em “Gerar link”. Depois, “Copiar link” ou “Abrir no WhatsApp”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O link é só dessa pessoa e vale para uma resposta. Só dá para gerar para contato ativo, e é preciso ter permissão para disparar pesquisas."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "formularios",
+      "titulo": "Formulários",
+      "resumo": "As pesquisas que seus clientes respondem: criar, editar as perguntas, mudar o visual e compartilhar.",
+      "secoes": [
+        {
+          "id": "criar-um-formulario",
+          "titulo": "Criar um formulário",
+          "somente_admin": false,
+          "atalho": "formularios",
+          "palavras": [
+            "novo formulário",
+            "modelo",
+            "pesquisa",
+            "questionário",
+            "nps simples",
+            "pós-atendimento",
+            "duplicar formulário",
+            "formulário em branco",
+            "criar pesquisa"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Formulário é a pesquisa que o cliente responde. Sua conta já vem com “Pesquisa NPS” (padrão NPS) e “Satisfação pós-entrega” (padrão CSAT)."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Formulários, clique em “Novo formulário”.",
+                "Dê um nome (só a sua equipe vê) e escolha um modelo. O quadro “Como fica” mostra a prévia.",
+                "Clique em “Criar formulário” e ajuste as perguntas do seu jeito."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Os modelos são: NPS simples, Satisfação pós-entrega, Pós-atendimento, NPS distribuidora, Pesquisa rápida e Em branco. Para fazer uma variação de um formulário que já existe, use “Duplicar” no menu do cartão."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Criar e editar formulários exige a permissão correspondente. Quem só consulta pode ver, mas não mudar."
+            }
+          ]
+        },
+        {
+          "id": "perguntas-do-formulario",
+          "titulo": "Perguntas: tipos e como editar",
+          "somente_admin": false,
+          "atalho": "formularios",
+          "palavras": [
+            "adicionar pergunta",
+            "tipo de pergunta",
+            "estrelas",
+            "escala",
+            "comentário",
+            "múltipla escolha",
+            "sim ou não",
+            "ordem das perguntas",
+            "arrastar",
+            "apagar pergunta",
+            "salvar formulário",
+            "ctrl s",
+            "carinhas",
+            "resposta curta"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Abra o formulário (clique no cartão) e vá na aba Perguntas.",
+                "Clique em “Adicionar pergunta” e escolha o tipo.",
+                "Escreva a pergunta e ajuste as opções. Arraste para mudar a ordem, ou use Subir e Descer.",
+                "Clique em “Salvar” (ou use Ctrl+S)."
+              ]
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Nota de 0 a 10 (NPS), Carinhas de 1 a 5 (CSAT), Estrelas de 1 a 5 e Escala numérica (começa em 0 ou 1 e vai até 10).",
+                "Comentário (texto livre) e Resposta curta (texto, e-mail, telefone ou número).",
+                "Escolha uma opção e Escolha várias opções (de 2 a 30 opções).",
+                "Sim ou não e Data.",
+                "Quebra de página, para dividir a pesquisa quando ela é mostrada em páginas."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Cada formulário aceita até 60 perguntas. Se você tentar sair sem salvar, o Toqqi avisa antes de perder as mudanças."
+            }
+          ]
+        },
+        {
+          "id": "variaveis-condicoes-e-nota-principal",
+          "titulo": "Variáveis, perguntas condicionais e nota principal",
+          "somente_admin": false,
+          "atalho": "formularios",
+          "palavras": [
+            "variável",
+            "personalizar texto",
+            "mostrar só para",
+            "condição",
+            "pergunta condicional",
+            "lógica",
+            "nota principal",
+            "obrigatória",
+            "nome do cliente",
+            "número do pedido"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Nos textos, o Toqqi troca as variáveis: {nome} vira o primeiro nome do cliente, {empresa} vira o nome da sua empresa, {assunto} vira o assunto do envio (padrão: “o nosso atendimento”) e {referencia} vira a referência, como o número do pedido."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A nota principal é a primeira pergunta de NPS do formulário. Sem NPS, é a primeira de carinhas ou estrelas. Ela define o tipo do formulário (NPS, CSAT ou personalizado) e o grupo de cada resposta: promotor, neutro ou detrator; ou satisfeito, neutro ou insatisfeito."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Em cada pergunta, “Resposta obrigatória” faz a pessoa só avançar depois de responder. “Mostrar só para” faz a pergunta aparecer só para alguns grupos (por exemplo, só detratores) ou pela nota (até ou a partir de um valor). Isso só vale para perguntas depois da nota principal."
+            }
+          ]
+        },
+        {
+          "id": "aparencia-do-formulario",
+          "titulo": "Aparência e textos do formulário",
+          "somente_admin": false,
+          "atalho": "formularios",
+          "palavras": [
+            "cor",
+            "logo",
+            "identidade visual",
+            "tema",
+            "layout",
+            "texto de boas-vindas",
+            "agradecimento",
+            "botão enviar",
+            "uma pergunta por vez",
+            "páginas",
+            "pré-visualizar",
+            "marca"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Na aba Aparência você muda o visual da pesquisa:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Cor principal: escolha a cor ou digite o código dela.",
+                "Logo (opcional): envie uma imagem PNG ou JPG de até 300 KB, ou informe o endereço dela. Sem logo aqui, vale o logo da empresa (Configurações › Empresa).",
+                "Jeito de mostrar: “Uma pergunta por vez” (mais rápido no celular) ou “Em páginas” (use Quebra de página para dividir).",
+                "Textos: Título de boas-vindas, Texto de boas-vindas, Texto do botão de enviar, Título do agradecimento e Texto do agradecimento. Dá para usar as variáveis.",
+                "Descrição: uma anotação interna, que só a sua equipe vê."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "Use “Pré-visualizar” (ou o painel à direita, em tela grande) para ver como o cliente enxerga. Nada é gravado."
+            }
+          ]
+        },
+        {
+          "id": "compartilhar-o-formulario",
+          "titulo": "Compartilhar: link público, QR Code e botão no site",
+          "somente_admin": false,
+          "atalho": "formularios",
+          "palavras": [
+            "link da pesquisa",
+            "qr code",
+            "widget",
+            "botão flutuante",
+            "incorporar",
+            "site",
+            "gerar novo link",
+            "link vazou",
+            "convite individual",
+            "público",
+            "divulgar",
+            "imprimir"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Na aba Compartilhar, o interruptor “Qualquer pessoa com o link pode responder” liga o link público. Desligado, só funcionam os convites individuais (um link por contato)."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Link público: use “Copiar link” ou “Abrir”.",
+                "QR Code: baixe em PNG ou em SVG (para gráfica) e imprima no balcão, na nota fiscal ou na embalagem. As respostas chegam marcadas como “QR Code”.",
+                "Botão no seu site: escolha texto, cor e posição e cole o código no seu site. Aparece um botão flutuante que abre a pesquisa.",
+                "Link com informações da entrega: já leva Pedido, Nota fiscal, Rota, Motorista, Filial, Transportadora ou Referência, guardados junto da resposta."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Gerar novo link” invalida na hora o link, o QR Code e o botão antigos. Use se o link vazou. Convites individuais não mudam."
+            }
+          ]
+        },
+        {
+          "id": "padrao-ativar-arquivar-e-excluir",
+          "titulo": "Formulário padrão, ativar, arquivar e excluir",
+          "somente_admin": false,
+          "atalho": "formularios",
+          "palavras": [
+            "padrão nps",
+            "padrão csat",
+            "desativar formulário",
+            "recebendo respostas",
+            "apagar formulário",
+            "formulário padrão",
+            "qual formulário vai",
+            "parar de receber respostas"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O formulário padrão é o que vai quando você não escolhe outro, nos envios e nos links gerados para um contato. Há um padrão de NPS e um de CSAT. Para trocar, abra o outro formulário, vá em Compartilhar e clique em “Usar como padrão de NPS” ou “Usar como padrão de CSAT”. Salve as alterações antes."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O interruptor “Recebendo respostas”, no topo do formulário, ativa e desativa. Desativado, ninguém consegue responder. Os formulários padrão não podem ser desativados nem excluídos: escolha outro como padrão antes."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "No menu do cartão, “Excluir” apaga um formulário sem respostas. Se ele já tem respostas, o botão vira “Arquivar”: o formulário sai da lista e para de aceitar respostas, mas os resultados continuam guardados."
+            }
+          ]
+        },
+        {
+          "id": "resultados-de-um-formulario",
+          "titulo": "Resultados de um formulário",
+          "somente_admin": false,
+          "atalho": "formularios",
+          "palavras": [
+            "relatório do formulário",
+            "resultados",
+            "nps do formulário",
+            "pergunta por pergunta",
+            "exportar",
+            "baixar csv",
+            "planilha",
+            "estatísticas"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Na aba Respostas do formulário, escolha o Período (Últimos 7 dias, 30 dias, 90 dias, 12 meses ou Desde o começo). Você vê o NPS e o CSAT só desse formulário, o resultado pergunta por pergunta e a lista das respostas."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Baixar planilha (CSV)” baixa as respostas do período escolhido. Para olhar todas as respostas juntas, com filtros, use a tela Respostas."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "envios",
+      "titulo": "Envios",
+      "resumo": "Como a pesquisa chega aos clientes: envio manual e automático, lembretes, WhatsApp, histórico e descadastros.",
+      "secoes": [
+        {
+          "id": "como-funcionam-os-envios",
+          "titulo": "Como funcionam os envios",
+          "somente_admin": false,
+          "atalho": "envios",
+          "palavras": [
+            "enviar pesquisa",
+            "disparo",
+            "mandar pesquisa",
+            "convite",
+            "canal",
+            "fila",
+            "email",
+            "visão geral",
+            "enviar nps",
+            "como mandar a pesquisa"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "A tela Envios tem três abas: Contatos (quem pode receber e a situação de cada um), Histórico (tudo que já saiu) e Descadastros (quem pediu para não receber mais)."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Saem três tipos de mensagem: a Pesquisa (o convite), o Lembrete (para quem não respondeu) e o Agradecimento (depois da resposta). Elas vão por e-mail ou pelo WhatsApp."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Envio manual: você escolhe os contatos e clica em enviar.",
+                "Envio automático: o Toqqi manda sozinho para quem está na fila, no horário que você definir.",
+                "WhatsApp por link: a mensagem abre pronta no WhatsApp e você aperta Enviar.",
+                "WhatsApp automático: sai sozinho pelo número da sua empresa (veja o tópico Integrações)."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Horário, textos e frequência ficam em Configurações › Envios. O botão “Configurações de envio”, no topo da tela, leva até lá."
+            }
+          ]
+        },
+        {
+          "id": "o-que-precisa-estar-pronto",
+          "titulo": "O que precisa estar pronto para enviar por e-mail",
+          "somente_admin": false,
+          "atalho": "envios",
+          "palavras": [
+            "aviso falta pouco",
+            "pré-condições",
+            "envios pausados",
+            "não envia",
+            "não sai",
+            "email não sai",
+            "envio desligado",
+            "assinatura vencida",
+            "formulário do convite",
+            "por que não envia",
+            "problema para enviar"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Se algo faltar, a tela Envios mostra o aviso “Falta pouco para as pesquisas por e-mail começarem a sair”, com o que falta e um atalho para resolver. São quatro itens:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Assinatura em dia: o teste ou o plano precisa estar valendo.",
+                "Envio de e-mails configurado: depende da plataforma, não das suas configurações.",
+                "Formulário da pesquisa escolhido: defina em Configurações › Envios, em “Formulário do convite”.",
+                "Envios ligados: ligue “Enviar pesquisas por e-mail” em Configurações › Envios."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Enquanto isso, o WhatsApp por link continua funcionando. Se a assinatura estiver pausada, o aviso passa a ser “Os envios estão pausados”: nem e-mail nem WhatsApp saem até você regularizar a assinatura."
+            }
+          ]
+        },
+        {
+          "id": "enviar-por-email-agora",
+          "titulo": "Enviar a pesquisa por e-mail agora",
+          "somente_admin": false,
+          "atalho": "envios",
+          "palavras": [
+            "disparar",
+            "mandar pesquisa",
+            "enviar agora",
+            "enviar para toda a fila",
+            "selecionar contatos",
+            "envio manual",
+            "enviar em massa",
+            "descanso",
+            "ficou de fora"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Envios, na aba Contatos, marque os contatos. “Marcar todos desta página” ajuda. O máximo é 500 de uma vez.",
+                "Clique em “Enviar para selecionados”. Para mandar a todos que estão na fila, clique em “Enviar para toda a fila”. Para um só, use o botão de enviar na linha.",
+                "Confira o número de contatos e clique em “Enviar para N contatos”.",
+                "A lista se atualiza sozinha enquanto os e-mails saem. No fim, você vê quem ficou de fora e por quê."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Ficam de fora: quem não tem e-mail, está inativo ou saiu da lista, quem já está sendo enviado e quem recebeu outra pesquisa há pouco tempo (descanso). Só marque “Enviar mesmo para quem está em descanso” se tiver um bom motivo."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O envio manual não espera o horário do envio automático nem o intervalo entre pesquisas. É preciso ter permissão para disparar pesquisas."
+            }
+          ]
+        },
+        {
+          "id": "enviar-pelo-whatsapp",
+          "titulo": "Enviar pelo WhatsApp",
+          "somente_admin": false,
+          "atalho": "envios",
+          "palavras": [
+            "whatsapp",
+            "zap",
+            "mensagem pronta",
+            "wa",
+            "link do whatsapp",
+            "enviar zap",
+            "aberto no whatsapp",
+            "celular",
+            "telefone"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O botão verde do WhatsApp (na linha do contato, em Envios ou em Contatos, e nos detalhes do contato) abre o WhatsApp com a mensagem pronta e o link da pesquisa. Você aperta Enviar lá."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O contato precisa ter telefone, estar ativo e não ter saído da lista. O texto fica em Configurações › Envios, em “Mensagem do WhatsApp”, e precisa conter {link}."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Por esse caminho, o Toqqi não consegue confirmar a entrega. O envio fica no Histórico como “Aberto no WhatsApp” e conta como enviado para o intervalo e o descanso."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Para o WhatsApp sair sozinho, sem ninguém apertar Enviar, conecte o número da sua empresa em Integrações, na aba “WhatsApp automático”, e escolha o canal em Configurações › Envios."
+            }
+          ]
+        },
+        {
+          "id": "envio-automatico-lembretes-e-horario",
+          "titulo": "Envio automático, lembretes e horário",
+          "somente_admin": false,
+          "atalho": "envios",
+          "palavras": [
+            "robô",
+            "automático",
+            "agendar",
+            "lembrete",
+            "frequência",
+            "intervalo",
+            "descanso",
+            "janela de horário",
+            "dias úteis",
+            "fim de semana",
+            "repetir pesquisa",
+            "anti-cansaço",
+            "quando a pesquisa sai"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Com “Envio automático” ligado em Configurações › Envios, o Toqqi manda a pesquisa sozinho para quem está na fila."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Só envia dentro do horário escolhido (padrão: das 08:00 às 18:00, horário de Brasília) e, com “Só de segunda a sexta” ligado, em dias úteis.",
+                "Cada rodada manda para até 100 contatos, dos mais atrasados para os mais recentes, com pelo menos 6 horas entre rodadas.",
+                "“Repetir a pesquisa a cada (dias)”: depois de receber, a pessoa volta para a fila após esse prazo (de 30 a 365; padrão 90).",
+                "“Descanso entre pesquisas (dias)”: quem recebeu qualquer pesquisa há menos dias não recebe outra (de 0 a 180; padrão 30; 0 desliga).",
+                "Depois de 3 falhas seguidas de entrega, o contato sai da fila automática até um envio manual dar certo."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Lembretes: escolha de 0 a 3 (padrão 3) e em que dia cada um sai depois do envio (padrão: 3, 7 e 15 dias). Saem uma vez por dia, a partir das 10:00, dentro do horário, só para quem não respondeu. No WhatsApp automático, só o 1º lembrete vai por WhatsApp."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Administradores têm “Mais ações” no topo de Envios, com “Enviar lembretes agora” e “Rodar envio automático agora”."
+            }
+          ]
+        },
+        {
+          "id": "situacao-dos-contatos",
+          "titulo": "Situação de cada contato: Na fila, Aguardando resposta e outras",
+          "somente_admin": false,
+          "atalho": "envios",
+          "palavras": [
+            "status do contato",
+            "na fila",
+            "aguardando",
+            "respondeu",
+            "não saiu",
+            "saiu da lista",
+            "inativo",
+            "próximo envio",
+            "cartões",
+            "filtro de situação",
+            "em descanso"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Na aba Contatos de Envios, cada contato tem uma situação. Os cartões no topo contam quantos estão em cada uma e servem de filtro rápido."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Na fila: pode receber a pesquisa agora.",
+                "Enviando...: a pesquisa está saindo neste momento.",
+                "Aguardando resposta: recebeu a pesquisa e ainda não respondeu.",
+                "Respondeu: respondeu a última pesquisa.",
+                "Não saiu: a última pesquisa não foi entregue; o motivo aparece na linha.",
+                "Saiu da lista: pediu para não receber mais, ou está com “Recebe pesquisas” desligado.",
+                "Inativo: contato desativado, não recebe pesquisas.",
+                "Próximo envio em (data): já recebeu e volta para a fila nessa data."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Em descanso até (data)” aparece em quem está na fila mas recebeu outra pesquisa há pouco tempo."
+            }
+          ]
+        },
+        {
+          "id": "historico-de-envios-e-erros",
+          "titulo": "Histórico de envios e erros",
+          "somente_admin": false,
+          "atalho": "envios",
+          "palavras": [
+            "o que foi enviado",
+            "enviados",
+            "log de envios",
+            "entregue",
+            "lido",
+            "erro de envio",
+            "reenviar",
+            "tentar de novo",
+            "e-mail não chegou",
+            "email não chegou",
+            "falha"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Na aba Histórico, cada pesquisa, lembrete e agradecimento que saiu aparece com data, contato, tipo, canal e situação. Filtre por De e Até, “O quê”, Canal e Situação, ou busque por nome ou e-mail."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Enviando...: saindo agora.",
+                "Enviado: saiu do Toqqi.",
+                "Entregue e Lido: confirmações do WhatsApp automático.",
+                "Não saiu: houve erro. O motivo aparece em linguagem simples.",
+                "Aberto no WhatsApp: a mensagem abriu no WhatsApp para alguém da equipe enviar."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Nas linhas “Não saiu”, o botão “Tentar de novo” reenvia a mensagem. Dá para tentar de novo apenas o erro mais recente do contato."
+            }
+          ]
+        },
+        {
+          "id": "descadastros",
+          "titulo": "Descadastros: quem saiu da lista",
+          "somente_admin": false,
+          "atalho": "envios",
+          "palavras": [
+            "sair da lista",
+            "não quero mais receber",
+            "cancelar inscrição",
+            "opt out",
+            "parar de receber",
+            "bloquear envio",
+            "unsubscribe",
+            "descadastrar",
+            "pediu para sair"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Todo e-mail de pesquisa traz o link “Não quero mais receber pesquisas”. Quem usa o link, o botão de cancelar inscrição do programa de e-mail ou responde SAIR no WhatsApp automático entra na aba Descadastros."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Quem saiu da lista não recebe mais nenhuma pesquisa da sua empresa, nem por e-mail nem por WhatsApp, e importar o contato de novo não o coloca de volta. Só a própria pessoa pode voltar a receber."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Para registrar um pedido feito por telefone ou pessoalmente, abra Envios e a aba Descadastros.",
+                "Clique em “Registrar descadastro”, informe o E-mail do cliente e, se quiser, o Motivo.",
+                "Confirme em “Registrar descadastro”. A equipe não consegue desfazer depois."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "respostas",
+      "titulo": "Respostas",
+      "resumo": "Notas e comentários dos clientes: ver, filtrar, analisar, registrar, importar e arquivar.",
+      "secoes": [
+        {
+          "id": "ver-e-filtrar-as-respostas",
+          "titulo": "Ver e filtrar as respostas",
+          "somente_admin": false,
+          "atalho": "respostas",
+          "palavras": [
+            "notas",
+            "comentários",
+            "feedback",
+            "lista de respostas",
+            "buscar resposta",
+            "filtros",
+            "categoria",
+            "exportar",
+            "baixar respostas",
+            "planilha",
+            "período",
+            "reclamações",
+            "avaliações"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "A tela Respostas lista as notas e os comentários dos clientes. No topo, o NPS, o CSAT e o total mudam conforme os filtros que você escolher."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Busque por contato, empresa ou comentário. Em “Filtros”, filtre por Período, Categoria (Detratores, Neutros e Promotores no NPS; Insatisfeitos, Neutros e Satisfeitos no CSAT), Tipo de pesquisa, Tema, Empresa, Grupo de empresas, Perfil do contato e Arquivadas."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Contar o período pela” escolhe entre Data da resposta e Data de entrada (quando a resposta chegou ao Toqqi; numa importação, o dia em que foi importada). “Só empresas ativas” tira as respostas de empresas desativadas. Com a IA ligada, aparecem também “Sentimento (IA)” e “Só reclamações”."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Exportar CSV” baixa as respostas do filtro atual. É preciso ter a permissão de exportar dados do painel."
+            }
+          ]
+        },
+        {
+          "id": "analisar-uma-resposta",
+          "titulo": "Analisar uma resposta",
+          "somente_admin": false,
+          "atalho": "respostas",
+          "palavras": [
+            "detalhe da resposta",
+            "o que faltou",
+            "o que combinamos",
+            "editar nota",
+            "editar comentário",
+            "análise da equipe",
+            "salvar análise",
+            "resumo da ia",
+            "abrir resposta",
+            "tratar resposta"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Respostas, clique em “Analisar” na linha da resposta.",
+                "No painel que abre, veja quem respondeu e tudo que o cliente marcou ou escreveu, pergunta por pergunta.",
+                "Em “Análise da equipe”, corrija a Nota ou o Comentário do cliente se precisar e preencha “O que faltou” e “O que combinamos com o cliente”.",
+                "Marque os Temas que se aplicam e clique em “Salvar análise”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Com a IA ligada, a caixa “Análise da IA” traz um resumo, o sentimento (Positivo, Neutro, Misto ou Negativo) e os temas citados. Mudar a nota muda a categoria da resposta, mas a ação que já foi criada continua como está."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Mais abaixo, “Plano de ação” mostra as ações ligadas à resposta, com “Abrir ação” e “Criar ação” (ou “Criar outra ação”). Editar exige a permissão de editar respostas."
+            }
+          ]
+        },
+        {
+          "id": "registrar-resposta-fora-da-pesquisa",
+          "titulo": "Registrar uma resposta recebida fora da pesquisa",
+          "somente_admin": false,
+          "atalho": "respostas",
+          "palavras": [
+            "lançar nota",
+            "cadastrar resposta",
+            "nota por telefone",
+            "nota de reunião",
+            "anotar",
+            "resposta manual",
+            "adicionar nota",
+            "feedback verbal"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Respostas, clique em “Registrar resposta”. O botão também existe nos detalhes do contato.",
+                "Escolha o Contato e a Nota de 0 a 10.",
+                "Em “Como chegou”, escolha Anotação manual, Telefone, WhatsApp, E-mail ou Reunião e informe a Data da resposta.",
+                "Escreva o Comentário, com as palavras do cliente, e clique em “Registrar resposta”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A resposta segue o mesmo caminho das outras: entra nos números, recebe categoria e temas e pode criar um plano de ação. Só não envia o e-mail de agradecimento. Ela aparece com o selo “Registrada à mão”."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "É preciso ter a permissão de editar respostas."
+            }
+          ]
+        },
+        {
+          "id": "importar-respostas-antigas",
+          "titulo": "Importar respostas antigas",
+          "somente_admin": false,
+          "atalho": "respostas",
+          "palavras": [
+            "histórico",
+            "importar notas",
+            "trazer respostas",
+            "outra ferramenta",
+            "planilha de respostas",
+            "migrar",
+            "dados antigos",
+            "csv"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Respostas, clique em “Importar respostas antigas”.",
+                "Prepare a planilha: uma resposta por linha, com o e-mail do contato, a data e a nota de 0 a 10. Empresa e comentário são opcionais.",
+                "Escolha o arquivo e, em “O que é cada coluna?”, confira as colunas.",
+                "Clique em “Conferir” e depois em “Importar”."
+              ]
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "O contato precisa já estar cadastrado. Se não está, importe os contatos antes.",
+                "Datas como 31/12/2025 ou 2025-12-31, de 2000 até hoje. A nota precisa ser inteira: 9,0 vale 9, mas 8,7 não é aceita.",
+                "Mesmo contato na mesma data é a mesma resposta. “Atualizar as que já existem” decide se a planilha substitui a que já foi importada.",
+                "As respostas entram no histórico e nos números, mas não criam ação e ninguém recebe e-mail."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O arquivo pode ser .csv, .xlsx ou .xls, de até 5 MB. É preciso ter a permissão de importar planilhas."
+            }
+          ]
+        },
+        {
+          "id": "arquivar-restaurar-e-excluir",
+          "titulo": "Arquivar, restaurar e excluir respostas",
+          "somente_admin": false,
+          "atalho": "respostas",
+          "palavras": [
+            "apagar resposta",
+            "remover resposta",
+            "restaurar",
+            "resposta errada",
+            "teste",
+            "não contar",
+            "tirar dos números",
+            "excluir"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Arquivar tira a resposta de todos os números: NPS, CSAT, painel e relatórios. Ela continua guardada e aparece com o selo “Arquivada”. Use o menu da linha (os três pontos) ou o botão “Arquivar” no painel de análise. “Restaurar” faz a resposta voltar a contar."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Para ver as arquivadas, use o filtro “Arquivadas”: Só as ativas, Só as arquivadas ou Ativas e arquivadas."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Excluir de vez” é só para administradores. Apaga a resposta e as ações ligadas a ela, e não dá para desfazer. Se você só quer tirar a resposta dos números, arquive."
+            }
+          ]
+        },
+        {
+          "id": "temas-e-sentimento",
+          "titulo": "Temas e sentimento dos comentários",
+          "somente_admin": false,
+          "atalho": "respostas",
+          "palavras": [
+            "assuntos",
+            "reclamações por assunto",
+            "prazo e entrega",
+            "produto e avarias",
+            "atendimento",
+            "preço",
+            "comunicação",
+            "sistema e pedidos",
+            "palavras-chave",
+            "classificação",
+            "inteligência artificial"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Cada comentário recebe temas, que mostram sobre o que o cliente fala. São seis: Prazo e entrega, Produto e avarias, Atendimento, Preço e condições, Comunicação e Sistema e pedidos."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Sem a IA, os temas vêm de palavras do comentário (por exemplo, “atrasou” conta como Prazo e entrega). Com a IA ligada em Configurações › IA, ela lê o comentário e define os temas e o sentimento. Se alguém da equipe escolher os temas na análise, eles não mudam mais sozinhos."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Use o filtro Tema em Respostas, ou a aba Temas em Relatórios, para ver os comentários por assunto."
+            }
+          ]
+        },
+        {
+          "id": "o-que-acontece-quando-o-cliente-responde",
+          "titulo": "O que acontece quando o cliente responde",
+          "somente_admin": false,
+          "atalho": "respostas",
+          "palavras": [
+            "fluxo da resposta",
+            "agradecimento",
+            "alerta de risco",
+            "depois da resposta",
+            "notificação",
+            "ação automática",
+            "o que o sistema faz"
+          ],
+          "blocos": [
+            {
+              "tipo": "lista",
+              "itens": [
+                "A resposta aparece em Respostas e entra nos números do Início e dos Relatórios.",
+                "A situação do contato passa a Respondeu.",
+                "Se “Agradecer quem responde” estiver ligado em Configurações › Envios, o cliente que tem e-mail recebe um agradecimento com texto conforme a nota.",
+                "Pela nota, o Toqqi cria um plano de ação sozinho (veja o tópico Planos de ação).",
+                "Se a ação é de prioridade alta e a empresa tem responsável com e-mail, ele recebe um e-mail com o título “Alerta de risco”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O cliente pode responder por e-mail, WhatsApp, link, QR Code ou botão no site. O canal aparece em cada resposta."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "painel",
+      "titulo": "Início e painel",
+      "resumo": "Os números do Início: NPS, CSAT, taxa de resposta, ações em aberto, receita em risco e picos de reclamação.",
+      "secoes": [
+        {
+          "id": "o-que-mostra-o-inicio",
+          "titulo": "O que o Início mostra",
+          "somente_admin": false,
+          "atalho": "inicio",
+          "palavras": [
+            "painel",
+            "dashboard",
+            "indicadores",
+            "visão geral",
+            "resumo",
+            "tela inicial",
+            "home",
+            "números",
+            "kpi",
+            "métricas",
+            "como estamos"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O Início responde a duas perguntas: como estão seus clientes e o que precisa de cuidado hoje. De cima para baixo, você vê estes blocos:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Picos de reclamação (só quando houver) e Primeiros passos (enquanto faltar algum).",
+                "NPS do período, Variação do NPS, Satisfação (CSAT) e Taxa de resposta.",
+                "Precisa de atenção: ações abertas, vencidas e receita em risco.",
+                "Evolução do NPS mês a mês e Assuntos mais citados.",
+                "Movimentação, Palavras mais citadas, Comentários recentes e Empresas (menor e maior NPS)."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Quem não tem a permissão de ver o painel encontra no Início apenas uma tela de boas-vindas."
+            }
+          ]
+        },
+        {
+          "id": "periodo-e-filtros-do-inicio",
+          "titulo": "Período e filtros do Início",
+          "somente_admin": false,
+          "atalho": "inicio",
+          "palavras": [
+            "filtrar",
+            "últimos 90 dias",
+            "datas",
+            "grupo",
+            "só ativas",
+            "exportar",
+            "baixar dados",
+            "csv",
+            "mudar período",
+            "intervalo"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O Início abre nos Últimos 90 dias. Em “Período”, escolha Últimos 7 dias, Últimos 30 dias, Últimos 90 dias, Últimos 12 meses, Todo o período ou “Escolher as datas” (De e Até)."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Grupo de empresas” mostra só os clientes de um grupo. “Só empresas ativas”, ligado por padrão, tira as respostas de empresas desativadas; respostas sem empresa sempre contam. Respostas arquivadas nunca entram."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Exportar CSV” baixa os dados do painel (exige a permissão de exportar dados do painel). “Como ler os números” abre, no fim da página, um guia curto dos termos."
+            }
+          ]
+        },
+        {
+          "id": "nps-no-inicio",
+          "titulo": "O cartão de NPS: número, faixa e decisores",
+          "somente_admin": false,
+          "atalho": "inicio",
+          "palavras": [
+            "nps",
+            "net promoter score",
+            "promotores",
+            "neutros",
+            "detratores",
+            "faixa",
+            "cálculo",
+            "excelente",
+            "crítico",
+            "decisor",
+            "cor do nps",
+            "quanto é um bom nps"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O cartão NPS mostra o número do período, a faixa e uma barra com detratores (0 a 6), neutros (7 e 8) e promotores (9 e 10). Clique num grupo para ver as respostas dele."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "NPS = % de promotores menos % de detratores, de −100 a 100, arredondado (12,5 vira 13). Faixas: Excelente (75 ou mais), Muito bom (50 a 74), Pode melhorar (0 a 49) e Crítico (abaixo de 0). O número fica verde a partir de 50, âmbar de 0 a 49 e vermelho abaixo de 0."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“NPS dos decisores” é a mesma conta só com os contatos que têm o perfil “Decisor” no cadastro, ou seja, quem decide a compra."
+            }
+          ]
+        },
+        {
+          "id": "variacao-csat-e-taxa-de-resposta",
+          "titulo": "Variação do NPS, CSAT e taxa de resposta",
+          "somente_admin": false,
+          "atalho": "inicio",
+          "palavras": [
+            "variação",
+            "comparar período",
+            "período anterior",
+            "csat",
+            "satisfação",
+            "taxa de resposta",
+            "quantos responderam",
+            "amostra pequena",
+            "engajamento",
+            "porcentagem",
+            "média"
+          ],
+          "blocos": [
+            {
+              "tipo": "lista",
+              "itens": [
+                "Variação do NPS: quantos pontos o NPS subiu ou caiu em relação ao período anterior, que tem o mesmo tamanho. Só aparece quando você escolhe um período e há respostas nos dois.",
+                "Satisfação (CSAT): a porcentagem de notas 4 e 5 e a média, de 1 a 5. Verde a partir de 80%, âmbar a partir de 60%.",
+                "Taxa de resposta: dos contatos que receberam a pesquisa no período, quantos responderam."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Se menos de 20% responderam, o Toqqi avisa “Amostra pequena”: os números podem não mostrar o que todos pensam."
+            }
+          ]
+        },
+        {
+          "id": "precisa-de-atencao-e-receita-em-risco",
+          "titulo": "Precisa de atenção e receita em risco",
+          "somente_admin": false,
+          "atalho": "inicio",
+          "palavras": [
+            "ações abertas",
+            "ações vencidas",
+            "tratar",
+            "valor mensal",
+            "contrato",
+            "churn",
+            "risco de perder cliente",
+            "dinheiro em risco",
+            "prazo vencido",
+            "urgente"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O bloco “Precisa de atenção” conta as ações abertas (de qualquer data) e as vencidas, que passaram do prazo. Cada empresa com ação aberta aparece com o NPS, o responsável e o último comentário de detrator. O botão “Tratar” abre a ação mais urgente dela."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A “Receita em risco” soma o valor mensal do contrato das empresas que tiveram pelo menos um detrator no período. Se alguma empresa não tem o valor cadastrado, o Início avisa e leva você a Contatos, aba Empresas, para completar."
+            }
+          ]
+        },
+        {
+          "id": "picos-de-reclamacao",
+          "titulo": "Picos de reclamação",
+          "somente_admin": false,
+          "atalho": "inicio",
+          "palavras": [
+            "alerta de reclamação",
+            "aumento de reclamações",
+            "tema em alta",
+            "problema recorrente",
+            "reclamações subindo",
+            "crise",
+            "pico"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Quando um assunto passa do normal, aparece no topo do Início, e na aba Temas de Relatórios, um aviso como “Pico de reclamações em Prazo e entrega”, com o botão “Ver respostas”. Quem recebe os alertas por e-mail também é avisado (veja Minha conta)."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Há pico quando um tema teve 3 ou mais reclamações nos últimos 7 dias e pelo menos o dobro da média semanal das 4 semanas anteriores. Um tema conta como reclamação quando a IA vê sentimento negativo nele ou, sem análise da IA, quando vem de uma resposta de detrator ou insatisfeito. O aviso não depende dos filtros da tela."
+            }
+          ]
+        },
+        {
+          "id": "assuntos-movimentacao-e-empresas",
+          "titulo": "Assuntos, movimentação, palavras e empresas",
+          "somente_admin": false,
+          "atalho": "inicio",
+          "palavras": [
+            "gráfico",
+            "evolução",
+            "histórico do nps",
+            "temas",
+            "resgatado",
+            "deixou de ser promotor",
+            "palavras",
+            "nuvem de palavras",
+            "ranking de empresas",
+            "melhores clientes",
+            "piores clientes",
+            "comentários recentes",
+            "mês a mês"
+          ],
+          "blocos": [
+            {
+              "tipo": "lista",
+              "itens": [
+                "Evolução do NPS: o NPS mês a mês. “Ver em tabela” troca o gráfico pelos números.",
+                "Assuntos mais citados: os temas dos comentários de NPS, a nota média de quem falou de cada um e a variação das menções.",
+                "Movimentação: compara a última nota de cada contato com a anterior. Resgatado era detrator e agora deu 9 ou 10. Deixou de ser promotor dava 9 ou 10 e agora deu 8 ou menos.",
+                "Palavras mais citadas: as que mais aparecem nos comentários, contando uma vez por resposta.",
+                "Comentários recentes: o que os clientes escreveram por último; clique para analisar.",
+                "Empresas: Menor NPS e Maior NPS. Só entram empresas com 3 ou mais respostas de NPS no período."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "relatorios",
+      "titulo": "Relatórios",
+      "resumo": "Sete abas para ver a satisfação por empresa, grupo, tema, entrega e responsável, e o que fazer primeiro.",
+      "secoes": [
+        {
+          "id": "abas-periodo-filtros-e-csv",
+          "titulo": "Relatórios: abas, período, filtros e CSV",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "relatório",
+            "abas",
+            "filtros",
+            "período",
+            "datas",
+            "exportar",
+            "baixar",
+            "planilha",
+            "csv",
+            "excel",
+            "compartilhar link",
+            "grupo de empresas",
+            "empresas ativas",
+            "análise",
+            "gráficos"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Relatórios tem sete abas. Cada uma responde a uma pergunta:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Empresas: NPS, cobertura e receita em risco de cada empresa, com a matriz NPS × valor.",
+                "Grupos de clientes: NPS por segmento, grupo, tempo como cliente e valor do contrato.",
+                "Temas: do que os clientes falam, reclamações e elogios, semana a semana.",
+                "Entregas: NPS, CSAT e reclamações por motorista, rota, filial e transportadora.",
+                "Responsáveis: a carteira de cada responsável.",
+                "Operação: taxa de resposta, convites por canal, planos de ação e quem não respondeu.",
+                "Histórico de uma empresa: tudo o que ela respondeu, mês a mês."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "No alto, escolha o Período (Últimos 7 dias, 30 dias, 90 dias, 12 meses, Todo o período ou Escolher as datas), o Grupo de empresas e “Só empresas ativas”. O padrão é Últimos 90 dias, só com empresas ativas; no Histórico de uma empresa, Todo o período. Respostas arquivadas nunca entram nas contas."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Os filtros ficam no endereço da página: copie o link para mostrar o mesmo relatório a um colega. Com a permissão “Exportar dados do painel”, o botão “Exportar CSV” baixa a tabela inteira, não só a página que você vê. Ele existe em Empresas, Entregas, Responsáveis e Histórico de uma empresa. Na Operação, o botão é “Exportar contatos sem resposta (CSV)”. Grupos de clientes e Temas não têm CSV."
+            }
+          ]
+        },
+        {
+          "id": "empresas-nps-cobertura-e-receita",
+          "titulo": "Aba Empresas: NPS, cobertura e receita em risco",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "cobertura",
+            "receita em risco",
+            "faixa de nps",
+            "excelente",
+            "crítico",
+            "muito bom",
+            "pode melhorar",
+            "ranking de clientes",
+            "tabela de empresas",
+            "clientes em risco",
+            "churn",
+            "detrator",
+            "valor mensal"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Quatro cartões resumem o filtro: Empresas com respostas, Cobertura geral, Receita em risco e Empresas por faixa de NPS (Excelente 75 ou mais, Muito bom 50 a 74, Pode melhorar 0 a 49, Crítico abaixo de 0 e Sem respostas)."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Cobertura: contatos ativos da empresa que responderam o NPS no período, divididos pelos contatos ativos dela.",
+                "Receita em risco: soma do valor mensal das empresas com pelo menos um detrator no período. Empresa sem valor mensal não entra na soma: complete em Contatos › Empresas.",
+                "Em risco: etiqueta da empresa que teve detrator no período."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A tabela mostra responsável, valor mensal, NPS, respostas, cobertura, última resposta e ações abertas. O nome da empresa abre o Histórico dela. Use “Buscar empresa”, “Ordenar por” (Em risco primeiro, Menor NPS, Maior valor, Menor cobertura, Mais respostas ou Nome (A a Z)) e “Filtros” (Segmento, Responsável, Valor do contrato, Tempo como cliente, Respostas e Quadrante da matriz)."
+            }
+          ]
+        },
+        {
+          "id": "matriz-nps-x-valor",
+          "titulo": "Matriz NPS × valor do contrato",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "quadrante",
+            "proteger já",
+            "manter de perto",
+            "corrigir",
+            "pode crescer",
+            "mediana",
+            "risco financeiro",
+            "priorizar clientes",
+            "valor do contrato",
+            "dispersão",
+            "gráfico de pontos"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "A matriz fica na aba Empresas. Cada ponto é uma empresa com NPS no período e valor mensal cadastrado. Uma linha marca a mediana dos valores (metade das empresas paga mais, metade paga menos) e outra marca o NPS 0. O valor usa escala logarítmica, que cabe empresas pequenas e grandes no mesmo gráfico."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Proteger já: valor na mediana ou acima e NPS negativo. É o cliente grande e insatisfeito: comece por aqui.",
+                "Manter de perto: valor na mediana ou acima e NPS de 0 para cima.",
+                "Corrigir: valor abaixo da mediana e NPS negativo.",
+                "Pode crescer: valor abaixo da mediana e NPS de 0 para cima."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Empresas por quadrante” conta quantas empresas há em cada um. Clique num quadrante para ver só essas empresas na tabela, e num ponto para abrir o histórico da empresa. Quem tem NPS, mas não tem valor mensal, fica fora do gráfico: cadastre o valor em Contatos › Empresas."
+            }
+          ]
+        },
+        {
+          "id": "grupos-de-clientes-e-o-que-resolver-primeiro",
+          "titulo": "Aba Grupos de clientes e “O que resolver primeiro”",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "segmento",
+            "grupo",
+            "tempo como cliente",
+            "cliente desde",
+            "valor do contrato",
+            "prioridades",
+            "comparar grupos",
+            "barras",
+            "tabela",
+            "ramo",
+            "faixa de valor",
+            "temas mais citados"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Quatro cartões mostram o NPS por Segmento, por Grupo de empresas, por Tempo como cliente e por Valor do contrato. As barras separam detratores (0 a 6), neutros (7 e 8) e promotores (9 e 10), com o NPS e o total. “Ver em tabela” troca as barras por números."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Tempo como cliente conta do campo “Cliente desde” até hoje: Até 3 meses, 3 a 6 meses, 6 a 12 meses, Mais de 1 ano e Sem data de início.",
+                "Valor do contrato usa o valor mensal da empresa: Menos de R$ 2 mil, R$ 2 mil a 10 mil, R$ 10 mil a 50 mil, R$ 50 mil ou mais e Sem valor.",
+                "Só entram respostas de NPS ligadas a uma empresa."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“O que resolver primeiro” lista os temas citados em 2 ou mais respostas de NPS: os mais citados e com a nota mais baixa vêm primeiro. Cada tema mostra menções, reclamações e nota média. Com acesso a Respostas, clicar no tema abre as respostas dele."
+            }
+          ]
+        },
+        {
+          "id": "temas-nos-relatorios",
+          "titulo": "Aba Temas: do que os clientes falam",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "assunto",
+            "reclamações",
+            "elogios",
+            "sentimento",
+            "positivo",
+            "negativo",
+            "semana a semana",
+            "palavras-chave",
+            "inteligência artificial",
+            "prazo e entrega",
+            "avarias",
+            "atendimento",
+            "preço",
+            "pico",
+            "tendência"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O Toqqi agrupa os comentários em 6 temas: Prazo e entrega, Produto e avarias, Atendimento, Preço e condições, Comunicação e Sistema e pedidos. Um aviso no alto diz de onde vêm: “Temas pela IA” (quantos comentários a IA analisou) ou “Temas por palavras-chave”. Comentário sem análise da IA usa as palavras-chave."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Menções: respostas de NPS e CSAT que citam o tema.",
+                "Reclamações: tema citado com sentimento negativo. Sem análise da IA, conta quando quem respondeu é detrator ou insatisfeito.",
+                "Elogios: tema citado com sentimento positivo (sem a IA, por promotor ou satisfeito).",
+                "Nota média: só das respostas de NPS. Variação: compara as menções com o período anterior."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Também aparecem a faixa de picos de reclamação, o “Sentimento dos comentários” (só com análises da IA) e o gráfico “Semana a semana”, que alterna entre Menções e Reclamações. Clicar num tema ou no número de reclamações abre as Respostas já filtradas."
+            }
+          ]
+        },
+        {
+          "id": "entregas-motorista-rota-filial",
+          "titulo": "Aba Entregas: motorista, rota, filial e transportadora",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "logística",
+            "entrega",
+            "frete",
+            "transporte",
+            "motorista",
+            "rota",
+            "filial",
+            "transportadora",
+            "pedido",
+            "contexto",
+            "amostra pequena",
+            "nps por motorista",
+            "avaliar motorista",
+            "distribuidora"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em “Agrupar as respostas por”, escolha Motorista, Rota, Filial ou Transportadora. A tabela mostra Respostas, NPS, CSAT, Reclamações, Principais temas e Última resposta de cada um. Com menos de 5 respostas aparece “Amostra pequena”: uma resposta a mais muda muito os números. Dá para buscar pelo nome, ordenar (Mais respostas, Menor NPS, Menor CSAT, Mais reclamações ou Nome (A a Z)) e abrir “Ver respostas”."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A aba só tem dados se o convite levar a informação da entrega. Duas formas de enviar:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Pelo link da pesquisa: em Contatos, “Gerar link de pesquisa” e “Adicionar informações do pedido ou da entrega”; ou, em Formulários › Compartilhar, “Link com informações da entrega”.",
+                "Pela integração: o seu sistema manda motorista, rota, filial e transportadora no campo contexto do aviso de entrega."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Respostas sem essa informação ficam fora da lista, e a tela diz quantas são. O mesmo nome com maiúsculas diferentes conta junto."
+            }
+          ]
+        },
+        {
+          "id": "responsaveis-e-carteiras",
+          "titulo": "Aba Responsáveis: a carteira de cada um",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "carteira",
+            "gerente de contas",
+            "vendedor",
+            "equipe comercial",
+            "cs",
+            "customer success",
+            "quem cuida",
+            "receita mensal",
+            "ações vencidas",
+            "desempenho por responsável"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Responsável é quem cuida da empresa no cadastro (Contatos › Empresas). A aba lista as carteiras do NPS mais baixo para o mais alto; quem não tem respostas fica no fim. As empresas sem responsável aparecem juntas em “Sem responsável”."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "NPS e Respostas de NPS: o resultado de todas as empresas da carteira no período.",
+                "Receita mensal: soma dos valores mensais da carteira. Abaixo, quanto está em risco (empresas com detrator) e o percentual disso na receita.",
+                "Ações abertas: planos de ação em andamento, com a etiqueta “vencidas” quando o prazo passou."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Clique no nome do responsável para abrir as empresas da carteira, cada uma com NPS, nota média (ou “Sem respostas”), valor mensal e última resposta. Clique no nome da empresa para ver o histórico dela."
+            }
+          ]
+        },
+        {
+          "id": "operacao-respostas-envios-e-acoes",
+          "titulo": "Aba Operação: respostas, envios e planos de ação",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "taxa de resposta",
+            "convites",
+            "canal",
+            "whatsapp",
+            "e-mail",
+            "email",
+            "quem não respondeu",
+            "sem resposta",
+            "atrasados",
+            "tempo médio",
+            "no prazo",
+            "ações concluídas",
+            "acompanhar envios",
+            "engajamento"
+          ],
+          "blocos": [
+            {
+              "tipo": "lista",
+              "itens": [
+                "Taxa de resposta: dos contatos que receberam a pesquisa no período, quantos responderam no período. Abaixo de 20% aparece “Amostra pequena”.",
+                "Convites por canal: a taxa separada por E-mail e WhatsApp.",
+                "Planos de ação: Concluídas no período, Tempo médio para concluir, Concluídas no prazo e Abertas agora, com as vencidas. Os três primeiros contam o período; as abertas e vencidas são de agora."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Contatos sem resposta” lista os contatos ativos que receberam a pesquisa e ainda não responderam o último convite, há mais tempo primeiro. A lista é de agora: não depende do período. “Atrasado” é quem passou do intervalo entre envios desde o último convite (Configurações › Envios, “Repetir a pesquisa a cada (dias)”)."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Se a lista passar de 1.000 contatos, a tela mostra os 1.000 há mais tempo sem resposta. O botão “Exportar contatos sem resposta (CSV)” baixa todos."
+            }
+          ]
+        },
+        {
+          "id": "historico-de-uma-empresa",
+          "titulo": "Histórico de uma empresa",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "histórico",
+            "linha do tempo",
+            "evolução",
+            "mês a mês",
+            "tudo sobre o cliente",
+            "ficha da empresa",
+            "cliente específico",
+            "conta",
+            "respostas de uma empresa",
+            "reunião com cliente"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Relatórios, abra a aba “Histórico de uma empresa”.",
+                "No campo Empresa, digite o nome e escolha a empresa. Também dá para abrir pelo nome dela nas abas Empresas e Responsáveis, ou por um ponto da matriz.",
+                "Ajuste o Período. Aqui só o período vale: Grupo de empresas e “Só empresas ativas” não se aplicam."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "No alto ficam os dados do cadastro (Grupo, Segmento, Responsável, Valor mensal, Cliente desde) e quatro cartões: NPS, Satisfação (CSAT), Cobertura e Ações, com “Ver no quadro” para os planos de ação da empresa."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Depois vem a “Evolução do NPS”, mês a mês (até os 24 meses mais recentes), e a “Linha do tempo”: as respostas da mais recente para a mais antiga, com nota, contato e cargo, canal, comentário, temas, análise da IA e ação. “Abrir a resposta” leva ao painel de análise em Respostas. A linha do tempo mostra até 500 respostas; o CSV traz todas."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "planos-de-acao",
+      "titulo": "Planos de ação",
+      "resumo": "O que fazer com cada cliente que precisa de atenção, do “a fazer” ao “concluído”.",
+      "secoes": [
+        {
+          "id": "o-que-e-um-plano-de-acao",
+          "titulo": "O que é um plano de ação e quando ele aparece",
+          "somente_admin": false,
+          "atalho": "planos_de_acao",
+          "palavras": [
+            "ação",
+            "ações",
+            "tarefa",
+            "detrator",
+            "neutro",
+            "promotor",
+            "prioridade",
+            "prazo",
+            "automática",
+            "tratar cliente",
+            "nota baixa",
+            "follow-up",
+            "acompanhamento",
+            "ação corretiva"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Plano de ação (ou só “ação”) é uma tarefa para cuidar de um cliente que precisa de atenção. Quando chega uma resposta, o Toqqi cria a ação sozinho, com responsável e prazo."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Detrator (nota 0 a 6): prioridade Alta.",
+                "Neutro (nota 7 ou 8): prioridade Média.",
+                "Promotor (nota 9 ou 10): só se “Criar ação também para promotores” estiver ligado. Prioridade Baixa.",
+                "CSAT: nota 1 ou 2 vira ação de prioridade Alta. Notas de 3 a 5 não criam ação."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O prazo é o dia em que a resposta chegou mais os dias definidos em Configurações › Planos de ação (padrão: 2 para detrator, 5 para neutro e 7 para promotor). A ação nasce com o responsável da empresa; sem responsável cadastrado, nasce “Sem responsável”."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Cada resposta gera no máximo uma ação automática. Respostas registradas à mão seguem a mesma regra. Respostas importadas do histórico não criam ação."
+            }
+          ]
+        },
+        {
+          "id": "quadro-de-acoes",
+          "titulo": "O quadro: A fazer, Em andamento e Concluído",
+          "somente_admin": false,
+          "atalho": "planos_de_acao",
+          "palavras": [
+            "kanban",
+            "colunas",
+            "mover",
+            "arrastar",
+            "vencidas",
+            "atrasadas",
+            "filtrar ações",
+            "buscar ação",
+            "a fazer",
+            "em andamento",
+            "concluído",
+            "fila de ações"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Planos de ação, as ações ficam em três colunas: A fazer, Em andamento e Concluído, com o total no título de cada uma. O cartão mostra título, nota, empresa, responsável (ou “Sem responsável”), prioridade (Alta, Média ou Baixa) e prazo: “Prazo vencido”, “Vence hoje”, “Vence amanhã” ou “Até” e a data."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "As vencidas vêm primeiro; depois, o prazo mais próximo, a prioridade e a ação mais antiga. Em Concluído ficam as 15 mais recentes; “Ver todas as concluídas” mostra o resto."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Para mudar de coluna, arraste o cartão (no computador) ou clique em “Mover” no cartão e escolha o destino. No celular, aparece uma coluna por vez.",
+                "“Só vencidas” mostra apenas as ações com o prazo vencido.",
+                "“Buscar ações” procura no título, na empresa e no contato. Em “Filtros”: Categoria da nota, Tipo de pesquisa, Responsável, Empresa, Grupo de empresas e Criadas."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "Para ir direto à ação mais urgente de uma empresa, use “Tratar” no bloco “Precisa de atenção” do Início."
+            }
+          ]
+        },
+        {
+          "id": "tratar-e-concluir-uma-acao",
+          "titulo": "Tratar e concluir uma ação",
+          "somente_admin": false,
+          "atalho": "planos_de_acao",
+          "palavras": [
+            "concluir",
+            "finalizar",
+            "resolver",
+            "o que foi feito",
+            "resolução",
+            "responsável",
+            "editar ação",
+            "excluir ação",
+            "histórico da ação",
+            "fechar",
+            "painel da ação"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Planos de ação, clique no título do cartão para abrir o painel da ação.",
+                "Veja a “Resposta que deu origem” e, se precisar, “Ver a resposta completa”.",
+                "Ao começar, mude a Situação para Em andamento. Ajuste Responsável, Prioridade, Prazo e Descrição quando precisar.",
+                "Ao terminar, mude a Situação para Concluída, escolha o Responsável e conte em “O que foi feito”.",
+                "Clique em “Concluir ação”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Para concluir, o Toqqi exige o responsável e “O que foi feito”. O texto fica guardado no histórico. Se você arrastar o cartão para Concluído sem isso, o painel abre para você completar."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Quem tem a permissão “Excluir planos de ação” vê “Excluir ação”: ela sai do quadro de vez, mas a resposta do cliente continua guardada. Quem só pode ver as ações lê tudo e não muda nada."
+            }
+          ]
+        },
+        {
+          "id": "criar-uma-acao-a-mao",
+          "titulo": "Criar uma ação à mão",
+          "somente_admin": false,
+          "atalho": "planos_de_acao",
+          "palavras": [
+            "nova ação",
+            "criar tarefa",
+            "adicionar ação",
+            "ação manual",
+            "lembrete interno",
+            "combinar com cliente"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Planos de ação, clique em “Nova ação”.",
+                "Dê um Título e, se quiser, uma Descrição.",
+                "Escolha a Empresa e o Responsável. Com empresa e sem responsável, vale o responsável da empresa.",
+                "Defina a Prioridade (o padrão é Média) e o Prazo.",
+                "Clique em “Criar ação”. Ela entra na coluna A fazer."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O botão “Nova ação” aparece para quem tem a permissão “Tratar planos de ação”. Também dá para criar a ação de uma resposta: em Respostas, abra “Analisar” e clique em “Criar ação”. Se a resposta já tem ação, o botão é “Abrir ação”."
+            }
+          ]
+        },
+        {
+          "id": "prazos-e-regras-automaticas",
+          "titulo": "Prazos e regras da ação automática",
+          "somente_admin": false,
+          "atalho": "planos_de_acao",
+          "palavras": [
+            "prazos automáticos",
+            "configurar prazo",
+            "dias para tratar",
+            "promotores",
+            "ação para promotor",
+            "regras",
+            "automação",
+            "sla",
+            "tempo de resposta da equipe"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O botão “Prazos automáticos”, em Planos de ação, abre Configurações › Planos de ação. Em “Prazo para tratar”, cada grupo tem de 1 a 90 dias, contados do dia em que a resposta é registrada: Detrator (nota 0 a 6), Neutro (nota 7 ou 8) e Promotor (nota 9 ou 10). No CSAT, a nota 1 ou 2 usa o prazo do detrator."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O interruptor “Criar ação também para promotores” vem desligado. Ligado, todo promotor ganha uma ação de prioridade Baixa, e o quadro fica mais cheio."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Quem tem acesso aos Planos de ação vê essas configurações, mas só o administrador muda e clica em “Salvar alterações”. A mudança vale para as próximas respostas: as ações que já existem não mudam."
+            }
+          ]
+        },
+        {
+          "id": "alerta-de-risco-por-email",
+          "titulo": "E-mail “Alerta de risco”",
+          "somente_admin": false,
+          "atalho": "planos_de_acao",
+          "palavras": [
+            "alerta",
+            "aviso",
+            "email",
+            "notificação",
+            "detrator avisar",
+            "responsável da empresa",
+            "risco",
+            "tratar no toqqi"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Quando nasce uma ação de prioridade Alta (detrator ou CSAT 1 ou 2) e o responsável da empresa tem e-mail, ele recebe na hora o e-mail “Alerta de risco”, com a nota, a categoria, o comentário e o contato. O botão “Tratar no Toqqi” abre a ação."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Cadastre o e-mail do responsável em Contatos › Responsáveis.",
+                "Empresa sem responsável: ninguém recebe o alerta, e a ação nasce “Sem responsável”.",
+                "É um e-mail do sistema: não aparece no Histórico de envios."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "integracoes",
+      "titulo": "Integrações",
+      "resumo": "Ligue o Toqqi ao sistema da sua empresa e ao WhatsApp para a pesquisa sair sozinha (só administrador).",
+      "secoes": [
+        {
+          "id": "para-que-servem-as-integracoes",
+          "titulo": "Para que servem as integrações",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "integrar",
+            "erp",
+            "api",
+            "automação",
+            "pesquisa automática",
+            "entrega",
+            "pedido entregue",
+            "sistema da empresa",
+            "conectar",
+            "zapier",
+            "make",
+            "n8n",
+            "só administrador"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Administração › Integrações, você liga o Toqqi ao sistema da sua empresa (pedidos, ERP) e ao WhatsApp. Assim, quando um pedido é entregue, o cliente recebe a pesquisa na hora, por WhatsApp ou e-mail, sem ninguém lembrar de enviar."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Chave de integração: a “senha” que o seu sistema usa para pedir uma pesquisa ao Toqqi.",
+                "Como conectar: o passo a passo e os exemplos prontos para o técnico.",
+                "Avisos (webhooks): o Toqqi avisa o seu sistema quando um cliente responde ou sai da lista.",
+                "WhatsApp automático: as pesquisas saem do número da sua empresa, pela plataforma oficial da Meta."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Só o administrador acessa esta tela. Quem quiser enviar pesquisas à mão não precisa de integração: veja o tópico Envios."
+            }
+          ]
+        },
+        {
+          "id": "chave-de-integracao",
+          "titulo": "Gerar, trocar e revogar a chave de integração",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "api key",
+            "token",
+            "senha da integração",
+            "x-api-key",
+            "nova chave",
+            "chave perdida",
+            "revogar chave",
+            "segurança",
+            "último uso"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Integrações, abra a aba “Chave de integração” e clique em “Gerar chave”.",
+                "Na janela “Sua chave de integração”, clique em “Copiar chave” e guarde num lugar seguro.",
+                "Marque “Já copiei e guardei em um lugar seguro” e clique em “Concluir”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A chave aparece completa uma única vez. Depois, a tela mostra só o começo dela, “Criada em” e “Último uso”. Perdeu a chave? Não tem como ver de novo: gere uma nova e atualize onde ela é usada."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "“Gerar nova chave”: a chave atual para de funcionar na hora, e o que usa a antiga deixa de enviar pesquisas até receber a nova.",
+                "“Revogar”: a chave para de funcionar na hora. Você pode gerar outra depois."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "Trate a chave como senha: não mande por e-mail nem em grupos de conversa."
+            }
+          ]
+        },
+        {
+          "id": "ligar-seu-sistema-zapier-make-n8n",
+          "titulo": "Ligar o seu sistema, o Zapier, o Make ou o n8n",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "zapier",
+            "make",
+            "integromat",
+            "n8n",
+            "webhook de entrada",
+            "técnico",
+            "ti",
+            "desenvolvedor",
+            "api",
+            "automatizar",
+            "pedido entregue",
+            "post"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Gere a chave em Integrações › Chave de integração.",
+                "Abra a aba “Como conectar”: ela traz o endereço e os exemplos prontos para copiar.",
+                "Entregue a chave e o link dessa aba para quem cuida do sistema da sua empresa.",
+                "A cada entrega, o sistema avisa o Toqqi. O cliente recebe a pesquisa e a resposta aparece em Respostas."
+              ]
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Zapier: gatilho do seu sistema, ação “Webhooks by Zapier” e “POST”, com a chave no cabeçalho X-Api-Key.",
+                "Make: módulo de requisição web, opção “Make a request”, método POST, com a chave em Headers.",
+                "n8n: nó de requisição web (“Request”), método POST, autenticação “Header Auth” com o nome X-Api-Key."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Cliente que ainda não está em Contatos é cadastrado sozinho (dentro do limite do plano). Quem saiu da lista e quem recebeu pesquisa há pouco tempo, pelo descanso entre pesquisas, não recebe."
+            }
+          ]
+        },
+        {
+          "id": "campos-e-respostas-da-integracao",
+          "titulo": "Campos e respostas da integração (para o técnico)",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "json",
+            "campos",
+            "parâmetros",
+            "contexto",
+            "referencia",
+            "id_evento",
+            "idempotência",
+            "endpoint",
+            "codigo_externo",
+            "motorista",
+            "rota",
+            "filial",
+            "erro da api",
+            "limite de chamadas",
+            "documentação"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O sistema envia um POST em JSON para o endereço da aba “Como conectar”, com a chave no cabeçalho X-Api-Key. O limite é de 120 chamadas por minuto."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "email e telefone: pelo menos um. nome, codigo_externo e empresa ajudam a achar ou criar o contato certo.",
+                "referencia (número do pedido) aparece na mensagem. evento diz o que aconteceu, como pedido_entregue.",
+                "contexto: pedido, nota_fiscal, rota, motorista, filial e transportadora, para os relatórios de Entregas.",
+                "tipo (nps ou csat, e sem ele vale csat quando há referencia), formulario_id, canal (auto, email, whatsapp ou link) e enviar (false só gera o link).",
+                "ignorar_descanso e id_evento: com o mesmo id_evento em 24 horas, o Toqqi não envia de novo."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A resposta traz situacao (enviado, link_gerado, ignorado_descadastrado, ignorado_descanso, ignorado_inativo, sem_canal ou erro), o link, o canal e uma mensagem. O exemplo “Conferir se a chave funciona” não envia nada a clientes."
+            }
+          ]
+        },
+        {
+          "id": "avisos-webhooks",
+          "titulo": "Avisos para outros sistemas (webhooks)",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "webhook",
+            "aviso automático",
+            "notificar sistema",
+            "chamado",
+            "ticket",
+            "nova resposta",
+            "cliente saiu da lista",
+            "segredo",
+            "assinatura",
+            "testar aviso",
+            "falhas",
+            "desligado por falhas",
+            "evento"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O Toqqi avisa o seu sistema (ou o Zapier, o Make, o n8n) assim que um cliente responde ou sai da lista. Serve, por exemplo, para abrir um chamado quando chega uma nota baixa. Cada conta pode ter até 5 avisos."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Integrações › Avisos (webhooks), clique em “Novo aviso”.",
+                "Em “Endereço que recebe os avisos”, cole o endereço do seu sistema. Ele precisa ser seguro (com cadeado) e público.",
+                "Em “Avisar quando”, marque “Nova resposta” e/ou “Cliente saiu da lista” e clique em “Criar aviso”.",
+                "Entregue o “Segredo do aviso” ao técnico: ele aparece só uma vez e serve para conferir que o aviso veio do Toqqi."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "No menu de cada aviso: Testar, Ver avisos enviados (últimos 30 dias), Editar, Desligar ou Ligar, Novo segredo e Excluir. O seu sistema deve responder com sucesso (código 2xx) em até 10 segundos. Se falhar, o Toqqi tenta de novo após 1 min, 5 min, 30 min, 2 h e 6 h. Com 10 falhas seguidas, o aviso é desligado e os administradores recebem um e-mail."
+            }
+          ]
+        },
+        {
+          "id": "conectar-o-whatsapp-automatico",
+          "titulo": "Conectar o WhatsApp automático",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "whatsapp business",
+            "meta",
+            "facebook",
+            "api oficial",
+            "número da empresa",
+            "modelo de mensagem",
+            "template",
+            "token permanente",
+            "phone number id",
+            "conectar número",
+            "waba",
+            "cloud api"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Com o WhatsApp automático, a pesquisa chega no WhatsApp do cliente sem ninguém apertar Enviar. As mensagens saem do número da sua empresa, pela plataforma oficial da Meta. A conexão leva cerca de 30 minutos; se precisar, peça ajuda a quem cuida da tecnologia. A aba “WhatsApp automático” traz o passo a passo completo, em seis etapas:"
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Tenha uma conta no WhatsApp Business Platform, no Meta Business. Para muitos envios, a Meta pede a verificação da empresa.",
+                "Cadastre o número que vai enviar. Ele não pode estar em uso no aplicativo do WhatsApp. Anote a identificação do número e a identificação da conta.",
+                "Crie o modelo de mensagem usando os dados e o texto que a aba mostra. A aprovação costuma sair em minutos e pode levar até 24 horas.",
+                "Gere um token permanente (expiração “Nunca”) para o Toqqi enviar pelo seu número.",
+                "No painel do app da Meta, cole a URL de retorno e o token de verificação mostrados na aba.",
+                "Na aba, preencha o formulário e clique em “Conectar WhatsApp”. O Toqqi confere os dados com a Meta."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "franquia-e-mensagens-extras-do-whatsapp",
+          "titulo": "Franquia do WhatsApp automático e mensagens extras",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "cota",
+            "limite de mensagens",
+            "mensagem extra",
+            "excedente",
+            "custo",
+            "preço por mensagem",
+            "acabou a franquia",
+            "80%",
+            "barra",
+            "plano"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Cada plano inclui pesquisas por WhatsApp automático por mês: Essencial 40, Profissional 90 e Empresa 200. A franquia renova todo mês, conta só os convites enviados pelo WhatsApp automático e aparece em uma barra na aba “WhatsApp automático”. Os administradores recebem um e-mail quando ela chega a 80% e quando acaba."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Franquia acabou e as mensagens extras estão desligadas: as pesquisas vão por e-mail, para quem tem e-mail cadastrado, até o mês virar.",
+                "“Continuar pelo WhatsApp depois da franquia” ligado: as pesquisas continuam saindo pelo WhatsApp, e cada mensagem extra custa R$ 1,50. A tela mostra quantas extras já saíram no mês."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "usar-testar-e-desconectar-o-whatsapp",
+          "titulo": "Depois de conectar: canal, teste e desconexão",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "desligar whatsapp",
+            "testar whatsapp",
+            "mensagem de teste",
+            "desconectar",
+            "trocar número",
+            "erro no whatsapp",
+            "canal de envio",
+            "sair",
+            "parar",
+            "descadastrar",
+            "entregue",
+            "lido"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Com o WhatsApp conectado, a aba mostra o número, o nome que aparece para o cliente e o modelo de mensagem. Depois, escolha o canal em Configurações › Envios: “Só e-mail”, “WhatsApp” ou “WhatsApp com e-mail de reserva”."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Interruptor “Enviar pesquisas pelo WhatsApp”: desligado, as pesquisas vão por e-mail e a conexão continua salva.",
+                "“Enviar um teste”: informe o seu celular e clique em “Enviar teste” para ver como a mensagem chega.",
+                "Se aparecer “O último envio pelo WhatsApp deu erro”, o motivo vem escrito no aviso.",
+                "O cliente pode responder SAIR, PARAR, STOP ou CANCELAR para sair da lista. Entregue e Lido aparecem no Histórico de envios.",
+                "“Desconectar WhatsApp” apaga o token guardado e as pesquisas voltam a ir por e-mail. Para voltar, cole os dados de novo."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "configuracoes",
+      "titulo": "Configurações",
+      "resumo": "Dados da empresa, segurança, envios, planos de ação e inteligência artificial (só administrador muda).",
+      "secoes": [
+        {
+          "id": "o-que-tem-em-configuracoes",
+          "titulo": "O que tem em Configurações",
+          "somente_admin": true,
+          "atalho": "config_empresa",
+          "palavras": [
+            "ajustes",
+            "preferências",
+            "opções",
+            "administração",
+            "menu configurações",
+            "onde mudar",
+            "quem pode mudar",
+            "salvar alterações",
+            "só administrador"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Administração › Configurações, as seções ficam numa barra no alto da tela:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Empresa: nome, dados, endereço e logo da sua empresa.",
+                "Segurança: tempo de sessão e domínios de e-mail liberados.",
+                "Envios: quando, com que frequência e com quais palavras a pesquisa chega aos clientes.",
+                "Planos de ação: prazos das ações automáticas.",
+                "IA: análise dos comentários e cota de inteligência artificial."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Empresa, Segurança e IA aparecem para quem tem a permissão “Alterar as configurações da conta” (o administrador). Envios e Planos de ação também aparecem para quem pode ver envios e planos de ação, mas só leem: o aviso “Você pode ver as configurações, mas só um administrador consegue mudar” explica."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Em Empresa, Envios e Planos de ação, “Salvar alterações” fica numa barra fixa embaixo da tela e, se você for para outra tela com algo não salvo, o Toqqi pergunta “Sair sem salvar?”. Em Segurança, “Salvar alterações” fica no fim da página, sem barra fixa, e o Toqqi não avisa se você sair sem salvar. Em IA não há “Salvar alterações”: o interruptor “Analisar comentários com IA” vale na hora."
+            }
+          ]
+        },
+        {
+          "id": "dados-da-empresa",
+          "titulo": "Empresa: nome, endereço e logo",
+          "somente_admin": true,
+          "atalho": "config_empresa",
+          "palavras": [
+            "nome da empresa",
+            "cnpj",
+            "razão social",
+            "logotipo",
+            "logomarca",
+            "cep",
+            "endereço",
+            "telefone",
+            "identidade visual",
+            "marca",
+            "dados cadastrais"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Configurações › Empresa, só o Nome da empresa é obrigatório. Ele aparece para os seus clientes nas pesquisas e nos e-mails, no lugar de {empresa}. Os outros campos são opcionais: Razão social, CNPJ (também aceita CPF), Telefone ou WhatsApp, E-mail, Site e o endereço."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "No endereço, comece pelo CEP: a rua, o bairro e a cidade se preenchem sozinhos. Confira e complete o número."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Clique em “Enviar logo” (ou “Trocar logo”) e escolha a imagem: PNG ou JPG de até 300 KB. Fundo transparente fica melhor.",
+                "O logo vale na hora, sem esperar o “Salvar alterações”. Para tirar, clique em “Remover”.",
+                "Para os outros campos, edite e clique em “Salvar alterações”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O logo aparece no topo das pesquisas e dos e-mails quando o formulário não tem logo próprio. Nos e-mails, ele aparece com até 48 px de altura."
+            }
+          ]
+        },
+        {
+          "id": "seguranca-sessao-e-dominios",
+          "titulo": "Segurança: tempo de sessão e domínios liberados",
+          "somente_admin": true,
+          "atalho": "seguranca",
+          "palavras": [
+            "sessão",
+            "expirar",
+            "logout",
+            "tempo conectado",
+            "domínio",
+            "pedir acesso",
+            "e-mail da empresa",
+            "email corporativo",
+            "autoaprovação",
+            "liberar domínio",
+            "acesso de novos usuários",
+            "login"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Configurações › Segurança, “Encerrar a sessão após” define quanto tempo cada pessoa fica conectada antes de precisar entrar de novo: 30 minutos, 1 hora, 2 horas, 4 horas, 8 horas ou 24 horas. Tempos menores são mais seguros. Quem marca “Lembrar de mim neste aparelho” ao entrar fica conectado por 30 dias."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Domínios liberados” é a lista de domínios de e-mail da sua empresa. Quem tem e-mail de um desses domínios pode pedir acesso na tela de entrada (“Pedir acesso à minha empresa”), e você aprova em Equipe."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em “Domínios de e-mail da empresa”, digite só a parte que vem depois do @ nos e-mails da sua empresa e aperte Enter.",
+                "Repita para outros domínios. E-mails gratuitos, como Gmail e Hotmail, não são aceitos.",
+                "Clique em “Salvar alterações”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Sem nenhum domínio liberado, só entra quem você cadastrar em Equipe."
+            }
+          ]
+        },
+        {
+          "id": "configuracoes-de-envio-ligar-canal-e-horario",
+          "titulo": "Configurações de envio: ligar, canal, formulário e horário",
+          "somente_admin": true,
+          "atalho": "config_envios",
+          "palavras": [
+            "configurar envios",
+            "remetente",
+            "responder para",
+            "formulário do convite",
+            "canal",
+            "ligar envios",
+            "chave geral",
+            "enviar exemplo",
+            "teste de e-mail",
+            "horário",
+            "frequência"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Configurações › Envios (ou no botão “Configurações de envio” da tela Envios), os blocos são:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Ligar os envios: “Enviar pesquisas por e-mail” é a chave geral. “Envio automático” manda sozinho para quem está na fila. O automático só funciona com a chave geral ligada.",
+                "Por onde a pesquisa sai: “Só e-mail”, “WhatsApp” ou “WhatsApp com e-mail de reserva” (recomendado). As opções de WhatsApp só liberam depois de conectar o WhatsApp em Integrações.",
+                "Pesquisa enviada: o “Formulário do convite”. Só aparecem formulários ativos.",
+                "Frequência e Horário de envio: veja o tópico Envios, seção “Envio automático, lembretes e horário”.",
+                "Quem envia: o “Nome do remetente” e “Respostas por e-mail vão para”, o endereço que recebe quando o cliente responde o e-mail."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "Comece com os envios desligados, confira os textos, clique em “Enviar um exemplo para mim” e só então ligue."
+            }
+          ]
+        },
+        {
+          "id": "configuracoes-de-envio-mensagens",
+          "titulo": "Textos dos e-mails e do WhatsApp, e agradecimento",
+          "somente_admin": true,
+          "atalho": "config_envios",
+          "palavras": [
+            "texto do e-mail",
+            "assunto",
+            "mensagem",
+            "variáveis",
+            "nome do cliente",
+            "personalizar",
+            "convite",
+            "lembrete",
+            "obrigado",
+            "agradecer",
+            "prévia",
+            "modelo de mensagem",
+            "{nome}",
+            "{link}"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Mensagens, escreva do seu jeito: Convite por e-mail (Assunto e Texto), Lembrete (Assunto do lembrete e Texto do lembrete) e “Mensagem do WhatsApp”. O assunto vai até 150 caracteres e o texto até 2.000. Os botões da nota e o link para sair da lista entram sozinhos no e-mail."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Use os botões “Inserir” para colocar {nome} (primeiro nome do cliente), {empresa} (a sua empresa) e {empresa_cliente} (a empresa dele).",
+                "A Mensagem do WhatsApp precisa ter {link}: é por ele que a pessoa abre a pesquisa.",
+                "Ao lado, “Como o cliente vê” mostra a prévia do Convite, do Lembrete e do WhatsApp."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Agradecimento, ligue “Agradecer quem responde” para mandar um e-mail curto logo depois da resposta, com um texto para quem deu nota alta (9 ou 10), média (7 ou 8) ou baixa (0 a 6). Nesses textos, {nota} mostra a nota que o cliente deu. O agradecimento só vai para quem tem e-mail e não saiu da lista."
+            }
+          ]
+        },
+        {
+          "id": "configuracoes-de-planos-de-acao",
+          "titulo": "Prazos dos planos de ação",
+          "somente_admin": true,
+          "atalho": "config_acoes",
+          "palavras": [
+            "prazo da ação",
+            "dias para tratar",
+            "ação para promotor",
+            "automático",
+            "regras de ação",
+            "sla"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Abra Configurações › Planos de ação (ou clique em “Prazos automáticos” na tela Planos de ação).",
+                "Em “Prazo para tratar”, informe os dias de Detrator (nota 0 a 6), Neutro (nota 7 ou 8) e Promotor (nota 9 ou 10), de 1 a 90.",
+                "Decida o interruptor “Criar ação também para promotores” (vem desligado).",
+                "Clique em “Salvar alterações”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Os prazos contam do dia em que a resposta é registrada e valem para as próximas respostas. No CSAT, a nota 1 ou 2 usa o prazo do detrator. Veja mais no tópico Planos de ação."
+            }
+          ]
+        },
+        {
+          "id": "ia-analise-dos-comentarios",
+          "titulo": "Inteligência artificial: análise dos comentários",
+          "somente_admin": true,
+          "atalho": "config_ia",
+          "palavras": [
+            "ia",
+            "inteligência artificial",
+            "sentimento",
+            "resumo do comentário",
+            "temas automáticos",
+            "analisar comentários",
+            "fila de análise",
+            "limite de segurança",
+            "comentários antigos",
+            "openai",
+            "chatgpt"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "A IA lê o comentário de cada cliente, resume numa frase e diz o sentimento geral (positivo, neutro, negativo ou misto) e os temas citados, com o sentimento sobre cada um. Os temas da IA substituem os das palavras-chave; os que alguém da equipe escolheu à mão continuam."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "“Analisar comentários com IA”: liga ou desliga a análise nesta conta. Se a plataforma não tiver a IA configurada, a tela diz “Não está ligada” e os temas seguem pelas palavras-chave.",
+                "“Uso do mês”: quantas análises já foram feitas, quantas estão na fila, quantas não deram certo e quantas ainda dá para fazer. Passou do limite de segurança do mês, as respostas novas ficam com os temas por palavras-chave até o mês virar.",
+                "“Analisar comentários dos últimos 90 dias”: manda para a fila os comentários recentes que ainda não têm análise, inclusive os importados."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ia-cota-do-plano-e-privacidade",
+          "titulo": "IA: cota do plano e o que é enviado",
+          "somente_admin": true,
+          "atalho": "config_ia",
+          "palavras": [
+            "cota",
+            "limite de ia",
+            "análises restantes",
+            "privacidade",
+            "dados enviados",
+            "segurança dos dados",
+            "assistente",
+            "renova",
+            "dia 1"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "A seção “Cota de IA do plano” mostra quantas análises você usou no mês, como “120 de 500”, e renova no dia 1º. Cada pergunta ao assistente usa 1 análise. A análise automática de cada resposta não entra nessa conta. A cota é de 100 análises no Essencial, 500 no Profissional e 2.000 no Empresa."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Na análise dos comentários (seção “O que é enviado à IA”), vai só o texto que o cliente escreveu (até 500 caracteres), as opções que ele marcou e a nota. Nunca vão nome, e-mail, telefone, empresa ou dados do pedido. O provedor não guarda a conversa. Os temas vêm só da lista fixa de 6. O assistente funciona de outro jeito: veja o tópico Assistente."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "equipe",
+      "titulo": "Equipe e permissões",
+      "resumo": "Quem usa o Toqqi na sua empresa, o que cada perfil pode fazer e o registro de atividades.",
+      "secoes": [
+        {
+          "id": "perfis-administrador-gestor-e-consulta",
+          "titulo": "Perfis: administrador, gestor e consulta",
+          "somente_admin": false,
+          "atalho": "equipe",
+          "palavras": [
+            "admin",
+            "gestor",
+            "consulta",
+            "papel",
+            "nível de acesso",
+            "quem pode o quê",
+            "acesso",
+            "não consigo ver",
+            "não aparece no menu",
+            "sem permissão",
+            "permissão negada",
+            "usuário"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Cada pessoa da equipe tem um perfil, que define o que ela vê e faz no Toqqi:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Administrador: pode tudo, inclusive equipe e configurações.",
+                "Gestor: trabalha no dia a dia com o que o administrador liberar. Por padrão, faz tudo menos o que é só do administrador.",
+                "Consulta: só olha, ideal para quem acompanha resultados. Por padrão, vê painel, contatos, envios, formulários, respostas, planos de ação e relatórios, e pode tratar planos de ação."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "É só do administrador: gerenciar a equipe e as permissões, alterar as configurações da conta, gerenciar a assinatura e o pagamento, ver o registro de atividades (Auditoria) e usar Integrações."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O menu mostra só o que o seu perfil pode abrir. Se faltar uma tela ou um botão, peça ao administrador para ajustar a permissão. A conta sempre precisa de pelo menos um administrador ativo."
+            }
+          ]
+        },
+        {
+          "id": "adicionar-e-gerenciar-pessoas",
+          "titulo": "Adicionar e gerenciar pessoas",
+          "somente_admin": true,
+          "atalho": "equipe",
+          "palavras": [
+            "novo usuário",
+            "convidar",
+            "criar usuário",
+            "cadastrar pessoa",
+            "senha inicial",
+            "bloquear",
+            "desbloquear",
+            "excluir usuário",
+            "remover da equipe",
+            "mudar perfil",
+            "reenviar confirmação",
+            "colaborador",
+            "funcionário"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Abra Administração › Equipe, aba “Pessoas”, e clique em “Novo usuário”.",
+                "Preencha Nome, E-mail, Cargo (opcional) e escolha o Perfil. Gestor vem marcado.",
+                "Defina a “Senha inicial”. “Gerar senha forte” cria uma, e “Copiar senha” copia.",
+                "Clique em “Criar usuário”. A pessoa já entra ativa, com o e-mail confirmado."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Passe a senha por um canal seguro. A pessoa pode trocar depois em Minha conta. Para achar alguém, busque por nome, e-mail ou cargo."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Menu de cada pessoa: Editar (nome, cargo e perfil), Reenviar confirmação (se o e-mail ainda não foi confirmado), Bloquear ou Desbloquear e Excluir.",
+                "Bloquear: a pessoa é desconectada na hora e não entra até você desbloquear.",
+                "Excluir: ela perde o acesso e sai da lista. O que ela fez continua na Auditoria. Não dá para desfazer.",
+                "Você não muda o seu próprio perfil nem se bloqueia ou exclui: peça a outro administrador."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "aprovar-pedidos-de-acesso",
+          "titulo": "Aprovar quem pediu acesso",
+          "somente_admin": true,
+          "atalho": "equipe",
+          "palavras": [
+            "pendente",
+            "pendente de aprovação",
+            "aprovar acesso",
+            "pedir acesso à minha empresa",
+            "solicitação de acesso",
+            "novo colaborador pediu acesso",
+            "liberar entrada",
+            "domínio liberado"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Quem tem e-mail de um domínio liberado em Configurações › Segurança pode clicar em “Pedir acesso à minha empresa”, na tela de entrada. A pessoa confirma o e-mail e fica “Pendente de aprovação”, com perfil Consulta, sem poder entrar."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Equipe, quando há pedidos aparece o aviso “N pessoas pediram acesso”. Clique em “Ver pedidos”.",
+                "Confira quem é. Para liberar, clique em “Aprovar” e confirme. Para negar, use o menu da pessoa e escolha Bloquear ou Excluir.",
+                "Se quiser outro perfil, abra Editar e mude o Perfil. Quem pediu acesso entra como Consulta."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "Sem nenhum domínio liberado, ninguém consegue pedir acesso: só entra quem você cadastrar em Novo usuário."
+            }
+          ]
+        },
+        {
+          "id": "mudar-permissoes-por-perfil",
+          "titulo": "Mudar o que Gestor e Consulta podem fazer",
+          "somente_admin": true,
+          "atalho": "equipe",
+          "palavras": [
+            "permissão",
+            "permissões",
+            "matriz de permissões",
+            "liberar",
+            "restringir",
+            "o que o gestor pode",
+            "o que a consulta pode",
+            "exportar",
+            "excluir contatos",
+            "acesso por perfil",
+            "personalizar perfil"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Equipe, abra a aba “Permissões”.",
+                "Na tabela, marque ou desmarque cada permissão nas colunas Gestor e Consulta. Elas vêm agrupadas: Painel, Contatos, Envios, Formulários, Respostas, Planos de ação, Relatórios e Administração.",
+                "Clique em “Salvar permissões” (ou em “Descartar” para voltar ao que estava)."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Administradores podem tudo, sempre. As linhas marcadas “Só administrador” não mudam. A mudança vale a partir do próximo clique de cada pessoa. A permissão vale para todos os que têm aquele perfil."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "“Ver” e “Editar” são separados: dá para deixar alguém olhar contatos sem poder excluir, por exemplo.",
+                "Na lista também há “Usar a zona de risco (ações irreversíveis)”: é só do administrador e, por enquanto, não libera nenhuma tela."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "auditoria-registro-de-atividades",
+          "titulo": "Auditoria: o registro de atividades",
+          "somente_admin": true,
+          "atalho": null,
+          "palavras": [
+            "log",
+            "histórico de atividades",
+            "quem fez",
+            "registro",
+            "segurança",
+            "rastrear",
+            "investigar",
+            "logs de acesso",
+            "tentativas de login",
+            "alterações",
+            "gravidade"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Administração › Auditoria, você vê tudo o que aconteceu de importante na conta: quem fez, o quê e quando. Entram, por exemplo, entradas no sistema, mudanças na equipe e nas configurações, importações e chaves de integração geradas."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Filtros: De e Até (o padrão é o último mês), Gravidade (Informação, Sucesso, Atenção ou Erro) e Buscar por evento, pessoa ou detalhe.",
+                "Cada linha mostra a gravidade, o que aconteceu, quem fez e a data. Quando foi o próprio sistema, aparece “Sistema”.",
+                "Clique numa linha para ver os detalhes, o nome técnico do evento e o IP.",
+                "A lista mostra 20 registros por página; use Anterior e Próxima."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Só quem tem a permissão “Ver o registro de atividades”, o administrador, acessa esta tela."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "assinatura",
+      "titulo": "Assinatura",
+      "resumo": "Teste grátis, planos, pagamento pelo Asaas, troca de plano e cancelamento.",
+      "secoes": [
+        {
+          "id": "teste-gratis-e-situacoes-da-conta",
+          "titulo": "Teste grátis e situações da conta",
+          "somente_admin": false,
+          "atalho": "assinatura",
+          "palavras": [
+            "14 dias",
+            "teste acabou",
+            "período de teste",
+            "trial",
+            "situação da conta",
+            "conta atrasada",
+            "conta cancelada",
+            "conta ativa",
+            "pago até",
+            "dias restantes",
+            "cortesia",
+            "pausa",
+            "pausada",
+            "expirou",
+            "venceu"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Toda conta nova começa com 14 dias de teste grátis, sem cartão. Nas telas maiores, o topo mostra “Teste grátis: faltam N dias”. Na tela Assinatura, um selo mostra a situação da conta:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Em teste: envios liberados até o último dia do teste. Quem assina durante o teste continua testando, e a primeira fatura vence no último dia dele.",
+                "Teste encerrado: o teste acabou e não há plano. Os envios ficam pausados até alguém escolher um plano.",
+                "Aguardando pagamento: você assinou sem teste valendo e falta pagar a primeira fatura. Os envios voltam quando o pagamento for confirmado.",
+                "Ativa: o pagamento está em dia. A tela mostra “Pago até” e a data.",
+                "Atrasada: a fatura venceu. Os envios continuam por 7 dias depois do vencimento e, sem pagamento, pausam.",
+                "Cancelada: a assinatura foi cancelada. O uso vale até o fim do período já pago.",
+                "Cortesia: conta sem cobrança. Não precisa assinar."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Com os envios pausados, o Toqqi não manda pesquisas nem lembretes, não analisa comentários com IA e o assistente não responde. Nada é apagado: seus dados continuam guardados, e tudo volta quando o pagamento é confirmado."
+            }
+          ]
+        },
+        {
+          "id": "avisos-no-topo-e-envios-pausados",
+          "titulo": "Avisos no topo da tela: teste, atraso e envios pausados",
+          "somente_admin": false,
+          "atalho": "assinatura",
+          "palavras": [
+            "faixa",
+            "banner",
+            "aviso",
+            "envios param",
+            "envios pausados",
+            "fatura vencida",
+            "pagamento atrasado",
+            "fale com o administrador",
+            "escolher plano",
+            "pagar agora",
+            "assinatura vencida",
+            "teste terminou",
+            "por que não envia",
+            "pausou"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Quando a assinatura pede atenção, uma faixa aparece no topo de todas as telas. O administrador vê um botão, “Escolher plano” ou “Pagar agora”. Os outros leem “Fale com o administrador da conta.”"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "“Seu teste grátis termina em N dias”: aparece nos últimos 5 dias do teste.",
+                "“Seu teste grátis terminou”: os envios estão pausados até um plano ser escolhido.",
+                "“A fatura venceu em (data). Os envios param em (data) se ela não for paga”: ainda dá tempo, são 7 dias depois do vencimento.",
+                "“Envios pausados por falta de pagamento”: pague a fatura e os envios voltam.",
+                "“Assinatura cancelada. Você usa até (data)”: o uso vale até o fim do período pago.",
+                "“A primeira fatura da assinatura vence (data)” ou “Aguardando o pagamento da primeira fatura”: a assinatura foi feita e falta pagar."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Os avisos que só informam têm um X para fechar e voltam na próxima vez que você abrir o Toqqi no navegador. Os que pedem ação, como teste encerrado, atraso e pausa, não fecham. Na tela Assinatura a faixa não aparece, porque a própria tela já mostra tudo."
+            }
+          ]
+        },
+        {
+          "id": "planos-precos-e-limite-de-contatos",
+          "titulo": "Planos, preços e limite de contatos",
+          "somente_admin": true,
+          "atalho": "assinatura",
+          "palavras": [
+            "preço",
+            "valor",
+            "mensalidade",
+            "quanto custa",
+            "essencial",
+            "profissional",
+            "empresa",
+            "300 contatos",
+            "1500 contatos",
+            "sem limite",
+            "sem fidelidade",
+            "contratar",
+            "limite de contatos",
+            "contatos ativos",
+            "passou do limite",
+            "tabela de preços"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "São três planos, com cobrança mensal e sem fidelidade: você cancela quando quiser, sem multa. Todos têm envios, formulários e usuários ilimitados. O que muda é o limite de contatos ativos:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Essencial: R$ 149,00 por mês, até 300 contatos ativos.",
+                "Profissional: R$ 349,00 por mês, até 1.500 contatos ativos.",
+                "Empresa: R$ 799,00 por mês, contatos ativos sem limite."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Administração › Assinatura, o quadro “Contatos ativos” mostra quantos você usa, como “120 de 300”. Só contatos ativos contam. Um plano que não comporta os seus contatos ativos de hoje fica bloqueado: desative contatos antes de escolhê-lo."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Ao chegar no limite, o Toqqi mostra “Você chegou ao limite do seu plano”, e o administrador pode clicar em “Ver planos”. A cota de análises de IA do assistente e a franquia de WhatsApp automático também dependem do plano: veja os tópicos Assistente e Integrações."
+            }
+          ]
+        },
+        {
+          "id": "assinar-um-plano",
+          "titulo": "Assinar um plano",
+          "somente_admin": true,
+          "atalho": "assinatura",
+          "palavras": [
+            "contratar",
+            "comprar",
+            "começar a pagar",
+            "primeira fatura",
+            "razão social",
+            "cpf",
+            "cnpj",
+            "dados de cobrança",
+            "email de cobrança",
+            "como pagar",
+            "fazer assinatura",
+            "escolher plano"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Abra Administração › Assinatura. Também dá para ir pelo menu da sua conta, no topo da tela, ou pelo botão “Escolher plano” do aviso.",
+                "Em “Escolha um plano”, clique no plano que você quer.",
+                "Em “Dados de cobrança”, confira Razão social (para CPF, o nome completo), CPF ou CNPJ, Telefone com DDD e E-mail de cobrança. Eles vêm dos dados da empresa e saem nas faturas.",
+                "Leia o resumo da primeira fatura e clique em “Assinar o plano”, seguido do nome do plano.",
+                "Na fatura que aparece, clique em “Pagar” e escolha Pix, boleto ou cartão."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Quem assina durante o teste continua testando, e a primeira fatura vence no último dia dele. Se o período já pago ainda não acabou, ela vence no dia seguinte ao fim dele. Sem nenhum dos dois, ela vence amanhã e os envios voltam quando o pagamento for confirmado. Depois, a cobrança é mensal, no mesmo dia (nos meses mais curtos, no último dia)."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Se aparecer “A cobrança online ainda não está disponível. Fale com a equipe Toqqi.”, a cobrança ainda não foi ligada na plataforma e os botões ficam desativados."
+            }
+          ]
+        },
+        {
+          "id": "pagar-a-fatura-e-historico",
+          "titulo": "Pagar a fatura e ver o histórico de cobranças",
+          "somente_admin": true,
+          "atalho": "assinatura",
+          "palavras": [
+            "pix",
+            "boleto",
+            "cartão de crédito",
+            "pagamento",
+            "pagar fatura",
+            "confirmação do pagamento",
+            "pagamento confirmado",
+            "vencimento",
+            "próxima fatura",
+            "fatura vencida",
+            "segunda via",
+            "histórico de pagamentos",
+            "asaas",
+            "cobranças"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O cartão “Fatura em aberto” mostra o valor, o vencimento e o período que ela cobre. Clique em “Pagar”: a fatura abre numa nova aba, no Asaas (o serviço de pagamentos que emite as faturas), e lá você escolhe Pix, boleto ou cartão."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A confirmação chega sozinha: Pix e cartão em segundos, boleto em até 3 dias úteis. Depois de assinar ou de clicar em “Pagar”, a tela se atualiza a cada 10 segundos, por até 2 minutos, e avisa “Pagamento confirmado”. Para conferir na hora, clique em “Atualizar”. A assinatura só fica Ativa depois da confirmação."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Com a conta Ativa, a fatura que vence daqui a mais de 5 dias aparece como “Próxima fatura”, com o botão “Ver fatura”. Pagar antes é opcional.",
+                "O Asaas cria a fatura de cada mês com até 40 dias de antecedência, então pode haver mais de uma em aberto. A tela avisa em “Também em aberto”.",
+                "O “Histórico de cobranças” mostra as 12 mais recentes: vencimento, período coberto, valor, forma (Pix, Boleto ou Cartão), situação e o link “Ver fatura”.",
+                "As situações da fatura são Em aberto, Paga, Vencida, Estornada e Cancelada."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "trocar-de-plano-e-dados-de-cobranca",
+          "titulo": "Trocar de plano e editar os dados de cobrança",
+          "somente_admin": true,
+          "atalho": "assinatura",
+          "palavras": [
+            "mudar de plano",
+            "upgrade",
+            "downgrade",
+            "aumentar limite",
+            "reduzir plano",
+            "plano menor",
+            "plano maior",
+            "alterar cnpj",
+            "editar dados de cobrança",
+            "email de cobrança",
+            "telefone de cobrança"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Assinatura, clique em “Trocar de plano”.",
+                "Escolha o novo plano. O atual aparece com a etiqueta “Plano atual”.",
+                "Leia o efeito: o novo valor mensal, o que muda nas faturas e o novo limite de contatos.",
+                "Clique em “Trocar para o”, seguido do nome do plano."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O novo valor vale para as próximas faturas e para as pendentes. As vencidas não mudam. O limite de contatos muda na hora. Se você tem mais contatos ativos do que o plano novo permite, a tela avisa e não deixa trocar: desative contatos antes (o link “Ver contatos” ajuda)."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Para mudar a Razão social, o CPF ou CNPJ, o Telefone ou o E-mail de cobrança, clique em “Editar dados de cobrança”, altere e clique em “Salvar dados”. As próximas faturas saem com os dados novos."
+            }
+          ]
+        },
+        {
+          "id": "cancelar-a-assinatura",
+          "titulo": "Cancelar a assinatura",
+          "somente_admin": true,
+          "atalho": "assinatura",
+          "palavras": [
+            "encerrar assinatura",
+            "desistir",
+            "parar de pagar",
+            "multa",
+            "devolução",
+            "reembolso",
+            "cancelar plano",
+            "voltar a assinar",
+            "reativar assinatura",
+            "cancelamento"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Assinatura, clique em “Cancelar assinatura”.",
+                "Leia o aviso da janela “Cancelar a assinatura?”. Para seguir, clique em “Cancelar assinatura”. Para desistir, clique em “Manter assinatura”."
+              ]
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Se já há um período pago, você continua usando até o fim dele. Sem multa e sem devolução.",
+                "Se cancelar durante o teste, antes de pagar, você volta para o teste grátis até o último dia dele.",
+                "Sem período pago nem teste, os envios ficam pausados até você assinar de novo. Seus dados continuam guardados.",
+                "As faturas em aberto são canceladas no Asaas."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Para voltar, escolha um plano de novo em Assinatura. A primeira fatura nova vence no dia seguinte ao fim do período pago, ou amanhã se ele já acabou."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "minha-conta",
+      "titulo": "Minha conta",
+      "resumo": "Seus dados, sua senha, os e-mails que você recebe e os aparelhos onde você está conectado.",
+      "secoes": [
+        {
+          "id": "abrir-minha-conta-e-editar-seus-dados",
+          "titulo": "Abrir a Minha conta e editar seus dados",
+          "somente_admin": false,
+          "atalho": "minha_conta",
+          "palavras": [
+            "perfil",
+            "meus dados",
+            "editar nome",
+            "cargo",
+            "alterar e-mail",
+            "mudar email",
+            "trocar email",
+            "tema escuro",
+            "tema claro",
+            "modo escuro",
+            "menu da conta",
+            "iniciais",
+            "minha conta",
+            "usuário"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Clique no seu nome (ou nas suas iniciais), no canto superior direito, e escolha “Minha conta”. A tela reúne seus dados, os e-mails que você recebe, a senha e os aparelhos conectados."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em “Seus dados”, edite o Nome (obrigatório) e o Cargo (opcional).",
+                "Clique em “Salvar dados”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O E-mail e o Perfil (Administrador, Gestor ou Consulta) aparecem na tela só para consulta. Quem muda o perfil é um administrador, em Equipe."
+            },
+            {
+              "tipo": "dica",
+              "texto": "O botão com sol ou lua, ao lado do seu nome, troca o tema entre claro e escuro."
+            }
+          ]
+        },
+        {
+          "id": "trocar-a-senha",
+          "titulo": "Trocar a senha",
+          "somente_admin": false,
+          "atalho": "minha_conta",
+          "palavras": [
+            "alterar senha",
+            "mudar senha",
+            "senha nova",
+            "regras de senha",
+            "senha forte",
+            "maiúscula",
+            "símbolo",
+            "desconectar outros aparelhos",
+            "esqueci a senha atual",
+            "redefinir senha",
+            "senha fraca"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "Abra Minha conta e vá até a seção “Senha”.",
+                "Digite a “Senha atual”, a “Nova senha” e repita em “Repita a nova senha”. O botão com um olho mostra ou esconde o que você digita.",
+                "Confira as regras abaixo da nova senha: pelo menos 8 caracteres (no máximo 70), uma letra maiúscula, um número e um símbolo (como ! ou @). Cada regra ganha um visto quando você a cumpre.",
+                "Clique em “Trocar senha”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Ao trocar, seus outros aparelhos são desconectados, por segurança. Você continua conectado neste."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Esqueceu a senha atual? Saia pelo menu da sua conta e, na tela de entrada, clique em “Esqueci a senha”."
+            }
+          ]
+        },
+        {
+          "id": "emails-do-toqqi",
+          "titulo": "E-mails do Toqqi: resumo semanal e alerta de pico",
+          "somente_admin": false,
+          "atalho": "minha_conta",
+          "palavras": [
+            "notificações",
+            "receber email",
+            "parar de receber email",
+            "desligar email",
+            "email toda segunda",
+            "interruptor",
+            "avisos por e-mail",
+            "email",
+            "não recebi o resumo",
+            "pico",
+            "reclamações em alta",
+            "preferências de e-mail"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em “E-mails do Toqqi”, na Minha conta, você escolhe os avisos que chegam no seu e-mail sobre o painel da empresa. A seção aparece para quem pode ver o painel (o Início). Cada interruptor vale na hora, sem botão de salvar, e os dois vêm ligados."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Resumo semanal: toda segunda-feira de manhã, o NPS da semana, os detratores esperando tratamento, os temas em alta e o que os clientes disseram.",
+                "Alerta de pico de reclamações: quando um tema recebe muito mais reclamações que o normal nos últimos 7 dias, com as respostas que causaram o alerta."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O resumo sai na segunda-feira, a partir das 8h (horário de Brasília), e não é enviado se a conta não teve respostas na semana nem ações abertas. Cada tema gera no máximo um alerta a cada 7 dias. Só recebe quem está ativo, com o e-mail confirmado, e só enquanto a assinatura estiver em dia."
+            },
+            {
+              "tipo": "dica",
+              "texto": "O e-mail “Alerta de risco”, dos planos de ação, vai para o responsável da empresa e não depende destes interruptores. Veja o tópico Planos de ação."
+            }
+          ]
+        },
+        {
+          "id": "aparelhos-conectados-e-sair",
+          "titulo": "Aparelhos conectados e como sair",
+          "somente_admin": false,
+          "atalho": "minha_conta",
+          "palavras": [
+            "sessão",
+            "dispositivos",
+            "logout",
+            "deslogar",
+            "encerrar sessão",
+            "outro computador",
+            "celular conectado",
+            "lembrar de mim",
+            "tempo conectado",
+            "sessão expirou",
+            "conexões",
+            "acesso suspeito",
+            "invasão"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em “Aparelhos conectados”, você vê onde a sua conta está aberta agora: o nome do aparelho, o IP, o último uso e desde quando está conectado. O aparelho que você está usando vem primeiro, com a etiqueta “Este aparelho”."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "“Sair”, na linha deste aparelho: você vai precisar entrar de novo aqui. Também dá para sair pelo menu da sua conta, no topo da tela.",
+                "“Encerrar”, nas outras linhas: quem estiver usando aquele aparelho vai precisar entrar de novo.",
+                "“Encerrar os outros”, quando há outros aparelhos: deixa você conectado só neste."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Não reconhece um aparelho? Encerre a conexão e troque a senha."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Quanto tempo você fica conectado depende da configuração da empresa (Configurações › Segurança, de 30 minutos a 24 horas). Quem marca “Lembrar de mim neste aparelho” ao entrar fica conectado por 30 dias."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "assistente",
+      "titulo": "Assistente",
+      "resumo": "O chat que responde sobre os resultados dos seus clientes e sobre o uso do Toqqi: o que sabe, períodos, cota e cuidados.",
+      "secoes": [
+        {
+          "id": "o-que-e-o-assistente",
+          "titulo": "O que é o assistente e como abrir",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "chat",
+            "ia",
+            "inteligência artificial",
+            "robô",
+            "chatbot",
+            "botão assistente",
+            "perguntar",
+            "abrir o chat",
+            "onde fica o assistente",
+            "conversa",
+            "pergunte",
+            "assistente virtual",
+            "não acho o assistente"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O assistente é um chat com inteligência artificial. Você pergunta em português, do seu jeito, e ele responde com os números da sua conta ou explica como usar o Toqqi. Todos os perfis podem usar, e cada pergunta respeita as permissões de quem pergunta."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Clique no botão “Assistente”, no canto inferior direito de qualquer tela. No celular, o botão mostra só o ícone e o chat abre em tela cheia.",
+                "Escreva na caixa “Faça uma pergunta” ou clique numa das sugestões.",
+                "Aperte Enter para enviar. Para quebrar a linha, use Shift+Enter.",
+                "Para fechar o chat, clique no X ou aperte Esc."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Na Ajuda, o botão “Pergunte ao assistente” também abre o chat. Se você buscou algo e não achou, o texto da busca vai para a caixa, mas só é enviado quando você aperta Enter."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O botão não aparece se a inteligência artificial não estiver ligada na plataforma. Com a assinatura pausada ou a cota do mês esgotada, ele aparece, mas avisa que não dá para perguntar agora."
+            }
+          ]
+        },
+        {
+          "id": "o-que-o-assistente-responde",
+          "titulo": "O que o assistente sabe responder",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "o que posso perguntar",
+            "exemplos de perguntas",
+            "nps de um cliente",
+            "nps da carteira",
+            "quanto é o nps",
+            "promotores",
+            "detratores",
+            "comentários",
+            "ranking",
+            "melhores clientes",
+            "piores clientes",
+            "temas",
+            "evolução",
+            "csat",
+            "perguntas",
+            "capacidades"
+          ],
+          "blocos": [
+            {
+              "tipo": "lista",
+              "itens": [
+                "NPS, CSAT, total de respostas e quantos são promotores, neutros e detratores, de um cliente (empresa) ou de toda a carteira.",
+                "Comparação com o período anterior, com a variação em pontos de NPS.",
+                "Comentários recentes dos clientes: de promotores, neutros, detratores ou todos (até 10 por pergunta).",
+                "Clientes com o NPS mais baixo ou mais alto (até 10; só entram empresas com 3 ou mais respostas de NPS no período).",
+                "Temas mais citados, com menções, reclamações e nota média.",
+                "Evolução do NPS mês a mês, de 1 a 12 meses.",
+                "Dúvidas de uso: ele consulta esta Ajuda, resume os passos e mostra botões “Abrir” para as telas certas."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Exemplos: “Qual é o NPS dos últimos 30 dias?”, “Qual o NPS do cliente Transportes Silva em setembro?”, “Quais clientes têm o NPS mais baixo nos últimos 90 dias?”, “O que os detratores disseram este mês?” e “Como importo meus contatos?”."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Ele só consulta e explica: não envia pesquisas, não muda cadastros e não cria planos de ação. NPS, temas e ranking exigem poder ver o painel ou os relatórios, e os comentários exigem poder ver Respostas. Sem a permissão, ele avisa que o seu perfil não tem acesso a esses dados."
+            }
+          ]
+        },
+        {
+          "id": "periodos-e-comparacao",
+          "titulo": "Períodos, comparação e como os números são calculados",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "30 dias",
+            "12 meses",
+            "últimos meses",
+            "este ano",
+            "setembro",
+            "comparar",
+            "variação",
+            "período anterior",
+            "amostra pequena",
+            "datas",
+            "número diferente",
+            "divergência",
+            "por que não bate",
+            "mês a mês",
+            "histórico longo"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Se você não disser o período, o assistente usa os últimos 30 dias. Dá para pedir até 12 meses, em palavras comuns: “últimos 6 meses”, “este ano”, “setembro”. Um pedido mais longo é cortado nos últimos 12 meses, e ele explica isso na resposta."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Para comparar, peça “compare com o período anterior”: ele usa um período do mesmo tamanho, logo antes do escolhido, e mostra a variação em pontos de NPS. Toda resposta com números diz o período, em datas, e o total de respostas. Com menos de 20 respostas de NPS, ele avisa que a amostra é pequena."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "As contas seguem as regras do Início e dos Relatórios: NPS é a % de promotores (9 e 10) menos a % de detratores (0 a 6), e CSAT é a % de notas 4 e 5. Entram só respostas não arquivadas, pela data da resposta, e só de empresas ativas, a menos que você pergunte por uma empresa desativada."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Número diferente do Início? O Início abre em 90 dias e o assistente usa 30. Peça o mesmo período nos dois."
+            }
+          ]
+        },
+        {
+          "id": "cota-de-analises-do-plano",
+          "titulo": "Cota de análises do plano",
+          "somente_admin": false,
+          "atalho": "config_ia",
+          "palavras": [
+            "limite de perguntas",
+            "análises restantes",
+            "restam",
+            "cota mensal",
+            "créditos",
+            "acabou",
+            "renova",
+            "dia 1",
+            "quantas perguntas",
+            "limite de ia",
+            "ia do plano",
+            "quanto custa uma pergunta",
+            "gasta"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Cada pergunta ao assistente usa 1 análise da cota mensal do seu plano: 100 no Essencial, 500 no Profissional e 2.000 no Empresa. No alto do chat, aparece “Restam X de Y análises este mês”."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Pergunta que dá erro e fica sem resposta não gasta a análise: ela é devolvida.",
+                "Se o assistente responde, a análise foi usada, mesmo quando a resposta é recusar um assunto.",
+                "A cota renova no dia 1º de cada mês.",
+                "A análise automática de cada comentário (Configurações › IA) não entra nesta conta, e o interruptor “Analisar comentários com IA” não liga nem desliga o assistente."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Acabou a cota? O chat explica: “O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.” O administrador vê o uso em Configurações › IA, na seção “Cota de IA do plano”, e pode trocar de plano em Assinatura. No teste grátis, vale a cota do plano do teste."
+            }
+          ]
+        },
+        {
+          "id": "como-fazer-boas-perguntas",
+          "titulo": "Como fazer boas perguntas",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "dicas",
+            "melhorar pergunta",
+            "enter",
+            "shift enter",
+            "1000 caracteres",
+            "limite por minuto",
+            "sugestões",
+            "nova conversa",
+            "histórico",
+            "atalhos",
+            "abrir tela",
+            "perguntas seguintes",
+            "seguimento",
+            "como perguntar",
+            "nome do cliente"
+          ],
+          "blocos": [
+            {
+              "tipo": "lista",
+              "itens": [
+                "Diga o cliente pelo nome. Pode ser só uma parte dele, sem se preocupar com acentos ou maiúsculas. Se houver vários parecidos, o assistente pergunta qual você quer.",
+                "Diga o período: “nos últimos 90 dias”, “em setembro”. Sem isso, valem os últimos 30 dias.",
+                "Pergunte uma coisa por vez. Perguntas curtas e objetivas dão respostas melhores.",
+                "Para seguir no mesmo assunto, pergunte em seguida, como “e dos detratores?”. Ele lembra das últimas 8 mensagens da conversa.",
+                "Mudou de assunto? Clique em “Nova conversa” para começar do zero."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Depois de cada resposta, aparecem até 3 sugestões de próxima pergunta (clique para enviar) e até 2 botões com o nome da tela citada, como “Abrir Relatórios”. Os botões só aparecem para telas que o seu perfil pode abrir."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Cada pergunta pode ter até 1.000 caracteres (o contador fica embaixo da caixa), e o limite é de 8 perguntas por minuto."
+            }
+          ]
+        },
+        {
+          "id": "cuidados-e-privacidade",
+          "titulo": "Cuidados e privacidade",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "privacidade",
+            "dados enviados",
+            "segurança",
+            "guarda conversa",
+            "histórico no navegador",
+            "confiável",
+            "errar",
+            "confirmar números",
+            "permissões",
+            "só minha conta",
+            "provedor de ia",
+            "sigilo",
+            "apagar conversa"
+          ],
+          "blocos": [
+            {
+              "tipo": "lista",
+              "itens": [
+                "As respostas são geradas por inteligência artificial com os dados da sua conta. Confira os números nos Relatórios antes de uma decisão importante.",
+                "Ele só fala da satisfação dos seus clientes e do uso do Toqqi. Para outros assuntos, responde “Só consigo ajudar com a satisfação dos seus clientes e com o uso do Toqqi.”",
+                "Ele só enxerga a sua conta e respeita o seu perfil: nada de outras empresas, nem dados que você não pode ver no Toqqi.",
+                "A conversa fica só no seu navegador, nesta aba, com as últimas 20 mensagens. O Toqqi não guarda perguntas nem respostas. “Nova conversa” e “Sair” apagam o histórico."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Para responder, o assistente envia ao provedor de IA a sua pergunta, as últimas mensagens da conversa e os dados que consultou: nomes de clientes, números e, se você pedir comentários, o texto, a nota e o nome da empresa e do contato de cada um."
+            }
+          ]
+        },
+        {
+          "id": "mensagens-e-problemas-do-assistente",
+          "titulo": "Mensagens do assistente e o que fazer",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "erro",
+            "não aparece",
+            "indisponível",
+            "não responde",
+            "muitas perguntas",
+            "limite",
+            "assinatura pausada",
+            "sem acesso",
+            "não achou empresa",
+            "tentar de novo",
+            "cota esgotada",
+            "fora do assunto",
+            "recusa",
+            "travou"
+          ],
+          "blocos": [
+            {
+              "tipo": "lista",
+              "itens": [
+                "O botão “Assistente” não aparece: a inteligência artificial não está ligada na plataforma.",
+                "“O assistente volta quando a assinatura estiver em dia.”: a assinatura está pausada. O administrador vê o link “Ver assinatura”.",
+                "“O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.”: a cota acabou. O administrador vê o link “Ver uso em Configurações › IA”.",
+                "“Muitas perguntas em pouco tempo. Aguarde um minuto e tente de novo.”: o limite é de 8 perguntas por minuto.",
+                "“O assistente está indisponível no momento. Tente de novo em instantes.”: falha temporária. Clique em “Tentar de novo”. A análise é devolvida.",
+                "“Só consigo ajudar com a satisfação dos seus clientes e com o uso do Toqqi.”: a pergunta fugiu do assunto."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Ele disse que o seu perfil não tem acesso aos dados? Peça a um administrador para liberar a permissão, em Equipe. Não achou a empresa? Confira o nome: pode ser só uma parte dele."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

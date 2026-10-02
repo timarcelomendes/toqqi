@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // Configurações › IA (etapa 4b): se a IA está ligada na plataforma, a chave da conta ("Analisar comentários com
 // IA"), o uso do mês contra o teto de segurança, a fila, o "analisar os últimos 90 dias" e o que vai para a IA.
-import { computed, onMounted, ref } from 'vue'
-import { Gauge, History, ShieldCheck, Sparkles } from 'lucide-vue-next'
-import { ApiError, iaApi, mensagemDoErro, type ConfigIa } from '@/api'
+// Etapa 5b: a cota de IA do plano (cada pergunta ao assistente usa 1 análise).
+import { computed, onMounted, ref, watch } from 'vue'
+import { BotMessageSquare, Gauge, History, ShieldCheck, Sparkles } from 'lucide-vue-next'
+import { ApiError, iaApi, mensagemDoErro, type ConfigIa, type CotaIa } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
+import { useAssistenteStore } from '@/stores/assistente'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarNumero, plural } from '@/utils/formatos'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
@@ -20,17 +22,35 @@ import { TEMAS_PADRAO } from '@/modulos/respostas/logica'
 import NavConfiguracoes from './NavConfiguracoes.vue'
 
 const sessao = useSessaoStore()
+const assistente = useAssistenteStore()
 const dados = ref<ConfigIa | null>(null)
 const carregando = ref(true)
 const erroCarga = ref<string | null>(null)
 const salvando = ref(false)
 const analisando = ref(false)
 
+/**
+ * A cota do mesmo mês que o assistente recebeu depois da última leitura desta tela (cada resposta traz a sua): mais nova
+ * que a de `dados`. Volta a null a cada leitura da tela.
+ */
+const cotaDoAssistente = ref<CotaIa | null>(null)
+watch(
+  () => assistente.cota,
+  (c) => {
+    if (c && c.mes === dados.value?.cota?.mes) cotaDoAssistente.value = c
+  },
+)
+
+function receber(d: ConfigIa) {
+  dados.value = d
+  cotaDoAssistente.value = null
+}
+
 async function carregar() {
   carregando.value = true
   erroCarga.value = null
   try {
-    dados.value = await iaApi.obter()
+    receber(await iaApi.obter())
   } catch (e) {
     erroCarga.value = mensagemDoErro(e)
   } finally {
@@ -41,7 +61,7 @@ async function carregar() {
 /** Busca os números de novo depois de uma ação, sem trocar a tela pelo esqueleto (se falhar, fica o que está na tela). */
 async function atualizarNumeros() {
   try {
-    dados.value = await iaApi.obter()
+    receber(await iaApi.obter())
   } catch {
     /* os números antigos continuam */
   }
@@ -66,7 +86,7 @@ async function mudarAnalise(ligar: boolean) {
   }
   salvando.value = true
   try {
-    dados.value = await iaApi.salvar(ligar)
+    receber(await iaApi.salvar(ligar))
     avisar.sucesso(ligar ? 'Análise com IA ligada: os próximos comentários já passam por ela.' : 'Análise com IA desligada. Os temas voltam a sair pelas palavras-chave.')
     atualizarSessao()
   } catch (e) {
@@ -77,6 +97,18 @@ async function mudarAnalise(ligar: boolean) {
 }
 
 const mes = computed(() => (dados.value ? formatarMes(dados.value.mes, 'longo') : ''))
+/**
+ * Etapa 5b: cota do plano (só o assistente gasta, por enquanto). Se o assistente recebeu uma cota do mesmo mês depois
+ * da leitura desta tela, vale a dele (a mais recente).
+ */
+const cota = computed(() => {
+  const daTela = dados.value?.cota ?? null
+  const doAssistente = cotaDoAssistente.value
+  return daTela && doAssistente && doAssistente.mes === daTela.mes ? doAssistente : daTela
+})
+const textoCota = computed(() =>
+  cota.value ? `${formatarNumero(cota.value.usadas)} de ${formatarNumero(cota.value.limite)} análises usadas em ${formatarMes(cota.value.mes, 'longo')}` : '',
+)
 const restantes = computed(() => (dados.value ? Math.max(0, dados.value.limite - dados.value.analises - dados.value.pendentes) : 0))
 const noLimite = computed(() => !!dados.value && dados.value.limite > 0 && dados.value.analises >= dados.value.limite)
 const podeAnalisarRecentes = computed(() => !!dados.value?.disponivel && !!dados.value?.analise_respostas)
@@ -121,6 +153,24 @@ onMounted(carregar)
   </Alerta>
 
   <div v-else-if="dados" class="flex flex-col gap-6">
+    <!-- Cota de IA do plano (etapa 5b) -->
+    <section v-if="cota" class="cartao grid grid-cols-1 gap-6 p-5 sm:p-6 md:grid-cols-3" aria-labelledby="t-ia-cota" data-cota-plano>
+      <div>
+        <div class="mb-3 flex size-10 items-center justify-center rounded-xl bg-marca-suave text-marca-texto"><BotMessageSquare class="size-5" aria-hidden="true" /></div>
+        <h2 id="t-ia-cota" class="text-base font-bold text-texto">Cota de IA do plano</h2>
+        <p class="mt-1 text-sm text-texto-suave">Renova no dia 1º de cada mês.</p>
+      </div>
+      <div class="flex min-w-0 flex-col gap-3 md:col-span-2">
+        <p class="text-sm text-texto-suave" data-cota-texto>
+          <strong class="text-base font-bold text-texto">{{ formatarNumero(cota.usadas) }}</strong> de {{ formatarNumero(cota.limite) }} análises usadas em
+          {{ formatarMes(cota.mes, 'longo') }}
+        </p>
+        <Medidor :valor="cota.usadas" :maximo="cota.limite" rotulo="Análises da cota do plano usadas neste mês" :texto="textoCota" />
+        <p class="text-sm text-texto-suave">Cada pergunta ao assistente usa 1 análise. A análise de cada resposta não entra nesta conta.</p>
+        <Alerta v-if="cota.limite > 0 && cota.restantes <= 0" tom="atencao">A cota deste mês acabou: o assistente volta a responder no dia 1º.</Alerta>
+      </div>
+    </section>
+
     <!-- Situação e a chave da conta -->
     <section class="cartao grid grid-cols-1 gap-6 p-5 sm:p-6 md:grid-cols-3" aria-labelledby="t-ia-situacao">
       <div>
@@ -212,20 +262,31 @@ onMounted(carregar)
       </div>
     </section>
 
-    <!-- O que é enviado -->
-    <section class="cartao grid grid-cols-1 gap-6 p-5 sm:p-6 md:grid-cols-3" aria-labelledby="t-ia-privacidade">
+    <!-- O que é enviado: na análise de cada comentário e no assistente (que consulta os dados da conta para responder) -->
+    <section class="cartao grid grid-cols-1 gap-6 p-5 sm:p-6 md:grid-cols-3" aria-labelledby="t-ia-privacidade" data-ia-privacidade>
       <div>
         <div class="mb-3 flex size-10 items-center justify-center rounded-xl bg-marca-suave text-marca-texto"><ShieldCheck class="size-5" aria-hidden="true" /></div>
         <h2 id="t-ia-privacidade" class="text-base font-bold text-texto">O que é enviado à IA</h2>
-        <p class="mt-1 text-sm text-texto-suave">Só o necessário para entender o comentário.</p>
+        <p class="mt-1 text-sm text-texto-suave">Só o necessário para entender o comentário ou responder à pergunta.</p>
       </div>
-      <div class="min-w-0 md:col-span-2">
-        <ul class="flex list-disc flex-col gap-2 pl-5 text-sm text-texto">
-          <li>O texto que o cliente escreveu (até 500 caracteres), as opções que ele marcou e a nota.</li>
-          <li><strong class="font-semibold">Nunca</strong> o nome, o e-mail, o telefone, a empresa do cliente ou os dados do pedido.</li>
-          <li>O provedor{{ dados.provedor ? ` (${dados.provedor})` : '' }} não guarda a conversa.</li>
-          <li>Os temas saem só desta lista: {{ TEMAS_PADRAO.map((t) => t.rotulo).join(', ') }}.</li>
-        </ul>
+      <div class="flex min-w-0 flex-col gap-5 md:col-span-2">
+        <div class="flex flex-col gap-2" data-envio-analise>
+          <h3 class="text-sm font-bold text-texto">Na análise dos comentários</h3>
+          <ul class="flex list-disc flex-col gap-2 pl-5 text-sm text-texto">
+            <li>O texto que o cliente escreveu (até 500 caracteres), as opções que ele marcou e a nota.</li>
+            <li><strong class="font-semibold">Nunca</strong> o nome, o e-mail, o telefone, a empresa do cliente ou os dados do pedido.</li>
+            <li>O provedor{{ dados.provedor ? ` (${dados.provedor})` : '' }} não guarda a conversa.</li>
+            <li>Os temas saem só desta lista: {{ TEMAS_PADRAO.map((t) => t.rotulo).join(', ') }}.</li>
+          </ul>
+        </div>
+        <div class="flex flex-col gap-2" data-envio-assistente>
+          <h3 class="text-sm font-bold text-texto">No assistente</h3>
+          <ul class="flex list-disc flex-col gap-2 pl-5 text-sm text-texto">
+            <li>A pergunta, as últimas mensagens da conversa e o nome da sua conta.</li>
+            <li>Os dados que ele consulta para responder: números, nomes de empresas e de contatos e comentários dos clientes.</li>
+            <li>O provedor{{ dados.provedor ? ` (${dados.provedor})` : '' }} não guarda a conversa.</li>
+          </ul>
+        </div>
       </div>
     </section>
   </div>

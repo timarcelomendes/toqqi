@@ -1,4 +1,4 @@
-// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b e -5a).
+// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b, -5a e -5b).
 import type { Contexto, GrupoNota, Pergunta, Tema } from '@/pesquisa/tipos'
 
 export type Perfil = 'admin' | 'gestor' | 'consulta'
@@ -1044,6 +1044,8 @@ export interface ConfigIa {
   limite: number
   pendentes: number
   falharam_no_mes: number
+  /** Etapa 5b: cota de IA do plano no mês (cada pergunta ao assistente usa 1; a análise de cada resposta não entra). */
+  cota?: CotaIa
 }
 
 export interface ResultadoAnalisarRecentes {
@@ -1433,4 +1435,106 @@ export interface EstadoAssinatura {
   fatura_aberta: FaturaAberta | null
   /** As 12 mais recentes. */
   cobrancas: CobrancaAssinatura[]
+}
+
+// ───────────────────────── Etapa 5b (docs/api-etapa-5b.md) ─────────────────────────
+
+/** Cota de IA do plano no mês: GET /assistente, cada resposta do assistente e GET /conta/ia. */
+export interface CotaIa {
+  usadas: number
+  limite: number
+  /** Nunca negativo. */
+  restantes: number
+  /** AAAA-MM (mês do calendário de São Paulo). */
+  mes: string
+}
+
+/** Telas que a Ajuda e o assistente indicam (§5.4). */
+export type ChaveAtalho =
+  | 'inicio'
+  | 'contatos'
+  | 'importar_contatos'
+  | 'envios'
+  | 'formularios'
+  | 'respostas'
+  | 'planos_de_acao'
+  | 'relatorios'
+  | 'equipe'
+  | 'config_empresa'
+  | 'config_envios'
+  | 'config_acoes'
+  | 'config_ia'
+  | 'seguranca'
+  | 'integracoes'
+  | 'assinatura'
+  | 'minha_conta'
+  | 'ajuda'
+
+/** Texto puro (sem HTML, markdown ou links). Um tipo novo, que a tela ainda não conhece, é ignorado. */
+export type BlocoAjuda =
+  | { tipo: 'paragrafo'; texto: string }
+  | { tipo: 'passos'; itens: string[] }
+  | { tipo: 'lista'; itens: string[] }
+  | { tipo: 'dica'; texto: string }
+
+export interface SecaoAjuda {
+  /** kebab-case, único dentro do tópico; é a âncora do endereço (/ajuda/contatos#importar-planilha). */
+  id: string
+  titulo: string
+  somente_admin: boolean
+  /** Tela indicada (chave de §5.4) ou null. */
+  atalho: ChaveAtalho | (string & {}) | null
+  palavras: string[]
+  blocos: BlocoAjuda[]
+}
+
+export interface TopicoAjuda {
+  id: string
+  titulo: string
+  resumo: string
+  secoes: SecaoAjuda[]
+}
+
+/** GET /ajuda: o conteúdo inteiro, como está no arquivo da API. */
+export interface ConteudoAjuda {
+  versao: number
+  topicos: TopicoAjuda[]
+}
+
+export type MotivoAssistente = 'ia_indisponivel' | 'conta_pausada' | 'cota_esgotada'
+
+/** GET /assistente. */
+export interface EstadoAssistente {
+  disponivel: boolean
+  /** null quando disponível. */
+  motivo: MotivoAssistente | (string & {}) | null
+  /** null sem IA na plataforma. */
+  cota: CotaIa | null
+  /** Até 3 perguntas de exemplo, conforme as permissões (vazio quando não está disponível). */
+  sugestoes: string[]
+}
+
+export type PapelMensagem = 'usuario' | 'assistente'
+
+/** Item do histórico mandado em cada pergunta (até 8; texto de 1 a 4.000 caracteres). */
+export interface MensagemHistorico {
+  papel: PapelMensagem
+  texto: string
+}
+
+export interface AtalhoAssistente {
+  chave: ChaveAtalho | (string & {})
+  rotulo: string
+  caminho: string
+}
+
+/** POST /assistente/perguntar (200). */
+export interface RespostaAssistente {
+  /** Texto puro: quebras de linha e listas com "- ". */
+  resposta: string
+  /** Até 3 próximas perguntas. */
+  sugestoes: string[]
+  /** 0 a 2, já filtrados pelas permissões. */
+  atalhos: AtalhoAssistente[]
+  cota: CotaIa
 }

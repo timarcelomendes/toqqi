@@ -1,0 +1,69 @@
+{
+  "versao": 1,
+  "topicos": [
+    {
+      "id": "contatos",
+      "titulo": "Contatos",
+      "resumo": "Quem recebe as pesquisas: cadastro à mão ou por planilha.",
+      "secoes": [
+        {
+          "id": "importar-planilha",
+          "titulo": "Importar uma planilha",
+          "somente_admin": false,
+          "atalho": "importar_contatos",
+          "palavras": ["importar", "planilha", "csv", "excel"],
+          "blocos": [
+            {"tipo": "paragrafo", "texto": "Traga muitos contatos de uma vez a partir de uma planilha do Excel ou de um arquivo CSV."},
+            {"tipo": "passos", "itens": ["Abra Contatos e clique em Importar planilha.", "Escolha o arquivo e confira as colunas.", "Clique em Importar."]},
+            {"tipo": "dica", "texto": "Contatos com o mesmo e-mail são atualizados, não duplicados."}
+          ]
+        },
+        {
+          "id": "adicionar-contato",
+          "titulo": "Adicionar um contato",
+          "somente_admin": false,
+          "atalho": "contatos",
+          "palavras": ["novo", "cadastrar"],
+          "blocos": [
+            {"tipo": "passos", "itens": ["Abra Contatos.", "Clique em Novo contato e preencha nome e e-mail ou telefone."]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "envios",
+      "titulo": "Envios",
+      "resumo": "Como as pesquisas saem por e-mail e WhatsApp.",
+      "secoes": [
+        {
+          "id": "ligar-envios",
+          "titulo": "Ligar os envios automáticos",
+          "somente_admin": true,
+          "atalho": "config_envios",
+          "palavras": ["automatico", "robo", "frequencia"],
+          "blocos": [
+            {"tipo": "paragrafo", "texto": "O robô manda as pesquisas sozinho, na frequência escolhida em Configurações › Envios."},
+            {"tipo": "lista", "itens": ["E-mail", "WhatsApp"]}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "assistente",
+      "titulo": "Assistente",
+      "resumo": "Perguntas sobre os resultados e sobre o uso do Toqqi.",
+      "secoes": [
+        {
+          "id": "cota",
+          "titulo": "Cota de análises",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": ["limite", "analises"],
+          "blocos": [
+            {"tipo": "paragrafo", "texto": "Cada pergunta usa 1 análise da cota mensal do plano. A cota renova no dia 1º."}
+          ]
+        }
+      ]
+    }
+  ]
+}
