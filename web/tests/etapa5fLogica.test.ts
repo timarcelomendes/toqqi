@@ -231,10 +231,10 @@ describe('Termos de uso e Política de privacidade (versão 4)', () => {
     return s.blocos.map(textoBloco).join('\n')
   }
 
-  it('versão 4, vigente desde 03/10/2026 (a tela de aceite mostra essa data)', () => {
-    expect(VERSAO_DOCUMENTOS).toBe(4)
+  it('versão 5 (a 4 da 5f + o custo do Mais detalhado), vigente desde 03/10/2026 (a tela de aceite mostra essa data)', () => {
+    expect(VERSAO_DOCUMENTOS).toBe(5)
     expect(VIGENTE_DESDE).toBe('2026-10-03')
-    expect(textoVersao(VERSAO_DOCUMENTOS)).toBe('Versão 4 · vigente desde 03/10/2026')
+    expect(textoVersao(VERSAO_DOCUMENTOS)).toBe('Versão 5 · vigente desde 03/10/2026')
     expect(textoAbertura({ versao_atual: 4, versao_aceita: 3, aceito_em: '2026-10-02T12:00:00Z', pendente: true })).toBe(
       'Atualizamos os Termos de uso e a Política de privacidade em 03/10/2026.',
     )

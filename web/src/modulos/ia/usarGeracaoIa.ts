@@ -1,6 +1,7 @@
 // Resumo do painel e parecer dos relatórios (etapa 5d, docs/api-etapa-5d.md §6.1 e §6.2): lê o que está salvo para os
-// filtros da tela (de novo a cada troca de filtro), gera (1 análise da cota), conta até poder gerar de novo e diz o que
-// mostrar em cada caso. O cartão do painel e o painel lateral dos relatórios só desenham o que vem daqui.
+// filtros da tela (de novo a cada troca de filtro), gera (o custo do nível da conta: 1 análise da cota, ou 2 no Mais
+// detalhado), conta até poder gerar de novo e diz o que mostrar em cada caso. O cartão do painel e o painel lateral dos
+// relatórios só desenham o que vem daqui.
 import { computed, onBeforeUnmount, onMounted, ref, useId, watch, type Ref } from 'vue'
 import { mensagemDoErro, type CotaIa, type EstadoGeracaoIa, type FiltrosGeracaoIa, type ResultadoGeracaoIa } from '@/api'
 import { MENSAGEM_INESPERADA } from '@/api/erros'
@@ -12,11 +13,14 @@ import {
   chaveFiltros,
   instante,
   lerCota,
+  lerCusto,
   lerErroGeracao,
+  mensagemCotaInsuficiente,
   normalizarItem,
   prazoLocal,
   rotuloBotaoGerar,
   segundosAte,
+  textoVazio,
   type ErroGeracao,
   type ItemIa,
   type TextosGeracaoIa,
@@ -51,9 +55,15 @@ export interface GeracaoIa<C> {
   readonly erroLeitura: string | null
   readonly disponivel: boolean
   readonly item: ItemIa<C> | null
-  /** Por que não dá para gerar (conta pausada, cota esgotada…), no lugar do botão; null quando dá. */
+  /** Análises que uma geração gasta no nível da conta (1, ou 2 no Mais detalhado). */
+  readonly custo: number
+  /** O texto de quando não há nada salvo, com o custo ("Usa 2 análises de IA."). */
+  readonly textoVazio: string
+  /** Por que não dá para gerar (conta pausada, cota esgotada ou insuficiente…), no lugar do botão; null quando dá. */
   readonly bloqueio: string | null
   readonly cotaEsgotada: boolean
+  /** Restam análises, mas menos que o custo do nível (ex.: 1 no Mais detalhado). */
+  readonly cotaInsuficiente: boolean
   /** Gerando para os filtros da tela (uma geração pedida com os filtros anteriores não ocupa a tela dos novos). */
   readonly gerando: boolean
   readonly erro: ErroGeracao | null
@@ -93,8 +103,15 @@ export function usarGeracaoIa<C>(opcoes: OpcoesGeracaoIa<C>): GeracaoIa<C> {
   const disponivel = ref(false)
   const motivo = ref<string | null>(null)
   const item = ref(null) as Ref<ItemIa<C> | null>
-  /** Mensagem do 409 `cota_esgotada` do POST (a do GET é a padrão). */
-  const mensagemCota = ref<string | null>(null)
+  /** Análises que uma geração gasta no nível da conta (do GET; a resposta da geração também traz). */
+  const custo = ref(1)
+  /** A cota mais nova que esta tela recebeu (do GET ou da geração): o que resta, na frase da cota insuficiente. */
+  const ultimaCota = ref<CotaIa | null>(null)
+  /**
+   * Mensagem do 409 `cota_esgotada` ou `cota_insuficiente` do POST, com o motivo dela (no GET só vem o motivo: a tela usa
+   * a frase padrão ou a monta com o que resta e o custo).
+   */
+  const mensagemCota = ref<{ motivo: string; texto: string } | null>(null)
 
   // ── Geração ───────────────────────────────────────────────────────────────
   /** A chave dos filtros da geração em andamento (null sem nenhuma). */
@@ -121,10 +138,13 @@ export function usarGeracaoIa<C>(opcoes: OpcoesGeracaoIa<C>): GeracaoIa<C> {
   const gerando = computed(() => chaveGerando.value !== null && chaveGerando.value === chave.value)
   const segundos = computed(() => segundosAte(podeGerarEm.value, agora.value))
   const cotaEsgotada = computed(() => !disponivel.value && motivo.value === 'cota_esgotada')
+  const cotaInsuficiente = computed(() => !disponivel.value && motivo.value === 'cota_insuficiente')
   const bloqueio = computed<string | null>(() => {
     if (disponivel.value) return null
     if (motivo.value === 'conta_pausada') return opcoes.textos.pausada
-    if (motivo.value === 'cota_esgotada') return mensagemCota.value ?? MENSAGEM_COTA_ESGOTADA
+    const daApi = mensagemCota.value?.motivo === motivo.value ? mensagemCota.value.texto : null
+    if (motivo.value === 'cota_esgotada') return daApi ?? MENSAGEM_COTA_ESGOTADA
+    if (motivo.value === 'cota_insuficiente') return daApi ?? mensagemCotaInsuficiente(ultimaCota.value?.restantes ?? 1, custo.value)
     return MENSAGEM_IA_INDISPONIVEL
   })
   const mostrarBotao = computed(() => visivel.value && disponivel.value && !erroLeitura.value)
@@ -188,7 +208,9 @@ export function usarGeracaoIa<C>(opcoes: OpcoesGeracaoIa<C>): GeracaoIa<C> {
   function aplicarEstado(r: EstadoGeracaoIa<unknown>, k: string) {
     disponivel.value = r.disponivel === true
     motivo.value = disponivel.value ? null : typeof r.motivo === 'string' && r.motivo ? r.motivo : null
-    if (motivo.value !== 'cota_esgotada') mensagemCota.value = null
+    if (mensagemCota.value?.motivo !== motivo.value) mensagemCota.value = null
+    custo.value = lerCusto(r.custo)
+    ultimaCota.value = lerCota(r.cota)
     item.value = normalizarItem(r.item, opcoes.conteudo)
     chaveLida.value = k
     erroLeitura.value = null
@@ -243,11 +265,18 @@ export function usarGeracaoIa<C>(opcoes: OpcoesGeracaoIa<C>): GeracaoIa<C> {
       const r = await opcoes.gerar(f)
       esperarPelaApi(r?.pode_gerar_em, true)
       const c = lerCota(r?.cota)
-      if (c) assistente.receberCota(c)
-      // A geração que gastou a última análise já tira o botão (a próxima daria 409), com qualquer filtro na tela.
-      if (c && c.restantes <= 0) {
+      // O custo desta geração (o do nível da conta); sem ele na resposta, fica o do GET.
+      const novoCusto = typeof r?.custo === 'number' ? lerCusto(r.custo) : undefined
+      if (novoCusto !== undefined) custo.value = novoCusto
+      if (c) {
+        ultimaCota.value = c
+        assistente.receberCota(c, novoCusto)
+      }
+      // A geração que deixou menos análises que o custo já tira o botão (a próxima daria 409), com qualquer filtro na
+      // tela: sem nenhuma, "cota esgotada"; com alguma (1 no Mais detalhado), "cota insuficiente".
+      if (c && c.restantes < custo.value) {
         disponivel.value = false
-        motivo.value = 'cota_esgotada'
+        motivo.value = c.restantes <= 0 ? 'cota_esgotada' : 'cota_insuficiente'
         mensagemCota.value = null
       }
       // Os filtros mudaram enquanto gerava: a tela é dos novos; o pedido ficou salvo para os anteriores.
@@ -270,9 +299,10 @@ export function usarGeracaoIa<C>(opcoes: OpcoesGeracaoIa<C>): GeracaoIa<C> {
       if (er.bloqueio) {
         disponivel.value = false
         motivo.value = er.bloqueio
-        if (er.bloqueio === 'cota_esgotada') {
-          mensagemCota.value = er.mensagem
-          assistente.marcarCotaEsgotada()
+        if (er.bloqueio === 'cota_esgotada' || er.bloqueio === 'cota_insuficiente') {
+          mensagemCota.value = { motivo: er.bloqueio, texto: er.mensagem }
+          // A cota e o nível são da conta: o assistente também para.
+          assistente.marcarSemCota(er.bloqueio)
         }
       } else if (k === chave.value) {
         erro.value = er
@@ -311,11 +341,20 @@ export function usarGeracaoIa<C>(opcoes: OpcoesGeracaoIa<C>): GeracaoIa<C> {
     get item() {
       return item.value
     },
+    get custo() {
+      return custo.value
+    },
+    get textoVazio() {
+      return textoVazio(opcoes.textos, custo.value)
+    },
     get bloqueio() {
       return bloqueio.value
     },
     get cotaEsgotada() {
       return cotaEsgotada.value
+    },
+    get cotaInsuficiente() {
+      return cotaInsuficiente.value
     },
     get gerando() {
       return gerando.value

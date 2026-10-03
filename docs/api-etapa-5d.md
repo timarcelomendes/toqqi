@@ -18,6 +18,10 @@ análise por resposta (`modulos.ia.servico`), `assistente.servico.sem_enderecos`
 - Modelo e estilo da conta valem para o assistente, o resumo, o parecer e os passos. A análise de cada resposta (4b) continua
   com `IA_MODELO`/`IA_ESFORCO` fixos.
 - Streaming de verdade no assistente continua fora (a tela já revela a resposta aos poucos).
+- **Decisão do Marcelo (03/10)**: o nível "Mais detalhado" (gpt-5) custa à Toqqi umas 5 vezes o "Equilibrado" (gpt-5-mini),
+  então **gasta 2 análises da cota do plano** por geração (resumo, parecer) ou pergunta ao ToqqiAI, em vez de 1; o "Rápido e
+  econômico" passa a se chamar **"Rápido"** (a economia era da Toqqi, não do cliente: todo nível gastava 1). Rápido e
+  Equilibrado continuam gastando 1. A análise de cada resposta e os passos das ações continuam fora da cota. Detalhes em §9.
 
 ## 1. Banco (migração `0013_ia_sob_demanda`, depois da `0012_crescimento`)
 - `contas`: `ia_modelo text not null default 'equilibrado'` (CHECK 'rapido' | 'equilibrado' | 'detalhado'), `ia_estilo text
@@ -41,25 +45,29 @@ Os dois funcionam igual; mudam a permissão, os dados (§2.3 e §2.4) e o format
   `{de, ate, grupo_id, so_ativos}` (mesmos tipos e validação dos filtros do `GET /painel`, inclusive o 422 de período invertido).
 - Relatórios (`relatorios.ver`): `GET /relatorios/parecer-ia?…` e `POST /relatorios/parecer-ia` com os filtros comuns dos
   relatórios `{de, ate, grupo_id, so_ativos}`.
-- `GET` → `{disponivel, motivo, cota, item, pode_gerar_em}`:
-  - `disponivel`/`motivo` como `GET /assistente`: sem IA na plataforma `motivo: "ia_indisponivel"` (e `cota: null`); conta não
-    liberada `"conta_pausada"`; cota esgotada `"cota_esgotada"`; senão `disponivel: true, motivo: null`;
+- `GET` → `{disponivel, motivo, cota, custo, item, pode_gerar_em}`:
+  - `disponivel`/`motivo` como `GET /assistente`: sem IA na plataforma `motivo: "ia_indisponivel"` (e `cota: null`, `custo: null`);
+    conta não liberada `"conta_pausada"`; nenhuma análise restante `"cota_esgotada"`; restam menos análises que o custo do nível
+    (ex.: 1 no Mais detalhado) `"cota_insuficiente"` (§9); senão `disponivel: true, motivo: null`;
+  - `custo`: as análises que uma geração gasta no nível atual da conta (1, ou 2 no Mais detalhado; §5.2);
   - `item`: o salvo para a mesma `chave` de filtros, ou `null` (vem mesmo com `disponivel: false`);
   - `pode_gerar_em`: `gerado_em` da última geração deste `tipo` na conta (qualquer chave) + 30 s, se ainda no futuro; senão `null`.
-- `POST` → 200 `{item, cota, pode_gerar_em}`. Erros, nesta ordem: 409 `ia_indisponivel` ("A IA não está disponível no
-  momento."), 409 `conta_pausada` ("A IA volta quando a assinatura estiver em dia."), 429 `aguarde` (menos de 30 s desde a última
-  geração deste tipo na conta, ou outra geração deste tipo em andamento na conta: "Aguarde {n} s para gerar de novo." com `n` ≥ 1;
-  em andamento: "Já tem um resumo sendo gerado. Aguarde alguns segundos."), 409 `sem_dados` (nenhuma resposta NPS nem CSAT no
-  recorte: "Não há respostas neste período para analisar." — não chama a IA, não gasta), 409 `cota_esgotada` (mesma mensagem do
-  assistente), 503 `ia_indisponivel` (a IA falhou; a análise volta para a cota).
+- `POST` → 200 `{item, cota, custo, pode_gerar_em}` (`custo` = o desta geração). Erros, nesta ordem: 409 `ia_indisponivel` ("A
+  IA não está disponível no momento."), 409 `conta_pausada` ("A IA volta quando a assinatura estiver em dia."), 429 `aguarde`
+  (menos de 30 s desde a última geração deste tipo na conta, ou outra geração deste tipo em andamento na conta: "Aguarde {n} s
+  para gerar de novo." com `n` ≥ 1; em andamento: "Já tem um resumo sendo gerado. Aguarde alguns segundos."), 409 `sem_dados`
+  (nenhuma resposta NPS nem CSAT no recorte: "Não há respostas neste período para analisar." — não chama a IA, não gasta), 409
+  `cota_esgotada` (mesma mensagem do assistente) ou 409 `cota_insuficiente` (§9), 503 `ia_indisponivel` (a IA falhou; as análises
+  voltam para a cota).
 - Vagas: use `assistente.limite.em_andamento` (2 por usuário, 6 no processo, sem esperar), como uma pergunta ao assistente.
-- Ordem: validação → vagas → IA disponível → conta liberada → 30 s / em andamento (trava em memória por (conta, tipo)) → dados
-  (sem dados → 409) → reservar a cota (transação curta, commit antes da IA) → chamada única (§2.6) → salvar (upsert por chave) →
-  somar tokens em `cota_tokens_*`. Falhou depois de reservar: devolve a análise, soma os tokens já gastos e responde 503.
+- Ordem: validação → vagas → IA disponível → conta liberada (o nível, o estilo e o nome da conta são lidos aqui, uma vez só) →
+  30 s / em andamento (trava em memória por (conta, tipo)) → dados (sem dados → 409) → reservar o custo do nível lido (transação
+  curta, commit antes da IA) → chamada única (§2.6, com o mesmo nível) → salvar (upsert por chave) → somar tokens em
+  `cota_tokens_*`. Falhou depois de reservar: devolve as análises reservadas, soma os tokens já gastos e responde 503.
 - `chave` canônica: `de` e `ate` ISO ou vazio, `grupo_id` ou vazio, `so_ativos` true/false (vazio = true), ex.:
   `de=2026-07-01|ate=2026-09-30|grupo=|ativos=1`. `filtros` guarda os mesmos valores em JSON.
 - `item` = `{conteudo, filtros, gerado_em, gerado_por: {id, nome} | null, modelo, modelo_rotulo, estilo}` (`conteudo` no formato
-  de §2.5; `modelo_rotulo` "Rápido e econômico" | "Equilibrado" | "Mais detalhado").
+  de §2.5; `modelo_rotulo` "Rápido" | "Equilibrado" | "Mais detalhado"; desde 03/10, "Rápido" também nos itens salvos antes).
 - Nada vai para a auditoria nem para o log além de status, tipo de falha e tokens (nunca os dados nem o texto).
 
 ### 2.2 O que vai para a IA (geral)
@@ -127,21 +135,23 @@ detratores novos e ações vencidas.
 
 ## 4. Assistente
 - O corpo da chamada (`ia_conversa.corpo_da_chamada`) passa a usar o modelo e o esforço do nível da conta (§5.2) e as
-  instruções ganham a linha do estilo (§5.3). O resto não muda.
+  instruções ganham a linha do estilo (§5.3). Desde 03/10, cada pergunta gasta o custo do nível (§9): `GET /assistente` e a
+  resposta de `POST /assistente/perguntar` trazem `custo`, e o 409 pode ser `cota_insuficiente`. O resto não muda.
 
 ## 5. Configurações › IA
 ### 5.1 Rotas
-- `GET /conta/ia` ganha `modelo`, `estilo`, `passos_acoes`, `modelos: [{valor, rotulo, descricao}]` e
-  `estilos: [{valor, rotulo, descricao}]` (textos de §5.2 e §5.3).
+- `GET /conta/ia` ganha `modelo`, `estilo`, `passos_acoes`, `modelos: [{valor, rotulo, descricao, analises}]` (`analises`: o que
+  uma geração ou pergunta gasta da cota no nível, desde 03/10) e `estilos: [{valor, rotulo, descricao}]` (textos de §5.2 e §5.3).
 - `PUT /conta/ia` aceita os campos opcionais `analise_respostas`, `modelo`, `estilo`, `passos_acoes` (pelo menos um; 422
   `dados_invalidos` se nenhum ou valor fora da lista) e devolve o estado inteiro. Auditoria `config_ia` com só os campos que mudaram.
 ### 5.2 Níveis de modelo (config, com padrões)
-| Nível | Rótulo | Descrição | Modelo | Esforço |
-|---|---|---|---|---|
-| rapido | Rápido e econômico | Respostas curtas e rápidas. | `IA_MODELO_RAPIDO` = `gpt-5-nano` | `IA_ESFORCO_RAPIDO` = `minimal` |
-| equilibrado | Equilibrado | O padrão: bom para o dia a dia. | `IA_MODELO_EQUILIBRADO` vazio = `IA_ASSISTENTE_MODELO` | `IA_ESFORCO_EQUILIBRADO` vazio = `IA_ASSISTENTE_ESFORCO` |
-| detalhado | Mais detalhado | Análises mais cuidadosas; pode demorar um pouco mais. | `IA_MODELO_DETALHADO` = `gpt-5` | `IA_ESFORCO_DETALHADO` = `low` |
-Esforço vazio = não manda `reasoning`. Todo nível gasta 1 análise por geração ou pergunta.
+| Nível | Rótulo | Descrição | Gasta | Modelo | Esforço |
+|---|---|---|---|---|---|
+| rapido | Rápido | Respostas curtas e rápidas. Gasta 1 análise da cota. | 1 | `IA_MODELO_RAPIDO` = `gpt-5-nano` | `IA_ESFORCO_RAPIDO` = `minimal` |
+| equilibrado | Equilibrado | O padrão: bom para o dia a dia. Gasta 1 análise da cota. | 1 | `IA_MODELO_EQUILIBRADO` vazio = `IA_ASSISTENTE_MODELO` | `IA_ESFORCO_EQUILIBRADO` vazio = `IA_ASSISTENTE_ESFORCO` |
+| detalhado | Mais detalhado | Análises mais cuidadosas; pode demorar mais. Gasta 2 análises da cota. | 2 | `IA_MODELO_DETALHADO` = `gpt-5` | `IA_ESFORCO_DETALHADO` = `low` |
+Esforço vazio = não manda `reasoning`. "Gasta" = análises da cota do plano por geração (resumo, parecer) ou pergunta ao ToqqiAI
+(`ia_texto.analises_do_nivel`; decisão de 03/10, §9). Até 02/10 o rápido se chamava "Rápido e econômico" e todo nível gastava 1.
 ### 5.3 Estilos
 | Estilo | Rótulo | Descrição | Linha nas instruções |
 |---|---|---|---|
@@ -154,14 +164,16 @@ Esforço vazio = não manda `reasoning`. Todo nível gasta 1 análise por geraç
 - Cartão "Resumo da IA" (ícone Sparkles) logo abaixo do `CartaoNps`, para quem vê o painel. Some com `motivo:
   "ia_indisponivel"`. Lê `GET /painel/resumo-ia` com os mesmos filtros do painel a cada troca de filtro.
 - Sem item: texto curto ("Três frases sobre o período: o que precisa melhorar, o que está funcionando e o próximo passo. Usa 1
-  análise de IA.") e botão "Gerar resumo". Com item: as 3 frases rotuladas ("Precisa melhorar", "Está funcionando", "Próximo
+  análise de IA.", com o `custo` do GET desde 03/10: "Usa 2 análises de IA." no Mais detalhado) e botão "Gerar resumo". Com
+  item: as 3 frases rotuladas ("Precisa melhorar", "Está funcionando", "Próximo
   passo") e o rodapé "Gerado em dd/mm/aaaa às hh:mm por {nome} · {modelo_rotulo}" e, depois de gerar, "Restam X de Y análises
   este mês". Botão "Gerar de novo".
 - Gerando: botão ocupado e `Carregando` "Lendo os números do período…" (até 45 s). Depois de gerar, o botão fica desabilitado
   com a contagem ("Gerar de novo em 25 s") até `pode_gerar_em`. Item salvo de outro modelo continua visível.
 - `conta_pausada`: texto "O resumo volta quando a assinatura estiver em dia." sem botão. `cota_esgotada` ou 409 do POST: a
-  mensagem da API; administrador vê o link "Configurações › IA". 409 `sem_dados`, 429 e 503: `Alerta` com a mensagem e, no 503,
-  "Tentar de novo".
+  mensagem da API; administrador vê o link "Configurações › IA". `cota_insuficiente` (§9): a mensagem da API (no GET, a mesma
+  montada com `custo` e `restantes`); quem tem `configuracoes.gerenciar` vê o link "Trocar o nível". 409 `sem_dados`, 429 e 503:
+  `Alerta` com a mensagem e, no 503, "Tentar de novo".
 ### 6.2 Relatórios
 - Botão "Parecer da IA" (Sparkles) nas ações do cabeçalho de Relatórios abre um `PainelLateral` com o parecer dos filtros
   comuns da tela (período, grupo, só ativos), mesmos estados do cartão do painel: "Resumo" (parágrafo) e "Recomendações da
@@ -217,3 +229,46 @@ Esforço vazio = não manda `reasoning`. Todo nível gasta 1 análise por geraç
   do parecer some na aba "Histórico de uma empresa" (ela não mostra os filtros comuns); no cartão vazio, "Gerar resumo" fica à
   esquerda (à direita, no pé da tela, cairia sob o botão flutuante do assistente) e o foco por teclado rola acima dele.
 - Termos de uso: o parágrafo de IA passou a listar os cinco recursos, como a Política (os dois na versão 2, vigente em 02/10/2026).
+
+## 9. Custo por nível de modelo (03/10)
+Decisão do Marcelo (§0): o "Mais detalhado" gasta 2 análises da cota do plano por geração ou pergunta; o "Rápido e
+econômico" virou "Rápido". O resto da etapa não muda.
+- **Níveis** (`core/ia_texto.py`): cada nível de `MODELOS` tem `analises` (rapido 1, equilibrado 1, detalhado 2), lido por
+  `analises_do_nivel(nivel)` (nível desconhecido = equilibrado). Rótulos e descrições como na tabela de §5.2 (cada descrição
+  termina com o que o nível gasta). `GET /conta/ia` (e o estado que o `PUT` devolve): cada item de `modelos` traz `analises`;
+  os `estilos` não.
+- **Cota** (`modulos/ia/cota.py`): `reservar(s, conta, quantidade=1)` reserva as N análises de uma vez só se `cota_usada + N
+  <= limite` (`INSERT … ON CONFLICT … DO UPDATE … WHERE cota_usada + N <= limite`; N maior que o limite inteiro nem cria a
+  linha do mês): nunca uma parte, e pedidos ao mesmo tempo não passam do limite. `Reserva.quantidade` guarda N (padrão 1) e
+  `devolver` devolve exatamente N, no mês da reserva, nunca abaixo de zero. `motivo_sem_saldo(uso, custo)`,
+  `mensagem_insuficiente(restantes, nivel)` e `erro_sem_saldo(s, conta, nivel)` montam o motivo e o 409 abaixo.
+- **Resumo, parecer e ToqqiAI**: o nível da conta é lido uma vez por pedido; a reserva gasta `analises_do_nivel(nivel)` e a IA
+  roda com esse mesmo nível (trocar o nível em Configurações › IA no meio do pedido não cobra 1 e roda o Mais detalhado, nem o
+  contrário). Qualquer falha depois de reservar devolve a mesma quantidade. O log leva o nível e as análises gastas ou devolvidas.
+- **`custo`**: `GET /painel/resumo-ia`, `GET /relatorios/parecer-ia` e `GET /assistente` trazem `custo` ao lado da `cota` (as
+  análises de uma geração ou pergunta no nível atual; `null` sem IA na plataforma, como a `cota`). Os 200 de `POST
+  /painel/resumo-ia`, `POST /relatorios/parecer-ia` e `POST /assistente/perguntar` também (`custo` = o que aquele pedido gastou).
+- **Sem saldo para o custo**: nenhuma análise restante → `cota_esgotada`, exatamente como antes (GET e 409). Restam análises,
+  mas menos que o custo (ex.: 1 no Mais detalhado) → GET `disponivel: false, motivo: "cota_insuficiente"` e POST 409
+  `cota_insuficiente` "Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou
+  aguarde o próximo mês." (no plural a partir de 2: "Restam 2 análises …"). Nada é gasto nem vai à IA. A ordem das
+  verificações não muda (conta pausada e, no resumo e no parecer, a espera de 30 s e o "sem dados" vêm antes).
+- **Fora da cota, sem mudança**: a análise de cada resposta e os passos das ações (só o teto de segurança mensal).
+- **Site**: "Como a IA escreve" mostra os rótulos e as descrições da API (nada no site escreve o nome antigo); Configurações ›
+  IA diz que o Mais detalhado usa 2; o texto do resumo e do parecer sem item usa o `custo` do GET ("Usa 1 análise de IA." /
+  "Usa 2 análises de IA."). `cota_insuficiente` bloqueia como `cota_esgotada` no cartão do painel, no parecer, no painel do
+  ToqqiAI e no store do assistente: a mensagem da API (ou a mesma frase montada com `custo` e `restantes`) no lugar do botão ou
+  da caixa e, para quem tem `configuracoes.gerenciar`, o link "Trocar o nível" (`/configuracoes/ia`). O store desliga sozinho
+  com `restantes < custo` (antes `restantes <= 0`): sem nenhuma, cota esgotada; com alguma, cota insuficiente (o que resta não
+  zera). Um 409 `cota_insuficiente` (do ToqqiAI, do resumo ou do parecer) faz o assistente ler o estado de novo, para mostrar
+  o que resta e o custo de agora.
+- **Textos**: Termos de uso ("usa 1 análise da cota de IA do plano (2 no nível Mais detalhado, que a Empresa escolhe em
+  Configurações › IA)"), ainda na versão 4 (não publicada: `VERSAO_DOCUMENTOS` e `VIGENTE_DESDE` não mudam); Ajuda (resumo,
+  parecer, modelo, cota e ToqqiAI); site (nota abaixo da tabela de planos: no Mais detalhado, cada pergunta, resumo ou parecer
+  conta como 2).
+- **Testes**: API `tests/test_ia_custo_nivel.py` (níveis, `analises` em `GET/PUT /conta/ia`, reserva de N no limite e nunca
+  parcial, reservas de 2 ao mesmo tempo com e sem a linha do mês, devolução de N no mês da reserva, resumo/parecer/pergunta no
+  Mais detalhado gastando e devolvendo 2, `cota_insuficiente` no GET e no POST com 1 restante e `cota_esgotada` com 0,
+  mensagem no plural, perguntas simultâneas, nível lido uma vez) e os ajustes de `test_ia_pareceres.py`,
+  `test_assistente.py` e `test_ia_modelo_estilo.py`; site (vitest) `etapa5dLogica`, `etapa5bLogica`, `etapa5dComponentes`,
+  `etapa5dPassosConfig`, `assistenteComponente`, `ajudaComponente` e `site`.

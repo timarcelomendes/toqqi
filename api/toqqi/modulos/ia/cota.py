@@ -1,12 +1,20 @@
 """Cota de IA do plano (etapa 5b): análises por mês do calendário de São Paulo, em `ia_uso_mensal.cota_usada`.
 
 Essencial 100, Profissional 500, Empresa 2.000; a conta em teste usa a do plano do teste e a cortesia usa
-`IA_COTA_CORTESIA`. Hoje só o assistente gasta a cota (1 análise por pergunta); a análise de cada resposta (4b) fica
-fora dela, só com o teto de segurança (`ia_uso_mensal.analises`).
+`IA_COTA_CORTESIA`. Gastam a cota as perguntas ao assistente (5b) e o resumo do painel e o parecer dos relatórios
+(5d), cada um com as análises do nível de modelo da conta (`ia_texto.analises_do_nivel`: 1 no Rápido e no
+Equilibrado, 2 no Mais detalhado, desde 03/10). A análise de cada resposta (4b) e os passos das ações ficam fora
+dela, só com o teto de segurança (`ia_uso_mensal.analises`).
 
-A reserva é atômica (`INSERT … ON CONFLICT … DO UPDATE … WHERE cota_usada < limite`): duas perguntas ao mesmo tempo
-não passam do limite. Quem reserva faz commit antes da conversa (que pode levar até 60 s) e, se ela falhar, devolve
-a análise no mesmo mês da reserva, mesmo que o mês já tenha virado.
+A reserva de N análises é atômica (`INSERT … ON CONFLICT … DO UPDATE … WHERE cota_usada + N <= limite`): passa
+inteira ou não passa (nunca só uma parte), e pedidos ao mesmo tempo não passam do limite. A `Reserva` guarda a
+quantidade. Quem reserva faz commit antes da IA (que pode levar até 60 s) e, se ela falhar, devolve exatamente as N
+análises no mês da reserva, mesmo que o mês já tenha virado.
+
+Sem saldo para o custo do nível (`motivo_sem_saldo`): nenhuma análise restante → "cota_esgotada" (como antes);
+restam algumas, mas menos que o custo (ex.: resta 1 e o Mais detalhado gasta 2) → "cota_insuficiente", com a
+mensagem que sugere o Equilibrado (`mensagem_insuficiente`). `erro_sem_saldo` monta o 409 de quando a reserva não
+passou.
 """
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -16,21 +24,24 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from toqqi.core import relogio
+from toqqi.core import ia_texto, relogio
 from toqqi.core.config import config
 from toqqi.core.db import em_conta
+from toqqi.core.errors import AppError
 from toqqi.modelos import Conta, IaUsoMensal
 
 COTA_PLANO = {"essencial": 100, "profissional": 500, "empresa": 2000}
 PLANO_PADRAO = "profissional"
+MSG_ESGOTADA = "O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º."
 
 
 @dataclass(frozen=True)
 class Reserva:
     conta_id: int
-    mes: date  # dia 1 do mês (São Paulo) em que a análise foi gasta
+    mes: date  # dia 1 do mês (São Paulo) em que as análises foram gastas
     usadas: int = 0  # `cota_usada` logo depois da reserva
     limite: int = 0  # o limite do mês na hora da reserva
+    quantidade: int = 1  # análises reservadas (o custo do nível): a devolução volta exatamente estas
 
 
 def mes_atual() -> date:
@@ -53,19 +64,50 @@ def estado(s: Session, conta: Conta) -> dict:
     return {"usadas": usadas, "limite": maximo, "restantes": max(0, maximo - usadas), "mes": mes.strftime("%Y-%m")}
 
 
-def reservar(s: Session, conta: Conta) -> Reserva | None:
-    """Gasta 1 análise do mês, se houver saldo (atômico). None = cota esgotada."""
+def reservar(s: Session, conta: Conta, quantidade: int = 1) -> Reserva | None:
+    """Gasta `quantidade` análises do mês se todas couberem no limite (atômico; nunca só uma parte). None = sem saldo
+    para elas, e nada foi gasto (`erro_sem_saldo` diz se a cota acabou ou se não dá para este custo)."""
+    if quantidade < 1:
+        raise ValueError("a reserva precisa de pelo menos 1 análise")
     maximo = limite(conta)
-    if maximo <= 0:
+    if quantidade > maximo:
         return None
     mes = mes_atual()
     linha = s.execute(
-        insert(IaUsoMensal).values(conta_id=conta.id, mes=mes, cota_usada=1)
+        insert(IaUsoMensal).values(conta_id=conta.id, mes=mes, cota_usada=quantidade)
         .on_conflict_do_update(index_elements=[IaUsoMensal.conta_id, IaUsoMensal.mes],
-                               set_={"cota_usada": IaUsoMensal.cota_usada + 1},
-                               where=IaUsoMensal.cota_usada < maximo)
+                               set_={"cota_usada": IaUsoMensal.cota_usada + quantidade},
+                               where=IaUsoMensal.cota_usada + quantidade <= maximo)
         .returning(IaUsoMensal.cota_usada)).first()
-    return Reserva(conta.id, mes, linha[0], maximo) if linha is not None else None
+    return Reserva(conta.id, mes, linha[0], maximo, quantidade) if linha is not None else None
+
+
+def motivo_sem_saldo(uso: dict, custo: int) -> str | None:
+    """Por que não dá para gastar `custo` análises com a cota `uso` (de `estado`): "cota_esgotada" sem nenhuma
+    restante, "cota_insuficiente" com menos que o custo (ex.: resta 1 e o nível gasta 2), None quando cabe."""
+    if uso["restantes"] <= 0:
+        return "cota_esgotada"
+    if uso["restantes"] < custo:
+        return "cota_insuficiente"
+    return None
+
+
+def mensagem_insuficiente(restantes: int, nivel: str | None) -> str:
+    """"Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou aguarde
+    o próximo mês." (no plural a partir de 2)."""
+    resta = "Resta 1 análise" if restantes == 1 else f"Restam {restantes} análises"
+    padrao = ia_texto.rotulo_do_nivel(ia_texto.NIVEL_PADRAO)
+    return (f"{resta} e o nível {ia_texto.rotulo_do_nivel(nivel)} gasta {ia_texto.analises_do_nivel(nivel)}. "
+            f"Troque para o {padrao} em Configurações › IA ou aguarde o próximo mês.")
+
+
+def erro_sem_saldo(s: Session, conta: Conta, nivel: str | None) -> AppError:
+    """O 409 de quando a reserva do custo do nível não passou, pela cota lida de novo: `cota_insuficiente` se ainda
+    restam análises (menos que o custo); senão `cota_esgotada`, como antes."""
+    uso = estado(s, conta)
+    if motivo_sem_saldo(uso, ia_texto.analises_do_nivel(nivel)) == "cota_insuficiente":
+        return AppError(409, "cota_insuficiente", mensagem_insuficiente(uso["restantes"], nivel))
+    return AppError(409, "cota_esgotada", MSG_ESGOTADA)
 
 
 def estado_da_reserva(reserva: Reserva) -> dict:
@@ -84,11 +126,12 @@ def _sessao(reserva: Reserva, s: Session | None):
 
 
 def devolver(reserva: Reserva, s: Session | None = None) -> None:
-    """Devolve a análise reservada (no mês da reserva). Sem `s`, numa transação própria."""
+    """Devolve as análises reservadas (`reserva.quantidade`, no mês da reserva; nunca abaixo de zero). Sem `s`, numa
+    transação própria."""
     with _sessao(reserva, s) as sessao:
         sessao.execute(update(IaUsoMensal)
                        .where(IaUsoMensal.conta_id == reserva.conta_id, IaUsoMensal.mes == reserva.mes)
-                       .values(cota_usada=func.greatest(IaUsoMensal.cota_usada - 1, 0)))
+                       .values(cota_usada=func.greatest(IaUsoMensal.cota_usada - reserva.quantidade, 0)))
 
 
 def somar_tokens(reserva: Reserva, entrada: int, saida: int, s: Session | None = None) -> None:

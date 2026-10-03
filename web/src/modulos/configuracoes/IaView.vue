@@ -3,7 +3,7 @@
 // IA"), o uso do mês contra o teto de segurança, a fila, o "analisar os últimos 90 dias" e o que vai para a IA.
 // Etapa 5b: a cota de IA do plano (cada pergunta ao assistente usa 1 análise).
 // Etapa 5d: "Como a IA escreve" (modelo, estilo e os passos sugeridos nas ações); o resumo do painel e o parecer dos
-// relatórios também gastam a cota.
+// relatórios também gastam a cota. Desde 03/10, o nível Mais detalhado gasta 2 análises por pergunta, resumo ou parecer.
 import { computed, onMounted, ref, watch } from 'vue'
 import { Gauge, History, ShieldCheck, Sparkles } from 'lucide-vue-next'
 import { ApiError, iaApi, mensagemDoErro, type ConfigIa, type CotaIa } from '@/api'
@@ -102,8 +102,8 @@ async function mudarAnalise(ligar: boolean) {
 
 const mes = computed(() => (dados.value ? formatarMes(dados.value.mes, 'longo') : ''))
 /**
- * Etapa 5b: cota do plano (só o assistente gasta, por enquanto). Se o assistente recebeu uma cota do mesmo mês depois
- * da leitura desta tela, vale a dele (a mais recente).
+ * Etapa 5b: cota do plano (gasta pelo ToqqiAI, pelo resumo do painel e pelo parecer dos relatórios). Se o assistente
+ * recebeu uma cota do mesmo mês depois da leitura desta tela, vale a dele (a mais recente).
  */
 const cota = computed(() => {
   const daTela = dados.value?.cota ?? null
@@ -175,8 +175,8 @@ onMounted(carregar)
         </p>
         <Medidor :valor="cota.usadas" :maximo="cota.limite" rotulo="Análises da cota do plano usadas neste mês" :texto="textoCota" />
         <p class="text-sm text-texto-suave">
-          Cada pergunta ao ToqqiAI, cada resumo do painel e cada parecer dos relatórios usam 1 análise. A análise de cada resposta e os passos
-          das ações não entram nesta conta.
+          Cada pergunta ao ToqqiAI, cada resumo do painel e cada parecer dos relatórios usam 1 análise, ou 2 no modelo Mais detalhado. A
+          análise de cada resposta e os passos das ações não entram nesta conta.
         </p>
         <Alerta v-if="cota.limite > 0 && cota.restantes <= 0" tom="atencao">
           A cota deste mês acabou: o ToqqiAI, o resumo do painel e o parecer dos relatórios voltam no dia 1º.

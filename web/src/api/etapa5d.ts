@@ -1,6 +1,7 @@
 // Endpoints da etapa 5d (docs/api-etapa-5d.md): resumo do painel e parecer dos relatórios, sob demanda (cada geração
-// gasta 1 análise da cota do plano; se falhar, a API devolve). Os passos das ações vêm na própria ação (`acoesApi`);
-// modelo, estilo e "Sugerir passos nas ações" ficam em `iaApi.atualizar` (Configurações › IA).
+// gasta da cota do plano o custo do nível da conta, 1 análise ou 2 no Mais detalhado; se falhar, a API devolve). Os
+// passos das ações vêm na própria ação (`acoesApi`); modelo, estilo e "Sugerir passos nas ações" ficam em
+// `iaApi.atualizar` (Configurações › IA).
 import { api } from './cliente'
 import type {
   ConteudoParecerIa,
@@ -24,12 +25,12 @@ export function corpoGeracaoIa(f: FiltrosGeracaoIa): CorpoGeracaoIa {
 }
 
 export const resumoIaApi = {
-  /** `painel.ver`. O salvo para os mesmos filtros do painel, a disponibilidade, a cota e a espera de 30 s. */
+  /** `painel.ver`. O salvo para os mesmos filtros do painel, a disponibilidade, a cota, o custo e a espera de 30 s. */
   obter: (f: FiltrosGeracaoIa = {}, sinal?: AbortSignal) =>
     api.get<EstadoGeracaoIa<ConteudoResumoIa>>('/painel/resumo-ia', { query: query(f), sinal }),
   /**
-   * 409 `ia_indisponivel`, `conta_pausada`, `sem_dados` e `cota_esgotada`; 429 `aguarde` (30 s desde a última geração na
-   * conta, ou outra em andamento); 503 `ia_indisponivel` (a análise volta para a cota).
+   * 409 `ia_indisponivel`, `conta_pausada`, `sem_dados`, `cota_esgotada` e `cota_insuficiente`; 429 `aguarde` (30 s desde a
+   * última geração na conta, ou outra em andamento); 503 `ia_indisponivel` (as análises voltam para a cota).
    */
   gerar: (f: FiltrosGeracaoIa) => api.post<ResultadoGeracaoIa<ConteudoResumoIa>>('/painel/resumo-ia', corpoGeracaoIa(f)),
 }

@@ -1,5 +1,6 @@
-"""Resumo do painel e parecer dos relatórios (etapa 5d): IA sob demanda que gasta 1 análise da cota do plano por
-geração, como uma pergunta ao assistente (a que falha devolve).
+"""Resumo do painel e parecer dos relatórios (etapa 5d): IA sob demanda que gasta da cota do plano, por geração, as
+análises do nível de modelo da conta (`ia_texto.analises_do_nivel`: 1, ou 2 no Mais detalhado), como uma pergunta
+ao assistente (a que falha devolve as mesmas).
 
 Os dois funcionam igual; o que muda (dados, instruções, formato e limpeza) vem num `Tipo`: `painel.resumo_ia.TIPO`
 e `relatorios.parecer_ia.TIPO`. As permissões ficam nas rotas (`painel.ver` e `relatorios.ver`).
@@ -8,20 +9,23 @@ Recorte (`Recorte`): os filtros da tela (`de`, `ate`, `grupo_id`, `so_ativos`; v
 `de=AAAA-MM-DD|ate=AAAA-MM-DD|grupo=ID|ativos=1` (vazio quando não há) e os mesmos valores em JSON (`filtros`). O
 último resumo/parecer de cada chave fica em `ia_pareceres` até alguém gerar de novo (upsert pela chave).
 
-GET (`estado`): {disponivel, motivo, cota, item, pode_gerar_em}. `disponivel`/`motivo` como GET /assistente (sem IA na
-plataforma: "ia_indisponivel" e `cota` null; conta não liberada: "conta_pausada"; cota esgotada: "cota_esgotada");
-`item` = o salvo para a chave (vem mesmo sem IA); `pode_gerar_em` = `gerado_em` da última geração do tipo na conta
-(qualquer chave) + 30 s, se ainda no futuro.
+GET (`estado`): {disponivel, motivo, cota, custo, item, pode_gerar_em}. `disponivel`/`motivo` como GET /assistente
+(sem IA na plataforma: "ia_indisponivel", `cota` e `custo` null; conta não liberada: "conta_pausada"; nenhuma análise
+restante: "cota_esgotada"; restam menos que o custo do nível: "cota_insuficiente"); `custo` = as análises de uma
+geração no nível da conta; `item` = o salvo para a chave (vem mesmo sem IA); `pode_gerar_em` = `gerado_em` da última
+geração do tipo na conta (qualquer chave) + 30 s, se ainda no futuro.
 
 POST (`gerar`), nesta ordem: validação → vagas (`assistente.limite.em_andamento`: 2 por usuário → 429 `aguarde`; 6 no
-processo → 503, sem esperar) → IA disponível (409 `ia_indisponivel`) → conta liberada (409 `conta_pausada`) → em
-andamento (trava em memória do processo por (conta, tipo): 429 `aguarde`) e 30 s desde a última geração do tipo na
-conta (pelo `gerado_em` no banco: 429 `aguarde` com os segundos que faltam, 1 ou mais) → dados (nenhuma resposta NPS
-nem CSAT no recorte: 409 `sem_dados`, sem chamar a IA nem gastar) → reservar a cota (transação curta, commit antes
-da IA; sem saldo: 409 `cota_esgotada`) → chamada única (`ia_texto.gerar`, nível e estilo da conta, fora de transação)
-→ limpeza (§2.5) → salvar → somar os tokens em `cota_tokens_*`. Falhou depois de reservar (inclusive texto
-obrigatório vazio depois da limpeza): devolve a análise, soma os tokens já gastos e responde 503 `ia_indisponivel`.
-As vagas e a trava voltam sempre (finally). Só uma geração bem-sucedida conta para os 30 s.
+processo → 503, sem esperar) → IA disponível (409 `ia_indisponivel`) → conta liberada (409 `conta_pausada`; o nível,
+o estilo e o nome da conta são lidos aqui, uma vez só) → em andamento (trava em memória do processo por (conta, tipo):
+429 `aguarde`) e 30 s desde a última geração do tipo na conta (pelo `gerado_em` no banco: 429 `aguarde` com os
+segundos que faltam, 1 ou mais) → dados (nenhuma resposta NPS nem CSAT no recorte: 409 `sem_dados`, sem chamar a IA
+nem gastar) → reservar o custo do nível lido (transação curta, commit antes da IA; sem saldo: 409 `cota_esgotada`
+ou `cota_insuficiente`) → chamada única (`ia_texto.gerar`, com o mesmo nível e o estilo, fora de transação) →
+limpeza (§2.5) → salvar → somar os tokens em `cota_tokens_*`. Falhou depois de reservar (inclusive texto obrigatório
+vazio depois da limpeza): devolve as análises reservadas, soma os tokens já gastos e responde 503
+`ia_indisponivel`. As vagas e a trava voltam sempre (finally). Só uma geração bem-sucedida conta para os 30 s. O
+200 traz {item, cota, custo, pode_gerar_em} (`custo` = o desta geração).
 
 Limpeza depois da IA: sem controles, sem `**` e sem endereços (`assistente.servico.sem_enderecos`), uma linha por
 texto, cortado com "…" (`ia.cortar`).
@@ -47,7 +51,7 @@ from toqqi.core.log_seguro import descrever_erro
 from toqqi.modelos import Conta, IaParecer, Usuario
 from toqqi.modulos.assinatura.regras import liberada
 from toqqi.modulos.assistente.limite import MAX_SIMULTANEAS, em_andamento
-from toqqi.modulos.assistente.servico import MSG_COTA, sem_enderecos
+from toqqi.modulos.assistente.servico import sem_enderecos
 from toqqi.modulos.ia import cota
 from toqqi.modulos.painel.servico import _validar_periodo
 
@@ -165,21 +169,23 @@ def _item(s: Session, conta_id: int, tipo: str, chave: str) -> dict | None:
 
 
 def estado(ctx: Contexto, tipo: Tipo, recorte: Recorte) -> dict:
-    """GET: {disponivel, motivo, cota, item, pode_gerar_em}."""
+    """GET: {disponivel, motivo, cota, custo, item, pode_gerar_em}."""
     _validar_periodo(recorte.de, recorte.ate)
     with em_conta(ctx.conta_id) as s:
         conta = s.get(Conta, ctx.conta_id)
         item = _item(s, ctx.conta_id, tipo.nome, recorte.chave)
         pode = _pode_gerar_em(_ultima_geracao(s, ctx.conta_id, tipo.nome), relogio.agora())
         uso = cota.estado(s, conta) if ia.disponivel() else None
+        custo = ia_texto.analises_do_nivel(conta.ia_modelo) if uso is not None else None
         livre = liberada(conta)
-    base = {"cota": uso, "item": item, "pode_gerar_em": pode}
+    base = {"cota": uso, "custo": custo, "item": item, "pode_gerar_em": pode}
     if uso is None:
         return {"disponivel": False, "motivo": "ia_indisponivel", **base}
     if not livre:
         return {"disponivel": False, "motivo": "conta_pausada", **base}
-    if uso["restantes"] <= 0:
-        return {"disponivel": False, "motivo": "cota_esgotada", **base}
+    sem_saldo = cota.motivo_sem_saldo(uso, custo)
+    if sem_saldo:
+        return {"disponivel": False, "motivo": sem_saldo, **base}
     return {"disponivel": True, "motivo": None, **base}
 
 
@@ -207,6 +213,8 @@ def _gerar(ctx: Contexto, tipo: Tipo, recorte: Recorte) -> dict:
     with em_conta(ctx.conta_id) as s:
         conta = s.get(Conta, ctx.conta_id)
         livre = liberada(conta)
+        # o nível é lido uma vez só: a reserva gasta o custo dele e a chamada usa o mesmo modelo (trocar o nível no
+        # meio não cobra 1 e roda o Mais detalhado)
         nome_conta, nivel, estilo = conta.nome, conta.ia_modelo, conta.ia_estilo
     if not livre:
         raise AppError(409, "conta_pausada", MSG_PAUSADA)
@@ -225,9 +233,10 @@ def _gerar(ctx: Contexto, tipo: Tipo, recorte: Recorte) -> dict:
         if dados is None:
             raise AppError(409, "sem_dados", MSG_SEM_DADOS)
         with em_conta(ctx.conta_id) as s:
-            reserva = cota.reservar(s, s.get(Conta, ctx.conta_id))
+            conta = s.get(Conta, ctx.conta_id)
+            reserva = cota.reservar(s, conta, ia_texto.analises_do_nivel(nivel))
             if reserva is None:
-                raise AppError(409, "cota_esgotada", MSG_COTA)
+                raise cota.erro_sem_saldo(s, conta, nivel)
         instrucoes = ia_texto.com_estilo(tipo.instrucoes(nome_conta, hoje), estilo)
         return _chamar_e_salvar(ctx, tipo, recorte, reserva, instrucoes, dados, nivel, estilo)
     finally:
@@ -236,7 +245,8 @@ def _gerar(ctx: Contexto, tipo: Tipo, recorte: Recorte) -> dict:
 
 def _chamar_e_salvar(ctx: Contexto, tipo: Tipo, recorte: Recorte, reserva: cota.Reserva, instrucoes: str,
                      dados: dict, nivel: str, estilo: str) -> dict:
-    """Com a análise reservada: chamada, limpeza e gravação. Qualquer falha devolve a análise com os tokens gastos."""
+    """Com as análises reservadas: chamada, limpeza e gravação. Qualquer falha devolve as análises (as mesmas da
+    reserva) com os tokens gastos."""
     tokens: tuple[int, int] | None = None
     try:
         bruto, entrada, saida, _modelo = ia_texto.gerar(tipo.nome_formato, instrucoes, dados, tipo.esquema, nivel)
@@ -247,23 +257,24 @@ def _chamar_e_salvar(ctx: Contexto, tipo: Tipo, recorte: Recorte, reserva: cota.
         gastos = tokens or (getattr(falha, "tokens_entrada", 0), getattr(falha, "tokens_saida", 0))
         _devolver(ctx, reserva, gastos)
         nivel_log = logging.ERROR if falha.tipo == "configuracao" else logging.WARNING
-        log.log(nivel_log, "IA sob demanda: falha %s (%s) no %s da conta %s; análise devolvida (tokens=%d/%d).%s",
-                falha.tipo, falha.detalhe, tipo.nome, ctx.conta_id, *gastos,
+        log.log(nivel_log, "IA sob demanda: falha %s (%s) no %s da conta %s; análises devolvidas: %d "
+                "(tokens=%d/%d).%s", falha.tipo, falha.detalhe, tipo.nome, ctx.conta_id, reserva.quantidade, *gastos,
                 " Confira OPENAI_API_KEY e os modelos dos níveis (IA_MODELO_*)." if falha.tipo == "configuracao"
                 else "")
         raise AppError(503, "ia_indisponivel", tipo.msg_falha) from None
     except Exception as erro:
         gastos = tokens or (0, 0)
         _devolver(ctx, reserva, gastos)
-        log.error("IA sob demanda: erro inesperado no %s da conta %s; análise devolvida (tokens=%d/%d, %s).",
-                  tipo.nome, ctx.conta_id, *gastos, descrever_erro(erro))
+        log.error("IA sob demanda: erro inesperado no %s da conta %s; análises devolvidas: %d (tokens=%d/%d, %s).",
+                  tipo.nome, ctx.conta_id, reserva.quantidade, *gastos, descrever_erro(erro))
         # §2.1: falhou depois de reservar → 503 (a tela oferece "Tentar de novo"); o detalhe fica só no log
         raise AppError(503, "ia_indisponivel", tipo.msg_falha) from None
     # pronto e salvo: daqui em diante, a contabilidade não derruba a resposta
     _somar_tokens(ctx, reserva, tokens)
-    log.info("IA sob demanda: %s gerado na conta %s (nível %s, tokens=%d/%d).", tipo.nome, ctx.conta_id, nivel,
-             *tokens)
-    return {"item": item, "cota": _cota_depois(ctx, reserva),
+    log.info("IA sob demanda: %s gerado na conta %s (nível %s, análises=%d, tokens=%d/%d).", tipo.nome,
+             ctx.conta_id, nivel, reserva.quantidade, *tokens)
+    # `custo`: o desta geração (o nível lido no começo), que é o da próxima enquanto ninguém trocar o nível
+    return {"item": item, "cota": _cota_depois(ctx, reserva), "custo": reserva.quantidade,
             "pode_gerar_em": item["gerado_em"] + INTERVALO}
 
 

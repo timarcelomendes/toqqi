@@ -123,7 +123,7 @@ async function abrirResultado(navegar: Navegar, e: MouseEvent, r: ResultadoAjuda
   irParaSecao(r.secao.id)
 }
 
-/** "Pergunte ao ToqqiAI": abre o chat com o que foi procurado na caixa de texto (sem enviar: cada pergunta gasta 1 análise). */
+/** "Pergunte ao ToqqiAI": abre o chat com o que foi procurado na caixa de texto (sem enviar: cada pergunta gasta análises da cota). */
 function perguntarAoAssistente(texto?: string) {
   assistente.abrir(texto)
 }

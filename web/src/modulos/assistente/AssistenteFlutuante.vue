@@ -38,7 +38,13 @@ let consulta: MediaQueryList | null = null
 const aoMudarTela = () => (telaCheia.value = !!consulta && !consulta.matches)
 
 const cota = computed(() => assistente.cota)
-const explicacao = computed(() => explicacaoIndisponivel(assistente.disponivel, assistente.estado?.motivo))
+const explicacao = computed(() =>
+  explicacaoIndisponivel(assistente.disponivel, assistente.estado?.motivo, {
+    mensagem: assistente.mensagemCota,
+    restantes: assistente.cota?.restantes,
+    custo: assistente.custo,
+  }),
+)
 const motivo = computed(() => assistente.estado?.motivo ?? null)
 const tamanho = computed(() => assistente.rascunho.length)
 const podeEnviar = computed(() => assistente.disponivel && !assistente.enviando && !!assistente.rascunho.trim())
@@ -175,8 +181,8 @@ watch(
 )
 
 // Um controle com o foco desligou ou sumiu enquanto a pergunta ia ou voltava: a caixa que desliga com a resposta que
-// gastou a última análise (ou com o 409 de cota esgotada e conta pausada), o botão de enviar, "Tentar de novo". O foco
-// iria para o <body>: vai para a caixa, se ela estiver ligada, ou para o painel.
+// deixou menos análises que o custo de uma pergunta (ou com o 409 de cota esgotada, cota insuficiente e conta pausada),
+// o botão de enviar, "Tentar de novo". O foco iria para o <body>: vai para a caixa, se ela estiver ligada, ou para o painel.
 watch([() => assistente.disponivel, () => assistente.enviando], async () => {
   const antes = document.activeElement
   if (!assistente.aberto || !painel.value || !(antes instanceof HTMLElement) || antes === painel.value || !painel.value.contains(antes)) return
@@ -386,6 +392,9 @@ onBeforeUnmount(() => {
           {{ explicacao }}
           <template v-if="motivo === 'cota_esgotada' && sessao.pode('configuracoes.gerenciar')">
             <RouterLink to="/configuracoes/ia" class="link mt-1 block">Ver uso em Configurações › IA</RouterLink>
+          </template>
+          <template v-else-if="motivo === 'cota_insuficiente' && sessao.pode('configuracoes.gerenciar')">
+            <RouterLink to="/configuracoes/ia" class="link mt-1 block" data-link-trocar-nivel>Trocar o nível</RouterLink>
           </template>
           <template v-else-if="motivo === 'conta_pausada' && sessao.pode('assinatura.gerenciar')">
             <RouterLink to="/assinatura" class="link mt-1 block">Ver assinatura</RouterLink>

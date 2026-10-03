@@ -13,11 +13,13 @@ from toqqi.core.config import Config, config
 
 pytestmark = pytest.mark.usefixtures("relogio_estavel")
 CHAVE = "sk-teste-0123456789abcdef"
-MODELOS = [
-    {"valor": "rapido", "rotulo": "Rápido e econômico", "descricao": "Respostas curtas e rápidas."},
-    {"valor": "equilibrado", "rotulo": "Equilibrado", "descricao": "O padrão: bom para o dia a dia."},
+MODELOS = [  # 03/10: "Rápido" (era "Rápido e econômico") e o custo na cota de cada nível
+    {"valor": "rapido", "rotulo": "Rápido", "descricao": "Respostas curtas e rápidas. Gasta 1 análise da cota.",
+     "analises": 1},
+    {"valor": "equilibrado", "rotulo": "Equilibrado",
+     "descricao": "O padrão: bom para o dia a dia. Gasta 1 análise da cota.", "analises": 1},
     {"valor": "detalhado", "rotulo": "Mais detalhado",
-     "descricao": "Análises mais cuidadosas; pode demorar um pouco mais."},
+     "descricao": "Análises mais cuidadosas; pode demorar mais. Gasta 2 análises da cota.", "analises": 2},
 ]
 ESTILOS = [
     {"valor": "objetiva", "rotulo": "Objetiva", "descricao": "Frases curtas, só o essencial."},
@@ -43,7 +45,7 @@ def eventos_config_ia(client, h) -> list[dict]:
 def test_get_com_modelo_estilo_passos_e_opcoes(client, admin):
     r = client.get(f"{API}/conta/ia", headers=admin["h"]).json()
     assert (r["modelo"], r["estilo"], r["passos_acoes"]) == ("equilibrado", "equilibrada", True)
-    assert r["modelos"] == MODELOS and r["estilos"] == ESTILOS
+    assert r["modelos"] == MODELOS and r["estilos"] == ESTILOS  # só os níveis têm `analises`
     assert {"disponivel", "provedor", "analise_respostas", "cota"} <= set(r)
 
 
@@ -117,6 +119,7 @@ def test_niveis_com_os_padroes_da_configuracao(monkeypatch):
     corpo = ia_texto.aplicar_nivel({"model": "x", "reasoning": {"effort": "low"}}, "rapido")
     assert corpo == {"model": "gpt-5-nano"}  # esforço vazio: sem `reasoning`
     assert ia_texto.rotulo_do_nivel("detalhado") == "Mais detalhado" and ia_texto.rotulo_do_nivel("?") == "Equilibrado"
+    assert ia_texto.rotulo_do_nivel("rapido") == "Rápido"
 
 
 def test_linha_do_estilo():

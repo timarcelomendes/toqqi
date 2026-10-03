@@ -1552,11 +1552,11 @@
             {
               "tipo": "lista",
               "itens": [
-                "Cada geração usa 1 análise da cota de IA do plano. Se der erro, a análise volta para a cota.",
+                "Cada geração usa 1 análise da cota de IA do plano, ou 2 no modelo “Mais detalhado”. Se der erro, as análises voltam para a cota.",
                 "O resumo fica salvo para aqueles filtros até alguém gerar de novo. O rodapé mostra quando ele foi gerado, por quem e com qual modelo.",
                 "Depois de gerar, “Gerar de novo” espera 30 segundos, e a espera vale para a conta toda.",
                 "Sem respostas de NPS nem de CSAT no período, o Toqqi avisa e não gasta a análise.",
-                "Com a assinatura pausada ou a cota do mês esgotada, o cartão explica e não gera."
+                "Com a assinatura pausada, a cota do mês esgotada ou, no “Mais detalhado”, só 1 análise restante, o cartão explica e não gera. Com 1 restante, dá para trocar para o “Equilibrado” em Configurações › IA."
               ]
             },
             {
@@ -2090,7 +2090,7 @@
             {
               "tipo": "lista",
               "itens": [
-                "Cada parecer usa 1 análise da cota de IA do plano; se der erro, a análise volta.",
+                "Cada parecer usa 1 análise da cota de IA do plano, ou 2 no modelo “Mais detalhado”; se der erro, as análises voltam.",
                 "O parecer fica salvo para aqueles filtros até alguém gerar de novo. Entre uma geração e outra, a conta espera 30 segundos.",
                 "Vão para a IA só números e nomes de empresas e de responsáveis, nunca comentários nem dados dos contatos.",
                 "O botão não aparece se a inteligência artificial não estiver ligada na plataforma."
@@ -3235,9 +3235,10 @@
             "modelo",
             "estilo",
             "como a ia escreve",
-            "rápido e econômico",
+            "rápido",
             "equilibrado",
             "mais detalhado",
+            "2 análises",
             "objetiva",
             "criativa",
             "tom da ia",
@@ -3252,7 +3253,7 @@
             {
               "tipo": "lista",
               "itens": [
-                "Modelo: “Rápido e econômico” (respostas curtas e rápidas), “Equilibrado” (o padrão, bom para o dia a dia) ou “Mais detalhado” (análises mais cuidadosas, que podem demorar um pouco mais). Todos usam 1 análise por pergunta ou por geração.",
+                "Modelo: “Rápido” (respostas curtas e rápidas), “Equilibrado” (o padrão, bom para o dia a dia) ou “Mais detalhado” (análises mais cuidadosas, que podem demorar mais). O Rápido e o Equilibrado usam 1 análise da cota por pergunta ou por geração; o Mais detalhado usa 2.",
                 "Estilo: “Objetiva” (frases curtas, só o essencial), “Equilibrada” (claro e cordial, o padrão) ou “Criativa” (tom mais próximo e ideias práticas). Em nenhum estilo a IA inventa números.",
                 "“Sugerir passos nas ações”: ligado, a ação criada a partir de uma resposta ganha até 3 passos sugeridos pela IA, sem gastar a cota do plano. Desligado, as ações que ainda esperavam os passos ficam sem eles."
               ]
@@ -3281,12 +3282,13 @@
             "dia 1",
             "resumo do início",
             "parecer",
-            "passos das ações"
+            "passos das ações",
+            "mais detalhado"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "A seção “Cota de IA do plano” mostra quantas análises você usou no mês, como “120 de 500”, e renova no dia 1º. Cada pergunta ao ToqqiAI, cada resumo do Início e cada parecer dos Relatórios usam 1 análise (se der erro, ela volta). A análise automática de cada resposta e os passos das ações não entram nessa conta: contam só no limite mensal de segurança. A cota é de 100 análises no Essencial, 500 no Profissional e 2.000 no Empresa."
+              "texto": "A seção “Cota de IA do plano” mostra quantas análises você usou no mês, como “120 de 500”, e renova no dia 1º. Cada pergunta ao ToqqiAI, cada resumo do Início e cada parecer dos Relatórios usam 1 análise, ou 2 no modelo “Mais detalhado” (se der erro, elas voltam). No “Mais detalhado”, com só 1 análise restante, o ToqqiAI, o resumo e o parecer avisam e esperam: troque para o “Equilibrado” ou aguarde o próximo mês. A análise automática de cada resposta e os passos das ações não entram nessa conta: contam só no limite mensal de segurança. A cota é de 100 análises no Essencial, 500 no Profissional e 2.000 no Empresa."
             },
             {
               "tipo": "paragrafo",
@@ -4314,12 +4316,13 @@
             "limite de ia",
             "ia do plano",
             "quanto custa uma pergunta",
-            "gasta"
+            "gasta",
+            "mais detalhado"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Cada pergunta ao ToqqiAI usa 1 análise da cota mensal do seu plano: 100 no Essencial, 500 no Profissional e 2.000 no Empresa. No alto do chat, aparece “Restam X de Y análises este mês”."
+              "texto": "Cada pergunta ao ToqqiAI usa 1 análise da cota mensal do seu plano: 100 no Essencial, 500 no Profissional e 2.000 no Empresa. No modelo “Mais detalhado”, que o administrador escolhe em Configurações › IA, cada pergunta usa 2. No alto do chat, aparece “Restam X de Y análises este mês”."
             },
             {
               "tipo": "lista",
@@ -4327,7 +4330,8 @@
                 "Pergunta que dá erro e fica sem resposta não gasta a análise: ela é devolvida.",
                 "Se o ToqqiAI responde, a análise foi usada, mesmo quando a resposta é recusar um assunto.",
                 "A cota renova no dia 1º de cada mês.",
-                "O resumo do Início e o parecer dos Relatórios usam a mesma cota: 1 análise por geração.",
+                "O resumo do Início e o parecer dos Relatórios usam a mesma cota: 1 análise por geração, ou 2 no “Mais detalhado”.",
+                "No “Mais detalhado”, com só 1 análise restante, o chat avisa e não envia a pergunta: troque para o “Equilibrado” em Configurações › IA ou aguarde o próximo mês.",
                 "A análise automática de cada comentário e os passos das ações não entram nesta conta, e o interruptor “Analisar comentários com IA” não liga nem desliga o ToqqiAI."
               ]
             },

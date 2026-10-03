@@ -258,10 +258,11 @@ describe('Plano de ação: "Passos sugeridos pela IA"', () => {
 // ── Configurações › IA: "Como a IA escreve" (§6.4) ──────────────────────────
 
 describe('Configurações › IA: "Como a IA escreve"', () => {
+  // Os textos da API desde 03/10: "Rápido" (era "Rápido e econômico") e o custo de cada nível na cota.
   const MODELOS = [
-    { valor: 'rapido', rotulo: 'Rápido e econômico', descricao: 'Respostas curtas e rápidas.' },
-    { valor: 'equilibrado', rotulo: 'Equilibrado', descricao: 'O padrão: bom para o dia a dia.' },
-    { valor: 'detalhado', rotulo: 'Mais detalhado', descricao: 'Análises mais cuidadosas; pode demorar um pouco mais.' },
+    { valor: 'rapido', rotulo: 'Rápido', descricao: 'Respostas curtas e rápidas. Gasta 1 análise da cota.', analises: 1 },
+    { valor: 'equilibrado', rotulo: 'Equilibrado', descricao: 'O padrão: bom para o dia a dia. Gasta 1 análise da cota.', analises: 1 },
+    { valor: 'detalhado', rotulo: 'Mais detalhado', descricao: 'Análises mais cuidadosas; pode demorar mais. Gasta 2 análises da cota.', analises: 2 },
   ]
   const ESTILOS = [
     { valor: 'objetiva', rotulo: 'Objetiva', descricao: 'Frases curtas, só o essencial.' },
@@ -310,6 +311,12 @@ describe('Configurações › IA: "Como a IA escreve"', () => {
     expect(t(s.get('h2').text())).toBe('Como a IA escreve')
     expect(s.findAll('legend').map((l) => t(l.text()))).toEqual(['Modelo', 'Estilo'])
     expect(s.findAll('[data-escolha="modelo"] label').map((l) => t(l.text()))).toEqual(MODELOS.map((m) => `${m.rotulo} ${m.descricao}`))
+    expect(s.findAll('[data-escolha="modelo"] label').map((l) => t(l.text()))).toEqual([
+      'Rápido Respostas curtas e rápidas. Gasta 1 análise da cota.',
+      'Equilibrado O padrão: bom para o dia a dia. Gasta 1 análise da cota.',
+      'Mais detalhado Análises mais cuidadosas; pode demorar mais. Gasta 2 análises da cota.',
+    ])
+    expect(s.text()).not.toContain('econômico')
     expect(s.findAll('[data-escolha="estilo"] label').map((l) => t(l.text()))).toEqual(ESTILOS.map((m) => `${m.rotulo} ${m.descricao}`))
     expect(radio(w, 'equilibrado').element.checked).toBe(true)
     expect(radio(w, 'equilibrada').element.checked).toBe(true)
@@ -328,7 +335,7 @@ describe('Configurações › IA: "Como a IA escreve"', () => {
     await radio(w, 'rapido').setValue(true)
     await flushPromises()
     expect(puts(chamadas)).toEqual([{ modelo: 'rapido' }])
-    expect(ultimoAviso()).toBe('Modelo salvo: Rápido e econômico.')
+    expect(ultimoAviso()).toBe('Modelo salvo: Rápido.')
     expect(radio(w, 'rapido').element.checked).toBe(true)
     expect(secao(w).get('[data-opcao="rapido"]').classes()).toContain('border-marca')
 

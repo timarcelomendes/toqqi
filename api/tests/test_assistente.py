@@ -190,7 +190,7 @@ def test_cota_no_assistente_e_em_configuracoes(client, admin, dono):
     assert sql(dono, "select analises from ia_uso_mensal where conta_id = :c", c=c) == [(0,)]
     usar_cota(dono, c, 100)
     assert client.get(f"{API}/assistente", headers=h).json() == {
-        "disponivel": False, "motivo": "cota_esgotada", "sugestoes": [],
+        "disponivel": False, "motivo": "cota_esgotada", "sugestoes": [], "custo": 1,
         "cota": {"usadas": 100, "limite": 100, "restantes": 0, "mes": mes_iso()}}
     usar_cota(dono, c, 150)  # acima do limite (a conta passou para um plano menor): restantes nunca negativo
     assert client.get(f"{API}/conta/ia", headers=h).json()["cota"]["restantes"] == 0
@@ -357,7 +357,7 @@ def test_mes_novo_renova_e_a_devolucao_vale_no_mes_da_reserva(client, admin, don
 def test_estado_e_sugestoes_conforme_as_permissoes(client, admin):
     h = admin["h"]
     assert client.get(f"{API}/assistente", headers=h).json() == {
-        "disponivel": True, "motivo": None, "sugestoes": SUGESTOES,
+        "disponivel": True, "motivo": None, "sugestoes": SUGESTOES, "custo": 1,
         "cota": {"usadas": 0, "limite": 500, "restantes": 500, "mes": mes_iso()}}
     gestor = membro(client, h, "gestor@alfa.com.br", "gestor")
     consulta = membro(client, h, "consulta@alfa.com.br", "consulta")
@@ -377,7 +377,7 @@ def test_estado_e_sugestoes_conforme_as_permissoes(client, admin):
 
 def test_estado_sem_ia_conta_pausada_e_cota_esgotada(client, admin, dono, monkeypatch):
     h, c = admin["h"], admin["conta"]["id"]
-    sem_ia = {"disponivel": False, "motivo": "ia_indisponivel", "cota": None, "sugestoes": []}
+    sem_ia = {"disponivel": False, "motivo": "ia_indisponivel", "cota": None, "custo": None, "sugestoes": []}
     monkeypatch.setattr(config(), "IA_PROVEDOR", "desligado")
     assert client.get(f"{API}/assistente", headers=h).json() == sem_ia
     monkeypatch.setattr(config(), "IA_PROVEDOR", "openai")  # sem chave
@@ -385,7 +385,7 @@ def test_estado_sem_ia_conta_pausada_e_cota_esgotada(client, admin, dono, monkey
     monkeypatch.setattr(config(), "IA_PROVEDOR", "memoria")
     sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=c)
     assert client.get(f"{API}/assistente", headers=h).json() == {
-        "disponivel": False, "motivo": "conta_pausada", "sugestoes": [],
+        "disponivel": False, "motivo": "conta_pausada", "sugestoes": [], "custo": 1,
         "cota": {"usadas": 0, "limite": 500, "restantes": 500, "mes": mes_iso()}}
     definir_plano(dono, c, "profissional", "ativa")
     usar_cota(dono, c, 500)
@@ -590,7 +590,7 @@ def test_corpo_da_chamada_e_laco_com_o_raciocinio_cifrado(client, admin, dono, o
         "resposta": "Abra Contatos e clique em Importar planilha.", "sugestoes": ["Como ligo os envios?"],
         "atalhos": [{"chave": "importar_contatos", "rotulo": "Importar contatos", "caminho": "/contatos/importar"},
                     {"chave": "contatos", "rotulo": "Contatos", "caminho": "/contatos"}],
-        "cota": {"usadas": 1, "limite": 500, "restantes": 499, "mes": mes_iso()}}
+        "cota": {"usadas": 1, "limite": 500, "restantes": 499, "mes": mes_iso()}, "custo": 1}
     p1, p2 = openai.pedidos
     assert p1.method == "POST" and str(p1.url) == "https://api.openai.com/v1/responses"
     assert p1.headers["authorization"] == f"Bearer {CHAVE}"
@@ -713,7 +713,7 @@ def test_recusa_responde_frase_fixa_e_gasta_a_analise(client, admin, dono, opena
     assert r.status_code == 200 and r.json() == {
         "resposta": "Só consigo ajudar com a satisfação dos seus clientes e com o uso do Toqqi.",
         "sugestoes": SUGESTOES, "atalhos": [],
-        "cota": {"usadas": 1, "limite": 500, "restantes": 499, "mes": mes_iso()}}
+        "cota": {"usadas": 1, "limite": 500, "restantes": 499, "mes": mes_iso()}, "custo": 1}
     assert cota_do_mes(dono, admin["conta"]["id"]) == (1, 300, 40)
 
 

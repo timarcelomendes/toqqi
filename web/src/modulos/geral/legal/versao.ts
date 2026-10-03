@@ -9,6 +9,8 @@
 // Versão 4 (etapa 5f), vigente desde 03/10/2026: registros de acesso (data, hora e IP, por 6 meses, à parte), exclusão
 // automática 90 dias depois do fim do período pago ou do teste (com aviso 7 dias antes), exportação de todos os dados
 // em Configurações › Dados da conta e, nos Termos, as mesmas regras no teste e no fim do contrato.
-export const VERSAO_DOCUMENTOS = 4
+// Versão 5, vigente desde 03/10/2026: nos Termos, o nível "Mais detalhado" da IA gasta 2 análises da cota por resumo,
+// parecer ou pergunta ao ToqqiAI (os outros níveis, 1).
+export const VERSAO_DOCUMENTOS = 5
 /** Data em que a versão atual (VERSAO_DOCUMENTOS) passou a valer (AAAA-MM-DD). */
 export const VIGENTE_DESDE = '2026-10-03'

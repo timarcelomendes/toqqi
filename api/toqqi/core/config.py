@@ -41,13 +41,15 @@ class Config(BaseSettings):
     IA_ESFORCO: str = "minimal"  # vazio = não manda `reasoning`
     IA_BASE_URL: str = "https://api.openai.com"
     # Assistente (etapa 5b): mesma chave e mesmo provedor da IA por resposta; cada pergunta gasta 1 análise da cota
-    # mensal do plano (Essencial 100, Profissional 500, Empresa 2.000; cortesia = IA_COTA_CORTESIA).
+    # mensal do plano, 2 no nível Mais detalhado (Essencial 100, Profissional 500, Empresa 2.000; cortesia =
+    # IA_COTA_CORTESIA).
     IA_ASSISTENTE_MODELO: str = "gpt-5-mini"
     IA_ASSISTENTE_ESFORCO: str = "low"  # vazio = não manda `reasoning`
     IA_COTA_CORTESIA: int = Field(default=500, ge=0)
     # Níveis de modelo (etapa 5d, Configurações › IA): valem para o assistente, o resumo do painel, o parecer dos
     # relatórios e os passos das ações (a análise de cada resposta segue com IA_MODELO/IA_ESFORCO). Esforço vazio =
     # não manda `reasoning`; no equilibrado, vazio = o do assistente (IA_ASSISTENTE_MODELO/IA_ASSISTENTE_ESFORCO).
+    # O custo na cota de cada nível (1, 1 e 2 análises) fica em `ia_texto.MODELOS`, não aqui.
     IA_MODELO_RAPIDO: str = "gpt-5-nano"
     IA_ESFORCO_RAPIDO: str = "minimal"
     IA_MODELO_EQUILIBRADO: str = ""

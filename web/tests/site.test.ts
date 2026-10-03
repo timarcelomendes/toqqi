@@ -62,6 +62,13 @@ describe('index.html', () => {
       expect(corpo).toContain(p)
     }
   })
+  it('a nota abaixo da tabela de planos: no nível Mais detalhado, cada pergunta, resumo ou parecer conta 2 (03/10)', () => {
+    const tabela = corpo.indexOf('id="tabela-planos"')
+    const nota = corpo.indexOf('data-nota-ia')
+    expect(tabela).toBeGreaterThan(-1)
+    expect(nota).toBeGreaterThan(corpo.indexOf('</table>', tabela))
+    expect(corpo).toContain('No nível “Mais detalhado” da IA, cada pergunta ao ToqqiAI, resumo ou parecer conta como 2.')
+  })
 })
 
 describe('comportamento da página', () => {

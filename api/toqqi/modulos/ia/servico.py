@@ -22,10 +22,12 @@ Logo depois de gravar (`analisar`), no máximo 4 análises ao mesmo tempo por pr
 resposta fica para a tarefa `ia`) e com tempo limite de 15 s, para não segurar as threads da API; a tarefa usa 30 s.
 
 A análise de cada resposta não gasta a cota de IA do plano (etapa 5): só o teto de segurança mensal abaixo. A cota
-do plano (`ia.cota`, gasta pelo assistente) aparece em Configurações › IA (`cota`).
+do plano (`ia.cota`, gasta pelo assistente, pelo resumo do painel e pelo parecer dos relatórios) aparece em
+Configurações › IA (`cota`).
 
 Configurações › IA (etapa 5d): o estado ganha o nível do modelo e o estilo da conta (com as opções e os textos de
-`ia_texto`) e o interruptor dos passos das ações. O PUT é parcial (só os campos enviados mudam); desligar a análise
+`ia_texto`; cada nível em `modelos` traz também `analises`, o que uma geração ou pergunta gasta da cota) e o
+interruptor dos passos das ações. O PUT é parcial (só os campos enviados mudam); desligar a análise
 cancela as respostas pendentes e desligar os passos cancela as ações pendentes; a auditoria `config_ia` leva só os
 campos que mudaram (nada mudou, nada vai).
 """

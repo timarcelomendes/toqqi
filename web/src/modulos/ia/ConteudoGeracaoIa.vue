@@ -1,7 +1,8 @@
 <script setup lang="ts" generic="C">
 // O miolo do resumo do painel e do parecer dos relatórios (etapa 5d, §6.1 e §6.2): gerando, o que está salvo (pelo slot
-// `item`), o texto de quando não há nada, o aviso do erro da geração e por que não dá para gerar (conta pausada, cota
-// esgotada). O botão e o rodapé ficam com quem usa (o lugar muda no cartão e no painel lateral).
+// `item`), o texto de quando não há nada (com o custo do nível: "Usa 2 análises de IA."), o aviso do erro da geração e
+// por que não dá para gerar (conta pausada, cota esgotada ou insuficiente para o nível). O botão e o rodapé ficam com
+// quem usa (o lugar muda no cartão e no painel lateral).
 import { nextTick } from 'vue'
 import { useSessaoStore } from '@/stores/sessao'
 import Alerta from '@/components/ui/Alerta.vue'
@@ -76,7 +77,7 @@ async function tentarGerar(e: Event) {
       <p class="text-sm text-texto-suave" aria-hidden="true">{{ TEXTO_GERANDO }}</p>
     </div>
     <slot v-else-if="geracao.item" name="item" :conteudo="geracao.item.conteudo" />
-    <p v-else-if="geracao.disponivel" class="text-sm text-texto-suave" data-vazio>{{ geracao.textos.vazio }}</p>
+    <p v-else-if="geracao.disponivel" class="text-sm text-texto-suave" data-vazio>{{ geracao.textoVazio }}</p>
 
     <Alerta v-if="geracao.prontoAnterior" tom="info" data-pronto-anterior>{{ geracao.prontoAnterior }}</Alerta>
 
@@ -91,6 +92,14 @@ async function tentarGerar(e: Event) {
       {{ geracao.bloqueio }}
       <RouterLink v-if="geracao.cotaEsgotada && sessao.pode('configuracoes.gerenciar')" to="/configuracoes/ia" class="link mt-1 block" data-link-config-ia>
         Configurações › IA
+      </RouterLink>
+      <RouterLink
+        v-else-if="geracao.cotaInsuficiente && sessao.pode('configuracoes.gerenciar')"
+        to="/configuracoes/ia"
+        class="link mt-1 block"
+        data-link-trocar-nivel
+      >
+        Trocar o nível
       </RouterLink>
     </Alerta>
   </div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Painel (etapa 5d, docs/api-etapa-5d.md §6.1): "Resumo da IA" logo abaixo do NPS. Lê o resumo salvo para os filtros dos
-// números na tela, de novo a cada troca de filtro; some sem IA na plataforma. Gerar gasta 1 análise da cota do plano e
-// a conta espera 30 s para gerar outro.
+// números na tela, de novo a cada troca de filtro; some sem IA na plataforma. Gerar gasta 1 análise da cota do plano (2
+// no nível Mais detalhado) e a conta espera 30 s para gerar outro.
 import { ArrowRight, Sparkles, ThumbsUp, TriangleAlert } from 'lucide-vue-next'
 import { resumoIaApi, type FiltrosGeracaoIa } from '@/api'
 import BotaoGerarIa from '@/modulos/ia/BotaoGerarIa.vue'

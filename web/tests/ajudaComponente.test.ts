@@ -349,7 +349,7 @@ describe('Configurações › IA: cota do plano', () => {
     expect(medidor.attributes('aria-valuemax')).toBe('500')
     expect(medidor.attributes('aria-valuetext')).toBe('12 de 500 análises usadas em outubro de 2026')
     expect(t(bloco.text())).toContain(
-      'Cada pergunta ao ToqqiAI, cada resumo do painel e cada parecer dos relatórios usam 1 análise. A análise de cada resposta e os passos das ações não entram nesta conta.',
+      'Cada pergunta ao ToqqiAI, cada resumo do painel e cada parecer dos relatórios usam 1 análise, ou 2 no modelo Mais detalhado. A análise de cada resposta e os passos das ações não entram nesta conta.',
     )
     // O cartão da cota (gasta pelo ToqqiAI) tem o ícone dele, não um ícone genérico.
     expect(bloco.get('svg').attributes('data-icone-toqqiai')).toBe('simbolo')

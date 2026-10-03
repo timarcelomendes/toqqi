@@ -1,18 +1,24 @@
 // Etapa 5d (docs/api-etapa-5d.md §6): regras puras da IA sob demanda: chave dos filtros, corpo do POST, contagem até
 // gerar de novo, textos, erros da geração, leitura do que vem da API e os textos dos documentos legais.
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ApiError, lerErroApi, MENSAGEM_MUITAS_TENTATIVAS } from '@/api/erros'
 import { corpoGeracaoIa } from '@/api/etapa5d'
 import {
   ESPERA_MAXIMA,
+  TEXTOS_PARECER,
+  TEXTOS_RESUMO,
   chaveFiltros,
   descreverFiltrosIa,
   falarParecer,
   falarResumo,
   instante,
   lerCota,
+  lerCusto,
   lerErroGeracao,
   listaDeTextos,
+  mensagemCotaInsuficiente,
   normalizarItem,
   normalizarParecer,
   normalizarResumo,
@@ -23,14 +29,55 @@ import {
   segundosDaMensagem,
   situacaoPassos,
   textoBotaoGerar,
+  textoCusto,
   textoEscritaSalva,
   textoGerado,
   textoPassos,
+  textoVazio,
 } from '@/modulos/ia/logica'
 import { textoAbertura, textoVersao } from '@/modulos/geral/legal/aceite'
 import { PRIVACIDADE } from '@/modulos/geral/legal/privacidade'
 import { TERMOS } from '@/modulos/geral/legal/termos'
 import { VERSAO_DOCUMENTOS, VIGENTE_DESDE } from '@/modulos/geral/legal/versao'
+
+const INSUFICIENTE = 'Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo mês.'
+
+describe('custo do nível (03/10: o Mais detalhado gasta 2 análises)', () => {
+  it('o custo que veio da API: inteiro de 1 para cima; sem ele (ou estranho), 1', () => {
+    expect([lerCusto(1), lerCusto(2), lerCusto(3)]).toEqual([1, 2, 3])
+    for (const v of [undefined, null, 0, -2, 1.5, '2', Number.NaN]) expect(lerCusto(v)).toBe(1)
+  })
+
+  it('o texto sem nada salvo diz quanto gasta: "Usa 1 análise de IA." ou "Usa 2 análises de IA."', () => {
+    expect(textoCusto(1)).toBe('Usa 1 análise de IA.')
+    expect(textoCusto(2)).toBe('Usa 2 análises de IA.')
+    expect(textoCusto(0)).toBe('Usa 1 análise de IA.')
+    expect(textoVazio(TEXTOS_RESUMO, 1)).toBe(
+      'Três frases sobre o período: o que precisa melhorar, o que está funcionando e o próximo passo. Usa 1 análise de IA.',
+    )
+    expect(textoVazio(TEXTOS_PARECER, 2)).toBe(
+      'Um resumo do período e até 3 recomendações para esta semana, com os filtros da tela. Usa 2 análises de IA.',
+    )
+  })
+
+  it('nada no site escreve o nome antigo do nível ("Rápido e econômico"): os rótulos e as descrições vêm da API', () => {
+    const arquivos = readdirSync('src', { recursive: true, encoding: 'utf8' }).filter((f) => /\.(ts|vue)$/.test(f))
+    expect(arquivos.length).toBeGreaterThan(50)
+    const comNomeAntigo = arquivos.filter((f) => /econ[ôo]mico/i.test(readFileSync(join('src', f), 'utf8')))
+    expect(comNomeAntigo).toEqual([])
+    expect(readFileSync('index.html', 'utf8')).not.toMatch(/econ[ôo]mico/i)
+  })
+
+  it('cota insuficiente: a mesma frase da API, montada com o que resta e o custo (plural a partir de 2)', () => {
+    expect(mensagemCotaInsuficiente(1, 2)).toBe(INSUFICIENTE)
+    expect(mensagemCotaInsuficiente(2, 3)).toBe(
+      'Restam 2 análises e o nível Mais detalhado gasta 3. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo mês.',
+    )
+    // Nunca uma frase que se contradiz (o custo acima do que resta) nem "Resta 0".
+    expect(mensagemCotaInsuficiente(1, 1)).toBe(INSUFICIENTE)
+    expect(mensagemCotaInsuficiente(0, 2)).toBe(INSUFICIENTE)
+  })
+})
 
 describe('filtros', () => {
   it('chave canônica como a API: datas ou vazio, grupo ou vazio, só ativas 1/0 (vazio = 1)', () => {
@@ -119,9 +166,16 @@ describe('rodapé', () => {
 describe('erros da geração', () => {
   const erro = (status: number, codigo: string, mensagem: string) => lerErroApi(status, { erro: { codigo, mensagem } })
 
-  it('409 de cota esgotada e conta pausada mudam o estado (sem botão), com a mensagem da API', () => {
+  it('409 de cota esgotada, cota insuficiente e conta pausada mudam o estado (sem botão), com a mensagem da API', () => {
     expect(lerErroGeracao(erro(409, 'cota_esgotada', 'O limite mensal acabou.'))).toMatchObject({ bloqueio: 'cota_esgotada', mensagem: 'O limite mensal acabou.', repetir: false })
     expect(lerErroGeracao(erro(409, 'conta_pausada', 'A IA volta quando a assinatura estiver em dia.')).bloqueio).toBe('conta_pausada')
+    expect(lerErroGeracao(erro(409, 'cota_insuficiente', INSUFICIENTE))).toEqual({
+      mensagem: INSUFICIENTE,
+      tom: 'atencao',
+      repetir: false,
+      bloqueio: 'cota_insuficiente',
+      esperar: null,
+    })
   })
 
   it('409 sem dados: aviso de informação, sem "Tentar de novo"', () => {
@@ -176,8 +230,8 @@ describe('leitura do que vem da API', () => {
   })
 
   it('item: conteúdo lido, nome de quem gerou e o rótulo do modelo; conteúdo inválido = nada salvo', () => {
-    const item = { conteudo: { resumo: 'Bom.', recomendacoes: [] }, gerado_em: '2026-10-02T17:30:00Z', gerado_por: { id: 1, nome: 'Ana' }, modelo: 'rapido', modelo_rotulo: 'Rápido e econômico', estilo: 'objetiva' }
-    expect(normalizarItem(item, normalizarParecer)).toEqual({ conteudo: { resumo: 'Bom.', recomendacoes: [] }, gerado_em: '2026-10-02T17:30:00Z', gerado_por: 'Ana', modelo_rotulo: 'Rápido e econômico' })
+    const item = { conteudo: { resumo: 'Bom.', recomendacoes: [] }, gerado_em: '2026-10-02T17:30:00Z', gerado_por: { id: 1, nome: 'Ana' }, modelo: 'rapido', modelo_rotulo: 'Rápido', estilo: 'objetiva' }
+    expect(normalizarItem(item, normalizarParecer)).toEqual({ conteudo: { resumo: 'Bom.', recomendacoes: [] }, gerado_em: '2026-10-02T17:30:00Z', gerado_por: 'Ana', modelo_rotulo: 'Rápido' })
     expect(normalizarItem({ ...item, gerado_por: null }, normalizarParecer)?.gerado_por).toBeNull()
     expect(normalizarItem({ ...item, conteudo: {} }, normalizarParecer)).toBeNull()
     expect(normalizarItem(null, normalizarParecer)).toBeNull()
@@ -210,13 +264,13 @@ describe('passos das ações', () => {
 
 describe('Configurações › IA: avisos ao salvar', () => {
   const lista = [
-    { valor: 'rapido', rotulo: 'Rápido e econômico' },
+    { valor: 'rapido', rotulo: 'Rápido' },
     { valor: 'detalhado', rotulo: 'Mais detalhado' },
   ]
   it('com o rótulo da opção', () => {
     expect(rotuloOpcao(lista, 'detalhado')).toBe('Mais detalhado')
     expect(rotuloOpcao(lista, 'novo')).toBe('novo')
-    expect(textoEscritaSalva('modelo', { modelo: 'rapido', modelos: lista })).toBe('Modelo salvo: Rápido e econômico.')
+    expect(textoEscritaSalva('modelo', { modelo: 'rapido', modelos: lista })).toBe('Modelo salvo: Rápido.')
     expect(textoEscritaSalva('estilo', { estilo: 'criativa', estilos: [{ valor: 'criativa', rotulo: 'Criativa' }] })).toBe('Estilo salvo: Criativa.')
     expect(textoEscritaSalva('passos_acoes', { passos_acoes: true })).toMatch(/^Sugestão de passos ligada/)
     expect(textoEscritaSalva('passos_acoes', { passos_acoes: false })).toMatch(/^Sugestão de passos desligada/)
@@ -268,6 +322,11 @@ describe('Termos de uso e Política de privacidade (versão 2)', () => {
     expect(texto).toContain('A análise de comentários e os passos das ações já vêm ligados, e a Empresa pode desligá-los em Configurações › IA.')
     expect(texto).toContain('O resumo do painel, o parecer dos relatórios e o ToqqiAI só rodam quando alguém da conta pede')
     expect(texto).toContain('cada resumo, parecer ou pergunta usa 1 análise da cota de IA do plano')
+    // 03/10: o Mais detalhado gasta 2 (ainda na versão 4, que não foi publicada: a versão e a data não mudam).
+    expect(texto).toContain(
+      'usa 1 análise da cota de IA do plano (2 no nível Mais detalhado, que a Empresa escolhe em Configurações › IA).',
+    )
+    expect([VERSAO_DOCUMENTOS, VIGENTE_DESDE]).toEqual([5, '2026-10-03']) // 5: o nível Mais detalhado gasta 2
     expect(texto).toContain('/privacidade#inteligencia-artificial')
     // O texto antigo (só dois recursos) saiu.
     expect(texto).not.toContain('A análise de comentários já vem ligada')

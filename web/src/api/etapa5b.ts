@@ -8,11 +8,15 @@ export const ajudaApi = {
 }
 
 export const assistenteApi = {
-  /** Se está disponível (e o motivo, quando não), a cota do mês e 3 perguntas de exemplo conforme as permissões. */
+  /**
+   * Se está disponível (e o motivo, quando não), a cota do mês, o custo de uma pergunta no nível da conta e 3 perguntas
+   * de exemplo conforme as permissões.
+   */
   estado: (sinal?: AbortSignal) => api.get<EstadoAssistente>('/assistente', { sinal }),
   /**
-   * Gasta 1 análise da cota (devolvida se falhar). `historico`: as últimas 8 mensagens. 409 `conta_pausada` e
-   * `cota_esgotada`; 429 `limite_perguntas`; 503 `ia_indisponivel`.
+   * Gasta o custo do nível da conta (1 análise da cota, ou 2 no Mais detalhado; devolvidas se falhar). `historico`: as
+   * últimas 8 mensagens. 409 `conta_pausada`, `cota_esgotada` e `cota_insuficiente`; 429 `limite_perguntas`; 503
+   * `ia_indisponivel`.
    */
   perguntar: (pergunta: string, historico: MensagemHistorico[], sinal?: AbortSignal) =>
     api.post<RespostaAssistente>('/assistente/perguntar', { pergunta, historico }, { sinal }),

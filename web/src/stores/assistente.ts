@@ -9,6 +9,7 @@ import {
   esperaDaTentativa,
   historicoParaApi,
   LIMITE_PERGUNTA,
+  lerCusto,
   lerErroPergunta,
   MENSAGENS_GUARDADAS,
   type MotivoBloqueio,
@@ -52,6 +53,13 @@ export const useAssistenteStore = defineStore('assistente', () => {
   const visivel = computed(() => !!estado.value && estado.value.motivo !== 'ia_indisponivel')
   const disponivel = computed(() => !!estado.value?.disponivel)
   const cota = computed<CotaIa | null>(() => estado.value?.cota ?? null)
+  /** Análises que uma pergunta gasta no nível da conta (1, ou 2 no Mais detalhado; 1 se a API não mandou). */
+  const custo = computed(() => lerCusto(estado.value?.custo))
+  /**
+   * A mensagem do último 409 `cota_insuficiente` de uma pergunta (a explicação da caixa usa ela até o estado ser lido de
+   * novo; sem ela, a tela monta a mesma frase com o que resta e o custo).
+   */
+  const mensagemCota = ref<string | null>(null)
 
   // Cada conta e usuário tem a sua conversa; sem sessão (saiu), tudo volta ao começo e as tentativas param.
   watch(
@@ -63,6 +71,7 @@ export const useAssistenteStore = defineStore('assistente', () => {
       rascunho.value = ''
       enviando.value = false
       anuncio.value = ''
+      mensagemCota.value = null
       cancelarTentativa()
       tentativas = 0
       pedidoEstado = null
@@ -111,6 +120,8 @@ export const useAssistenteStore = defineStore('assistente', () => {
       const e = await assistenteApi.estado()
       if (g !== geracao || !e || typeof e !== 'object') return
       estado.value = { ...e, sugestoes: Array.isArray(e.sugestoes) ? e.sugestoes.filter((s) => typeof s === 'string' && s.trim()).slice(0, 3) : [] }
+      // O estado novo traz a cota e o custo de agora: a explicação volta a ser montada com eles.
+      mensagemCota.value = null
     } catch {
       /* sem conexão ou API sem a rota: fica o que havia (sem nenhum, tenta de novo mais tarde) */
     }
@@ -160,27 +171,37 @@ export const useAssistenteStore = defineStore('assistente', () => {
       motivo,
       sugestoes: [],
       cota: motivo === 'cota_esgotada' && c ? { ...c, usadas: Math.max(c.usadas, c.limite), restantes: 0 } : c,
+      custo: estado.value?.custo ?? null,
     }
   }
 
-  /** A cota volta em cada resposta; a que gastou a última análise já desliga a caixa (a próxima daria 409). */
-  function atualizarCota(c: CotaIa) {
-    estado.value = { disponivel: true, motivo: null, sugestoes: [], ...estado.value, cota: c }
-    if (c.restantes <= 0) bloquear('cota_esgotada')
+  /**
+   * A cota (e o custo) volta em cada resposta; a que deixou menos análises que o custo de uma pergunta já desliga a caixa
+   * (a próxima daria 409): sem nenhuma, "cota esgotada"; com alguma, "cota insuficiente" para o nível.
+   */
+  function atualizarCota(c: CotaIa, novoCusto?: number) {
+    estado.value = { disponivel: true, motivo: null, sugestoes: [], ...estado.value, cota: c, ...(novoCusto === undefined ? {} : { custo: lerCusto(novoCusto) }) }
+    mensagemCota.value = null
+    if (c.restantes < custo.value) bloquear(c.restantes <= 0 ? 'cota_esgotada' : 'cota_insuficiente')
   }
 
   /**
-   * Etapa 5d: o resumo do painel e o parecer dos relatórios gastam a mesma cota. A tela que gerou manda a cota que veio na
-   * resposta, e o assistente (e Configurações › IA, que acompanha esta) mostra o mesmo "Restam X de Y". Sem o estado do
-   * assistente (a busca falhou), não há o que atualizar.
+   * Etapa 5d: o resumo do painel e o parecer dos relatórios gastam a mesma cota. A tela que gerou manda a cota (e o custo)
+   * que veio na resposta, e o assistente (e Configurações › IA, que acompanha esta) mostra o mesmo "Restam X de Y". Sem o
+   * estado do assistente (a busca falhou), não há o que atualizar.
    */
-  function receberCota(c: CotaIa) {
-    if (estado.value) atualizarCota(c)
+  function receberCota(c: CotaIa, novoCusto?: number) {
+    if (estado.value) atualizarCota(c, novoCusto)
   }
 
-  /** Etapa 5d: o resumo ou o parecer recebeu 409 `cota_esgotada`: o assistente também para de aceitar perguntas. */
-  function marcarCotaEsgotada() {
-    if (estado.value && estado.value.motivo !== 'ia_indisponivel') bloquear('cota_esgotada')
+  /**
+   * Etapa 5d: o resumo ou o parecer recebeu 409 de cota: o assistente também para de aceitar perguntas. Esgotada desliga
+   * na hora; insuficiente (restam menos que o custo do nível) lê o estado de novo, que traz o que resta e o custo de agora.
+   */
+  function marcarSemCota(motivo: 'cota_esgotada' | 'cota_insuficiente') {
+    if (!estado.value || estado.value.motivo === 'ia_indisponivel') return
+    if (motivo === 'cota_esgotada') bloquear('cota_esgotada')
+    else void carregarEstado()
   }
 
   async function enviar(indice: number, historico: MensagemHistorico[]) {
@@ -204,7 +225,7 @@ export const useAssistenteStore = defineStore('assistente', () => {
         nova: true,
       })
       aparar()
-      if (r.cota) atualizarCota(r.cota)
+      if (r.cota) atualizarCota(r.cota, r.custo)
       anuncio.value = texto
       guardar()
     } catch (e) {
@@ -213,6 +234,11 @@ export const useAssistenteStore = defineStore('assistente', () => {
       msg.falhou = true
       msg.erro = { mensagem: erro.mensagem, repetir: erro.repetir }
       if (erro.bloqueio) bloquear(erro.bloqueio)
+      if (erro.bloqueio === 'cota_insuficiente') {
+        // A caixa explica com a mensagem da API; o estado lido de novo traz o que resta e o custo de agora.
+        mensagemCota.value = erro.mensagem
+        void carregarEstado()
+      }
       anuncio.value = erro.mensagem
     } finally {
       if (g === geracao) enviando.value = false
@@ -273,6 +299,8 @@ export const useAssistenteStore = defineStore('assistente', () => {
     visivel,
     disponivel,
     cota,
+    custo,
+    mensagemCota,
     carregarEstado,
     acompanharEstado,
     pararDeAcompanhar,
@@ -283,6 +311,6 @@ export const useAssistenteStore = defineStore('assistente', () => {
     fechar,
     marcarRevelada,
     receberCota,
-    marcarCotaEsgotada,
+    marcarSemCota,
   }
 })

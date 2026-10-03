@@ -81,13 +81,41 @@ export function textoCota(cota: CotaIa): string {
   return `${restantes === 1 ? 'Resta' : 'Restam'} ${formatarNumero(restantes)} de ${formatarNumero(cota.limite)} análises este mês`
 }
 
-export type MotivoBloqueio = 'cota_esgotada' | 'conta_pausada'
+/**
+ * O `custo` que veio da API (análises que uma pergunta, um resumo ou um parecer gasta no nível da conta: 1, ou 2 no Mais
+ * detalhado). Sem ele (API anterior a 03/10, ou sem IA na plataforma), 1.
+ */
+export function lerCusto(v: unknown): number {
+  return typeof v === 'number' && Number.isInteger(v) && v >= 1 ? v : 1
+}
+
+/**
+ * Restam análises, mas menos que o custo do nível (só o Mais detalhado gasta mais de 1), com o mesmo texto do 409 da API:
+ * "Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo
+ * mês." (no plural a partir de 2). O custo nunca fica igual ou abaixo do que resta (a frase se contradiria).
+ */
+export function mensagemCotaInsuficiente(restantes: number, custo: number): string {
+  const resta = Math.max(1, Math.floor(restantes))
+  const gasta = Math.max(lerCusto(custo), resta + 1)
+  const frase = resta === 1 ? 'Resta 1 análise' : `Restam ${formatarNumero(resta)} análises`
+  return `${frase} e o nível Mais detalhado gasta ${formatarNumero(gasta)}. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo mês.`
+}
+
+/** Por que a caixa (ou o botão de gerar) desliga: a cota acabou, não dá para o custo do nível ou a conta está pausada. */
+export type MotivoBloqueio = 'cota_esgotada' | 'cota_insuficiente' | 'conta_pausada'
+
+const BLOQUEIOS: readonly MotivoBloqueio[] = ['cota_esgotada', 'cota_insuficiente', 'conta_pausada']
+
+/** O 409 que desliga a caixa (ou o botão): cota esgotada, cota insuficiente para o nível ou conta pausada. */
+export function ehBloqueio(codigo: string): codigo is MotivoBloqueio {
+  return (BLOQUEIOS as readonly string[]).includes(codigo)
+}
 
 export interface ErroPergunta {
   mensagem: string
   /** Mostra "Tentar de novo": só 503 `ia_indisponivel`, 429 (limite por minuto) e sem conexão. */
   repetir: boolean
-  /** Cota esgotada ou conta pausada: a caixa de texto desliga e explica. */
+  /** Cota esgotada, cota insuficiente para o nível ou conta pausada: a caixa de texto desliga e explica. */
   bloqueio: MotivoBloqueio | null
 }
 
@@ -98,7 +126,7 @@ export interface ErroPergunta {
  */
 export function lerErroPergunta(e: unknown): ErroPergunta {
   if (!(e instanceof ApiError)) return { mensagem: MENSAGEM_INESPERADA, repetir: false, bloqueio: null }
-  if (e.status === 409 && (e.codigo === 'cota_esgotada' || e.codigo === 'conta_pausada')) {
+  if (e.status === 409 && ehBloqueio(e.codigo)) {
     return { mensagem: e.mensagem, repetir: false, bloqueio: e.codigo }
   }
   // O cliente troca o texto de todo 429 por um genérico; aqui vale o do contrato.
@@ -107,10 +135,19 @@ export function lerErroPergunta(e: unknown): ErroPergunta {
   return { mensagem: e.mensagem, repetir, bloqueio: null }
 }
 
+/** O que a explicação da cota insuficiente usa: a mensagem do 409, se veio, ou a montada com o que resta e o custo. */
+export interface DetalheCota {
+  /** A mensagem do 409 `cota_insuficiente` (null quando o bloqueio veio do GET ou da conta local). */
+  mensagem?: string | null
+  restantes?: number | null
+  custo?: number | null
+}
+
 /** Por que a caixa de texto está desligada (null quando o assistente está disponível). */
-export function explicacaoIndisponivel(disponivel: boolean, motivo: string | null | undefined): string | null {
+export function explicacaoIndisponivel(disponivel: boolean, motivo: string | null | undefined, cota: DetalheCota = {}): string | null {
   if (disponivel) return null
   if (motivo === 'cota_esgotada') return MENSAGEM_COTA_ESGOTADA
+  if (motivo === 'cota_insuficiente') return cota.mensagem || mensagemCotaInsuficiente(cota.restantes ?? 1, cota.custo ?? 1)
   if (motivo === 'conta_pausada') return MENSAGEM_CONTA_PAUSADA
   return MENSAGEM_INDISPONIVEL
 }

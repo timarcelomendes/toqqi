@@ -60,6 +60,9 @@ function painel(): Painel {
 
 const COTA: CotaIa = { usadas: 12, limite: 500, restantes: 488, mes: '2026-10' }
 const COTA_DEPOIS: CotaIa = { usadas: 13, limite: 500, restantes: 487, mes: '2026-10' }
+/** Resta 1 análise: não dá para o Mais detalhado (gasta 2). */
+const RESTA_1: CotaIa = { usadas: 499, limite: 500, restantes: 1, mes: '2026-10' }
+const INSUFICIENTE = 'Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo mês.'
 const GERADO_EM = '2026-10-02T17:30:00Z'
 const RESUMO = {
   melhorar: 'O prazo de entrega puxou o NPS para baixo nos últimos 90 dias.',
@@ -183,7 +186,10 @@ describe('Painel: cartão "Resumo da IA"', () => {
     expect(w.get('[aria-labelledby="t-resumo"]').element.nextElementSibling).toBe(cartao.element)
     expect(t(cartao.get('h2').text())).toBe('Resumo da IA')
     expect(cartao.text()).toContain('Últimos 90 dias')
-    expect(t(cartao.get('[data-vazio]').text())).toBe(TEXTOS_RESUMO.vazio)
+    expect(t(cartao.get('[data-vazio]').text())).toBe(`${TEXTOS_RESUMO.vazio} Usa 1 análise de IA.`)
+    expect(t(cartao.get('[data-vazio]').text())).toBe(
+      'Três frases sobre o período: o que precisa melhorar, o que está funcionando e o próximo passo. Usa 1 análise de IA.',
+    )
     expect(t(botaoGerar(cartao).text())).toBe('Gerar resumo')
     expect(botaoGerar(cartao).attributes('aria-disabled')).toBeUndefined()
     const lido = pedidos(chamadas, 'GET', '/painel/resumo-ia')
@@ -375,6 +381,94 @@ describe('Painel: cartão "Resumo da IA"', () => {
     expect(t(cartao.get('[data-restam]').text())).toBe('Restam 0 de 500 análises este mês')
     expect(cartao.find('[data-gerar-ia]').exists()).toBe(false)
     expect(t(cartao.get('[data-bloqueio]').text())).toBe(MENSAGEM_COTA_ESGOTADA)
+  })
+
+  // ── 03/10: o Mais detalhado gasta 2 análises (custo) e "cota insuficiente" quando resta menos que isso ──
+
+  it('Mais detalhado: o texto sem item usa o custo do GET ("Usa 2 análises de IA.")', async () => {
+    entrar(DO_PAINEL)
+    apiPainel({ 'GET /painel/resumo-ia': () => estado({ custo: 2 }) })
+    const w = await abrir('/inicio', '/inicio', PainelView)
+    expect(t(cartaoResumo(w).get('[data-vazio]').text())).toBe(
+      'Três frases sobre o período: o que precisa melhorar, o que está funcionando e o próximo passo. Usa 2 análises de IA.',
+    )
+  })
+
+  it('cota insuficiente no GET (resta 1, gasta 2): a frase com o que resta e o custo, sem botão; "Trocar o nível" só para quem gerencia as configurações', async () => {
+    entrar([...DO_PAINEL, 'configuracoes.gerenciar'], 'admin')
+    apiPainel({ 'GET /painel/resumo-ia': () => estado({ disponivel: false, motivo: 'cota_insuficiente', cota: RESTA_1, custo: 2, item: item(RESUMO) }) })
+    let w = await abrir('/inicio', '/inicio', PainelView)
+    let cartao = cartaoResumo(w)
+    expect(cartao.findAll('[data-frases] dd')).toHaveLength(3) // o salvo continua
+    expect(t(cartao.get('[data-bloqueio]').text())).toContain(INSUFICIENTE)
+    const link = cartao.get('[data-link-trocar-nivel]')
+    expect(link.attributes('href')).toBe('/configuracoes/ia')
+    expect(t(link.text())).toBe('Trocar o nível')
+    expect(cartao.find('[data-link-config-ia]').exists()).toBe(false)
+    expect(cartao.find('[data-gerar-ia]').exists()).toBe(false)
+    w.unmount()
+
+    setActivePinia(createPinia())
+    entrar(DO_PAINEL)
+    apiPainel({ 'GET /painel/resumo-ia': () => estado({ disponivel: false, motivo: 'cota_insuficiente', cota: RESTA_1, custo: 2 }) })
+    w = await abrir('/inicio', '/inicio', PainelView)
+    cartao = cartaoResumo(w)
+    expect(t(cartao.get('[data-bloqueio]').text())).toBe(INSUFICIENTE)
+    expect(cartao.find('[data-link-trocar-nivel]').exists()).toBe(false)
+    expect(cartao.find('[data-vazio]').exists()).toBe(false)
+    expect(cartao.find('[data-gerar-ia]').exists()).toBe(false)
+  })
+
+  it('409 cota_insuficiente no POST: a mensagem da API, "Trocar o nível" e o assistente lê o estado de novo (e para)', async () => {
+    entrar([...DO_PAINEL, 'configuracoes.gerenciar'], 'admin')
+    const assistente = assistenteComCota()
+    const { chamadas } = apiPainel({
+      'GET /painel/resumo-ia': () => estado({ custo: 2 }),
+      'POST /painel/resumo-ia': () => erroApi(409, 'cota_insuficiente', `${INSUFICIENTE}!`),
+      'GET /assistente': () => ({ disponivel: false, motivo: 'cota_insuficiente', cota: RESTA_1, custo: 2, sugestoes: [] }),
+    })
+    const w = await abrir('/inicio', '/inicio', PainelView)
+    const cartao = cartaoResumo(w)
+    await botaoGerar(cartao).trigger('click')
+    await flushPromises()
+    expect(t(cartao.get('[data-bloqueio]').text())).toContain(`${INSUFICIENTE}!`)
+    expect(cartao.find('[data-link-trocar-nivel]').exists()).toBe(true)
+    expect(cartao.find('[data-gerar-ia]').exists()).toBe(false)
+    expect(pedidos(chamadas, 'GET', '/assistente')).toHaveLength(1)
+    expect(assistente.disponivel).toBe(false)
+    expect(assistente.estado?.motivo).toBe('cota_insuficiente')
+    expect(assistente.cota).toEqual(RESTA_1)
+  })
+
+  it('a geração que deixa menos análises que o custo já tira o botão (resta 1 no Mais detalhado), e o assistente também para', async () => {
+    entrar(DO_PAINEL)
+    const assistente = assistenteComCota()
+    apiPainel({
+      'GET /painel/resumo-ia': () => estado({ custo: 2 }),
+      'POST /painel/resumo-ia': () => ({ item: item(RESUMO, { modelo: 'detalhado', modelo_rotulo: 'Mais detalhado' }), cota: RESTA_1, custo: 2, pode_gerar_em: null }),
+    })
+    const w = await abrir('/inicio', '/inicio', PainelView)
+    const cartao = cartaoResumo(w)
+    await botaoGerar(cartao).trigger('click')
+    await flushPromises()
+    expect(cartao.findAll('[data-frases] dd')).toHaveLength(3)
+    expect(t(cartao.get('[data-gerado]').text())).toContain('· Mais detalhado')
+    expect(t(cartao.get('[data-restam]').text())).toBe('Resta 1 de 500 análises este mês')
+    expect(cartao.find('[data-gerar-ia]').exists()).toBe(false)
+    expect(t(cartao.get('[data-bloqueio]').text())).toBe(INSUFICIENTE)
+    expect([assistente.disponivel, assistente.estado?.motivo, assistente.custo]).toEqual([false, 'cota_insuficiente', 2])
+    expect(assistente.cota).toEqual(RESTA_1) // insuficiente não zera o que resta
+  })
+
+  it('no Equilibrado, a última análise ainda gera: resta 1 e o custo é 1, o botão continua', async () => {
+    entrar(DO_PAINEL)
+    apiPainel({ 'POST /painel/resumo-ia': () => ({ item: item(RESUMO), cota: RESTA_1, custo: 1, pode_gerar_em: null }) })
+    const w = await abrir('/inicio', '/inicio', PainelView)
+    const cartao = cartaoResumo(w)
+    await botaoGerar(cartao).trigger('click')
+    await flushPromises()
+    expect(cartao.find('[data-gerar-ia]').exists()).toBe(true)
+    expect(cartao.find('[data-bloqueio]').exists()).toBe(false)
   })
 
   it('503: aviso com a mensagem e "Tentar de novo", que gera de novo e leva o foco para o botão de gerar', async () => {
@@ -755,7 +849,7 @@ describe('Relatórios: "Parecer da IA"', () => {
     await w.get('[data-abrir-parecer]').trigger('click')
     await flushPromises()
     const d = dialogo(w)
-    expect(t(d.get('[data-vazio]').text())).toBe(TEXTOS_PARECER.vazio)
+    expect(t(d.get('[data-vazio]').text())).toBe(`${TEXTOS_PARECER.vazio} Usa 1 análise de IA.`)
     expect(t(botaoGerar(d).text())).toBe('Gerar parecer')
     await botaoGerar(d).trigger('click')
     await flushPromises()
@@ -784,6 +878,35 @@ describe('Relatórios: "Parecer da IA"', () => {
     apiRelatorios({ 'GET /relatorios/parecer-ia': () => estado({ disponivel: false, motivo: 'ia_indisponivel', cota: null }) })
     w = await abrir('/relatorios/temas', '/relatorios/:aba', RelatoriosView, true)
     expect(w.find('[data-abrir-parecer]').exists()).toBe(false)
+  })
+
+  it('Mais detalhado: "Usa 2 análises de IA."; cota insuficiente: a frase, sem botão, e "Trocar o nível" só para quem gerencia as configurações', async () => {
+    entrar(['relatorios.ver'])
+    apiRelatorios({ 'GET /relatorios/parecer-ia': () => estado({ custo: 2 }) })
+    let w = await abrir('/relatorios/temas', '/relatorios/:aba', RelatoriosView, true)
+    await w.get('[data-abrir-parecer]').trigger('click')
+    await flushPromises()
+    expect(t(dialogo(w).get('[data-vazio]').text())).toBe(`${TEXTOS_PARECER.vazio} Usa 2 análises de IA.`)
+    w.unmount()
+
+    for (const [permissoes, perfil, link] of [
+      [['relatorios.ver', 'configuracoes.gerenciar'], 'admin', true],
+      [['relatorios.ver'], 'gestor', false],
+    ] as const) {
+      setActivePinia(createPinia())
+      entrar([...permissoes], perfil)
+      apiRelatorios({ 'GET /relatorios/parecer-ia': () => estado({ disponivel: false, motivo: 'cota_insuficiente', cota: RESTA_1, custo: 2 }) })
+      w = await abrir('/relatorios/temas', '/relatorios/:aba', RelatoriosView, true)
+      await w.get('[data-abrir-parecer]').trigger('click')
+      await flushPromises()
+      const d = dialogo(w)
+      expect(t(d.get('[data-bloqueio]').text())).toContain(INSUFICIENTE)
+      expect(d.find('[data-gerar-ia]').exists()).toBe(false)
+      expect(d.find('[data-link-trocar-nivel]').exists()).toBe(link)
+      if (link) expect(d.get('[data-link-trocar-nivel]').attributes('href')).toBe('/configuracoes/ia')
+      w.unmount()
+      document.body.innerHTML = ''
+    }
   })
 
   /** Escolhe uma opção num campo de seleção pelo rótulo. */

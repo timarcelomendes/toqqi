@@ -45,6 +45,9 @@ const RESPOSTA = (p: Partial<RespostaAssistente> = {}): RespostaAssistente => ({
   ...p,
 })
 const erroApi = (status: number, codigo: string, mensagem: string) => new Response(JSON.stringify({ erro: { codigo, mensagem } }), { status })
+/** Resta 1 análise: não dá para o Mais detalhado (cada pergunta gasta 2). */
+const RESTA_1 = { usadas: 499, limite: 500, restantes: 1, mes: '2026-10' }
+const INSUFICIENTE = 'Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo mês.'
 
 /**
  * Tela larga ou estreita, alta ou baixa (celular deitado, zoom de 200%); com ou sem "reduzir movimento" (sem, a resposta
@@ -771,6 +774,89 @@ describe('erros', () => {
     await flushPromises()
     expect(painel(w).exists()).toBe(false)
     expect(document.activeElement).toBe(botaoFlutuante(w).element)
+  })
+
+  // ── 03/10: o Mais detalhado gasta 2 análises por pergunta (custo) ──
+
+  it('cota insuficiente (409): desliga a caixa com a mensagem da API, lê o estado de novo e o administrador vê "Trocar o nível"', async () => {
+    entrar()
+    let depois = false
+    const api = apiFalsa({
+      'GET /assistente': () => (depois ? ESTADO({ disponivel: false, motivo: 'cota_insuficiente', cota: RESTA_1, custo: 2, sugestoes: [] }) : ESTADO({ custo: 2 })),
+      'POST /assistente/perguntar': () => {
+        depois = true
+        return erroApi(409, 'cota_insuficiente', INSUFICIENTE)
+      },
+    })
+    const w = await montar()
+    await abrir(w)
+    await perguntar(w, 'Qual o NPS?')
+    expect(t(w.get('[data-erro]').text())).toBe(INSUFICIENTE)
+    expect(w.find('[data-erro] button').exists()).toBe(false) // sem "Tentar de novo"
+    expect(caixa(w).element.disabled).toBe(true)
+    const bloqueio = w.get('[data-bloqueio]')
+    expect(t(bloqueio.text())).toContain(INSUFICIENTE)
+    expect(bloqueio.get('a').attributes('href')).toBe('/configuracoes/ia')
+    expect(t(bloqueio.get('a').text())).toBe('Trocar o nível')
+    // O estado lido de novo traz o que resta de verdade (a cota de antes era 488).
+    expect(chamadas(api, 'GET', '/assistente')).toHaveLength(3)
+    expect(t(w.get('[data-cota]').text())).toBe('Resta 1 de 500 análises este mês')
+    expect(document.activeElement).toBe(painel(w).element)
+  })
+
+  it('cota insuficiente no estado: a caixa desligada explica com o que resta e o custo; sem configuracoes.gerenciar, sem o link', async () => {
+    entrar(['painel.ver'], 'consulta')
+    apiFalsa({ 'GET /assistente': () => ESTADO({ disponivel: false, motivo: 'cota_insuficiente', cota: RESTA_1, custo: 2, sugestoes: [] }) })
+    const w = await montar()
+    expect(botaoFlutuante(w).exists()).toBe(true)
+    await abrir(w)
+    expect(caixa(w).element.disabled).toBe(true)
+    expect(t(w.get('[data-bloqueio]').text())).toBe(INSUFICIENTE)
+    expect(w.find('[data-bloqueio] a').exists()).toBe(false)
+  })
+
+  it('a resposta que deixa menos análises que o custo já desliga a caixa (restantes < custo); com custo 1, a última análise ainda serve', async () => {
+    entrar()
+    let custo = 2
+    apiFalsa({
+      'GET /assistente': () => ESTADO({ custo, cota: { usadas: 497, limite: 500, restantes: 3, mes: '2026-10' } }),
+      'POST /assistente/perguntar': () => RESPOSTA({ cota: RESTA_1, custo }),
+    })
+    let w = await montar()
+    await abrir(w)
+    await perguntar(w, 'Qual o NPS?')
+    expect(caixa(w).element.disabled).toBe(true)
+    expect(t(w.get('[data-bloqueio]').text())).toContain(INSUFICIENTE)
+    expect(useAssistenteStore().estado?.motivo).toBe('cota_insuficiente')
+    w.unmount()
+
+    setActivePinia(createPinia())
+    sessionStorage.clear()
+    entrar()
+    custo = 1
+    w = await montar()
+    await abrir(w)
+    await perguntar(w, 'Qual o NPS?')
+    expect(caixa(w).element.disabled).toBe(false)
+    expect(w.find('[data-bloqueio]').exists()).toBe(false)
+  })
+})
+
+describe('store do assistente: a conta local da cota (03/10)', () => {
+  it('desliga quando restam menos análises que o custo (antes: restantes <= 0); insuficiente não zera o que resta', () => {
+    entrar()
+    const a = useAssistenteStore()
+    a.estado = ESTADO({ custo: 1 })
+    a.receberCota(RESTA_1)
+    expect(a.disponivel).toBe(true) // custo 1: a última análise ainda serve
+    a.receberCota(RESTA_1, 2)
+    expect([a.disponivel, a.estado?.motivo, a.custo, a.cota]).toEqual([false, 'cota_insuficiente', 2, RESTA_1])
+    a.estado = ESTADO({ custo: 2 })
+    a.receberCota({ usadas: 500, limite: 500, restantes: 0, mes: '2026-10' })
+    expect([a.disponivel, a.estado?.motivo]).toEqual([false, 'cota_esgotada'])
+    // Sem o custo (API anterior), vale 1.
+    a.estado = ESTADO()
+    expect(a.custo).toBe(1)
   })
 })
 

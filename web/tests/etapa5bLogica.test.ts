@@ -18,6 +18,8 @@ import {
   textoCota,
 } from '@/modulos/assistente/logica'
 
+const INSUFICIENTE = 'Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo mês.'
+
 const acesso = (permissoes: Permissao[], admin = false) => ({ pode: (p: Permissao) => permissoes.includes(p), admin })
 
 describe('texto do assistente', () => {
@@ -76,6 +78,14 @@ describe('erros da pergunta', () => {
     expect(explicacaoIndisponivel(false, 'cota_esgotada')).toContain('renova no dia 1º')
     expect(explicacaoIndisponivel(false, 'conta_pausada')).toBe('O ToqqiAI volta quando a assinatura estiver em dia.')
     expect(explicacaoIndisponivel(false, 'outro')).toContain('indisponível')
+  })
+
+  it('cota insuficiente (03/10: resta menos que o custo do nível): 409 desliga a caixa; a explicação é a da API ou a mesma frase montada', () => {
+    expect(lerErroPergunta(new ApiError(409, 'cota_insuficiente', INSUFICIENTE))).toEqual({ mensagem: INSUFICIENTE, repetir: false, bloqueio: 'cota_insuficiente' })
+    expect(explicacaoIndisponivel(false, 'cota_insuficiente', { restantes: 1, custo: 2 })).toBe(INSUFICIENTE)
+    expect(explicacaoIndisponivel(false, 'cota_insuficiente', { mensagem: 'A mensagem da API.', restantes: 1, custo: 2 })).toBe('A mensagem da API.')
+    expect(explicacaoIndisponivel(false, 'cota_insuficiente', { restantes: 2, custo: 3 })).toMatch(/^Restam 2 análises e o nível Mais detalhado gasta 3\./)
+    expect(explicacaoIndisponivel(true, 'cota_insuficiente', { restantes: 1, custo: 2 })).toBeNull()
   })
 })
 

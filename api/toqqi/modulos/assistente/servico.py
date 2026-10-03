@@ -2,12 +2,14 @@
 
 Funciona com a IA disponível na plataforma (`ia.disponivel()`) e a conta liberada (`assinatura.regras.liberada`);
 não depende do interruptor "Analisar comentários com IA". Todos os perfis usam; cada consulta respeita as
-permissões de quem pergunta. Cada pergunta gasta 1 análise da cota mensal do plano (`ia.cota`); a que falha devolve.
+permissões de quem pergunta. Cada pergunta gasta da cota mensal do plano (`ia.cota`) as análises do nível de modelo
+da conta (`ia_texto.analises_do_nivel`: 1, ou 2 no Mais detalhado); a que falha devolve as mesmas.
 
 Ordem de `perguntar`: validação (esquema) → limite por minuto (8 por usuário: 429) → vagas, tentadas sem esperar
 (2 perguntas em andamento por usuário: 429; 6 no processo: 503, porque cada pergunta segura uma thread da API por até
-60 s) → IA disponível → conta liberada → reservar a cota (transação curta, com commit antes da conversa) → conversa
-(`core.ia_conversa`, fora de transação; cada consulta abre a sua) → devolver a análise se falhou. As vagas voltam
+60 s) → IA disponível → conta liberada → reservar o custo do nível (transação curta, com commit antes da conversa;
+sem saldo: 409 `cota_esgotada` ou, se restam menos análises que o custo, `cota_insuficiente`) → conversa
+(`core.ia_conversa`, fora de transação; cada consulta abre a sua) → devolver as análises se falhou. As vagas voltam
 sempre (finally); as perguntas recusadas por elas não gastam a cota.
 
 Os tokens de todas as chamadas vão para `cota_tokens_*`, inclusive os de uma pergunta que falhou ou deu erro
@@ -18,13 +20,15 @@ Nada da conversa é guardado (o histórico vem do navegador) e nada vai para a a
 tipo de falha, o número de consultas e os tokens: nunca a pergunta, a resposta ou os dados.
 
 Etapa 5d: a conversa usa o nível de modelo da conta (`contas.ia_modelo`) e as instruções ganham a linha do estilo
-(`contas.ia_estilo`), lidos na mesma transação da reserva.
+(`contas.ia_estilo`), lidos na mesma transação da reserva. O nível é lido uma vez só por pergunta: a reserva gasta o
+custo dele e a conversa usa o mesmo nível (trocar o nível no meio não cobra 1 e roda o Mais detalhado). O GET e a
+resposta trazem `custo` (as análises de uma pergunta no nível da conta) ao lado da `cota`.
 """
 import logging
 import re
 import unicodedata
 
-from toqqi.core import ia, ia_conversa, relogio
+from toqqi.core import ia, ia_conversa, ia_texto, relogio
 from toqqi.core.db import em_conta
 from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError
@@ -41,7 +45,7 @@ from toqqi.modulos.ia import cota
 log = logging.getLogger("toqqi.assistente")
 
 MSG_PAUSADA = "O ToqqiAI volta quando a assinatura estiver em dia."
-MSG_COTA = "O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º."
+MSG_COTA = cota.MSG_ESGOTADA  # 409 cota_esgotada (o 409 cota_insuficiente vem de cota.mensagem_insuficiente)
 MSG_LIMITE = "Muitas perguntas em pouco tempo. Aguarde um minuto e tente de novo."
 MSG_INDISPONIVEL = "O ToqqiAI está indisponível no momento. Tente de novo em instantes."
 RECUSA = "Só consigo ajudar com a satisfação dos seus clientes e com o uso do Toqqi."
@@ -124,18 +128,22 @@ def sugestoes_iniciais(permissoes) -> list[str]:
 
 
 def estado(ctx: Contexto) -> dict:
-    """GET /assistente: {disponivel, motivo, cota, sugestoes}."""
+    """GET /assistente: {disponivel, motivo, cota, custo, sugestoes}. `custo`: as análises que uma pergunta gasta no
+    nível da conta (null sem IA na plataforma, como a cota); restam menos que ele → "cota_insuficiente"."""
     if not ia.disponivel():
-        return {"disponivel": False, "motivo": "ia_indisponivel", "cota": None, "sugestoes": []}
+        return {"disponivel": False, "motivo": "ia_indisponivel", "cota": None, "custo": None, "sugestoes": []}
     with em_conta(ctx.conta_id) as s:
         conta = s.get(Conta, ctx.conta_id)
         uso = cota.estado(s, conta)
+        custo = ia_texto.analises_do_nivel(conta.ia_modelo)
         livre = liberada(conta)
+    base = {"cota": uso, "custo": custo}
     if not livre:
-        return {"disponivel": False, "motivo": "conta_pausada", "cota": uso, "sugestoes": []}
-    if uso["restantes"] <= 0:
-        return {"disponivel": False, "motivo": "cota_esgotada", "cota": uso, "sugestoes": []}
-    return {"disponivel": True, "motivo": None, "cota": uso, "sugestoes": sugestoes_iniciais(ctx.permissoes)}
+        return {"disponivel": False, "motivo": "conta_pausada", **base, "sugestoes": []}
+    sem_saldo = cota.motivo_sem_saldo(uso, custo)
+    if sem_saldo:
+        return {"disponivel": False, "motivo": sem_saldo, **base, "sugestoes": []}
+    return {"disponivel": True, "motivo": None, **base, "sugestoes": sugestoes_iniciais(ctx.permissoes)}
 
 
 def _indisponivel() -> AppError:
@@ -167,10 +175,11 @@ def _responder(ctx: Contexto, pergunta: str, historico: list[MensagemIn] | None)
         conta = s.get(Conta, ctx.conta_id)
         if not liberada(conta):
             raise AppError(409, "conta_pausada", MSG_PAUSADA)
-        reserva = cota.reservar(s, conta)
-        if reserva is None:
-            raise AppError(409, "cota_esgotada", MSG_COTA)
+        # o nível é lido uma vez só: a reserva gasta o custo dele e a conversa usa o mesmo nível
         nome_conta, nivel, estilo = conta.nome, conta.ia_modelo, conta.ia_estilo
+        reserva = cota.reservar(s, conta, ia_texto.analises_do_nivel(nivel))
+        if reserva is None:
+            raise cota.erro_sem_saldo(s, conta, nivel)
     mensagens = [{"role": "user" if m.papel == "usuario" else "assistant", "content": m.texto}
                  for m in historico or []]
     resultado = None
@@ -190,10 +199,10 @@ def _responder(ctx: Contexto, pergunta: str, historico: list[MensagemIn] | None)
         with em_conta(ctx.conta_id) as s:
             cota.devolver(reserva, s)
             cota.somar_tokens(reserva, falha.tokens_entrada, falha.tokens_saida, s)
-        nivel = logging.ERROR if falha.tipo == "configuracao" else logging.WARNING
-        log.log(nivel, "Assistente: falha %s (%s) na conta %s; análise devolvida (consultas=%d, chamadas=%d, "
-                "tokens=%d/%d).%s", falha.tipo, falha.detalhe, ctx.conta_id, falha.consultas, falha.chamadas,
-                falha.tokens_entrada, falha.tokens_saida,
+        nivel_log = logging.ERROR if falha.tipo == "configuracao" else logging.WARNING
+        log.log(nivel_log, "Assistente: falha %s (%s) na conta %s; análises devolvidas: %d (consultas=%d, "
+                "chamadas=%d, tokens=%d/%d).%s", falha.tipo, falha.detalhe, ctx.conta_id, reserva.quantidade,
+                falha.consultas, falha.chamadas, falha.tokens_entrada, falha.tokens_saida,
                 " Confira OPENAI_API_KEY e IA_ASSISTENTE_MODELO." if falha.tipo == "configuracao" else "")
         raise _indisponivel() from None
     except Exception as erro:
@@ -203,16 +212,19 @@ def _responder(ctx: Contexto, pergunta: str, historico: list[MensagemIn] | None)
         with em_conta(ctx.conta_id) as s:
             cota.devolver(reserva, s)
             cota.somar_tokens(reserva, entrada, saida, s)
-        log.error("Assistente: erro inesperado na conta %s; análise devolvida (tokens=%d/%d).", ctx.conta_id,
-                  entrada, saida)
+        log.error("Assistente: erro inesperado na conta %s; análises devolvidas: %d (tokens=%d/%d).", ctx.conta_id,
+                  reserva.quantidade, entrada, saida)
         raise
     # a resposta está pronta: daqui em diante, nada a derruba
     _somar_tokens(ctx, reserva, resultado)
     uso = _cota_depois(ctx, reserva)
-    log.info("Assistente: %s na conta %s (consultas=%d, chamadas=%d, tokens=%d/%d).",
-             "recusa" if resultado.recusa else "resposta", ctx.conta_id, resultado.consultas, resultado.chamadas,
-             resultado.tokens_entrada, resultado.tokens_saida)
-    return {"resposta": resposta, "sugestoes": sugestoes, "atalhos": atalhos, "cota": uso}
+    log.info("Assistente: %s na conta %s (nível %s, análises=%d, consultas=%d, chamadas=%d, tokens=%d/%d).",
+             "recusa" if resultado.recusa else "resposta", ctx.conta_id, ia_texto.nivel_valido(nivel),
+             reserva.quantidade, resultado.consultas, resultado.chamadas, resultado.tokens_entrada,
+             resultado.tokens_saida)
+    # `custo`: o desta pergunta (o nível lido no começo), que é o da próxima enquanto ninguém trocar o nível
+    return {"resposta": resposta, "sugestoes": sugestoes, "atalhos": atalhos, "cota": uso,
+            "custo": reserva.quantidade}
 
 
 def _somar_tokens(ctx: Contexto, reserva: cota.Reserva, resultado: ia_conversa.Resultado) -> None:

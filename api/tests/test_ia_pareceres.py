@@ -158,11 +158,12 @@ def presas(monkeypatch):
 
 def test_estados_do_get(client, cenario, dono, monkeypatch):
     h, c = cenario["h"], cenario["conta"]["id"]
-    vazio = {"disponivel": True, "motivo": None, "cota": cota_json(0), "item": None, "pode_gerar_em": None}
+    vazio = {"disponivel": True, "motivo": None, "cota": cota_json(0), "custo": 1, "item": None, "pode_gerar_em": None}
     for tipo in ("painel", "relatorios"):
         assert estado_ia(client, h, tipo).json() == vazio
         assert estado_ia(client, h, tipo, **cenario["periodo"]).json() == vazio
-    sem_ia = {"disponivel": False, "motivo": "ia_indisponivel", "cota": None, "item": None, "pode_gerar_em": None}
+    sem_ia = {"disponivel": False, "motivo": "ia_indisponivel", "cota": None, "custo": None, "item": None,
+              "pode_gerar_em": None}
     monkeypatch.setattr(config(), "IA_PROVEDOR", "desligado")
     assert estado_ia(client, h).json() == sem_ia
     monkeypatch.setattr(config(), "IA_PROVEDOR", "openai")  # sem chave
@@ -179,7 +180,8 @@ def test_estados_do_get(client, cenario, dono, monkeypatch):
     item = gerar_ia(client, h).json()["item"]
     monkeypatch.setattr(config(), "IA_PROVEDOR", "desligado")
     r = estado_ia(client, h).json()
-    assert (r["disponivel"], r["motivo"], r["cota"], r["item"]) == (False, "ia_indisponivel", None, item)
+    assert (r["disponivel"], r["motivo"], r["cota"], r["custo"], r["item"]) == (False, "ia_indisponivel", None, None,
+                                                                                item)
     assert r["pode_gerar_em"] is not None
 
 
@@ -189,7 +191,8 @@ def test_gerar_salva_e_o_get_devolve(client, cenario, dono):
     assert r.status_code == 200, r.text
     corpo = r.json()
     item = corpo["item"]
-    assert set(corpo) == {"item", "cota", "pode_gerar_em"} and corpo["cota"] == cota_json(1)
+    assert set(corpo) == {"item", "cota", "custo", "pode_gerar_em"} and corpo["cota"] == cota_json(1)
+    assert corpo["custo"] == 1  # o Equilibrado (padrão) gasta 1
     assert set(item) == {"conteudo", "filtros", "gerado_em", "gerado_por", "modelo", "modelo_rotulo", "estilo"}
     assert set(item["conteudo"]) == {"melhorar", "funciona", "proximo_passo"}
     assert item["conteudo"]["melhorar"].startswith("O NPS do período (de ")  # provedor de memória
@@ -204,7 +207,8 @@ def test_gerar_salva_e_o_get_devolve(client, cenario, dono):
     assert sql(dono, "select tipo, chave, gerado_por from ia_pareceres") == [("painel", chave, cenario["usuario"]["id"])]
     # o GET com os mesmos filtros devolve o salvo; com outros, nada (mas a espera vale para o tipo inteiro)
     assert estado_ia(client, h, **cenario["periodo"]).json() == {
-        "disponivel": True, "motivo": None, "cota": cota_json(1), "item": item, "pode_gerar_em": corpo["pode_gerar_em"]}
+        "disponivel": True, "motivo": None, "cota": cota_json(1), "custo": 1, "item": item,
+        "pode_gerar_em": corpo["pode_gerar_em"]}
     outro = estado_ia(client, h).json()
     assert outro["item"] is None and outro["pode_gerar_em"] == corpo["pode_gerar_em"]
     assert estado_ia(client, h, "relatorios", **cenario["periodo"]).json()["pode_gerar_em"] is None
@@ -695,7 +699,7 @@ def test_modelo_e_estilo_da_conta(client, cenario, dono, monkeypatch):
     h, c = cenario["h"], cenario["conta"]["id"]
     sql(dono, "update contas set ia_modelo = 'rapido', ia_estilo = 'objetiva' where id = :c", c=c)
     item = gerar_ia(client, h).json()["item"]
-    assert (item["modelo"], item["modelo_rotulo"], item["estilo"]) == ("rapido", "Rápido e econômico", "objetiva")
+    assert (item["modelo"], item["modelo_rotulo"], item["estilo"]) == ("rapido", "Rápido", "objetiva")
     corpo = mem.corpos[-1]
     assert (corpo["model"], corpo["reasoning"]) == ("gpt-5-nano", {"effort": "minimal"})
     assert corpo["instructions"].endswith(
@@ -705,6 +709,7 @@ def test_modelo_e_estilo_da_conta(client, cenario, dono, monkeypatch):
     assert (item["modelo"], item["modelo_rotulo"], item["estilo"]) == ("detalhado", "Mais detalhado", "criativa")
     corpo = mem.corpos[-1]
     assert (corpo["model"], corpo["reasoning"]) == ("gpt-5", {"effort": "low"})
+    assert cota_do_mes(dono, c)[0] == 3  # 1 no Rápido e 2 no Mais detalhado
     assert corpo["instructions"].endswith(
         "\n\nEstilo: próximo e caloroso. Proponha ideias práticas e criativas, sem inventar dados.")
     # o item salvo com outro modelo continua visível

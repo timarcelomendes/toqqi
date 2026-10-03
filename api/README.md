@@ -97,9 +97,9 @@ registros de acesso guardam o endereço inteiro.
 | `IA_BASE_URL` | Endereço base da API da OpenAI (padrão `https://api.openai.com`) |
 | `IA_ASSISTENTE_MODELO` / `IA_ASSISTENTE_ESFORCO` | Modelo e `reasoning.effort` do assistente (padrão `gpt-5-mini` / `low`); também os do nível Equilibrado quando os dele estão vazios |
 | `IA_COTA_CORTESIA` | Análises de IA por mês (cota do plano) das contas em cortesia (padrão `500`) |
-| `IA_MODELO_RAPIDO` / `IA_ESFORCO_RAPIDO` | Nível "Rápido e econômico" de Configurações › IA (padrão `gpt-5-nano` / `minimal`). Ao trocar o modelo, confira o esforço: `minimal` só existe na família `gpt-5`; nos modelos 5.1 em diante o menor é `none` (com `minimal`, toda chamada desse nível volta 400) |
-| `IA_MODELO_EQUILIBRADO` / `IA_ESFORCO_EQUILIBRADO` | Nível "Equilibrado" (o padrão das contas); vazios (padrão) = os do assistente |
-| `IA_MODELO_DETALHADO` / `IA_ESFORCO_DETALHADO` | Nível "Mais detalhado" (padrão `gpt-5` / `low`). Em qualquer nível, esforço vazio = não manda `reasoning`; os níveis valem para o assistente, o resumo do painel, o parecer dos relatórios e os passos das ações (a análise de cada resposta segue com `IA_MODELO`/`IA_ESFORCO`) |
+| `IA_MODELO_RAPIDO` / `IA_ESFORCO_RAPIDO` | Nível "Rápido" de Configurações › IA (padrão `gpt-5-nano` / `minimal`; gasta 1 análise da cota por geração ou pergunta). Ao trocar o modelo, confira o esforço: `minimal` só existe na família `gpt-5`; nos modelos 5.1 em diante o menor é `none` (com `minimal`, toda chamada desse nível volta 400) |
+| `IA_MODELO_EQUILIBRADO` / `IA_ESFORCO_EQUILIBRADO` | Nível "Equilibrado" (o padrão das contas; gasta 1 análise); vazios (padrão) = os do assistente |
+| `IA_MODELO_DETALHADO` / `IA_ESFORCO_DETALHADO` | Nível "Mais detalhado" (padrão `gpt-5` / `low`; gasta 2 análises da cota por geração ou pergunta, porque custa umas 5 vezes o Equilibrado). Em qualquer nível, esforço vazio = não manda `reasoning`; os níveis valem para o assistente, o resumo do painel, o parecer dos relatórios e os passos das ações (a análise de cada resposta segue com `IA_MODELO`/`IA_ESFORCO`). O custo de cada nível na cota fica no código (`core/ia_texto.py`, `MODELOS`): ao trocar o modelo de um nível por um bem mais caro ou mais barato, reveja o custo também |
 | `ASAAS_API_KEY` | Chave de API do Asaas (da plataforma), na toqqi-api (e no toqqi-tarefas, se o Cron Job estiver ligado). Vazia = sem cobrança online |
 | `ASAAS_WEBHOOK_TOKEN` | Token do webhook do Asaas (cabeçalho `asaas-access-token`), só em toqqi-api. Vazio = webhook desligado (404) |
 | `ASAAS_URL` | Opcional: sobrepõe o endereço da API do Asaas (Asaas falso local). Vazio = o endereço segue a chave |
@@ -523,9 +523,15 @@ Contrato em `../docs/api-etapa-5d.md`; migração `0013_ia_sob_demanda` (colunas
   entre `<dados>` e `</dados>`. Também guarda os níveis de modelo (§5.2, variáveis `IA_MODELO_*`/`IA_ESFORCO_*`) e as
   linhas de estilo (§5.3), usados pelo assistente (`core/ia_conversa.py`), pelo resumo, pelo parecer e pelos passos.
 - **Resumo e parecer** (`modulos/ia/pareceres.py`, com os dados e o formato em `painel/resumo_ia.py` e
-  `relatorios/parecer_ia.py`): 1 análise da cota do plano por geração (devolvida se falhar); vagas do assistente; a
-  trava "em andamento" é da memória de cada processo e a espera de 30 s sai do `gerado_em` no banco (só gerações bem
-  sucedidas contam). O último de cada recorte fica em `ia_pareceres` (upsert pela chave canônica dos filtros).
+  `relatorios/parecer_ia.py`): 1 análise da cota do plano por geração, 2 no nível Mais detalhado (devolvidas se
+  falhar); vagas do assistente; a trava "em andamento" é da memória de cada processo e a espera de 30 s sai do
+  `gerado_em` no banco (só gerações bem sucedidas contam). O último de cada recorte fica em `ia_pareceres` (upsert pela
+  chave canônica dos filtros).
+- **Custo por nível (03/10)**: cada nível tem `analises` (`ia_texto.analises_do_nivel`: Rápido 1, Equilibrado 1, Mais
+  detalhado 2). O resumo, o parecer e a pergunta ao assistente leem o nível uma vez, reservam esse custo de uma vez só
+  (`cota.reservar(s, conta, quantidade)`: tudo ou nada, atômico) e chamam a IA com o mesmo nível; a falha devolve a
+  mesma quantidade. Os GET e os POST trazem `custo`; com análises restantes, mas menos que o custo, o motivo/409 é
+  `cota_insuficiente` (com 0 restantes continua `cota_esgotada`). Contrato em `../docs/api-etapa-5d.md` §9.
 - **Passos das ações** (`modulos/acoes/passos.py`): fora da cota do plano, só no teto de segurança mensal; pendentes
   ao criar a ação de uma resposta, sugeridos depois do commit (coletor `coletar_passos()` nas rotas que gravam
   respostas e no POST /acoes) ou pela tarefa `ia`, que passa a devolver `{analisadas, falharam, limite, passos:

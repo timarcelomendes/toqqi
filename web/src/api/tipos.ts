@@ -1127,7 +1127,10 @@ export interface ConfigIa {
   limite: number
   pendentes: number
   falharam_no_mes: number
-  /** Etapa 5b: cota de IA do plano no mês (cada pergunta ao assistente usa 1; a análise de cada resposta não entra). */
+  /**
+   * Etapa 5b: cota de IA do plano no mês (cada pergunta ao assistente, resumo ou parecer usa 1, ou 2 no Mais detalhado;
+   * a análise de cada resposta não entra).
+   */
   cota?: CotaIa
   /** Etapa 5d: como a IA escreve (assistente, resumo, parecer e passos) e se as ações ganham passos sugeridos. */
   modelo?: NivelModeloIa | (string & {})
@@ -1606,7 +1609,11 @@ export interface ConteudoAjuda {
   topicos: TopicoAjuda[]
 }
 
-export type MotivoAssistente = 'ia_indisponivel' | 'conta_pausada' | 'cota_esgotada'
+/**
+ * Por que a IA sob demanda não está disponível. `cota_esgotada`: nenhuma análise no mês; `cota_insuficiente` (03/10):
+ * restam análises, mas menos que o custo do nível da conta (ex.: 1 no Mais detalhado, que gasta 2).
+ */
+export type MotivoAssistente = 'ia_indisponivel' | 'conta_pausada' | 'cota_esgotada' | 'cota_insuficiente'
 
 /** GET /assistente. */
 export interface EstadoAssistente {
@@ -1615,6 +1622,8 @@ export interface EstadoAssistente {
   motivo: MotivoAssistente | (string & {}) | null
   /** null sem IA na plataforma. */
   cota: CotaIa | null
+  /** Análises que uma pergunta gasta no nível da conta (1, ou 2 no Mais detalhado); null sem IA na plataforma. */
+  custo?: number | null
   /** Até 3 perguntas de exemplo, conforme as permissões (vazio quando não está disponível). */
   sugestoes: string[]
 }
@@ -1642,6 +1651,8 @@ export interface RespostaAssistente {
   /** 0 a 2, já filtrados pelas permissões. */
   atalhos: AtalhoAssistente[]
   cota: CotaIa
+  /** Análises que esta pergunta gastou (o custo do nível da conta). */
+  custo?: number
 }
 
 // ───────────────────────── Etapa 5c (docs/api-etapa-5c.md) ─────────────────────────
@@ -1812,6 +1823,8 @@ export interface OpcaoIa {
   valor: string
   rotulo: string
   descricao: string
+  /** Só nos níveis de modelo: análises da cota que cada geração ou pergunta gasta nele (1, ou 2 no Mais detalhado). */
+  analises?: number
 }
 
 /** Situação dos passos sugeridos pela IA numa ação. */
@@ -1857,7 +1870,7 @@ export interface ItemGeracaoIa<C = unknown> {
   /** null: o usuário foi removido. */
   gerado_por: Referencia | null
   modelo: NivelModeloIa | (string & {})
-  /** "Rápido e econômico" | "Equilibrado" | "Mais detalhado". */
+  /** "Rápido" | "Equilibrado" | "Mais detalhado". */
   modelo_rotulo: string
   estilo: EstiloIa | (string & {})
 }
@@ -1869,16 +1882,23 @@ export interface EstadoGeracaoIa<C = unknown> {
   motivo: MotivoAssistente | (string & {}) | null
   /** null sem IA na plataforma. */
   cota: CotaIa | null
+  /** Análises que uma geração gasta no nível da conta (1, ou 2 no Mais detalhado); null sem IA na plataforma. */
+  custo?: number | null
   /** O salvo para os mesmos filtros, ou null (vem mesmo com `disponivel: false`). */
   item: ItemGeracaoIa<C> | null
   /** A última geração deste tipo na conta (qualquer filtro) + 30 s, se ainda no futuro; senão null. */
   pode_gerar_em: string | null
 }
 
-/** POST /painel/resumo-ia e POST /relatorios/parecer-ia (200). Gasta 1 análise da cota (devolvida se falhar). */
+/**
+ * POST /painel/resumo-ia e POST /relatorios/parecer-ia (200). Gasta o custo do nível da conta (1 análise da cota, ou 2 no
+ * Mais detalhado; devolvidas se falhar).
+ */
 export interface ResultadoGeracaoIa<C = unknown> {
   item: ItemGeracaoIa<C>
   cota: CotaIa
+  /** Análises que esta geração gastou. */
+  custo?: number
   pode_gerar_em: string | null
 }
 

@@ -2,15 +2,20 @@
 // de novo, os textos dos botões e do rodapé, o que fazer com cada erro e a leitura do que vem da API (sempre como texto).
 import { ApiError, MENSAGEM_INESPERADA } from '@/api/erros'
 import type { ConteudoParecerIa, ConteudoResumoIa, CotaIa, FiltrosGeracaoIa, Id, SituacaoPassosIa } from '@/api/tipos'
+import { ehBloqueio, lerCusto, type MotivoBloqueio } from '@/modulos/assistente/logica'
 import { formatarDataHora } from '@/utils/datas'
+import { formatarNumero } from '@/utils/formatos'
 
-/** A cota esgotada sem a mensagem da API (no GET só vem o motivo) e o "Restam X de Y": os mesmos do assistente. */
-export { MENSAGEM_COTA_ESGOTADA, textoCota } from '@/modulos/assistente/logica'
+/**
+ * A cota esgotada e a insuficiente para o nível sem a mensagem da API (no GET só vem o motivo), o "Restam X de Y" e a
+ * leitura do custo: os mesmos do assistente.
+ */
+export { MENSAGEM_COTA_ESGOTADA, lerCusto, mensagemCotaInsuficiente, textoCota } from '@/modulos/assistente/logica'
 
 // ── Textos ──────────────────────────────────────────────────────────────────
 
 export interface TextosGeracaoIa {
-  /** Sem nada salvo para os filtros. */
+  /** Sem nada salvo para os filtros (a tela junta o custo: `textoVazio`). */
   vazio: string
   /** O botão sem nada salvo ("Gerar resumo"). */
   gerar: string
@@ -23,7 +28,7 @@ export interface TextosGeracaoIa {
 }
 
 export const TEXTOS_RESUMO: TextosGeracaoIa = {
-  vazio: 'Três frases sobre o período: o que precisa melhorar, o que está funcionando e o próximo passo. Usa 1 análise de IA.',
+  vazio: 'Três frases sobre o período: o que precisa melhorar, o que está funcionando e o próximo passo.',
   gerar: 'Gerar resumo',
   pausada: 'O resumo volta quando a assinatura estiver em dia.',
   gerado: 'Resumo gerado.',
@@ -31,11 +36,22 @@ export const TEXTOS_RESUMO: TextosGeracaoIa = {
 }
 
 export const TEXTOS_PARECER: TextosGeracaoIa = {
-  vazio: 'Um resumo do período e até 3 recomendações para esta semana, com os filtros da tela. Usa 1 análise de IA.',
+  vazio: 'Um resumo do período e até 3 recomendações para esta semana, com os filtros da tela.',
   gerar: 'Gerar parecer',
   pausada: 'O parecer volta quando a assinatura estiver em dia.',
   gerado: 'Parecer gerado.',
   prontoAnterior: 'O parecer pedido ficou pronto para os filtros anteriores. Volte a eles para ver.',
+}
+
+/** "Usa 1 análise de IA." ou, no Mais detalhado, "Usa 2 análises de IA." (o `custo` do GET). */
+export function textoCusto(custo: number): string {
+  const n = lerCusto(custo)
+  return `Usa ${formatarNumero(n)} ${n === 1 ? 'análise' : 'análises'} de IA.`
+}
+
+/** O texto de quando não há nada salvo, com o custo de uma geração no nível da conta. */
+export function textoVazio(textos: TextosGeracaoIa, custo: number): string {
+  return `${textos.vazio} ${textoCusto(custo)}`
 }
 
 export const TEXTO_GERANDO = 'Lendo os números do período…'
@@ -117,15 +133,16 @@ export function textoGerado(item: { gerado_em: string | null; gerado_por: string
 
 // ── Erros da geração ────────────────────────────────────────────────────────
 
-export type BloqueioGeracao = 'conta_pausada' | 'cota_esgotada'
+/** Conta pausada, cota esgotada ou cota insuficiente para o nível da conta (os mesmos motivos do assistente). */
+export type BloqueioGeracao = MotivoBloqueio
 
 export interface ErroGeracao {
   mensagem: string
   /** Tom do aviso: sem dados é informação; 429 pede para esperar; o resto é erro. */
   tom: 'info' | 'atencao' | 'erro'
-  /** "Tentar de novo": só no 503 (a IA falhou e a análise voltou para a cota). */
+  /** "Tentar de novo": só no 503 (a IA falhou e as análises voltaram para a cota). */
   repetir: boolean
-  /** 409 de conta pausada ou cota esgotada: o botão some e fica a explicação. */
+  /** 409 de conta pausada, cota esgotada ou cota insuficiente: o botão some e fica a explicação. */
   bloqueio: BloqueioGeracao | null
   /** 429 `aguarde` com os segundos na mensagem: o botão mostra a contagem. */
   esperar: number | null
@@ -140,12 +157,13 @@ export function segundosDaMensagem(mensagem: string): number | null {
 }
 
 /**
- * O que a tela faz com o erro do POST: 409 `cota_esgotada` e `conta_pausada` mudam o estado (sem botão, com a mensagem);
- * 409 `sem_dados`, 429 e 503 aparecem num aviso (só o 503 com "Tentar de novo"); o resto, a mensagem.
+ * O que a tela faz com o erro do POST: 409 `cota_esgotada`, `cota_insuficiente` e `conta_pausada` mudam o estado (sem
+ * botão, com a mensagem); 409 `sem_dados`, 429 e 503 aparecem num aviso (só o 503 com "Tentar de novo"); o resto, a
+ * mensagem.
  */
 export function lerErroGeracao(e: unknown): ErroGeracao {
   if (!(e instanceof ApiError)) return { mensagem: MENSAGEM_INESPERADA, tom: 'erro', repetir: false, bloqueio: null, esperar: null }
-  if (e.status === 409 && (e.codigo === 'cota_esgotada' || e.codigo === 'conta_pausada')) {
+  if (e.status === 409 && ehBloqueio(e.codigo)) {
     return { mensagem: e.mensagem, tom: 'atencao', repetir: false, bloqueio: e.codigo, esperar: null }
   }
   if (e.status === 429) {

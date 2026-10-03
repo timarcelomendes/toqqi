@@ -17,7 +17,9 @@ texto, JSON inválido ou que não é um objeto (transitória). O log nunca leva 
 Níveis (§5.2): rapido = IA_MODELO_RAPIDO / IA_ESFORCO_RAPIDO; equilibrado = IA_MODELO_EQUILIBRADO /
 IA_ESFORCO_EQUILIBRADO (vazios = IA_ASSISTENTE_MODELO / IA_ASSISTENTE_ESFORCO); detalhado = IA_MODELO_DETALHADO /
 IA_ESFORCO_DETALHADO. Esforço vazio = não manda `reasoning`; modelo vazio = o do assistente; nível desconhecido vale
-como equilibrado. Estilos (§5.3): uma linha a mais no fim das instruções (nenhuma no equilibrado).
+como equilibrado. Cada nível gasta `analises` da cota do plano por geração (resumo, parecer) ou pergunta ao
+assistente (`analises_do_nivel`): 1 no rápido e no equilibrado, 2 no mais detalhado (decisão de 03/10: o gpt-5 custa
+à Toqqi umas 5 vezes o gpt-5-mini). Estilos (§5.3): uma linha a mais no fim das instruções (nenhuma no equilibrado).
 
 Provedor `memoria` (testes e teste integrado), como o do assistente: `memoria.programar(...)` enfileira as próximas
 saídas — um dict (o conteúdo, que vira o texto JSON da resposta), uma resposta inteira (dict com `output`, ex.:
@@ -56,10 +58,17 @@ class Opcao:
     descricao: str
 
 
+@dataclass(frozen=True)
+class Nivel(Opcao):
+    """Um nível de modelo, com as análises da cota do plano que cada geração ou pergunta gasta nele."""
+    analises: int = 1
+
+
 MODELOS = (
-    Opcao("rapido", "Rápido e econômico", "Respostas curtas e rápidas."),
-    Opcao("equilibrado", "Equilibrado", "O padrão: bom para o dia a dia."),
-    Opcao("detalhado", "Mais detalhado", "Análises mais cuidadosas; pode demorar um pouco mais."),
+    Nivel("rapido", "Rápido", "Respostas curtas e rápidas. Gasta 1 análise da cota.", analises=1),
+    Nivel("equilibrado", "Equilibrado", "O padrão: bom para o dia a dia. Gasta 1 análise da cota.", analises=1),
+    Nivel("detalhado", "Mais detalhado", "Análises mais cuidadosas; pode demorar mais. Gasta 2 análises da cota.",
+          analises=2),
 )
 ESTILOS = (
     Opcao("objetiva", "Objetiva", "Frases curtas, só o essencial."),
@@ -113,8 +122,15 @@ def rotulo_do_nivel(nivel: str | None) -> str:
     return next(o.rotulo for o in MODELOS if o.valor == nivel_valido(nivel))
 
 
+def analises_do_nivel(nivel: str | None) -> int:
+    """Análises da cota do plano que uma geração (resumo, parecer) ou uma pergunta ao assistente gasta no nível."""
+    return next(o.analises for o in MODELOS if o.valor == nivel_valido(nivel))
+
+
 def opcoes_json(opcoes: tuple[Opcao, ...]) -> list[dict]:
-    return [{"valor": o.valor, "rotulo": o.rotulo, "descricao": o.descricao} for o in opcoes]
+    """As opções como a tela recebe (GET /conta/ia); os níveis de modelo levam também `analises`."""
+    return [{"valor": o.valor, "rotulo": o.rotulo, "descricao": o.descricao,
+             **({"analises": o.analises} if isinstance(o, Nivel) else {})} for o in opcoes]
 
 
 # ---- corpo da chamada ---------------------------------------------------------------------------

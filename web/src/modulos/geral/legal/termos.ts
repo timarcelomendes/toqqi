@@ -65,7 +65,7 @@ export const TERMOS: DocumentoLegal = {
         {
           tipo: 'p',
           texto: [
-            'A análise de comentários e os passos das ações já vêm ligados, e a Empresa pode desligá-los em Configurações › IA. O resumo do painel, o parecer dos relatórios e o ToqqiAI só rodam quando alguém da conta pede, e cada resumo, parecer ou pergunta usa 1 análise da cota de IA do plano. Todos funcionam enquanto a IA estiver disponível e a assinatura estiver em dia. O que cada recurso envia à IA está na ',
+            'A análise de comentários e os passos das ações já vêm ligados, e a Empresa pode desligá-los em Configurações › IA. O resumo do painel, o parecer dos relatórios e o ToqqiAI só rodam quando alguém da conta pede, e cada resumo, parecer ou pergunta usa 1 análise da cota de IA do plano (2 no nível Mais detalhado, que a Empresa escolhe em Configurações › IA). Todos funcionam enquanto a IA estiver disponível e a assinatura estiver em dia. O que cada recurso envia à IA está na ',
             { texto: 'Política de privacidade', href: '/privacidade#inteligencia-artificial' },
             '.',
           ],
