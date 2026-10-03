@@ -37,7 +37,9 @@ Os testes rodam no GitHub a cada envio (`.github/workflows/testes.yml`).
 | Extra: aceite dos Termos e da Política de privacidade (LGPD) e aviso de cookies | pronta (textos são rascunho: revisar com advogado e preencher os `[a confirmar]`) | `docs/api-aceite-lgpd.md` |
 | 5c. Crescimento: indicações dos promotores e oportunidades de oferta | pronta | `docs/api-etapa-5c.md` |
 | 5d. IA sob demanda: resumo do painel, parecer dos relatórios, passos das ações, modelo e estilo | pronta | `docs/api-etapa-5d.md` |
-| 5. Resto: e-mails com visual guiado, auditoria completa, zona de risco, exportação (LGPD) · 6. Lançamento (sem migração: não há clientes no Rakiti) | depois | — |
+| 5e. E-mails: visual guiado, banco de imagens, e-mails do sistema na cor da marca, registro de e-mails enviados | pronta | `docs/api-etapa-5e.md` |
+| 5f. Dados da conta: exportação completa e CSV das listas, zona de risco, auditoria por grupo, registros de acesso (6 meses), exclusão automática depois do encerramento, IP real atrás do proxy | pronta | `docs/api-etapa-5f.md` |
+| 6. Lançamento (sem migração: não há clientes no Rakiti): backup diário cifrado no Cloudflare R2 com restauração testada | pronta (falta criar o bucket e os segredos) | `docs/backup.md` |
 
 ## Publicação (Render)
 O arquivo `render.yaml` cria tudo de uma vez: no Render, **New > Blueprint** e escolha este repositório.

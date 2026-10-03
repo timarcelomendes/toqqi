@@ -6,8 +6,24 @@ from toqqi.core.deps import Contexto, requer
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.modulos.empresas import servico
 from toqqi.modulos.empresas.esquemas import EmpresaAlterarIn, EmpresaIn
+from toqqi.modulos.respostas.rotas import csv_resposta
 
 router = APIRouter(prefix="/empresas", tags=["empresas"])
+router_csv = APIRouter(tags=["empresas"])
+
+
+@router_csv.get("/empresas.csv")
+def exportar_csv(
+    busca: Annotated[str | None, Query(max_length=100)] = None,
+    grupo_id: int | None = None,
+    segmento_id: int | None = None,
+    responsavel_id: int | None = None,
+    ativa: Literal["true", "false", "todas"] = "todas",
+    ctx: Contexto = Depends(requer("contatos.ver", "painel.exportar")),
+):
+    """"Exportar CSV" de Empresas (etapa 5f): os filtros, padrões e ordem de GET /empresas, sem paginação."""
+    conteudo = servico.exportar_csv(ctx, (busca or "").strip() or None, grupo_id, segmento_id, responsavel_id, ativa)
+    return csv_resposta(conteudo, servico.nome_csv())
 
 
 @router.get("")

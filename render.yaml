@@ -19,7 +19,9 @@ services:
     plan: free            # dorme após 15 min sem uso; o robô e os lembretes rodam no cron toqqi-tarefas, sem depender dela
     rootDir: api
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn toqqi.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
+    # --no-proxy-headers: o X-Forwarded-For do Render traz primeiro o que o cliente mandou (trocaria o IP do limite, da
+    # auditoria e dos registros de acesso); o IP real vem do CF-Connecting-IP, que a Cloudflare sobrescreve (abaixo).
+    startCommand: uvicorn toqqi.main:app --host 0.0.0.0 --port $PORT --no-proxy-headers
     healthCheckPath: /api/v1/auth/regras-senha
     buildFilter:
       paths: ["api/**"]
@@ -60,6 +62,10 @@ services:
         value: low
       - key: IA_COTA_CORTESIA       # análises de IA por mês das contas em cortesia (cota do plano)
         value: "500"
+      - key: IP_CLIENTE_CABECALHO   # IP do cliente: o cabeçalho que a Cloudflare (na frente do Render) sobrescreve
+        value: CF-Connecting-IP
+      - key: EXCLUSAO_AUTOMATICA    # contas encerradas excluídas 90 dias depois (simular = só conta e registra no log)
+        value: ligada
       - key: ADMIN_INICIAL_EMAIL
         sync: false
       - key: ADMIN_INICIAL_SENHA
@@ -125,6 +131,8 @@ services:
   #         type: web
   #         name: toqqi-api
   #         envVarKey: AMBIENTE
+  #     - key: EXCLUSAO_AUTOMATICA
+  #       value: ligada
 
   - type: web
     name: toqqi-web

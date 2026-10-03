@@ -5,12 +5,16 @@
 // Na própria tela de Assinatura o aviso não aparece (a página já mostra tudo, com os dados de agora). Os
 // informativos podem ser fechados (o foco vai para o conteúdo): voltam na próxima sessão do navegador ou quando o aviso
 // muda.
+// Etapa 5f: conta encerrada com dia marcado para a exclusão (`cobranca.exclusao_em`): este aviso fica no lugar do de
+// cobrança, em todas as telas (inclusive Assinatura) e sem fechar. O administrador vê "Baixar os dados" e "Escolher
+// plano" (o botão da própria tela em que ele está some); os outros, "Fale com o administrador da conta.".
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { AlertTriangle, Info, X, XCircle } from 'lucide-vue-next'
+import { AlertTriangle, CalendarX, Info, X, XCircle } from 'lucide-vue-next'
 import { useSessaoStore } from '@/stores/sessao'
 import Botao from '@/components/ui/Botao.vue'
 import { FALE_COM_ADMIN, ROTULOS_ACAO_AVISO, chaveDoAviso, textoDoAviso } from '@/modulos/assinatura/logica'
+import { ROTA_DADOS_CONTA, textoAvisoExclusao } from '@/modulos/configuracoes/dadosConta'
 
 const CHAVE_FECHADOS = 'toqqi.avisos-fechados'
 
@@ -35,6 +39,10 @@ const visivel = computed(
 )
 const podeGerenciar = computed(() => sessao.pode('assinatura.gerenciar'))
 
+const exclusao = computed(() => textoAvisoExclusao(sessao.conta?.cobranca?.exclusao_em, sessao.admin))
+const botaoBaixar = computed(() => !!exclusao.value?.admin && rota.path !== ROTA_DADOS_CONTA)
+const botaoPlano = computed(() => !!exclusao.value?.admin && podeGerenciar.value && rota.path !== '/assinatura')
+
 function fechar() {
   fechados.value = [...fechados.value.filter((c) => c !== chave.value), chave.value].slice(-20)
   try {
@@ -52,7 +60,19 @@ const CORES_ICONE = { info: 'text-info', atencao: 'text-atencao', erro: 'text-er
 </script>
 
 <template>
-  <section v-if="visivel && texto" class="border-b" :class="FUNDOS[texto.tom]" aria-label="Aviso sobre a assinatura" data-aviso-cobranca :data-tipo="aviso?.tipo">
+  <section v-if="exclusao" class="border-b border-erro/25 bg-erro-suave" aria-label="Aviso sobre a exclusão da conta" data-aviso-exclusao>
+    <div class="mx-auto flex w-full max-w-6xl flex-col gap-2.5 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-6 lg:px-10">
+      <p class="flex min-w-0 flex-1 items-start gap-2.5 text-sm text-texto" role="status">
+        <CalendarX class="mt-0.5 size-5 shrink-0 text-erro" aria-hidden="true" />
+        <span class="min-w-0">{{ exclusao.texto }}</span>
+      </p>
+      <div v-if="botaoBaixar || botaoPlano" class="ml-[1.875rem] flex flex-wrap gap-2 sm:ml-0">
+        <Botao v-if="botaoBaixar" variante="secundario" tamanho="sm" :para="ROTA_DADOS_CONTA" data-acao-exclusao="baixar">Baixar os dados</Botao>
+        <Botao v-if="botaoPlano" variante="secundario" tamanho="sm" para="/assinatura" data-acao-exclusao="plano">Escolher plano</Botao>
+      </div>
+    </div>
+  </section>
+  <section v-else-if="visivel && texto" class="border-b" :class="FUNDOS[texto.tom]" aria-label="Aviso sobre a assinatura" data-aviso-cobranca :data-tipo="aviso?.tipo">
     <!-- O X fica sempre na mesma linha do texto; o botão de ação desce para baixo do texto só no celular. -->
     <div class="mx-auto flex w-full max-w-6xl items-start gap-2 px-4 py-3 sm:items-center sm:px-6 lg:px-10">
       <div class="flex min-w-0 flex-1 flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">

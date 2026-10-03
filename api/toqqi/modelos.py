@@ -71,6 +71,10 @@ class Conta(Base):
     ia_modelo: Mapped[str] = mapped_column(Text, server_default="equilibrado")  # rapido | equilibrado | detalhado
     ia_estilo: Mapped[str] = mapped_column(Text, server_default="equilibrada")  # objetiva | equilibrada | criativa
     ia_passos_acoes: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    # etapa 5f: exclusão automática da conta encerrada (assinatura.regras.encerramento): o dia avisado aos
+    # administradores e quando o aviso saiu (relógio do banco); os dois nulos ou os dois preenchidos
+    exclusao_avisada_para: Mapped[date | None] = mapped_column(Date)
+    exclusao_avisada_em: Mapped[datetime | None] = mapped_column(TZ)
 
 
 class Usuario(Base):
@@ -742,3 +746,21 @@ class EmailEnviado(Base):
     situacao: Mapped[str] = mapped_column(Text)  # enviado | falhou
     erro: Mapped[str | None] = mapped_column(Text)  # texto simples de core.email.traduzir_falha, só com 'falhou'
     criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+# ---- etapa 5f: registros de acesso (Marco Civil da Internet, art. 15) ------------------------
+
+class RegistroAcesso(Base):
+    """Data, hora e IP de cada acesso (entradas e tentativas, cadastro, pedido de acesso, senha trocada pelo link e
+    envios públicos de resposta e indicação), guardados por 6 meses (tarefa `limpeza`). Sem FK: sobrevive à exclusão
+    do usuário e da conta. RLS: a aplicação só grava (em conta, com a própria conta); ler e apagar, só em modo sistema
+    (core.acessos)."""
+    __tablename__ = "registros_acesso"
+    __table_args__ = {"implicit_returning": False}  # INSERT sem RETURNING: em conta, o RLS não deixa ler a linha
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    evento: Mapped[str] = mapped_column(Text)  # core.acessos.EVENTOS
+    conta_id: Mapped[int | None] = mapped_column(BigInteger)
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger)
+    item_id: Mapped[int | None] = mapped_column(BigInteger)  # a resposta ou a indicação
+    ip: Mapped[str | None] = mapped_column(Text)

@@ -102,3 +102,20 @@ export function partesEmail(email: string | null | undefined): string[] {
 export function plural(n: number, um: string, varios: string): string {
   return `${formatarNumero(n)} ${n === 1 ? um : varios}`
 }
+
+const fmtTamanho = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 })
+
+/** Tamanho de arquivo como nas outras telas (1 KB = 1.024 bytes): "512 bytes", "850,4 KB", "1,7 MB". */
+export function formatarTamanho(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return '—'
+  if (bytes < 1024) return plural(Math.round(bytes), 'byte', 'bytes')
+  const unidades = ['KB', 'MB', 'GB', 'TB']
+  let valor = bytes / 1024
+  let i = 0
+  // Sobe de unidade também quando o arredondamento chegaria a 1.024 ("1.024 KB" vira "1 MB").
+  while (i < unidades.length - 1 && Math.round(valor * 10) / 10 >= 1024) {
+    valor /= 1024
+    i++
+  }
+  return `${fmtTamanho.format(valor)} ${unidades[i]}`
+}

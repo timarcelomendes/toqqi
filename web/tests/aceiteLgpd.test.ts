@@ -343,10 +343,11 @@ describe('tela "Antes de continuar"', () => {
     expect(router.currentRoute.value.path).toBe('/inicio')
   })
 
-  it('versão nova: texto de atualização, com a data em que a versão 2 passou a valer', async () => {
+  it('versão nova: texto de atualização, com a data em que a versão atual passou a valer', async () => {
+    // Etapa 5f: a versão 4 vale desde 03/10/2026 (VIGENTE_DESDE).
     entrar({ versao_atual: 2, versao_aceita: 1, aceito_em: '2026-01-01T12:00:00Z', pendente: true })
     const w = await abrir(AceiteView, '/aceite')
-    expect(t(w.get('[data-teste="abertura"]').text())).toMatch(/^Atualizamos os Termos de uso e a Política de privacidade em 02\/10\/2026\./)
+    expect(t(w.get('[data-teste="abertura"]').text())).toMatch(/^Atualizamos os Termos de uso e a Política de privacidade em 03\/10\/2026\./)
   })
 
   it('409 com a API na mesma versão do site: recarrega /eu, desmarca e mostra o aviso; fica na tela', async () => {

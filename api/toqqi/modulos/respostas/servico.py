@@ -398,33 +398,43 @@ def excluir(ctx: Contexto, resposta_id: int) -> None:
 
 # ---- CSV ----------------------------------------------------------------------
 
-def gerar_csv(s: Session, conds: list) -> str:
-    """CSV `;` (UTF-8 com BOM) das respostas das condições, mais novas primeiro; células protegidas contra fórmula."""
-    consulta = _juntar_cadastros(select(
+def consulta_csv(*extras):
+    """As colunas de `CABECALHO_CSV` (e as `extras`) das respostas, com os cadastros juntados; sem filtro nem ordem."""
+    return _juntar_cadastros(select(
         Resposta.data_resposta, Contato.nome.label("contato"), Contato.email, Empresa.nome.label("empresa"),
         Grupo.nome.label("grupo_empresas"), PerfilContato.nome.label("perfil"), Resposta.tipo_nota, Resposta.nota,
         Resposta.grupo, Resposta.temas, Resposta.comentario, Resposta.o_que_faltou, Resposta.o_que_combinamos,
         Resposta.canal, Resposta.origem, Resposta.referencia, Resposta.contexto, Resposta.arquivada,
-        Resposta.ia_situacao, Resposta.ia_sentimento, Resposta.ia_resumo,
-    ).select_from(Resposta)).where(*conds).order_by(Resposta.data_resposta.desc(), Resposta.id.desc())
+        Resposta.ia_situacao, Resposta.ia_sentimento, Resposta.ia_resumo, *extras,
+    ).select_from(Resposta))
+
+
+def linha_csv(x) -> list:
+    """Uma linha de `CABECALHO_CSV` (células protegidas contra fórmula) de uma linha de `consulta_csv`."""
+    contexto = x.contexto or {}
+    return [
+        x.data_resposta.astimezone(FUSO).strftime("%d/%m/%Y %H:%M"),
+        _celula(x.contato), _celula(x.email), _celula(x.empresa), _celula(x.grupo_empresas), _celula(x.perfil),
+        ROTULOS_TIPO.get(x.tipo_nota, ""), "" if x.nota is None else x.nota, ROTULOS_GRUPO.get(x.grupo, ""),
+        ", ".join(temas_mod.ROTULOS[t] for t in temas_mod.ordenar(x.temas)),
+        _celula(x.comentario), _celula(x.o_que_faltou), _celula(x.o_que_combinamos),
+        ROTULOS_CANAL.get(x.canal, x.canal), ROTULOS_ORIGEM.get(x.origem, x.origem), _celula(x.referencia),
+        *[_celula(contexto.get(k)) for k in CHAVES_CONTEXTO],
+        "Sim" if x.arquivada else "Não",
+        ROTULOS_SENTIMENTO.get(x.ia_sentimento, "") if x.ia_situacao == "analisada" else "",
+        _celula(x.ia_resumo) if x.ia_situacao == "analisada" else "",
+    ]
+
+
+def gerar_csv(s: Session, conds: list) -> str:
+    """CSV `;` (UTF-8 com BOM) das respostas das condições, mais novas primeiro; células protegidas contra fórmula."""
+    consulta = consulta_csv().where(*conds).order_by(Resposta.data_resposta.desc(), Resposta.id.desc())
     buf = io.StringIO()
     buf.write("﻿")
     w = csv.writer(buf, delimiter=";", lineterminator="\r\n")
     w.writerow(CABECALHO_CSV)
     for x in s.execute(consulta.execution_options(yield_per=2000)):
-        contexto = x.contexto or {}
-        w.writerow([
-            x.data_resposta.astimezone(FUSO).strftime("%d/%m/%Y %H:%M"),
-            _celula(x.contato), _celula(x.email), _celula(x.empresa), _celula(x.grupo_empresas), _celula(x.perfil),
-            ROTULOS_TIPO.get(x.tipo_nota, ""), "" if x.nota is None else x.nota, ROTULOS_GRUPO.get(x.grupo, ""),
-            ", ".join(temas_mod.ROTULOS[t] for t in temas_mod.ordenar(x.temas)),
-            _celula(x.comentario), _celula(x.o_que_faltou), _celula(x.o_que_combinamos),
-            ROTULOS_CANAL.get(x.canal, x.canal), ROTULOS_ORIGEM.get(x.origem, x.origem), _celula(x.referencia),
-            *[_celula(contexto.get(k)) for k in CHAVES_CONTEXTO],
-            "Sim" if x.arquivada else "Não",
-            ROTULOS_SENTIMENTO.get(x.ia_sentimento, "") if x.ia_situacao == "analisada" else "",
-            _celula(x.ia_resumo) if x.ia_situacao == "analisada" else "",
-        ])
+        w.writerow(linha_csv(x))
     return buf.getvalue()
 
 

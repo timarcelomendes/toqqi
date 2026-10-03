@@ -1,4 +1,4 @@
-// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b, -5a, -5b, -5c, -5d e -5e).
+// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b, -5a, -5b, -5c, -5d, -5e e -5f).
 import type { Contexto, GrupoNota, Pergunta, Tema } from '@/pesquisa/tipos'
 
 export type Perfil = 'admin' | 'gestor' | 'consulta'
@@ -165,6 +165,8 @@ export interface ItemAuditoria {
   /** O contrato não fixa o formato: pode vir texto ou objeto. */
   detalhe: string | Record<string, unknown> | null
   ip: string | null
+  /** Etapa 5f: a chave do grupo do evento (GET /auditoria/grupos); pode faltar no servidor antigo. */
+  grupo?: string | null
 }
 
 export interface PaginaAuditoria {
@@ -190,6 +192,8 @@ export interface ContaPlataforma {
   assinatura?: { plano: string; valor: ValorDecimal; situacao: string } | null
   /** Administradores da conta, o mais antigo primeiro. */
   admins?: AdminPlataforma[]
+  /** Etapa 5f: dia (AAAA-MM-DD) da exclusão automática já avisada aos administradores; null fora disso. */
+  exclusao_em?: string | null
 }
 
 export interface AdminPlataforma {
@@ -1454,6 +1458,11 @@ export interface CobrancaConta {
   /** Quando os envios param (data e hora), se estão liberados com prazo. */
   pausa_em: string | null
   aviso: AvisoCobranca | null
+  /**
+   * Etapa 5f: dia (AAAA-MM-DD) em que a conta encerrada será excluída, depois do aviso por e-mail aos administradores;
+   * null (ou ausente, no servidor antigo) quando não há exclusão marcada. Assinar um plano cancela.
+   */
+  exclusao_em?: string | null
 }
 
 export type ChavePlano = 'essencial' | 'profissional' | 'empresa'
@@ -1953,4 +1962,66 @@ export interface FiltrosEmailsEnviados {
   busca?: string
   pagina?: number
   por_pagina?: number
+}
+
+// ───────────────────────── Etapa 5f (docs/api-etapa-5f.md) ─────────────────────────
+
+/** Opções da Zona de risco, da menor para a maior (cada uma inclui a anterior). */
+export type OpcaoZonaRisco = 'respostas' | 'contatos' | 'tudo'
+
+/** O que a opção "Respostas" apaga (respostas NPS e personalizadas) e as ações que perdem o vínculo. */
+export interface ContagemZonaRespostas {
+  respostas: number
+  acoes_sem_vinculo: number
+}
+
+/** "Contatos": o de cima + contatos, convites com contato e envios; as CSAT ficam, sem o contato. */
+export interface ContagemZonaContatos {
+  contatos: number
+  respostas: number
+  convites: number
+  envios: number
+  csat_sem_contato: number
+}
+
+/** "Recomeçar do zero": o de cima + empresas, ações, indicações e ofertas. */
+export interface ContagemZonaTudo extends ContagemZonaContatos {
+  empresas: number
+  acoes: number
+  indicacoes: number
+  ofertas: number
+}
+
+/** O que fica em qualquer opção. */
+export interface MantidosZonaRisco {
+  csat: number
+  descadastros: number
+  usuarios: number
+  formularios: number
+}
+
+/** GET /conta/zona-de-risco (`zona_risco.usar`, só administrador). */
+export interface ZonaRisco {
+  opcoes: {
+    respostas: ContagemZonaRespostas
+    contatos: ContagemZonaContatos
+    tudo: ContagemZonaTudo
+  }
+  mantidos: MantidosZonaRisco
+}
+
+/**
+ * POST /conta/zona-de-risco (200). `apagados`: as mesmas chaves das contagens da opção no GET (as linhas que o comando
+ * apagou ou desligou); `mantidos`: as de `MantidosZonaRisco`.
+ */
+export interface ResultadoZonaRisco {
+  opcao: OpcaoZonaRisco
+  apagados: Record<string, number>
+  mantidos: Partial<MantidosZonaRisco>
+}
+
+/** Item de GET /auditoria/grupos, na ordem da API. */
+export interface GrupoAuditoria {
+  chave: string
+  rotulo: string
 }

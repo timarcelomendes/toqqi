@@ -132,7 +132,11 @@ async function focarErro() {
             <code class="font-mono text-xs">{{ V.tres }}</code> o que está sendo avaliado (por exemplo, "seu pedido 48213" ou "nosso atendimento"). Quando a Meta pedir exemplos, use
             "Maria", "{{ modelo.exemplos[V.dois] }}" e "{{ modelo.exemplos[V.tres] }}".
           </p>
-          <BlocoCodigo :texto="modelo.rodape" rotulo="Copiar rodapé" quebrar><template #titulo>Rodapé (opcional, recomendado)</template></BlocoCodigo>
+          <BlocoCodigo :texto="modelo.rodape" rotulo="Copiar rodapé" quebrar><template #titulo>Rodapé (obrigatório)</template></BlocoCodigo>
+          <p data-nota-sair>
+            <strong class="text-texto">O rodapé com SAIR é obrigatório:</strong> é ele que diz ao cliente como parar de receber. Sem a palavra SAIR
+            no corpo ou no rodapé, o Toqqi não aceita o modelo. Quem responder SAIR sai da lista na hora e não recebe mais pesquisas.
+          </p>
           <p>Em "Botões", adicione <strong class="text-texto">Chamada para ação → Visitar site</strong>, com URL <strong class="text-texto">dinâmica</strong>:</p>
           <div class="grid gap-3 sm:grid-cols-2">
             <BlocoCodigo :texto="modelo.botaoTexto" rotulo="Copiar" quebrar><template #titulo>Texto do botão</template></BlocoCodigo>

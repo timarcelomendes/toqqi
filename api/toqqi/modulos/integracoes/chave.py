@@ -1,7 +1,8 @@
 """Chave de integração da conta (ERP, Zapier, Make, n8n).
 
 Formato `tq_live_<40 caracteres url-safe>`. No banco fica só o sha256 (e o prefixo para exibição); a chave
-inteira aparece uma vez, ao gerar. Uma chave por conta: gerar outra invalida a anterior na hora.
+inteira aparece uma vez, ao gerar. Uma chave por conta: gerar outra invalida a anterior na hora (auditoria
+`chave_regerada` `{prefixo, prefixo_anterior}`; a primeira é `chave_gerada`).
 A conta da chave é descoberta em modo sistema só pelo hash; todo o resto roda em em_conta(conta).
 """
 import secrets
@@ -16,6 +17,7 @@ from toqqi.core.auditoria import registrar
 from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError
+from toqqi.core.rate_limit import chave_ip
 from toqqi.core.security import hash_token
 from toqqi.modelos import Conta, IntegracaoChave
 
@@ -51,7 +53,7 @@ def chave_do_pedido(request: Request) -> str | None:
 def limite_por_chave(request: Request) -> str:
     """Chave do limite de chamadas: o hash da chave (nunca a chave em si)."""
     chave = chave_do_pedido(request)
-    return f"chave:{hash_token(chave)[:32]}" if chave else f"ip:{request.client.host if request.client else ''}"
+    return f"chave:{hash_token(chave)[:32]}" if chave else chave_ip(request)
 
 
 def contexto_integracao(request: Request) -> ContextoIntegracao:
@@ -87,9 +89,15 @@ def gerar(ctx: Contexto) -> dict:
     valores = {"hash": hash_token(chave), "prefixo": prefixo, "usuario_id": ctx.usuario_id, "criada_em": agora,
                "ultimo_uso": None}
     with em_conta(ctx.conta_id) as s:
+        anterior = s.scalar(select(IntegracaoChave.prefixo).where(IntegracaoChave.conta_id == ctx.conta_id)
+                            .with_for_update())
         s.execute(insert(IntegracaoChave).values(**valores)
                   .on_conflict_do_update(index_elements=["conta_id"], set_=valores))
-        registrar(s, "chave_gerada", "atencao", {"prefixo": prefixo}, usuario_id=ctx.usuario_id)
+        if anterior is None:
+            registrar(s, "chave_gerada", "atencao", {"prefixo": prefixo}, usuario_id=ctx.usuario_id)
+        else:  # a anterior parou de valer na hora (etapa 5f)
+            registrar(s, "chave_regerada", "atencao", {"prefixo": prefixo, "prefixo_anterior": anterior},
+                      usuario_id=ctx.usuario_id)
     return {"chave": chave, "prefixo": prefixo, "criada_em": agora}
 
 

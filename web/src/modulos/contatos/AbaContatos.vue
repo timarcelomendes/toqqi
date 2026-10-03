@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Eye, Link2, MessageCircle, MoreHorizontal, Pencil, Search, SlidersHorizontal, Trash2, Upload, UserPlus, UsersRound } from 'lucide-vue-next'
-import { contatosApi, mensagemDoErro, type Contato, type FiltrosContatos, type Id, type Referencia } from '@/api'
+import { Download, Eye, Link2, MessageCircle, MoreHorizontal, Pencil, Search, SlidersHorizontal, Trash2, Upload, UserPlus, UsersRound } from 'lucide-vue-next'
+import { contatosApi, exportacaoListasApi, mensagemDoErro, type Contato, type Id } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
 import { useWhatsapp } from '@/composables/whatsapp'
@@ -23,6 +23,7 @@ import Tabela, { type Coluna } from '@/components/ui/Tabela.vue'
 import CampoEmpresa from './CampoEmpresa.vue'
 import ModalContato from './ModalContato.vue'
 import ModalLinkPesquisa from './ModalLinkPesquisa.vue'
+import { consultaContatos, type FiltrosContatosTela } from './exportacao'
 
 const sessao = useSessaoStore()
 const cadastros = useCadastrosStore()
@@ -37,13 +38,13 @@ const erro = ref<string | null>(null)
 const ocupado = ref<Id | null>(null)
 const filtrosAbertos = ref(false)
 
-const filtros = reactive({
+const filtros = reactive<FiltrosContatosTela>({
   busca: '',
-  empresa: null as Referencia | null,
-  grupo_id: '' as Id | '',
-  responsavel_id: '' as Id | '',
-  perfil_id: '' as Id | '',
-  ativo: 'true' as 'true' | 'false' | 'todos',
+  empresa: null,
+  grupo_id: '',
+  responsavel_id: '',
+  perfil_id: '',
+  ativo: 'true',
 })
 
 const modalAberto = ref(false)
@@ -54,6 +55,21 @@ const paraLink = ref<Contato | null>(null)
 const podeEditar = computed(() => sessao.pode('contatos.editar'))
 const podeExcluir = computed(() => sessao.pode('contatos.excluir'))
 const podeLink = computed(() => sessao.pode('envios.disparar'))
+// Etapa 5f: "Exportar CSV" com os filtros da aba (como os outros CSV, pede também painel.exportar).
+const podeExportar = computed(() => sessao.pode('contatos.ver') && sessao.pode('painel.exportar'))
+const baixando = ref(false)
+
+async function exportar() {
+  if (baixando.value) return
+  baixando.value = true
+  try {
+    await exportacaoListasApi.baixarContatos(consultaContatos(filtros))
+  } catch (e) {
+    avisar.erro(mensagemDoErro(e))
+  } finally {
+    baixando.value = false
+  }
+}
 const whatsapp = useWhatsapp()
 const podeWhatsapp = (c: Contato) => podeLink.value && c.ativo && !!c.telefone && c.situacao !== 'saiu_da_lista'
 
@@ -85,17 +101,8 @@ async function carregar() {
   controle = new AbortController()
   carregando.value = true
   erro.value = null
-  const q: FiltrosContatos = {
-    busca: filtros.busca.trim(),
-    empresa_id: filtros.empresa?.id ?? '',
-    grupo_id: filtros.grupo_id,
-    responsavel_id: filtros.responsavel_id,
-    perfil_id: filtros.perfil_id,
-    ativo: filtros.ativo,
-    pagina: pagina.value,
-  }
   try {
-    const r = await contatosApi.listar(q, controle.signal)
+    const r = await contatosApi.listar({ ...consultaContatos(filtros), pagina: pagina.value }, controle.signal)
     contatos.value = r.itens
     total.value = r.total
     porPagina.value = r.por_pagina || 50
@@ -188,12 +195,23 @@ defineExpose({ novo })
 <template>
   <div class="cartao">
     <div class="flex flex-col gap-3 border-b border-borda p-4 sm:px-5">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Campo v-model="filtros.busca" rotulo="Buscar contatos" rotulo-oculto tipo="search" placeholder="Buscar por nome, e-mail, telefone ou código" class="sm:max-w-md sm:flex-1">
+      <!--
+        No celular: a busca e o "Exportar CSV" (só o ícone) na primeira linha; Ativos/Inativos/Todos e "Filtros" na de
+        baixo ("Filtros" desce mais uma quando não cabe, sem vazar do cartão). Da tela pequena (sm) para cima, tudo numa
+        linha, na ordem do código (a mesma do teclado): busca, situação, "Filtros" e "Exportar CSV".
+      -->
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-3 sm:flex-nowrap">
+        <Campo
+          v-model="filtros.busca"
+          rotulo="Buscar contatos"
+          rotulo-oculto
+          tipo="search"
+          placeholder="Buscar por nome, e-mail, telefone ou código"
+          class="min-w-0 flex-1 sm:mr-1 sm:max-w-md"
+        >
           <template #antes><Search class="size-4" aria-hidden="true" /></template>
         </Campo>
-        <!-- No celular, "Filtros" desce para a linha de baixo quando não cabe (não vaza do cartão). -->
-        <div class="flex flex-wrap items-center gap-2 sm:ml-auto sm:flex-nowrap">
+        <div class="order-last flex w-full flex-wrap items-center gap-2 sm:order-none sm:ml-auto sm:w-auto sm:flex-nowrap">
           <div class="inline-flex rounded-xl border border-borda-forte p-0.5" role="radiogroup" aria-label="Mostrar contatos">
             <button
               v-for="o in opcoesSituacao"
@@ -213,6 +231,19 @@ defineExpose({ novo })
             <span v-if="filtrosAtivos" class="rounded-full bg-marca-forte px-1.5 text-xs text-white">{{ filtrosAtivos }}</span>
           </Botao>
         </div>
+        <!-- No celular, só o ícone (o nome fica no aria-label, igual ao texto que aparece nas telas maiores). -->
+        <Botao
+          v-if="podeExportar"
+          variante="secundario"
+          aria-label="Exportar CSV"
+          :carregando="baixando"
+          focavel
+          data-exportar-csv
+          @click="exportar"
+        >
+          <Download v-if="!baixando" class="size-4" aria-hidden="true" />
+          <span class="hidden sm:inline">Exportar CSV</span>
+        </Botao>
       </div>
       <div v-show="filtrosAbertos" id="filtros-contatos" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <CampoEmpresa v-model="filtros.empresa" rotulo="Empresa" placeholder="Todas" />

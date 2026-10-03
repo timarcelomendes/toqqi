@@ -8,10 +8,15 @@ from toqqi.core.db import apos_commit
 from toqqi.modelos import Usuario
 
 
+def admins_a_avisar(s: Session, conta_id: int) -> list[str]:
+    """E-mails dos administradores ativos da conta: quem recebe os avisos."""
+    return list(s.scalars(select(Usuario.email).where(Usuario.conta_id == conta_id, Usuario.perfil == "admin",
+                                                      Usuario.situacao == "ativo", Usuario.email != "")))
+
+
 def avisar_admins(s: Session, conta_id: int, assunto: str, paragrafos: list[str],
                   botao: tuple[str, str] | None = None) -> None:
-    para = s.scalars(select(Usuario.email).where(Usuario.conta_id == conta_id, Usuario.perfil == "admin",
-                                                 Usuario.situacao == "ativo")).all()
+    para = admins_a_avisar(s, conta_id)
 
     def enviar() -> None:
         for endereco in para:

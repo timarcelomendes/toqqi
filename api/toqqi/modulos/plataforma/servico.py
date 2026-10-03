@@ -3,12 +3,17 @@
 Usa modo sistema de propósito: aqui a pessoa age sobre contas que não são a dela.
 Etapa 5a: "+14 dias" não vale para conta com assinatura ativa nem cortesia; marcar cortesia (e excluir a conta)
 remove antes a assinatura no Asaas (se falhar, 503 e nada muda).
+Etapa 5f: `apagar_conta` (usada aqui e pela exclusão automática, `assinatura.exclusao`) apaga a conta com as tabelas
+de todas as etapas; ficam os registros de acesso, os eventos globais e as remoções pendentes no Asaas. A lista traz
+`exclusao_em` (o dia da exclusão automática avisado, ou null). O fim do teste (criar conta e "+14 dias") segue o
+relógio das regras (`relogio.agora()`).
 """
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.exc import IntegrityError
 
+from toqqi.core import relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.db import modo_sistema
 from toqqi.core.deps import Contexto
@@ -24,19 +29,26 @@ from toqqi.modelos import (
     Cargo,
     Cobranca,
     ConfigAcoes,
+    ConfigCrescimento,
     ConfigEnvios,
     Conta,
     Contato,
     Convite,
     Descadastro,
     DominioLiberado,
+    EmailEnviado,
     Empresa,
     Envio,
+    EventoIdempotencia,
     Formulario,
     Grupo,
+    IaParecer,
     IaUsoMensal,
     Imagem,
     Importacao,
+    Indicacao,
+    IntegracaoChave,
+    Oferta,
     PerfilContato,
     PerfilPermissao,
     Responsavel,
@@ -46,21 +58,27 @@ from toqqi.modelos import (
     Sessao,
     TokenUsoUnico,
     Usuario,
+    Webhook,
+    WebhookEntrega,
+    WhatsappConta,
+    WhatsappUso,
 )
 from toqqi.modulos.acesso.servico import DIAS_TESTE
+from toqqi.modulos.assinatura import regras
 from toqqi.modulos.assinatura import servico as assinaturas
 from toqqi.modulos.formularios.semear import semear_conta
 
 
 def _conta_json(c: Conta, usuarios: int, a: Assinatura | None = None, admins: list[dict] | None = None) -> dict:
     """`assinatura` = a assinatura ativa ({plano, valor, situacao}) ou null; `admins` = administradores da conta, o
-    mais antigo primeiro ([{nome, email, email_confirmado}])."""
+    mais antigo primeiro ([{nome, email, email_confirmado}]); `exclusao_em` = o dia da exclusão automática avisado
+    (`assinatura.regras.exclusao_em`) ou null."""
     return {
         "id": c.id, "nome": c.nome, "plano": c.plano, "situacao": c.situacao,
         "teste_ate": c.teste_ate, "usuarios": usuarios, "criada_em": c.criada_em,
         "pago_ate": c.pago_ate, "atrasada_desde": c.atrasada_desde,
         "assinatura": {"plano": a.plano, "valor": a.valor, "situacao": a.situacao} if a is not None else None,
-        "admins": admins or [],
+        "admins": admins or [], "exclusao_em": regras.exclusao_em(c),
     }
 
 
@@ -100,7 +118,7 @@ def criar_conta(ctx: Contexto, dados) -> dict:
     senha_hash = gerar_hash(dados.admin_senha)
     try:
         with modo_sistema() as s:
-            teste_ate = datetime.now(timezone.utc) + timedelta(days=DIAS_TESTE) if dados.situacao == "teste" else None
+            teste_ate = relogio.agora() + timedelta(days=DIAS_TESTE) if dados.situacao == "teste" else None
             conta = Conta(nome=dados.empresa, situacao=dados.situacao, teste_ate=teste_ate)
             s.add(conta)
             s.flush()
@@ -135,7 +153,7 @@ def estender_teste(ctx: Contexto, conta_id: int, dias: int) -> dict:
             raise AppError(409, "assinatura_ativa", "Conta cortesia não tem teste para estender.")
         if assinaturas.assinatura_ativa(s, c.id) is not None:
             raise AppError(409, "assinatura_ativa", "Esta conta tem assinatura ativa: o teste não pode ser estendido.")
-        agora = s.scalar(select(func.now()))
+        agora = relogio.agora()  # o relógio das regras que leem o fim do teste
         anterior = c.teste_ate
         base = max(agora, anterior) if anterior else agora
         c.teste_ate = base + timedelta(days=dias)
@@ -166,9 +184,21 @@ def cortesia(ctx: Contexto, conta_id: int) -> dict:
 
 
 # Ordem de exclusão: quem aponta para outras tabelas da conta sai antes.
-_ORDEM_EXCLUSAO = (Cobranca, Assinatura, AlertaPico, ResumoSemanal, IaUsoMensal, Acao, ConfigAcoes, Envio,
-                   Descadastro, ConfigEnvios, Resposta, Convite, Importacao, Contato, Empresa, Responsavel, Grupo, Segmento, PerfilContato, Cargo,
-                   Imagem, Formulario, Auditoria, DominioLiberado, PerfilPermissao, TokenUsoUnico, Sessao, AceiteTermos, Usuario)
+_ORDEM_EXCLUSAO = (Cobranca, Assinatura, AlertaPico, ResumoSemanal, IaUsoMensal, IaParecer, Indicacao, Oferta,
+                   ConfigCrescimento, Acao, ConfigAcoes, Envio, Descadastro, ConfigEnvios, EventoIdempotencia,
+                   EmailEnviado, WebhookEntrega, Webhook, IntegracaoChave, WhatsappUso, WhatsappConta, Resposta,
+                   Convite, Importacao, Contato, Empresa, Responsavel, Grupo, Segmento, PerfilContato, Cargo, Imagem,
+                   Formulario, Auditoria, DominioLiberado, PerfilPermissao, TokenUsoUnico, Sessao, AceiteTermos,
+                   Usuario)
+
+
+def apagar_conta(s, conta_id: int) -> None:
+    """Apaga a conta e todos os dados dela, tabela por tabela (modo sistema; a conta já travada por quem chama).
+    Cobranças, aceites e auditoria da conta saem junto; ficam os registros de acesso (sem FK), os eventos globais
+    (auditoria sem conta) e as remoções pendentes no Asaas e os avisos do Asaas (perdem a conta: SET NULL)."""
+    for modelo in _ORDEM_EXCLUSAO:
+        s.execute(delete(modelo).where(modelo.conta_id == conta_id))
+    s.execute(delete(Conta).where(Conta.id == conta_id))
 
 
 def excluir_conta(ctx: Contexto, conta_id: int, confirmar_nome: str) -> None:
@@ -188,7 +218,5 @@ def excluir_conta(ctx: Contexto, conta_id: int, confirmar_nome: str) -> None:
         ativa = assinaturas.assinatura_ativa(s, c.id)
         if ativa is not None:
             assinaturas.remover_no_asaas(ativa.asaas_id)  # já removida acima (404) conta como removida
-        for modelo in _ORDEM_EXCLUSAO:
-            s.execute(delete(modelo).where(modelo.conta_id == conta["id"]))
-        s.execute(delete(Conta).where(Conta.id == conta["id"]))
+        apagar_conta(s, conta["id"])
         registrar(s, "conta_excluida", "atencao", {"conta": conta, "usuarios": usuarios, "por": ctx.email})

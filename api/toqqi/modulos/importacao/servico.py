@@ -35,6 +35,7 @@ SINGULARES = {"empresa": "empresa", "grupo": "grupo", "segmento": "segmento", "c
               "perfil": "perfil", "responsavel": "responsável"}
 PLURAIS = {"empresa": "empresas", "grupo": "grupos", "segmento": "segmentos", "cargo": "cargos",
            "perfil": "perfis", "responsavel": "responsáveis"}
+MAX_NOMES_AVISO = 5
 LIMITES_TEXTO = {"nome": 120, "empresa": 200, "cargo": 80, "perfil": 80, "grupo": 80, "segmento": 80,
                  "responsavel": 120, "codigo_externo": 100}
 
@@ -270,17 +271,33 @@ def _planejar(s: Session, imp: Importacao, corpo) -> Plano:
             f"{n} contatos já cadastrados serão mantidos como estão"
         plano.avisos.append(f"{quem} (ligue \"Atualizar quem já existe\" para trocar os dados).")
     for campo, nomes in plano.criar.items():
-        amostra = ", ".join(nomes[:5]) + ("..." if len(nomes) > 5 else "")
-        if len(nomes) == 1:
-            genero = "Será criada 1" if campo == "empresa" else "Será criado 1"
-            plano.avisos.append(f"{genero} {SINGULARES[campo]}: {amostra}.")
-        else:
-            plano.avisos.append(f"Serão criados {len(nomes)} {PLURAIS[campo]}: {amostra}.")
+        plano.avisos.append(aviso_criados(campo, nomes))
     if plano.limite is not None and plano.ativos_depois > plano.limite:
         plano.avisos.append(f"Esta importação deixaria a conta com {plano.ativos_depois} contatos ativos, "
                             f"mas o seu plano permite até {plano.limite}.")
     return plano
 
+
+
+def juntar_nomes(nomes: list[str]) -> str:
+    """ "A", "A e B", "A, B e C"; mais de 5: "A, B, C, D, E e mais 15"."""
+    if len(nomes) == 1:
+        return nomes[0]
+    if len(nomes) > MAX_NOMES_AVISO:
+        return f"{', '.join(nomes[:MAX_NOMES_AVISO])} e mais {len(nomes) - MAX_NOMES_AVISO}"
+    return f"{', '.join(nomes[:-1])} e {nomes[-1]}"
+
+
+def aviso_criados(campo: str, nomes: list[str]) -> str:
+    """ "Será criada 1 empresa: X." / "Serão criadas 20 empresas: …" (os outros cadastros no masculino), com um ponto
+    só no fim."""
+    n = len(nomes)
+    if campo == "empresa":
+        inicio = "Será criada 1" if n == 1 else f"Serão criadas {n}"
+    else:
+        inicio = "Será criado 1" if n == 1 else f"Serão criados {n}"
+    texto = f"{inicio} {SINGULARES[campo] if n == 1 else PLURAIS[campo]}: {juntar_nomes(nomes)}"
+    return texto if texto.endswith(".") else texto + "."
 
 def _resumo(plano: Plano) -> dict:
     return {

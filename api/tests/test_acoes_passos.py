@@ -5,7 +5,7 @@ tentativas, recusa, erro de configuração, reserva, desligar cancela, coletor n
 limpeza, modelo e estilo, e o formato da ação."""
 import json
 import logging
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 import httpx
 import pytest
@@ -208,9 +208,14 @@ def test_acao_manual_de_uma_resposta(client, cliente, dono):
 
 # ---- o que vai para a IA --------------------------------------------------------------------------------
 
-def test_o_que_vai_para_a_ia(client, cliente, dono):
+def test_o_que_vai_para_a_ia(client, cliente, dono, monkeypatch):
     h, c = cliente["h"], cliente["conta"]["id"]
     form_padrao_id = form_padrao(client, h)["id"]
+    # "hoje" das regras = ontem ao meio-dia: as respostas inseridas abaixo (ao meio-dia de "hoje" e antes) ficam no
+    # passado do relógio do banco, que dá a data da resposta pública (`criada_em` = now()). Com o meio-dia de hoje
+    # (`relogio_estavel`), das 0h às 12h elas ficavam no futuro e a resposta da ação deixava de ser a mais nova.
+    fixar_relogio(monkeypatch, datetime.combine(datetime.now(relogio.FUSO).date() - timedelta(days=1), time(12),
+                                                tzinfo=relogio.FUSO))
     hoje = relogio.hoje()
     # as outras respostas da mesma empresa: 6 com texto (só as 5 mais novas vão), uma arquivada e uma de outra empresa
     textos = ["Primeira " + "x" * 400, "Segunda", "Terceira", "Quarta", "Quinta", "Sexta"]

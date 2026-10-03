@@ -2,7 +2,7 @@
 derruba, sem conta não grava), GET /auditoria/emails (filtros, busca sem acento, período, `falhas_7_dias`, permissão,
 isolamento) e a tarefa `limpeza`."""
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import text
@@ -29,6 +29,7 @@ from toqqi.core import email, relogio
 from toqqi.core.avisos import avisar_admins
 from toqqi.core.db import em_conta
 from toqqi.core.email import MSG_ENDERECO, MSG_FORA_DO_AR, TIPOS, Mensagem, caixa_memoria
+from toqqi.modulos.assinatura import exclusao
 from toqqi.modulos.auditoria import emails as registro
 
 pytestmark = pytest.mark.usefixtures("relogio_estavel")
@@ -268,9 +269,14 @@ def test_tarefa_limpeza(client, admin, dono, monkeypatch):
         _inserir(dono, conta, 89)
     _inserir(dono, c, 90, mins=-5)  # 89 dias e 23h55: fica
     monkeypatch.setattr(registro, "LOTE_LIMPEZA", 2)  # vários lotes
-    assert tarefas.executar("limpeza") == {"limpeza": {"emails_apagados": 6}}
+    monkeypatch.setattr(exclusao, "executar", lambda: None)  # etapa 5f: a exclusão automática tem os testes dela
+    # o corte de 90 dias pelo relógio das regras: aqui o mesmo do banco (com o meio-dia fixo do relogio_estavel,
+    # a linha de 89 dias e 23h55 saía quando o teste rodava antes das 11h55)
+    monkeypatch.setattr(relogio, "agora", lambda: datetime.now(relogio.FUSO))
+    assert tarefas.executar("limpeza") == {"limpeza": {"emails_apagados": 6, "acessos_apagados": 0,
+                                                       "encerradas": None}}
     assert sql(dono, "select count(*) from emails_enviados")[0][0] == 3
-    assert tarefas.executar("limpeza") == {"limpeza": {"emails_apagados": 0}}
+    assert tarefas.executar("limpeza")["limpeza"]["emails_apagados"] == 0
     assert tarefas.main(["limpeza"]) == 0
 
 

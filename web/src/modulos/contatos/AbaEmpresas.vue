@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { Building2, History, MoreHorizontal, Pencil, Search, Trash2 } from 'lucide-vue-next'
-import { empresasApi, mensagemDoErro, type Empresa, type Id } from '@/api'
+import { Building2, Download, History, MoreHorizontal, Pencil, Search, Trash2 } from 'lucide-vue-next'
+import { empresasApi, exportacaoListasApi, mensagemDoErro, type Empresa, type Id } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
 import { useCadastrosStore } from '@/stores/cadastros'
@@ -19,6 +19,7 @@ import Paginacao from '@/components/ui/Paginacao.vue'
 import Selecao from '@/components/ui/Selecao.vue'
 import Tabela, { type Coluna } from '@/components/ui/Tabela.vue'
 import ModalEmpresa from './ModalEmpresa.vue'
+import { consultaEmpresas, type FiltrosEmpresasTela } from './exportacao'
 
 const sessao = useSessaoStore()
 const cadastros = useCadastrosStore()
@@ -29,12 +30,12 @@ const pagina = ref(1)
 const carregando = ref(true)
 const erro = ref<string | null>(null)
 const ocupado = ref<Id | null>(null)
-const filtros = reactive({
+const filtros = reactive<FiltrosEmpresasTela>({
   busca: '',
-  grupo_id: '' as Id | '',
-  segmento_id: '' as Id | '',
-  responsavel_id: '' as Id | '',
-  ativa: 'true' as 'true' | 'false' | 'todas',
+  grupo_id: '',
+  segmento_id: '',
+  responsavel_id: '',
+  ativa: 'true',
 })
 const modalAberto = ref(false)
 const emEdicao = ref<Empresa | null>(null)
@@ -44,6 +45,21 @@ const podeEditar = computed(() => sessao.pode('contatos.editar'))
 const podeExcluir = computed(() => sessao.pode('contatos.excluir') && sessao.usuario?.perfil === 'admin')
 // Etapa 4b: atalho para o histórico da empresa em Relatórios.
 const podeVerHistorico = computed(() => sessao.pode('relatorios.ver'))
+// Etapa 5f: "Exportar CSV" com os filtros da aba (como os outros CSV, pede também painel.exportar).
+const podeExportar = computed(() => sessao.pode('contatos.ver') && sessao.pode('painel.exportar'))
+const baixando = ref(false)
+
+async function exportar() {
+  if (baixando.value) return
+  baixando.value = true
+  try {
+    await exportacaoListasApi.baixarEmpresas(consultaEmpresas(filtros))
+  } catch (e) {
+    avisar.erro(mensagemDoErro(e))
+  } finally {
+    baixando.value = false
+  }
+}
 
 const colunas: Coluna[] = [
   { chave: 'nome', rotulo: 'Empresa' },
@@ -68,7 +84,7 @@ async function carregar() {
   carregando.value = true
   erro.value = null
   try {
-    const r = await empresasApi.listar({ ...filtros, busca: filtros.busca.trim(), pagina: pagina.value }, controle.signal)
+    const r = await empresasApi.listar({ ...consultaEmpresas(filtros), pagina: pagina.value }, controle.signal)
     empresas.value = r.itens
     total.value = r.total
     porPagina.value = r.por_pagina || 50
@@ -163,19 +179,34 @@ defineExpose({ novo })
         <Selecao v-model="filtros.segmento_id" rotulo="Segmento" rotulo-oculto :opcoes="cadastros.listas.segmentos.map((g) => ({ valor: g.id, rotulo: g.nome }))" vazio="Todos os segmentos" />
         <Selecao v-model="filtros.responsavel_id" rotulo="Responsável" rotulo-oculto :opcoes="cadastros.listas.responsaveis.map((r) => ({ valor: r.id, rotulo: r.nome }))" vazio="Todos os responsáveis" />
       </div>
-      <div class="inline-flex w-fit rounded-xl border border-borda-forte p-0.5" role="radiogroup" aria-label="Mostrar empresas">
-        <button
-          v-for="o in opcoesAtiva"
-          :key="o.valor"
-          type="button"
-          role="radio"
-          :aria-checked="filtros.ativa === o.valor"
-          class="h-9 rounded-[0.6rem] px-3 text-sm font-semibold transition-colors"
-          :class="filtros.ativa === o.valor ? 'bg-marca-suave text-marca-texto' : 'text-texto-fraco hover:text-texto'"
-          @click="filtros.ativa = o.valor"
+      <div class="flex items-center justify-between gap-2">
+        <div class="inline-flex w-fit rounded-xl border border-borda-forte p-0.5" role="radiogroup" aria-label="Mostrar empresas">
+          <button
+            v-for="o in opcoesAtiva"
+            :key="o.valor"
+            type="button"
+            role="radio"
+            :aria-checked="filtros.ativa === o.valor"
+            class="h-9 rounded-[0.6rem] px-3 text-sm font-semibold transition-colors"
+            :class="filtros.ativa === o.valor ? 'bg-marca-suave text-marca-texto' : 'text-texto-fraco hover:text-texto'"
+            @click="filtros.ativa = o.valor"
+          >
+            {{ o.rotulo }}
+          </button>
+        </div>
+        <!-- No celular, só o ícone (o nome fica no aria-label, igual ao texto que aparece nas telas maiores). -->
+        <Botao
+          v-if="podeExportar"
+          variante="secundario"
+          aria-label="Exportar CSV"
+          :carregando="baixando"
+          focavel
+          data-exportar-csv
+          @click="exportar"
         >
-          {{ o.rotulo }}
-        </button>
+          <Download v-if="!baixando" class="size-4" aria-hidden="true" />
+          <span class="hidden sm:inline">Exportar CSV</span>
+        </Botao>
       </div>
     </div>
 

@@ -110,10 +110,10 @@ export const TERMOS: DocumentoLegal = {
         {
           tipo: 'lista',
           itens: [
-            'Teste grátis: quando houver, vale pelo período informado na tela. Ao final, a conta precisa de um plano pago para continuar enviando pesquisas.',
+            'Teste grátis: quando houver, vale pelo período informado na tela. Ao final, a conta precisa de um plano pago para continuar enviando pesquisas. Se a Empresa não assinar, os dados ficam guardados por 90 dias depois do fim do teste e então são excluídos, como no fim do contrato (veja a seção sobre tratamento de dados).',
             'Cobrança: mensal, pelo Asaas, por boleto, Pix ou cartão, conforme as opções oferecidas.',
             'Atraso: se o pagamento atrasar, avisamos e damos 7 dias. Passado esse prazo, os envios de pesquisas e os recursos de IA são pausados até a regularização. Avisamos no topo das telas. Seus dados continuam guardados e você continua vendo o que já coletou.',
-            'Cancelamento: você pode cancelar quando quiser. O plano vale até o fim do período já pago, sem nova cobrança depois disso.',
+            'Cancelamento: você pode cancelar quando quiser. O plano vale até o fim do período já pago, sem nova cobrança depois disso. Depois, valem as regras do fim do contrato (veja a seção sobre tratamento de dados).',
             'Reajuste: podemos reajustar os preços, avisando com pelo menos [a confirmar: prazo de aviso de reajuste, sugerido 30 dias] de antecedência. O novo valor vale a partir da renovação seguinte. Se não concordar com o reajuste, você pode cancelar sem multa antes do novo valor valer.',
             'Arrependimento (Código de Defesa do Consumidor, art. 49, quando aplicável): [a confirmar: cancelando em até 7 dias da primeira cobrança, devolvemos o valor pago].',
             'Reembolso: fora o caso de arrependimento, não devolvemos o período já pago, salvo cobrança feita por engano e o valor proporcional quando uma função essencial for retirada do seu plano.',
@@ -192,7 +192,7 @@ export const TERMOS: DocumentoLegal = {
             'Dados anonimizados: a Empresa autoriza o uso de dados anonimizados e agregados (que não identificam ninguém) para melhorar o serviço.',
             'Incidentes: se houver incidente de segurança com dados dos clientes da Empresa, avisamos a Empresa em [a confirmar: prazo para avisar a Empresa, sugerido 48 horas], com as informações que tivermos, para ela comunicar a ANPD e os titulares.',
             'Ajuda com os titulares: encaminhamos à Empresa os pedidos que recebermos e ajudamos a atendê-los (por exemplo, exclusão de contato e descadastro).',
-            'Fim do contrato: depois do cancelamento, a Empresa pode exportar os dados dela durante [a confirmar: prazo, sugerido 90 dias], contados do fim do período pago. Pelo sistema, a Empresa exporta as respostas e os relatórios. Os demais dados, ela pede por contato@toqqi.com. Depois do prazo, eliminamos os dados [a confirmar: como os dados são eliminados], salvo o que a lei nos obrigar a guardar. Se a Empresa pedir, confirmamos a exclusão.',
+            'Fim do contrato: depois do fim do período pago (quando a assinatura é cancelada) ou do teste grátis sem assinatura, a Empresa tem 90 dias para exportar os dados dela: o administrador baixa uma cópia de todos os dados, com uma planilha por assunto, em Configurações › Dados da conta. Avisamos os administradores por e-mail 7 dias antes da exclusão. Passado o prazo, excluímos de forma definitiva e automática todos os dados da conta, inclusive o registro de auditoria, o histórico de cobranças e os aceites dos termos. Ficam só os registros de acesso (data, hora e IP), guardados à parte por 6 meses, como pede o Marco Civil da Internet (art. 15). Assinar um plano antes disso cancela a exclusão. Se a Empresa pedir, confirmamos a exclusão.',
             'Transferência internacional: alguns suboperadores ficam nos Estados Unidos. A transferência segue o art. 33 da LGPD: [a confirmar: mecanismo — cláusulas-padrão contratuais da ANPD (Resolução CD/ANPD nº 19/2024) nos contratos com os fornecedores].',
           ],
         },

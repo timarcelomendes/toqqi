@@ -137,8 +137,13 @@ def _ler_linha(bruta: dict, hoje: date, contatos: dict) -> tuple[dict, list[str]
 
 
 def _linhas_texto(numeros: list[int]) -> str:
-    mostrar = ", ".join(str(n) for n in numeros[:MAX_LINHAS_AVISO])
-    return mostrar + ("..." if len(numeros) > MAX_LINHAS_AVISO else "")
+    """ "linha 7", "linhas 7, 9 e 12"; mais de 10: as 10 primeiras e "e mais 4"."""
+    textos = [str(n) for n in numeros]
+    if len(textos) == 1:
+        return f"linha {textos[0]}"
+    if len(textos) > MAX_LINHAS_AVISO:
+        return f"linhas {', '.join(textos[:MAX_LINHAS_AVISO])} e mais {len(textos) - MAX_LINHAS_AVISO}"
+    return f"linhas {', '.join(textos[:-1])} e {textos[-1]}"
 
 
 def planejar(s: Session, imp: Importacao, corpo) -> Plano:
@@ -191,7 +196,7 @@ def planejar(s: Session, imp: Importacao, corpo) -> Plano:
         n = len(empresa_diferente)
         quais = f"{n} linha" if n == 1 else f"{n} linhas"
         plano.avisos.append(f"Em {quais} a empresa da planilha é diferente da empresa do contato; vale a empresa "
-                            f"do contato (linha {_linhas_texto(empresa_diferente)}).")
+                            f"do contato ({_linhas_texto(empresa_diferente)}).")
     if plano.mantidos:
         n = len(plano.mantidos)
         quem = "1 resposta já importada será mantida como está" if n == 1 else \

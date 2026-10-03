@@ -347,9 +347,10 @@ describe('Política de privacidade (versão 3)', () => {
   const texto = JSON.stringify(PRIVACIDADE)
 
   it('versão 3, vigente desde 02/10/2026', () => {
-    expect(VERSAO_DOCUMENTOS).toBe(3)
-    expect(VIGENTE_DESDE).toBe('2026-10-02')
-    expect(textoVersao(VERSAO_DOCUMENTOS)).toBe('Versão 3 · vigente desde 02/10/2026')
+    // Etapa 5f: a versão 4 veio por cima, vigente desde 03/10/2026 (ver etapa5fLogica.test.ts).
+    expect(VERSAO_DOCUMENTOS).toBeGreaterThanOrEqual(3)
+    expect(VIGENTE_DESDE >= '2026-10-02').toBe(true)
+    expect(textoVersao(3, '2026-10-02')).toBe('Versão 3 · vigente desde 02/10/2026')
   })
 
   it('cita o registro de e-mails enviados: quem recebeu, assunto, situação, erro e 90 dias', () => {

@@ -93,6 +93,8 @@ const rotas: RouteRecordRaw[] = [
         meta: { titulo: 'Configurações de crescimento', algumaPermissao: ['configuracoes.gerenciar', 'crescimento.ver'] },
       },
       { path: 'configuracoes/ia', name: 'config-ia', component: () => import('@/modulos/configuracoes/IaView.vue'), meta: { titulo: 'Inteligência artificial', permissao: 'configuracoes.gerenciar' } },
+      // Etapa 5f: exportar todos os dados e a Zona de risco. Só administrador; livre com o aceite pendente (ROTAS_LIVRES).
+      { path: 'configuracoes/dados-da-conta', name: 'config-dados', component: () => import('@/modulos/configuracoes/DadosContaView.vue'), meta: { titulo: 'Dados da conta', admin: true } },
       { path: 'integracoes', name: 'integracoes', component: () => import('@/modulos/integracoes/IntegracoesView.vue'), meta: { titulo: 'Integrações', admin: true } },
       // Etapa 5e: abas "Atividades" (/auditoria) e "E-mails enviados" (/auditoria/emails; /auditoria?aba=emails também abre).
       {

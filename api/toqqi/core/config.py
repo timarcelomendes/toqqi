@@ -63,6 +63,14 @@ class Config(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:5173"
     AUTO_MIGRATE: bool = True
     RATE_LIMIT_ENABLED: bool = True
+    # Etapa 5f: cabeçalho com o IP do cliente posto pelo proxy da frente (core.requisicao.IpDoCliente). Vazio = o
+    # endereço da conexão (desenvolvimento e testes); no Render, atrás da Cloudflare: CF-Connecting-IP (a Cloudflare
+    # sobrescreve o que o cliente mandar). X-Forwarded-For e X-Real-IP nunca são lidos.
+    IP_CLIENTE_CABECALHO: str = ""
+    # Etapa 5f: exclusão automática das contas encerradas (tarefa `limpeza`): `ligada` avisa e exclui (com os freios
+    # de assinatura.exclusao); `simular` só conta e registra no log. Qualquer outro valor (ex.: "desligada") também só
+    # simula, com um aviso no log a cada rodada: um valor errado não impede a API de subir nem liga a exclusão.
+    EXCLUSAO_AUTOMATICA: str = "simular"
     # Papel restrito da aplicação. Com APP_DB_PASSWORD definido, a API cria/atualiza esse papel
     # na subida (usando a conexão de migração) e passa a se conectar com ele. Ideal para o Render,
     # onde só existe a URL do dono do banco.

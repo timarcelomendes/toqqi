@@ -18,6 +18,8 @@ Contratos implementados (base `/api/v1`):
   situação da conta e liberação dos envios, conferência diária, plataforma).
 - `../docs/api-aceite-lgpd.md`: aceite dos Termos de uso e da Política de privacidade (`aceite` em `GET /eu` e no
   entrar, `POST /eu/aceite`, aceite gravado no cadastro; versão em `toqqi/modulos/acesso/termos.py`).
+- `../docs/api-etapa-5f.md`: dados da conta (exportar tudo, zona de risco, CSV de Contatos e Empresas), grupos da
+  auditoria, registros de acesso, exclusão automática das contas encerradas e IP do cliente atrás do proxy.
 
 ## Isolamento entre contas (RLS)
 O isolamento é garantido pelo próprio PostgreSQL:
@@ -58,8 +60,13 @@ Para migrar manualmente: `alembic upgrade head` nesta pasta.
 
 Documentação interativa: `http://localhost:8000/api/v1/docs`.
 
-Atrás de proxy/balanceador, rode com `uvicorn toqqi.main:app --proxy-headers --forwarded-allow-ips=<ip do proxy>`
-para que o IP real do cliente seja usado no limite de tentativas, nas sessões e na auditoria.
+IP do cliente (etapa 5f): o middleware `core.requisicao.IpDoCliente` (o mais externo) põe em `scope["client"]` o IP
+do cabeçalho `IP_CLIENTE_CABECALHO` (no Render, atrás da Cloudflare: `CF-Connecting-IP`, que ela sobrescreve com o IP
+real), se ele trouxer exatamente um IP válido; senão (e com a variável vazia, em desenvolvimento e nos testes), o
+endereço da conexão. `X-Forwarded-For` e `X-Real-IP` nunca são lidos: rode o uvicorn com `--no-proxy-headers` (no
+Render, o primeiro endereço do `X-Forwarded-For` é o que o cliente mandou). O limite de tentativas usa
+`rate_limit.chave_ip` (`ip:{IPv4}` ou o prefixo /64 do IPv6, `ip6:2001:db8:1:2::/64`); auditoria, sessões, aceites e
+registros de acesso guardam o endereço inteiro.
 
 ## Variáveis de ambiente
 | Variável | Para quê |
@@ -96,6 +103,8 @@ para que o IP real do cliente seja usado no limite de tentativas, nas sessões e
 | `ASAAS_API_KEY` | Chave de API do Asaas (da plataforma), na toqqi-api (e no toqqi-tarefas, se o Cron Job estiver ligado). Vazia = sem cobrança online |
 | `ASAAS_WEBHOOK_TOKEN` | Token do webhook do Asaas (cabeçalho `asaas-access-token`), só em toqqi-api. Vazio = webhook desligado (404) |
 | `ASAAS_URL` | Opcional: sobrepõe o endereço da API do Asaas (Asaas falso local). Vazio = o endereço segue a chave |
+| `IP_CLIENTE_CABECALHO` | Cabeçalho com o IP do cliente posto pelo proxy da frente (Render + Cloudflare: `CF-Connecting-IP`). Vazio (padrão) = o endereço da conexão |
+| `EXCLUSAO_AUTOMATICA` | Exclusão automática das contas encerradas na tarefa `limpeza`: `ligada` avisa e exclui (é o valor do `render.yaml`); `simular` (padrão do código) só conta e registra no log. Qualquer outro valor (ex.: `desligada`) se comporta como `simular` e deixa um aviso no log com o valor, a cada rodada; não impede a API de subir. Trocar para `simular` suspende |
 
 A etapa 2 não criou variáveis novas. `FRONTEND_URL` também é a base dos links de convite (`/r/{token}`)
 e `JWT_SECRET` entra no sal diário do hash de IP das respostas públicas.
@@ -552,6 +561,60 @@ Contrato em `../docs/api-etapa-5e.md`; migração `0014_emails` (colunas do visu
   lotes de 5.000: `{emails_apagados}`.
 - `VERSAO_DOCUMENTOS = 3` (a Política cita o registro de e-mails enviados): todo mundo vê a tela de aceite de novo.
 
+## Etapa 5f: dados da conta (exportação, zona de risco, auditoria, registros de acesso, exclusão automática)
+Contrato em `../docs/api-etapa-5f.md`; migração `0015_dados_conta` (tabela `registros_acesso` sem FK e com RLS só de
+gravação para a aplicação; `contas.exclusao_avisada_para`/`exclusao_avisada_em`; índices parciais para os SET
+NULL/CASCADE da zona de risco). Módulo novo `modulos/dados/` (rotas em `/conta`).
+- **Exportar todos os dados** (`GET /conta/exportacao.zip`, só o administrador, também com a conta encerrada;
+  `dados/exportacao.py`): `toqqi-{slug}-{AAAA-MM-DD}.zip` com `LEIA-ME.txt` e 19 CSV (`exportacao.ARQUIVOS`), na
+  convenção dos CSV do Toqqi (datas e horas `dd/mm/aaaa hh:mm` de São Paulo). Escrito num arquivo temporário, CSV direto
+  na entrada do zip, consultas com `yield_per(2000)`, numa transação REPEATABLE READ somente leitura
+  (`em_conta(conta, leitura=True)`); o arquivo é apagado depois de enviado (e na falha). Uma por vez por conta (409
+  `exportacao_em_andamento`), 5 por hora por usuário; auditoria `exportacao_conta` numa transação própria. 5.000
+  contatos e 50.000 respostas (teste de desempenho): ~15 s com o `tracemalloc` ligado e ~9 MB de pico.
+- **Exportar CSV de Contatos e Empresas** (`GET /contatos.csv` e `GET /empresas.csv`, `contatos.ver` +
+  `painel.exportar`): os filtros, padrões e ordem das listas (`contatos.servico.condicoes`,
+  `empresas.servico.condicoes`), sem paginação; auditoria `exportacao_csv` `{lista, linhas}`.
+- **Zona de risco** (`GET`/`POST /conta/zona-de-risco`, `zona_risco.usar`; `dados/zona.py`): `respostas`, `contatos`
+  ou `tudo`, cumulativas, numa transação só (trava `zona_risco:{conta}` → 409; linha de `config_envios` travada;
+  `statement_timeout` de 120 s → 503 e nada muda); confirmação "APAGAR" (qualquer caixa, sem espaços nas pontas); 5
+  por hora por usuário; `apagados` = `rowcount`, com as mesmas chaves das contagens do GET. CSAT, descadastros,
+  usuários, configurações, formulários e auditoria sempre ficam.
+- **Auditoria**: `core.auditoria.GRUPOS` (8 grupos; cada evento de `ROTULOS` em exatamente um, pela regra de
+  `grupo_de`), `GET /auditoria?grupo=`, `grupo` em cada item e `GET /auditoria/grupos`. Eventos novos:
+  `envio_automatico` e `lembretes_automaticos` (robô e lembretes, quando agendam algo ou no "executar agora"),
+  `chave_regerada`, `webhook_criado`/`webhook_alterado`/`webhook_excluido`, `exportacao_conta`, `exportacao_csv`,
+  `zona_risco`, `exclusao_avisada` e os globais `conta_excluida_automatica` e `exclusao_automatica`.
+- **Registros de acesso** (Marco Civil, art. 15; `core/acessos.py`): `login`, `login_falhou`, `cadastro`,
+  `pedido_acesso`, `senha_redefinida`, `resposta` e `indicacao` (públicas) com data, hora e IP, na transação do
+  evento. Nenhuma tela lê: só em modo sistema, por SQL (ex.: `SELECT * FROM registros_acesso WHERE ip = '...'` com
+  `set_config('app.sistema', 'on', true)`), para ordem judicial. A tarefa `limpeza` apaga o que passou de 184 dias
+  (`acessos_apagados`).
+- **Exclusão automática** (`assinatura/exclusao.py`, regras puras `encerramento`/`exclusao_em` em
+  `assinatura/regras.py`): na tarefa `limpeza`, a partir das 9h, uma vez por dia; conta encerrada 90 dias depois do
+  fim do teste ou do período pago, aviso aos administradores 7 dias antes, freios (até 100 avisos e 20 exclusões por
+  dia, contados pelos eventos `exclusao_avisada` e `conta_excluida_automatica` já gravados hoje, não pela rodada; conta
+  com 100 dias; 7 dias de aviso também pelo relógio do banco; Asaas fora → amanhã). O aviso só vale entregue: na hora de
+  excluir, a conta precisa de um e-mail `aviso` `enviado` com o assunto do aviso em `emails_enviados`, gravado depois de
+  `exclusao_avisada_em`; sem ele, com administrador ativo, o aviso é desfeito e a próxima rodada avisa de novo (sem
+  nenhum administrador ativo, exclui depois dos 7 dias, com `admins: 0` no evento global). Cliente no Asaas sem a chave
+  do mesmo ambiente (sem chave ou com a do outro) → fica para depois, exceto cliente de sandbox com a chave de produção.
+  Cada aviso e cada exclusão na sua transação e no seu try/except: um erro numa conta vai para o log com o id e o tipo do
+  erro, a conta conta em `adiadas` e a rodada segue com as outras. `plataforma.servico.apagar_conta` apaga a conta (as
+  tabelas de todas as etapas) e também serve à exclusão pela Plataforma. `conta.cobranca.exclusao_em` (login e `/eu`) e
+  `exclusao_em` na lista da Plataforma. Rodar à mão: `python -m toqqi.tarefas limpeza` (devolve `{emails_apagados,
+  acessos_apagados, encerradas}`; o log sai como na API, com os INFO da rotina; `encerradas` é null antes das 9h ou se
+  já rodou hoje). Se a rodada do dia caiu no meio, ela roda de novo sozinha na próxima chamada (não há evento do dia);
+  apagar o evento global `exclusao_automatica` de hoje também faz rodar de novo, mas nunca libera outras 20 exclusões
+  (nem outros 100 avisos): o que já foi feito hoje conta no limite.
+- **WhatsApp**: "SAIR" e variações (`whatsapp/webhook.pede_para_sair`, também por botão, como a resposta rápida "Não
+  quero receber"); o modelo precisa ter a palavra SAIR no corpo ou no rodapé (`whatsapp/modelo.conferir`).
+- **Log**: `core/logs.configurar()` (logger `toqqi` em INFO, sem duplicar o handler), usado pela API (`main.py`) e pela
+  linha de comando das tarefas.
+- Correções: avisos da importação ("Será criada 1 empresa: X.", "A, B e C.", "e mais 15."; "(linhas 7, 9 e 12)");
+  `teste_ate` do cadastro, da Plataforma e do "+14 dias" pelo relógio das regras (`relogio.agora()`).
+- `VERSAO_DOCUMENTOS = 4` (a Política e os Termos citam os registros de acesso e a exclusão automática).
+
 ## Estrutura
 ```
 toqqi/
@@ -559,7 +622,8 @@ toqqi/
   modelos.py              modelos ORM
   apresentacao.py         formato JSON de Usuario e Conta
   core/                   config, db (em_conta / modo_sistema), security (argon2id, JWT, tokens), relogio,
-                          errors, validacao, email, rate_limit, auditoria, permissoes, deps (requer),
+                          errors, validacao, email, rate_limit, auditoria, acessos (registros de acesso),
+                          requisicao (IP do cliente), permissoes, deps (requer), logs (saída do log),
                           texto (telefone, CNPJ/CPF, valores, datas), planos, paginacao, filtros, rede,
                           ia (adaptador da OpenAI e provedor de testes), asaas (adaptador do Asaas)
   modulos/acesso/         cadastro, entrar, sair, confirmar, reenviar, esqueci, redefinir, pedir-acesso, /eu
@@ -567,7 +631,8 @@ toqqi/
   modulos/conta/          segurança (duração da sessão, domínios liberados), dados da empresa e logo da conta
   modulos/imagens/        imagens da conta (logo da empresa e dos formulários): envio, URL pública, logo do cliente;
                           banco de imagens da conta (banco.py, rotas /imagens)
-  modulos/auditoria/      registro de atividades e e-mails enviados (emails.py: lista e limpeza)
+  modulos/auditoria/      registro de atividades (com os grupos) e e-mails enviados (emails.py: lista e limpeza)
+  modulos/dados/          dados da conta: exportar todos os dados (exportacao.py) e zona de risco (zona.py)
   modulos/plataforma/     área do superadmin
   modulos/cadastros/      grupos, segmentos, perfis, cargos e responsáveis (teste do Teams)
   modulos/empresas/       empresas (clientes da conta)
@@ -581,7 +646,7 @@ toqqi/
   modulos/ia/             IA por resposta: quem passa, fila, reserva, teto do mês, configuração da conta
   modulos/relatorios/     relatórios, picos de reclamação, alerta de pico e resumo semanal por e-mail
   modulos/assinatura/     planos, assinatura e cobranças (Asaas), situação da conta e "liberada", webhook,
-                          conciliação e conferência diária (tarefa)
+                          conciliação e conferência diária (tarefa), exclusão automática das contas encerradas
   modulos/publico/        páginas públicas (convite, link público e descadastro)
   modulos/envios/         configuração e pré-condições, fila/situação, disparo, histórico, WhatsApp,
                           robô/lembretes/pendentes, agradecimento, descadastro, modelos de e-mail
@@ -597,6 +662,7 @@ alembic/versions/0006_dados_empresa.py   dados da empresa em `contas` e tabela `
 alembic/versions/0007_ia_relatorios.py   IA por resposta, reclamação/elogio por tema, uso da IA, picos, resumos + RLS
 alembic/versions/0008_assinaturas.py   cobrança em `contas`, assinaturas, cobranças e avisos do Asaas + RLS
 alembic/versions/0014_emails.py   visual dos e-mails, banco de imagens e `emails_enviados` + RLS
+alembic/versions/0015_dados_conta.py   `registros_acesso` (RLS só de gravação), aviso de exclusão em `contas`, índices
 scripts/asaas_falso.py             Asaas falso (desenvolvimento local e testes)
 tests/                             pytest
 ```

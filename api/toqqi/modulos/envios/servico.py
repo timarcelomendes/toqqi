@@ -334,7 +334,8 @@ def executar_lembretes(ctx: Contexto) -> tuple[dict, Pares]:
     _exigir_admin(ctx)
     with em_conta(ctx.conta_id) as s:
         exigir(s, obter(s))
-    r = automacao.lembretes_conta(ctx.conta_id, forcar=True) or {"enviados": 0, "ignorados": 0, "envios": []}
+    r = automacao.lembretes_conta(ctx.conta_id, forcar=True, usuario_id=ctx.usuario_id) or {
+        "enviados": 0, "ignorados": 0, "envios": []}
     return {"enviados": r["enviados"], "ignorados": r["ignorados"]}, r["envios"]
 
 
@@ -345,5 +346,6 @@ def executar_robo(ctx: Contexto) -> tuple[dict, Pares]:
         exigir(s, cfg)
         if not cfg.envio_automatico:
             raise erro_pre_condicao("O envio automático está desligado. Ligue em Configurações de envio.")
-    r = automacao.robo_conta(ctx.conta_id, forcar=True) or {"agendados": 0, "ignorados": 0, "envios": []}
+    r = automacao.robo_conta(ctx.conta_id, forcar=True, usuario_id=ctx.usuario_id) or {
+        "agendados": 0, "ignorados": 0, "envios": []}
     return {"agendados": r["agendados"], "ignorados": r["ignorados"]}, r["envios"]

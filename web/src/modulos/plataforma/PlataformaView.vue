@@ -9,6 +9,7 @@ import { diasAte, formatarData } from '@/utils/datas'
 import { formatarMoeda, plural } from '@/utils/formatos'
 import { situacaoConta } from '@/utils/rotulos'
 import { nomeDoPlano } from '@/modulos/assinatura/logica'
+import { seloExclusao } from '@/modulos/configuracoes/dadosConta'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
@@ -183,11 +184,18 @@ onMounted(carregar)
         </p>
         <p class="text-xs text-texto-fraco 2xl:hidden">{{ plural(c.usuarios ?? 0, 'usuário', 'usuários') }} · criada em {{ formatarData(c.criada_em) }}</p>
         <p class="mt-1 text-texto-suave md:hidden">{{ textoAssinatura(c) }}</p>
-        <div class="mt-1 sm:hidden"><Etiqueta :tom="situacaoConta(c.situacao).tom">{{ situacaoConta(c.situacao).rotulo }}</Etiqueta></div>
+        <div class="mt-1 flex flex-wrap gap-1.5 sm:hidden">
+          <Etiqueta :tom="situacaoConta(c.situacao).tom">{{ situacaoConta(c.situacao).rotulo }}</Etiqueta>
+          <Etiqueta v-if="seloExclusao(c.exclusao_em)" tom="erro" data-selo-exclusao>{{ seloExclusao(c.exclusao_em) }}</Etiqueta>
+        </div>
         <p v-if="c.teste_ate || c.pago_ate" class="mt-1 text-xs text-texto-fraco lg:hidden">{{ textoDatas(c) }}</p>
       </template>
       <template #cel-situacao="{ linha: c }">
-        <Etiqueta :tom="situacaoConta(c.situacao).tom">{{ situacaoConta(c.situacao).rotulo }}</Etiqueta>
+        <div class="flex flex-col items-start gap-1">
+          <Etiqueta :tom="situacaoConta(c.situacao).tom">{{ situacaoConta(c.situacao).rotulo }}</Etiqueta>
+          <!-- Etapa 5f: conta encerrada com a exclusão automática já avisada -->
+          <Etiqueta v-if="seloExclusao(c.exclusao_em)" tom="erro" data-selo-exclusao>{{ seloExclusao(c.exclusao_em) }}</Etiqueta>
+        </div>
         <p v-if="c.atrasada_desde" class="mt-1 whitespace-nowrap text-xs text-texto-fraco">Vencida em {{ formatarData(c.atrasada_desde) }}</p>
       </template>
       <template #cel-assinatura="{ linha: c }">

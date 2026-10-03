@@ -1,11 +1,12 @@
-"""Consulta do registro de atividades (auditoria) da conta."""
+"""Consulta do registro de atividades (auditoria) da conta. Filtros: período, gravidade, busca e (etapa 5f) o grupo do
+evento (`core.auditoria.GRUPOS`); cada item traz `grupo` (a chave)."""
 import unicodedata
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import String, cast, func, or_, select
 
-from toqqi.core.auditoria import ROTULOS
+from toqqi.core.auditoria import ROTULOS, eventos_do_grupo, grupo_de
 from toqqi.core.db import em_conta
 from toqqi.core.deps import Contexto
 from toqqi.modelos import Auditoria, Usuario
@@ -23,8 +24,10 @@ def _inicio_do_dia(d: date) -> datetime:
 
 
 def listar(ctx: Contexto, de: date | None, ate: date | None, gravidade: str | None,
-           busca: str | None, pagina: int) -> dict:
-    filtros = []
+           busca: str | None, pagina: int, grupo: str | None = None) -> dict:
+    filtros = [Auditoria.conta_id == ctx.conta_id]
+    if grupo:
+        filtros.append(Auditoria.evento.in_(eventos_do_grupo(grupo)))
     if de:
         filtros.append(Auditoria.criado_em >= _inicio_do_dia(de))
     if ate:
@@ -63,6 +66,7 @@ def listar(ctx: Contexto, de: date | None, ate: date | None, gravidade: str | No
             "criado_em": a.criado_em,
             "evento": a.evento,
             "rotulo": ROTULOS.get(a.evento, a.evento),
+            "grupo": grupo_de(a.evento),
             "gravidade": a.gravidade,
             "usuario": {"id": uid, "nome": nome} if uid is not None else None,
             "detalhe": a.detalhe,

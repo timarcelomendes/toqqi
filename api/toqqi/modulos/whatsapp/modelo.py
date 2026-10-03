@@ -2,7 +2,9 @@
 
 Modelo esperado (o cliente cria no WhatsApp Manager, categoria Utilidade): corpo com {{1}} = primeiro nome,
 {{2}} = nome da conta, {{3}} = referência ("seu pedido 1234" / "nosso atendimento"); botão de URL dinâmica
-`{FRONTEND_URL}/r/{{1}}`, cujo sufixo é o token do convite.
+`{FRONTEND_URL}/r/{{1}}`, cujo sufixo é o token do convite; e (etapa 5f) a palavra SAIR (inteira, qualquer caixa)
+no corpo ou no rodapé, dizendo como parar de receber — o modelo sugerido traz o rodapé "Para não receber mais
+pesquisas, responda SAIR.".
 """
 import re
 
@@ -10,6 +12,10 @@ from toqqi.core.config import config
 
 VARIAVEIS = ("{{1}}", "{{2}}", "{{3}}")
 REFERENCIA_PADRAO = "nosso atendimento"
+RODAPE_SUGERIDO = "Para não receber mais pesquisas, responda SAIR."
+MSG_SEM_SAIR = ("O modelo precisa dizer como parar de receber, por exemplo no rodapé: "
+                f"“{RODAPE_SUGERIDO}”")
+_SAIR = re.compile(r"\bsair\b", re.IGNORECASE)
 
 
 class ModeloInvalido(ValueError):
@@ -34,10 +40,14 @@ def conferir(modelos: list[dict], nome: str, idioma: str) -> int:
     if sorted(set(re.findall(r"\{\{\d+\}\}", corpo))) != list(VARIAVEIS):
         raise ModeloInvalido("O texto do modelo precisa ter as variáveis {{1}}, {{2}} e {{3}} (e só elas).")
     botoes = next((c.get("buttons") or [] for c in componentes if c.get("type") == "BUTTONS"), [])
-    for i, b in enumerate(botoes):
-        if isinstance(b, dict) and b.get("type") == "URL" and b.get("url") == url_do_botao():
-            return i
-    raise ModeloInvalido(f"O modelo precisa de um botão de link com o endereço {url_do_botao()}.")
+    botao = next((i for i, b in enumerate(botoes)
+                  if isinstance(b, dict) and b.get("type") == "URL" and b.get("url") == url_do_botao()), None)
+    if botao is None:
+        raise ModeloInvalido(f"O modelo precisa de um botão de link com o endereço {url_do_botao()}.")
+    rodape = next((c.get("text") or "" for c in componentes if c.get("type") == "FOOTER"), "")
+    if not any(isinstance(t, str) and _SAIR.search(t) for t in (corpo, rodape)):
+        raise ModeloInvalido(MSG_SEM_SAIR)
+    return botao
 
 
 def referencia_texto(referencia: str | None) -> str:

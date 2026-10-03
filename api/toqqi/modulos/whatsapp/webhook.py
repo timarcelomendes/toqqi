@@ -3,12 +3,17 @@
 A conta é descoberta em modo sistema só pelo phone_number_id do aviso; o resto roda em em_conta(conta).
 - `statuses`: atualiza o envio pelo wamid (enviado → entregue → lido; `failed` → erro em texto simples,
   devolve a franquia e, com "whatsapp_e_email", manda por e-mail).
-- `messages` de texto "SAIR", "PARAR", "STOP" ou "CANCELAR" (sem diferenciar maiúsculas/acentos):
-  descadastro do telefone (origem `whatsapp`) e confirmação por mensagem de sessão.
+- `messages` que pedem para sair (`pede_para_sair`, etapa 5f): a mensagem inteira normalizada (sem acento, minúsculas,
+  só letras, números e espaços simples), até 40 caracteres, igual a uma de `FRASES_SAIR` ("sair", "sair da lista",
+  "quero sair", "parar", "pare", "stop", "cancelar", "descadastrar", "nao quero mais", "nao quero mais receber",
+  "nao quero receber", "nao quero receber mais"); vale texto e resposta de botão (`button.text`,
+  `interactive.button_reply.title`; ex.: a resposta rápida "Não quero receber" de um modelo): descadastro do telefone
+  (origem `whatsapp`) e confirmação por mensagem de sessão. Outra mensagem é ignorada, sem resposta.
 O que fala com a rede (confirmação, e-mails de reserva, webhooks de saída) fica para depois da resposta.
 """
 import hashlib
 import hmac
+import re
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
@@ -25,7 +30,9 @@ from toqqi.modulos.envios.processamento import Pares, falha_whatsapp, processar_
 from toqqi.modulos.integracoes.webhooks import entregar_lista
 from toqqi.modulos.whatsapp import graph, modelo
 
-PALAVRAS_SAIR = frozenset({"SAIR", "PARAR", "STOP", "CANCELAR"})
+FRASES_SAIR = frozenset({"sair", "sair da lista", "quero sair", "parar", "pare", "stop", "cancelar", "descadastrar",
+                         "nao quero mais", "nao quero mais receber", "nao quero receber", "nao quero receber mais"})
+MAX_FRASE = 40
 ORDEM = {"enviado": 0, "entregue": 1, "lido": 2}
 SITUACAO = {"delivered": "entregue", "read": "lido"}
 
@@ -72,9 +79,32 @@ def _status(s: Session, st: dict) -> Pares:
     return []
 
 
+def normalizar(texto: str) -> str:
+    """Sem acento, minúsculas, só letras, números e espaços simples."""
+    return re.sub(r"[^a-z0-9]+", " ", sem_acento(texto).lower()).strip()
+
+
+def pede_para_sair(texto) -> bool:
+    if not isinstance(texto, str) or len(texto) > 1000:
+        return False
+    frase = normalizar(texto)
+    return len(frase) <= MAX_FRASE and frase in FRASES_SAIR
+
+
+def _texto(m: dict) -> str | None:
+    """O texto da mensagem: texto digitado ou a resposta de um botão (do modelo ou interativo)."""
+    tipo = m.get("type")
+    if tipo == "text":
+        return (m.get("text") or {}).get("body")
+    if tipo == "button":
+        return (m.get("button") or {}).get("text")
+    if tipo == "interactive":
+        return ((m.get("interactive") or {}).get("button_reply") or {}).get("title")
+    return None
+
+
 def _mensagem(s: Session, m: dict, phone_number_id: str) -> tuple[str, str, dict] | None:
-    texto = (m.get("text") or {}).get("body") if m.get("type") == "text" else None
-    if not isinstance(texto, str) or sem_acento(texto).strip(" .!\n\t").upper() not in PALAVRAS_SAIR:
+    if not pede_para_sair(_texto(m)):
         return None
     de = str(m.get("from") or "")
     telefone = telefone_canonico(de)

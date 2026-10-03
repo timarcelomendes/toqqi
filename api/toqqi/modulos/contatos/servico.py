@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from toqqi.core import relogio
 from toqqi.core.auditoria import registrar
-from toqqi.core.db import em_conta
+from toqqi.core.db import em_conta, sem_jit
 from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.paginacao import Pagina
@@ -15,7 +15,9 @@ from toqqi.core.texto import so_digitos
 from toqqi.modelos import Cargo, Contato, Empresa, Formulario, PerfilContato, Resposta
 from toqqi.modulos.empresas.servico import conferir_referencias, ref
 from toqqi.modulos.envios.configuracao import obter as obter_config_envios
+from toqqi.modulos.crescimento.indicacoes import telefone_legivel
 from toqqi.modulos.envios.fila import estado
+from toqqi.modulos.relatorios.regras import data_br, gerar_csv, sim_nao
 from toqqi.modulos.respostas.convites import criar_convite, link_do_convite
 
 REFERENCIAS = {
@@ -70,8 +72,9 @@ def _um(s: Session, contato_id: int) -> dict:
     return _json(linha)
 
 
-def listar(ctx: Contexto, pg: Pagina, busca: str | None, empresa_id: int | None, grupo_id: int | None,
-           responsavel_id: int | None, perfil_id: int | None, ativo: str) -> dict:
+def condicoes(busca: str | None, empresa_id: int | None, grupo_id: int | None, responsavel_id: int | None,
+              perfil_id: int | None, ativo: str) -> list:
+    """Filtros de `GET /contatos` (a lista e o CSV); a consulta junta a empresa do contato."""
     filtros = []
     if busca:
         termo = f"%{busca}%"
@@ -91,12 +94,55 @@ def listar(ctx: Contexto, pg: Pagina, busca: str | None, empresa_id: int | None,
         filtros.append(Contato.perfil_id == perfil_id)
     if ativo in ("true", "false"):
         filtros.append(Contato.ativo.is_(ativo == "true"))
+    return filtros
+
+
+ORDEM = (func.lower(Contato.nome), Contato.id)
+
+
+def listar(ctx: Contexto, pg: Pagina, busca: str | None, empresa_id: int | None, grupo_id: int | None,
+           responsavel_id: int | None, perfil_id: int | None, ativo: str) -> dict:
+    filtros = [Contato.conta_id == ctx.conta_id,
+               *condicoes(busca, empresa_id, grupo_id, responsavel_id, perfil_id, ativo)]
     with em_conta(ctx.conta_id) as s:
         total = s.scalar(select(func.count()).select_from(Contato)
                          .outerjoin(Empresa, Empresa.id == Contato.empresa_id).where(*filtros))
-        linhas = s.execute(_consulta(s).where(*filtros).order_by(func.lower(Contato.nome), Contato.id)
+        linhas = s.execute(_consulta(s).where(*filtros).order_by(*ORDEM)
                            .limit(pg.por_pagina).offset(pg.offset)).all()
     return pg.resultado([_json(x) for x in linhas], total)
+
+
+# ---- "Exportar CSV" (etapa 5f) --------------------------------------------------------------
+
+CABECALHO_CSV = ["Código", "Nome", "E-mail", "Telefone", "Empresa", "Cargo", "Perfil", "Código externo",
+                 "Recebe pesquisas", "Ativo", "Situação", "Último envio", "Próximo envio", "Última nota", "Criado em"]
+# os rótulos de SITUACOES_CONTATO do site (nunca_enviado, da etapa 2, aparece como "Na fila")
+ROTULOS_SITUACAO = {"na_fila": "Na fila", "nunca_enviado": "Na fila", "enviando": "Enviando...",
+                    "aguardando": "Aguardando resposta", "respondeu": "Respondeu", "nao_saiu": "Não saiu",
+                    "saiu_da_lista": "Saiu da lista", "inativo": "Inativo",
+                    "aguardando_intervalo": "Aguardando o próximo envio"}
+
+
+def exportar_csv(ctx: Contexto, busca: str | None, empresa_id: int | None, grupo_id: int | None,
+                 responsavel_id: int | None, perfil_id: int | None, ativo: str) -> str:
+    """Os filtros, padrões e ordem da lista, sem paginação. Auditoria `exportacao_csv` {lista, linhas} (sem a
+    busca)."""
+    filtros = [Contato.conta_id == ctx.conta_id,
+               *condicoes(busca, empresa_id, grupo_id, responsavel_id, perfil_id, ativo)]
+    with em_conta(ctx.conta_id) as s:
+        sem_jit(s)
+        saida = [[c.codigo, c.nome, c.email or "", telefone_legivel(c.telefone), empresa or "", cargo or "",
+                  perfil or "", c.codigo_externo or "", sim_nao(c.recebe_pesquisas), sim_nao(c.ativo),
+                  ROTULOS_SITUACAO.get(situacao, situacao or ""), data_br(c.ultimo_envio), data_br(c.proximo_envio),
+                  "" if c.ultima_nota is None else c.ultima_nota, data_br(c.criado_em)]
+                 for c, empresa, cargo, perfil, situacao in s.execute(
+                     _consulta(s).where(*filtros).order_by(*ORDEM).execution_options(yield_per=2000))]
+        registrar(s, "exportacao_csv", "info", {"lista": "contatos", "linhas": len(saida)}, usuario_id=ctx.usuario_id)
+    return gerar_csv(CABECALHO_CSV, saida)
+
+
+def nome_csv() -> str:
+    return f"contatos-{relogio.hoje().isoformat()}.csv"
 
 
 def obter(ctx: Contexto, contato_id: int) -> dict:

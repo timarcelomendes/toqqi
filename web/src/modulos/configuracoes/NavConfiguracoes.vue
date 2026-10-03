@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// Seções de Configurações (Empresa, Segurança, Envios, Planos de ação, Crescimento, IA), mostradas conforme o perfil.
+// Seções de Configurações (Empresa, Segurança, Envios, Planos de ação, Crescimento, IA e, só para o administrador,
+// Dados da conta), mostradas conforme o perfil.
 import { computed } from 'vue'
-import { Building2, ClipboardList, Send, ShieldCheck, Sparkles, Sprout } from 'lucide-vue-next'
+import { Building2, ClipboardList, DatabaseBackup, Send, ShieldCheck, Sparkles, Sprout } from 'lucide-vue-next'
 import { useSessaoStore } from '@/stores/sessao'
 
 const sessao = useSessaoStore()
@@ -18,6 +19,8 @@ const secoes = computed(() =>
       pode: sessao.pode('configuracoes.gerenciar') || sessao.pode('crescimento.ver'),
     },
     { rotulo: 'IA', para: '/configuracoes/ia', icone: Sparkles, pode: sessao.pode('configuracoes.gerenciar') },
+    // Etapa 5f: exportar todos os dados e a Zona de risco (a rota é só do administrador).
+    { rotulo: 'Dados da conta', para: '/configuracoes/dados-da-conta', icone: DatabaseBackup, pode: sessao.admin },
   ].filter((s) => s.pode),
 )
 </script>

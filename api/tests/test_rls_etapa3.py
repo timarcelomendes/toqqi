@@ -126,6 +126,9 @@ def test_excluir_conta(client, ab, dono):
                                           where column_name = 'conta_id' and table_schema = 'public'""")]
     assert len(tabelas) >= 20
     for t in tabelas:
+        if t == "registros_acesso":  # etapa 5f: os registros de acesso (Marco Civil) sobrevivem à conta
+            assert sql(dono, f"select count(*) from {t} where conta_id = :c", c=cid)[0][0] > 0
+            continue
         assert sql(dono, f"select count(*) from {t} where conta_id = :c", c=cid)[0][0] == 0, t
     assert sql(dono, "select count(*) from contas where id = :c", c=cid)[0][0] == 0
     # auditoria global, sem conta, visível só em modo sistema

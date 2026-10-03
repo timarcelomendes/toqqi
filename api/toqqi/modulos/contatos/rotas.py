@@ -8,8 +8,26 @@ from toqqi.modulos.contatos import servico
 from toqqi.modulos.contatos.esquemas import ContatoAlterarIn, ContatoIn, LinkPesquisaIn
 from toqqi.modulos.envios import servico as envios
 from toqqi.modulos.envios.esquemas import WhatsappIn
+from toqqi.modulos.respostas.rotas import csv_resposta
 
 router = APIRouter(prefix="/contatos", tags=["contatos"])
+router_csv = APIRouter(tags=["contatos"])
+
+
+@router_csv.get("/contatos.csv")
+def exportar_csv(
+    busca: Annotated[str | None, Query(max_length=100)] = None,
+    empresa_id: int | None = None,
+    grupo_id: int | None = None,
+    responsavel_id: int | None = None,
+    perfil_id: int | None = None,
+    ativo: Literal["true", "false", "todos"] = "todos",
+    ctx: Contexto = Depends(requer("contatos.ver", "painel.exportar")),
+):
+    """"Exportar CSV" de Contatos (etapa 5f): os filtros, padrões e ordem de GET /contatos, sem paginação."""
+    conteudo = servico.exportar_csv(ctx, (busca or "").strip() or None, empresa_id, grupo_id, responsavel_id,
+                                    perfil_id, ativo)
+    return csv_resposta(conteudo, servico.nome_csv())
 
 
 @router.get("")

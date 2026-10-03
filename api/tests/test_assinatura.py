@@ -504,14 +504,14 @@ def test_avisos_no_eu_e_no_login(client, admin, dono, situacao, campos, aviso, l
         c=admin["conta"]["id"], **campos)
     cobranca = client.get(f"{API}/eu", headers=admin["h"]).json()["conta"]["cobranca"]
     assert (cobranca["aviso"], cobranca["liberada"]) == (aviso, liberada)
-    assert set(cobranca) == {"liberada", "assinada", "pago_ate", "atrasada_desde", "pausa_em", "aviso"}
+    assert set(cobranca) == {"liberada", "assinada", "pago_ate", "atrasada_desde", "pausa_em", "aviso", "exclusao_em"}
     assert entrar(client, "ana@alfa.com.br").json()["conta"]["cobranca"] == cobranca
 
 
 def test_login_traz_a_cobranca(client, admin):
     assert entrar(client, "ana@alfa.com.br").json()["conta"]["cobranca"] == {
         "liberada": True, "assinada": False, "pago_ate": None, "atrasada_desde": None, "pausa_em": "2026-10-15T17:30:00+00:00",
-        "aviso": {"tipo": "teste_acabando", "data": "2026-10-15", "dias": 5}}
+        "aviso": {"tipo": "teste_acabando", "data": "2026-10-15", "dias": 5}, "exclusao_em": None}
 
 
 def test_conta_sem_chave_continua_funcionando(client, admin, monkeypatch):

@@ -30,6 +30,7 @@ export * from './etapa5b'
 export * from './etapa5c'
 export * from './etapa5d'
 export * from './etapa5e'
+export * from './etapa5f'
 export * from './empresa'
 
 const publico = { autenticar: false } as const
@@ -101,6 +102,8 @@ export interface FiltrosAuditoria {
   de?: string
   ate?: string
   gravidade?: Gravidade | ''
+  /** Etapa 5f: chave de GET /auditoria/grupos (vazio = todos; outra chave → 422). */
+  grupo?: string
   busca?: string
   pagina?: number
 }

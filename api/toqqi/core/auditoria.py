@@ -1,4 +1,18 @@
-"""Registro de eventos de auditoria da conta."""
+"""Registro de eventos de auditoria da conta.
+
+Etapa 5f: grupos dos eventos (`GRUPOS`, nesta ordem; cada evento de `ROTULOS` em exatamente um, por `grupo_de`), para
+o filtro da tela de Auditoria e a exportação:
+- `acesso` "Acesso e segurança": login_*, cadastro_conta, senha_*, sessao_encerrada, seguranca_alterada, termos_*;
+- `equipe` "Equipe e permissões": usuario_criado/alterado/bloqueado, permissoes_alteradas;
+- `configuracoes` "Configurações": config_*, dados_empresa_alterados, logo_*, formulario_padrao/arquivado,
+  imagem_enviada, ia_analisar_recentes;
+- `envios` "Envios e descadastros": envio_*, lembretes_automaticos, descadastro*;
+- `dados` "Importações, edições e exportações": importacao*, resposta_editada, indicacao_registrada/atualizada,
+  exportacao_*;
+- `exclusoes` "Exclusões definitivas": todo *_excluido(a) menos os globais conta_excluida*, e zona_risco;
+- `integracoes` "Integrações": chave_*, webhook_* (menos webhook_excluido), whatsapp_*;
+- `assinatura` "Assinatura e conta": o resto (inclusive exclusao_avisada e os globais da plataforma).
+"""
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
@@ -70,7 +84,71 @@ ROTULOS = {
     "config_crescimento": "Configurações de crescimento alteradas",
     "imagem_enviada": "Imagem enviada ao banco de imagens",
     "imagem_excluida": "Imagem excluída do banco de imagens",
+    # etapa 5f
+    "envio_automatico": "Pesquisas enviadas pelo envio automático",
+    "lembretes_automaticos": "Lembretes enviados automaticamente",
+    "chave_regerada": "Chave de integração gerada de novo (a anterior parou de valer)",
+    "webhook_criado": "Webhook criado",
+    "webhook_alterado": "Webhook alterado",
+    "webhook_excluido": "Webhook excluído",
+    "exportacao_conta": "Todos os dados da conta exportados",
+    "exportacao_csv": "Lista exportada em CSV",
+    "zona_risco": "Dados apagados pela zona de risco",
+    "exclusao_avisada": "Aviso de exclusão da conta enviado",
+    "conta_excluida_automatica": "Conta excluída automaticamente",
+    "exclusao_automatica": "Rotina de exclusão de contas encerradas",
 }
+
+GRUPOS = {
+    "acesso": "Acesso e segurança",
+    "equipe": "Equipe e permissões",
+    "configuracoes": "Configurações",
+    "envios": "Envios e descadastros",
+    "dados": "Importações, edições e exportações",
+    "exclusoes": "Exclusões definitivas",
+    "integracoes": "Integrações",
+    "assinatura": "Assinatura e conta",
+}
+
+
+def _grupo(evento: str) -> str:
+    """A regra do cabeçalho (a ordem dos testes importa: exclusões antes dos prefixos dos outros grupos)."""
+    if evento.startswith("conta_excluida"):
+        return "assinatura"  # globais da plataforma
+    if evento.endswith(("_excluido", "_excluida")) or evento == "zona_risco":
+        return "exclusoes"
+    if evento.startswith(("login_", "senha_", "termos_")) or evento in (
+            "cadastro_conta", "sessao_encerrada", "seguranca_alterada"):
+        return "acesso"
+    if evento in ("usuario_criado", "usuario_alterado", "usuario_bloqueado", "permissoes_alteradas"):
+        return "equipe"
+    if evento.startswith(("config_", "logo_")) or evento in (
+            "dados_empresa_alterados", "formulario_padrao", "formulario_arquivado", "imagem_enviada",
+            "ia_analisar_recentes"):
+        return "configuracoes"
+    if evento.startswith(("envio_", "descadastro")) or evento == "lembretes_automaticos":
+        return "envios"
+    if evento.startswith(("importacao", "exportacao_")) or evento in (
+            "resposta_editada", "indicacao_registrada", "indicacao_atualizada"):
+        return "dados"
+    if evento.startswith(("chave_", "webhook_", "whatsapp_")):
+        return "integracoes"
+    return "assinatura"
+
+
+GRUPO_DO_EVENTO = {evento: _grupo(evento) for evento in ROTULOS}
+
+
+def grupo_de(evento: str) -> str:
+    return GRUPO_DO_EVENTO.get(evento) or _grupo(evento)
+
+
+def eventos_do_grupo(grupo: str) -> list[str]:
+    return [e for e, g in GRUPO_DO_EVENTO.items() if g == grupo]
+
+
+def grupos_json() -> list[dict]:
+    return [{"chave": k, "rotulo": r} for k, r in GRUPOS.items()]
 
 
 def registrar(

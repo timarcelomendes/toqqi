@@ -2,6 +2,9 @@
 
 A conta é descoberta em modo sistema só pela busca do hash do token (convite) ou do código público
 (formulário); todo o resto acontece dentro de em_conta(conta).
+
+Etapa 5f: cada envio de resposta (convite e link público) e de indicação grava o registro de acesso (`core.acessos`,
+com o IP do cliente) na mesma transação; abrir as páginas não grava.
 """
 import hashlib
 import re
@@ -9,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import exists, func, select
 
+from toqqi.core import acessos
 from toqqi.core.config import config
 from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.errors import AppError
@@ -98,6 +102,7 @@ def responder_convite(token: str, respostas: dict, ip: str | None) -> dict:
         r = gravar_resposta(s, f, respostas, CANAL_RESPOSTA[c.canal], v, contato=contato, empresa_id=c.empresa_id,
                             convite_id=c.id, contexto=c.contexto, referencia=c.referencia, ip_hash=ip_hash(ip))
         c.respondido_em = func.now()
+        acessos.registrar(s, "resposta", conta_id=conta_id, item_id=r.id)
         return {**texto_final(f, v), "indicacao": indicacoes.convite_de_indicacao(s, r, v)}
 
 
@@ -110,7 +115,9 @@ def indicar(token: str, dados) -> dict:
         c = s.get(Convite, convite_id, with_for_update=True)  # o limite de 3 por convite não corre
         if not _disponivel(s.get(Formulario, c.formulario_id)):
             raise indicacoes.indisponivel()
-        indicacoes.criar_publica(s, c, dados)
+        i = indicacoes.criar_publica(s, c, dados)
+        # a repetida (nada criado) também é um acesso: entra sem a indicação
+        acessos.registrar(s, "indicacao", conta_id=conta_id, item_id=i.id if i is not None else None)
     return {"mensagem": indicacoes.MSG_OBRIGADO}
 
 
@@ -158,7 +165,9 @@ def responder_formulario(codigo: str, dados, ip: str | None) -> dict:
                 Resposta.criada_em > func.now() - JANELA_DUPLICADA,
             )))
             if repetida:  # mesma resposta, mesmo IP, há pouco: responde igual e não grava de novo
+                acessos.registrar(s, "resposta", conta_id=conta_id)
                 return texto_final(f, v)
-        gravar_resposta(s, f, dados.respostas, dados.canal, v, contexto=limpar_contexto(dados.contexto),
-                        referencia=dados.referencia, ip_hash=h, respostas_validadas=validadas)
+        r = gravar_resposta(s, f, dados.respostas, dados.canal, v, contexto=limpar_contexto(dados.contexto),
+                            referencia=dados.referencia, ip_hash=h, respostas_validadas=validadas)
+        acessos.registrar(s, "resposta", conta_id=conta_id, item_id=r.id)
         return texto_final(f, v)

@@ -6,6 +6,9 @@
 // assistente).
 // Versão 3 (etapa 5e), vigente desde 02/10/2026: a Política de privacidade passa a descrever o registro de e-mails
 // enviados (endereço de quem recebeu, assunto, situação e erro; guardado por 90 dias).
-export const VERSAO_DOCUMENTOS = 3
+// Versão 4 (etapa 5f), vigente desde 03/10/2026: registros de acesso (data, hora e IP, por 6 meses, à parte), exclusão
+// automática 90 dias depois do fim do período pago ou do teste (com aviso 7 dias antes), exportação de todos os dados
+// em Configurações › Dados da conta e, nos Termos, as mesmas regras no teste e no fim do contrato.
+export const VERSAO_DOCUMENTOS = 4
 /** Data em que a versão atual (VERSAO_DOCUMENTOS) passou a valer (AAAA-MM-DD). */
-export const VIGENTE_DESDE = '2026-10-02'
+export const VIGENTE_DESDE = '2026-10-03'

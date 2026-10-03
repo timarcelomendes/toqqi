@@ -1,6 +1,10 @@
 """Tarefas fora da requisição: robô (envio automático), lembretes e retomada de pendentes.
 
 A lista de contas vem do modo sistema (só ids); todo o trabalho de cada conta roda em em_conta(conta).
+
+Auditoria (etapa 5f), na mesma transação: `envio_automatico` `{agendados, ignorados, executado_agora}` quando o robô
+agendou algo ou foi o "executar agora" (com o `usuario_id` de quem pediu), e `lembretes_automaticos` `{enviados,
+ignorados, executado_agora}`, igual.
 """
 from datetime import time, timedelta
 
@@ -8,6 +12,7 @@ from sqlalchemy import and_, exists, func, not_, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from toqqi.core import relogio
+from toqqi.core.auditoria import registrar
 from toqqi.core.db import em_conta, modo_sistema
 from toqqi.modelos import ConfigEnvios, Contato, Convite, Envio
 from toqqi.modulos.envios.configuracao import na_janela, obter, prazo_aguardando, pronto
@@ -37,9 +42,10 @@ def _contas(*condicoes) -> list[int]:
 
 # ---- robô -------------------------------------------------------------------
 
-def robo_conta(conta_id: int, forcar: bool = False) -> dict | None:
+def robo_conta(conta_id: int, forcar: bool = False, usuario_id: int | None = None) -> dict | None:
     """Agenda os convites automáticos da conta. None se não era hora de rodar (ou faltou pré-condição).
-    `forcar` ignora a janela e o intervalo de 6 h. Devolve {agendados, ignorados, envios}."""
+    `forcar` ignora a janela e o intervalo de 6 h ("executar agora", por `usuario_id`). Devolve {agendados,
+    ignorados, envios}."""
     with em_conta(conta_id) as s:
         cfg = obter(s, travar=True)
         agora = relogio.agora()
@@ -66,6 +72,10 @@ def robo_conta(conta_id: int, forcar: bool = False) -> dict | None:
                 ignorados += 1
             else:
                 envios.append((conta_id, e.id))
+        if envios or forcar:
+            registrar(s, "envio_automatico", "info",
+                      {"agendados": len(envios), "ignorados": ignorados, "executado_agora": forcar},
+                      usuario_id=usuario_id)
     return {"agendados": len(envios), "ignorados": ignorados, "envios": envios}
 
 
@@ -113,9 +123,10 @@ def _lembretes_devidos(cfg: ConfigEnvios, hoje):
     return base.where(*condicoes), devido
 
 
-def lembretes_conta(conta_id: int, forcar: bool = False) -> dict | None:
+def lembretes_conta(conta_id: int, forcar: bool = False, usuario_id: int | None = None) -> dict | None:
     """Agenda os lembretes do dia. None se não era hora de rodar. `forcar` ignora horário e o "uma vez
-    por dia" da conta (cada convite continua recebendo no máximo um lembrete por dia)."""
+    por dia" da conta (cada convite continua recebendo no máximo um lembrete por dia; "executar agora", por
+    `usuario_id`)."""
     with em_conta(conta_id) as s:
         cfg = obter(s, travar=True)
         agora = relogio.agora()
@@ -142,6 +153,10 @@ def lembretes_conta(conta_id: int, forcar: bool = False) -> dict | None:
             e = novo_envio(s, contato, "lembrete", "lembrete", canal=escolha[0], cobranca=escolha[1],
                            convite_id=convite.id, lembrete=convite.lembretes_enviados + 1)
             envios.append((conta_id, e.id))
+        if envios or forcar:
+            registrar(s, "lembretes_automaticos", "info",
+                      {"enviados": len(envios), "ignorados": ignorados, "executado_agora": forcar},
+                      usuario_id=usuario_id)
     return {"enviados": len(envios), "ignorados": ignorados, "envios": envios}
 
 

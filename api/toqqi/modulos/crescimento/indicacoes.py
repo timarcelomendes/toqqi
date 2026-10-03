@@ -316,14 +316,21 @@ def exportar_csv(ctx: Contexto, f) -> str:
         sem_jit(s)
         linhas = s.execute(_consulta().where(*conds)
                            .order_by(Indicacao.criada_em.desc(), Indicacao.id.desc())).all()
-    saida = []
-    for x in linhas:
-        i = x.Indicacao
-        saida.append([data_br(i.criada_em), i.nome, i.empresa or "", telefone_legivel(i.telefone), i.email or "",
-                      i.observacao or "", x.empresa_nome or "", x.contato_nome or "", sim_nao(i.pode_identificar),
-                      ROTULOS_ORIGEM[i.origem], x.responsavel_nome or "", ROTULOS_SITUACAO[i.situacao],
-                      num(i.valor_mensal), i.motivo or "", data_br(i.atualizada_em)])
-    return gerar_csv(CABECALHO_CSV, saida)
+    return gerar_csv(CABECALHO_CSV, [linha_csv(x) for x in linhas])
+
+
+def consulta_csv():
+    """As linhas do CSV (a consulta da lista), sem filtro nem ordem."""
+    return _consulta()
+
+
+def linha_csv(x) -> list:
+    """Uma linha de `CABECALHO_CSV` (para `relatorios.regras.gerar_csv`) de uma linha de `consulta_csv`."""
+    i = x.Indicacao
+    return [data_br(i.criada_em), i.nome, i.empresa or "", telefone_legivel(i.telefone), i.email or "",
+            i.observacao or "", x.empresa_nome or "", x.contato_nome or "", sim_nao(i.pode_identificar),
+            ROTULOS_ORIGEM[i.origem], x.responsavel_nome or "", ROTULOS_SITUACAO[i.situacao],
+            num(i.valor_mensal), i.motivo or "", data_br(i.atualizada_em)]
 
 
 def nome_csv() -> str:

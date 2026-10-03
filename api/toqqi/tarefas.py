@@ -11,15 +11,22 @@ A tarefa `ia` analisa as respostas pendentes e, depois, no mesmo tempo da rodada
 pendentes (etapa 5d): {analisadas, falharam, limite, passos: {prontas, falharam, limite}}.
 
 A tarefa `limpeza` (etapa 5e) apaga o que passou do prazo de guarda: os e-mails enviados com mais de 90 dias, em
-lotes ({emails_apagados}). A etapa 5f acrescenta outras limpezas a ela.
+lotes ({emails_apagados}). Etapa 5f: também os registros de acesso com mais de 184 dias ({acessos_apagados},
+`core.acessos`) e, a partir das 9h, uma vez por dia, a exclusão automática das contas encerradas ({encerradas}: o
+resumo da rodada, ou null quando ela pulou; `assinatura.exclusao`, com `EXCLUSAO_AUTOMATICA` = ligada para agir,
+qualquer outro valor só simula).
+
+Pela linha de comando, o log da aplicação sai como na API (`core.logs.configurar`: INFO, "INFO:     toqqi - ...").
 """
 import json
 import logging
 import sys
 import time as relogio_real
 
+from toqqi.core import acessos, logs
 from toqqi.modulos.acoes import passos
 from toqqi.modulos.assinatura import conferencia as assinaturas
+from toqqi.modulos.assinatura import exclusao
 from toqqi.modulos.auditoria import emails as emails_enviados
 from toqqi.modulos.envios import automacao
 from toqqi.modulos.ia import servico as ia
@@ -56,11 +63,14 @@ def executar(qual: str = "tudo") -> dict:
 
 
 def limpeza() -> dict:
-    """Tarefa `limpeza`: apaga o que passou do prazo de guarda. Etapa 5e: os e-mails enviados com mais de 90 dias."""
-    return {"emails_apagados": emails_enviados.limpar()}
+    """Tarefa `limpeza`: apaga o que passou do prazo de guarda (e-mails enviados com mais de 90 dias, registros de
+    acesso com mais de 184) e roda a exclusão automática das contas encerradas (uma vez por dia, a partir das 9h)."""
+    return {"emails_apagados": emails_enviados.limpar(), "acessos_apagados": acessos.limpar(),
+            "encerradas": exclusao.executar()}
 
 
 def main(argv: list[str]) -> int:
+    logs.configurar()  # sem ele, os INFO das tarefas (ex.: a exclusão automática) não apareceriam no terminal
     qual = argv[0] if argv else "tudo"
     if qual not in TAREFAS or len(argv) > 1:
         print(f"Uso: python -m toqqi.tarefas [{'|'.join(TAREFAS)}]", file=sys.stderr)

@@ -55,7 +55,7 @@ def test_fluxo_completo(client, dono, admin, asaas_falso, monkeypatch):
     assert d["cobrancas"][0]["pago_em"].startswith("2026-10-10T15:00:00")  # 12:00 de São Paulo, em UTC
     assert client.get(f"{API}/eu", headers=h).json()["conta"]["cobranca"] == {
         "liberada": True, "assinada": True, "pago_ate": "2026-11-14", "atrasada_desde": None, "pausa_em": None,
-        "aviso": None}
+        "aviso": None, "exclusao_em": None}
 
     # fatura do mês seguinte: vence 15/11 e não é paga → atrasada (envios até 22/11) → pausada
     sid = asaas_falso.assinatura()["id"]

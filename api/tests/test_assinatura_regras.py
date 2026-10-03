@@ -172,7 +172,7 @@ def test_cobranca_json():
     assert regras.cobranca_json(c, sp("2026-11-16", 9)) == {
         "liberada": True, "assinada": True, "pago_ate": d("2026-11-14"), "atrasada_desde": d("2026-11-15"),
         "pausa_em": datetime(2026, 11, 23, 3, tzinfo=timezone.utc),
-        "aviso": {"tipo": "atrasada", "data": d("2026-11-23"), "dias": 7}}
+        "aviso": {"tipo": "atrasada", "data": d("2026-11-23"), "dias": 7}, "exclusao_em": None}
 
 
 def test_mensagem_da_pre_condicao():

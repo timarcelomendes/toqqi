@@ -50,9 +50,12 @@ def _fabrica() -> sessionmaker[Session]:
 
 
 @contextmanager
-def em_conta(conta_id: int) -> Iterator[Session]:
-    """Transação restrita a uma conta. Faz commit ao sair sem erro; rollback em caso de erro."""
+def em_conta(conta_id: int, leitura: bool = False) -> Iterator[Session]:
+    """Transação restrita a uma conta. Faz commit ao sair sem erro; rollback em caso de erro. `leitura`: REPEATABLE
+    READ somente leitura (um retrato só da conta do começo ao fim, ex.: a exportação de todos os dados)."""
     with _fabrica()() as s, s.begin():
+        if leitura:  # precisa ser o primeiro comando da transação
+            s.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY"))
         s.execute(text("select set_config('app.conta_id', :c, true)"), {"c": str(int(conta_id))})
         yield s
 

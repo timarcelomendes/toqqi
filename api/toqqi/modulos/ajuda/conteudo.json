@@ -472,6 +472,40 @@
           ]
         },
         {
+          "id": "exportar-contatos-e-empresas-em-csv",
+          "titulo": "Exportar a lista de contatos ou de empresas (CSV)",
+          "somente_admin": false,
+          "atalho": "contatos",
+          "palavras": [
+            "exportar contatos",
+            "exportar empresas",
+            "baixar lista",
+            "planilha",
+            "excel",
+            "csv",
+            "download",
+            "lista de clientes"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Contatos, nas abas Contatos e Empresas, o botão “Exportar CSV” na barra de filtros baixa uma planilha com a lista da tela: os mesmos filtros e a mesma ordem, todas as páginas de uma vez."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Contatos: código, nome, e-mail, telefone, empresa, cargo, perfil, código externo, se recebe pesquisas, se está ativo, a situação de envio, último e próximo envio, última nota e data de cadastro.",
+                "Empresas: nome, CPF/CNPJ, grupo, segmento, responsável, valor mensal, cliente desde, código externo, se está ativa, quantos contatos tem e data de cadastro.",
+                "O botão aparece para quem pode ver contatos e exportar dados do painel. No celular, só o ícone."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "A planilha abre direto no Excel, com acentos e datas no formato dd/mm/aaaa. Cada exportação fica registrada na Auditoria. Para uma cópia de tudo, o administrador usa Configurações › Dados da conta."
+            }
+          ]
+        },
+        {
           "id": "contato-ativo-e-limite-do-plano",
           "titulo": "Contato ativo, inativo e limite do plano",
           "somente_admin": false,
@@ -1095,12 +1129,15 @@
             "bloquear envio",
             "unsubscribe",
             "descadastrar",
-            "pediu para sair"
+            "pediu para sair",
+            "sair",
+            "parar",
+            "stop"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Todo e-mail de pesquisa traz o link “Não quero mais receber pesquisas”. Quem usa o link, o botão de cancelar inscrição do programa de e-mail ou responde SAIR no WhatsApp automático entra na aba Descadastros."
+              "texto": "Todo e-mail de pesquisa traz o link “Não quero mais receber pesquisas”. Quem usa o link, o botão de cancelar inscrição do programa de e-mail ou responde SAIR no WhatsApp automático entra na aba Descadastros. No WhatsApp também valem PARAR, STOP, CANCELAR, “Quero sair” e “Não quero mais receber”, digitados ou num botão; outras mensagens são ignoradas."
             },
             {
               "tipo": "paragrafo",
@@ -2736,7 +2773,9 @@
             "phone number id",
             "conectar número",
             "waba",
-            "cloud api"
+            "cloud api",
+            "rodapé",
+            "sair"
           ],
           "blocos": [
             {
@@ -2748,11 +2787,15 @@
               "itens": [
                 "Tenha uma conta no WhatsApp Business Platform, no Meta Business. Para muitos envios, a Meta pede a verificação da empresa.",
                 "Cadastre o número que vai enviar. Ele não pode estar em uso no aplicativo do WhatsApp. Anote a identificação do número e a identificação da conta.",
-                "Crie o modelo de mensagem usando os dados e o texto que a aba mostra. A aprovação costuma sair em minutos e pode levar até 24 horas.",
+                "Crie o modelo de mensagem usando os dados e o texto que a aba mostra, com o rodapé “Para não receber mais pesquisas, responda SAIR.”. A aprovação costuma sair em minutos e pode levar até 24 horas.",
                 "Gere um token permanente (expiração “Nunca”) para o Toqqi enviar pelo seu número.",
                 "No painel do app da Meta, cole a URL de retorno e o token de verificação mostrados na aba.",
                 "Na aba, preencha o formulário e clique em “Conectar WhatsApp”. O Toqqi confere os dados com a Meta."
               ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "O modelo precisa dizer como parar de receber: sem a palavra SAIR no corpo ou no rodapé, o Toqqi não aceita a conexão. Quem responde SAIR (ou PARAR, STOP, CANCELAR, “Quero sair”, “Não quero mais receber”) sai da lista na hora e recebe uma confirmação."
             }
           ]
         },
@@ -2828,7 +2871,7 @@
     {
       "id": "configuracoes",
       "titulo": "Configurações",
-      "resumo": "Dados da empresa, segurança, envios, planos de ação e inteligência artificial (modelo, estilo, passos e cota; só administrador muda).",
+      "resumo": "Dados da empresa, segurança, envios, planos de ação, inteligência artificial (modelo, estilo, passos e cota) e dados da conta (exportar tudo e zona de risco; só administrador muda).",
       "secoes": [
         {
           "id": "o-que-tem-em-configuracoes",
@@ -2858,7 +2901,8 @@
                 "Segurança: tempo de sessão e domínios de e-mail liberados.",
                 "Envios: quando, com que frequência e com quais palavras a pesquisa chega aos clientes, e o visual dos e-mails (cor, logo, imagem de topo, assinatura e rodapé).",
                 "Planos de ação: prazos das ações automáticas.",
-                "IA: análise dos comentários, como a IA escreve (modelo e estilo), passos nas ações e cota de inteligência artificial."
+                "IA: análise dos comentários, como a IA escreve (modelo e estilo), passos nas ações e cota de inteligência artificial.",
+                "Dados da conta: baixar todos os dados da conta e a zona de risco, para apagar dados de uma vez (só administrador)."
               ]
             },
             {
@@ -3263,6 +3307,78 @@
               "texto": "Nunca vão o nome, o e-mail ou o telefone dos contatos, nem os dados do pedido. O provedor não guarda a conversa. Os passos se desligam em “Sugerir passos nas ações”; o resumo e o parecer só rodam quando alguém pede."
             }
           ]
+        },
+        {
+          "id": "dados-da-conta-exportar-e-zona-de-risco",
+          "titulo": "Dados da conta: exportar tudo e zona de risco",
+          "somente_admin": true,
+          "atalho": null,
+          "palavras": [
+            "exportar dados",
+            "baixar todos os dados",
+            "backup",
+            "cópia dos dados",
+            "portabilidade",
+            "lgpd",
+            "zip",
+            "apagar dados",
+            "apagar respostas",
+            "apagar contatos",
+            "recomeçar do zero",
+            "zona de risco",
+            "limpar conta",
+            "excluir tudo"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Configurações › Dados da conta, só o administrador vê duas coisas: baixar uma cópia de todos os dados da conta e a zona de risco, que apaga dados de uma vez."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Clique em “Baixar todos os dados”.",
+                "Aguarde: o arquivo pode levar até um minuto para ficar pronto.",
+                "Abra o arquivo .zip: há uma planilha (CSV) por assunto e um LEIA-ME que explica cada uma."
+              ]
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Vão: empresas, responsáveis, cadastros, contatos, formulários, respostas (inclusive arquivadas), planos de ação, convites, envios, descadastros, cobranças, indicações, ofertas, equipe, aceites dos termos, auditoria, e-mails enviados e configurações.",
+                "Não vão: senhas, chaves e segredos (só o começo da chave de integração), imagens, os resumos da IA do painel e dos relatórios e os registros de acesso.",
+                "Dá para baixar até 5 vezes por hora, uma exportação de cada vez. Vale também com a conta encerrada."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A zona de risco apaga dados de uma vez e não tem volta. As opções somam: cada uma apaga também o que a anterior apaga."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Respostas: apaga as respostas NPS e de formulários personalizados, inclusive arquivadas, registradas à mão e importadas. Os planos de ação ficam sem o vínculo com a resposta.",
+                "Contatos: apaga também todos os contatos, os envios, os convites deles e as importações. As respostas CSAT ficam, sem o contato.",
+                "Recomeçar do zero: apaga também as empresas, os planos de ação, as indicações e as ofertas."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Sempre ficam: usuários, configurações, formulários, imagens, responsáveis, cadastros, a lista de descadastro, a auditoria e as respostas CSAT. Os links de CSAT da integração continuam funcionando."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Baixe uma cópia dos dados antes.",
+                "Escolha a opção e confira as contagens do que vai ser apagado.",
+                "Clique em “Apagar…”, digite APAGAR na janela de confirmação e clique em “Apagar para sempre”."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "Ou tudo é apagado, ou nada é apagado. A ação fica na Auditoria, no grupo Exclusões definitivas, e não manda e-mail nem aviso para outros sistemas."
+            }
+          ]
         }
       ]
     },
@@ -3448,25 +3564,46 @@
             "logs de acesso",
             "tentativas de login",
             "alterações",
-            "gravidade"
+            "gravidade",
+            "grupo",
+            "exportação",
+            "zona de risco",
+            "exclusões"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Em Administração › Auditoria, a aba Atividades mostra tudo o que aconteceu de importante na conta: quem fez, o quê e quando. Entram, por exemplo, entradas no sistema, mudanças na equipe e nas configurações, importações, imagens enviadas ou excluídas e chaves de integração geradas. A aba E-mails enviados lista os e-mails que saíram em nome da conta."
+              "texto": "Em Administração › Auditoria, a aba Atividades mostra tudo o que aconteceu de importante na conta: quem fez, o quê e quando. Entram, por exemplo, entradas no sistema, mudanças na equipe e nas configurações, importações e exportações, envios automáticos e lembretes, imagens enviadas ou excluídas, chaves de integração e webhooks, a zona de risco e o aviso de exclusão da conta. A aba E-mails enviados lista os e-mails que saíram em nome da conta."
             },
             {
               "tipo": "lista",
               "itens": [
-                "Filtros: De e Até (o padrão é o último mês), Gravidade (Informação, Sucesso, Atenção ou Erro) e Buscar por evento, pessoa ou detalhe.",
+                "Filtros: De e Até (o padrão é o último mês), Gravidade (Informação, Sucesso, Atenção ou Erro), Grupo e Buscar por evento, pessoa ou detalhe.",
                 "Cada linha mostra a gravidade, o que aconteceu, quem fez e a data. Quando foi o próprio sistema, aparece “Sistema”.",
                 "Clique numa linha para ver os detalhes, o nome técnico do evento e o IP.",
                 "A lista mostra 20 registros por página; use Anterior e Próxima."
               ]
             },
             {
+              "tipo": "lista",
+              "itens": [
+                "Acesso e segurança: entradas e tentativas, cadastro, senhas, sessões, segurança e aceite dos termos.",
+                "Equipe e permissões: pessoas adicionadas, alteradas ou bloqueadas e permissões dos perfis.",
+                "Configurações: empresa, logo, envios, planos de ação, crescimento, IA, formulário padrão e imagens.",
+                "Envios e descadastros: envios manuais e automáticos, lembretes e quem saiu ou voltou para a lista.",
+                "Importações, edições e exportações: planilhas importadas, respostas e indicações alteradas e exportações.",
+                "Exclusões definitivas: tudo o que foi excluído (contatos, empresas, respostas, ações, webhooks e outros) e a zona de risco.",
+                "Integrações: chave de integração, webhooks e WhatsApp automático.",
+                "Assinatura e conta: plano, pagamentos, teste e o aviso de exclusão da conta."
+              ]
+            },
+            {
               "tipo": "paragrafo",
               "texto": "Só quem tem a permissão “Ver o registro de atividades”, o administrador, acessa esta tela."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Os registros de acesso exigidos pelo Marco Civil da Internet (data, hora e IP de cada entrada, tentativa, cadastro e resposta) ficam à parte, por 6 meses, e não aparecem em nenhuma tela."
             }
           ]
         },
@@ -3512,7 +3649,7 @@
     {
       "id": "assinatura",
       "titulo": "Assinatura",
-      "resumo": "Teste grátis, planos, pagamento pelo Asaas, troca de plano e cancelamento.",
+      "resumo": "Teste grátis, planos, pagamento pelo Asaas, troca de plano, cancelamento e a exclusão dos dados da conta encerrada.",
       "secoes": [
         {
           "id": "teste-gratis-e-situacoes-da-conta",
@@ -3545,7 +3682,7 @@
               "tipo": "lista",
               "itens": [
                 "Em teste: envios liberados até o último dia do teste. Quem assina durante o teste continua testando, e a primeira fatura vence no último dia dele.",
-                "Teste encerrado: o teste acabou e não há plano. Os envios ficam pausados até alguém escolher um plano.",
+                "Teste encerrado: o teste acabou e não há plano. Os envios ficam pausados até alguém escolher um plano; sem plano, os dados são excluídos 90 dias depois do fim do teste.",
                 "Aguardando pagamento: você assinou sem teste valendo e falta pagar a primeira fatura. Os envios voltam quando o pagamento for confirmado.",
                 "Ativa: o pagamento está em dia. A tela mostra “Pago até” e a data.",
                 "Atrasada: a fatura venceu. Os envios continuam por 7 dias depois do vencimento e, sem pagamento, pausam.",
@@ -3555,7 +3692,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Com os envios pausados, o Toqqi não manda pesquisas nem lembretes, não analisa comentários com IA e o ToqqiAI não responde. Nada é apagado: seus dados continuam guardados, e tudo volta quando o pagamento é confirmado."
+              "texto": "Com os envios pausados, o Toqqi não manda pesquisas nem lembretes, não analisa comentários com IA e o ToqqiAI não responde. Com assinatura, mesmo atrasada, nada é apagado e tudo volta quando o pagamento é confirmado. Numa conta encerrada (teste encerrado ou assinatura cancelada), os dados são excluídos 90 dias depois do fim do teste ou do período pago."
             }
           ]
         },
@@ -3797,13 +3934,49 @@
               "itens": [
                 "Se já há um período pago, você continua usando até o fim dele. Sem multa e sem devolução.",
                 "Se cancelar durante o teste, antes de pagar, você volta para o teste grátis até o último dia dele.",
-                "Sem período pago nem teste, os envios ficam pausados até você assinar de novo. Seus dados continuam guardados.",
+                "Sem período pago nem teste, os envios ficam pausados até você assinar de novo. Seus dados ficam guardados por 90 dias depois do fim do período pago; depois, são excluídos.",
                 "As faturas em aberto são canceladas no Asaas."
               ]
             },
             {
               "tipo": "paragrafo",
               "texto": "Para voltar, escolha um plano de novo em Assinatura. A primeira fatura nova vence no dia seguinte ao fim do período pago, ou amanhã se ele já acabou."
+            }
+          ]
+        },
+        {
+          "id": "conta-encerrada-e-exclusao-dos-dados",
+          "titulo": "Conta encerrada: exclusão automática dos dados",
+          "somente_admin": false,
+          "atalho": "assinatura",
+          "palavras": [
+            "excluir conta",
+            "exclusão da conta",
+            "apagar dados",
+            "90 dias",
+            "conta encerrada",
+            "dados excluídos",
+            "aviso de exclusão",
+            "guardar dados",
+            "lgpd"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Quando o teste acaba sem assinatura, ou a assinatura é cancelada e o período pago termina, a conta fica encerrada. 90 dias depois do fim do teste ou do período pago, todos os dados da conta são excluídos de forma definitiva e automática."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "7 dias antes, os administradores recebem o e-mail “Sua conta no Toqqi será excluída em” com a data, e o topo da tela mostra o aviso.",
+                "Para guardar uma cópia, o administrador baixa tudo em Configurações › Dados da conta › “Baixar todos os dados”.",
+                "Assinar um plano antes da data cancela a exclusão.",
+                "Conta com assinatura ativa, mesmo com fatura atrasada, não é excluída."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Depois da exclusão, não dá para recuperar os dados. Os registros de acesso exigidos por lei ficam guardados à parte por 6 meses."
             }
           ]
         }

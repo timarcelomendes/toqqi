@@ -7,6 +7,9 @@ público conferido (core.rede, sem redirecionamento, timeout 10 s) e grava o res
 
 Exclusão a pedido da pessoa (LGPD) de um registro que foi para os webhooks (`esquecer_entregas`, ex.: uma indicação):
 as entregas pendentes somem (não saem mais) e as que já terminaram ficam no histórico com o corpo sem os dados.
+
+Auditoria do cadastro (etapa 5f): `webhook_criado` `{webhook_id, url, campos}`, `webhook_alterado` `{webhook_id,
+campos}` (só os campos que mudaram; novo segredo = `segredo`) e `webhook_excluido` (atenção) `{webhook_id, url}`.
 """
 import hashlib
 import hmac
@@ -298,6 +301,8 @@ def criar(ctx: Contexto, dados) -> dict:
                     segredo_prefixo=prefixo_segredo(segredo), criado_em=relogio.agora())
         s.add(w)
         s.flush()
+        registrar(s, "webhook_criado", "info", {"webhook_id": w.id, "url": w.url, "campos": ["url", "eventos"]},
+                  usuario_id=ctx.usuario_id)
         return {**_json(w), "segredo": segredo}
 
 
@@ -309,15 +314,21 @@ def alterar(ctx: Contexto, webhook_id: int, dados) -> dict:
         w = _webhook(s, webhook_id, travar_linha=True)
         if novos.get("ativo") and not w.ativo:
             w.falhas_seguidas = 0
+        mudaram = sorted(campo for campo, valor in novos.items() if getattr(w, campo) != valor)
         for campo, valor in novos.items():
             setattr(w, campo, valor)
         s.flush()
+        if mudaram:
+            registrar(s, "webhook_alterado", "info", {"webhook_id": w.id, "campos": mudaram},
+                      usuario_id=ctx.usuario_id)
         return _json(w)
 
 
 def excluir(ctx: Contexto, webhook_id: int) -> None:
     with em_conta(ctx.conta_id) as s:
-        s.delete(_webhook(s, webhook_id))
+        w = _webhook(s, webhook_id)
+        registrar(s, "webhook_excluido", "atencao", {"webhook_id": w.id, "url": w.url}, usuario_id=ctx.usuario_id)
+        s.delete(w)
 
 
 def trocar_segredo(ctx: Contexto, webhook_id: int) -> dict:
@@ -325,6 +336,8 @@ def trocar_segredo(ctx: Contexto, webhook_id: int) -> dict:
     with em_conta(ctx.conta_id) as s:
         w = _webhook(s, webhook_id, travar_linha=True)
         w.segredo_cifrado, w.segredo_prefixo = cifrar(segredo), prefixo_segredo(segredo)
+        registrar(s, "webhook_alterado", "info", {"webhook_id": w.id, "campos": ["segredo"]},
+                  usuario_id=ctx.usuario_id)
     return {"segredo": segredo}
 
 

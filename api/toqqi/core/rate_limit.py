@@ -1,15 +1,35 @@
 """Limite de tentativas por IP (slowapi; algumas rotas contam por usuário ou por chave). Desligável com
-RATE_LIMIT_ENABLED=0."""
+RATE_LIMIT_ENABLED=0.
+
+Etapa 5f: a chave por IP é `chave_ip` (o IP já resolvido por `core.requisicao.IpDoCliente`): `ip:{IPv4}` ou, em IPv6,
+o prefixo /64 (`ip6:2001:db8:1:2::/64`) — quem tem um IPv6 costuma ter o /64 inteiro e trocaria de endereço a cada
+tentativa. Os registros (auditoria, sessões, aceites, registros de acesso) guardam o endereço inteiro."""
+import ipaddress
+
 from fastapi import Request
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from toqqi.core.config import config
 from toqqi.core.errors import resposta_erro
 from toqqi.core.security import ler_token_acesso
 
-limiter = Limiter(key_func=get_remote_address, enabled=config().RATE_LIMIT_ENABLED, headers_enabled=False)
+
+def chave_ip(request: Request) -> str:
+    """Chave do limite por IP: `ip:{IPv4}` ou `ip6:{prefixo /64}`."""
+    host = request.client.host if request.client else ""
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return f"ip:{host}"
+    if isinstance(ip, ipaddress.IPv6Address):
+        if ip.ipv4_mapped is not None:
+            return f"ip:{ip.ipv4_mapped}"
+        return f"ip6:{ipaddress.IPv6Network((int(ip) >> 64 << 64, 64))}"
+    return f"ip:{ip}"
+
+
+limiter = Limiter(key_func=chave_ip, enabled=config().RATE_LIMIT_ENABLED, headers_enabled=False)
 
 LIMITE_ENTRAR = "5/minute"
 LIMITE_SENSIVEL = "3/minute"  # cadastro, esqueci, reenviar, pedir-acesso, redefinir
@@ -20,7 +40,7 @@ def limite_por_usuario(request: Request) -> str:
     401 sem chegar a contar)."""
     esquema, _, token = (request.headers.get("authorization") or "").partition(" ")
     dados = ler_token_acesso(token.strip()) if esquema.lower() == "bearer" and token.strip() else None
-    return f"usuario:{dados['usuario_id']}" if dados else f"ip:{get_remote_address(request)}"
+    return f"usuario:{dados['usuario_id']}" if dados else chave_ip(request)
 
 
 async def ao_exceder(_: Request, __: RateLimitExceeded):

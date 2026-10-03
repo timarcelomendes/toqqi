@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from toqqi.apresentacao import conta_json, usuario_json
+from toqqi.core import acessos, relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.deps import Contexto
@@ -88,7 +89,9 @@ def cadastrar(dados, ip: str | None, agente: str | None = None) -> str:
             else:
                 agora = _agora()
                 conta = Conta(
-                    nome=dados.empresa, situacao="teste", teste_ate=agora + timedelta(days=DIAS_TESTE),
+                    # o fim do teste segue o relógio das regras que o leem (assinatura.regras); tokens e sessões
+                    # seguem no relógio real
+                    nome=dados.empresa, situacao="teste", teste_ate=relogio.agora() + timedelta(days=DIAS_TESTE),
                     termos_aceitos_em=agora, termos_ip=ip,
                     # registro da versão aceita no cadastro da conta; a fonte da versão é termos.VERSAO_DOCUMENTOS
                     # e a prova de cada pessoa fica em aceites_termos
@@ -109,6 +112,7 @@ def cadastrar(dados, ip: str | None, agente: str | None = None) -> str:
                           usuario_id=u.id, conta_id=conta.id)
                 # "Li e aceito" do cadastro (aceite_termos: true, obrigatório): vale como aceite da versão atual
                 termos.gravar(s, u, "cadastro", ip, agente, conta_id=conta.id)
+                acessos.registrar(s, "cadastro", conta_id=conta.id, usuario_id=u.id)
                 confirmacao = (u.nome, u.email, token, conta.id)
     except IntegrityError:
         # Corrida com outro cadastro do mesmo e-mail: resposta igual, nada criado.
@@ -128,22 +132,29 @@ def entrar(dados, ip: str | None, agente: str | None) -> dict:
         u = s.scalar(select(Usuario).where(Usuario.email == dados.email))
     if u is None:
         gastar_tempo(dados.senha)  # mesmo custo de uma verificação real
+        acessos.registrar_avulso("login_falhou")  # sem conta nem usuário (e nunca o e-mail digitado)
         raise erro_credenciais()
     if not conferir_senha(u.senha_hash, dados.senha):
         with em_conta(u.conta_id) as s:
             registrar(s, "login_falhou", "atencao", {"email": u.email})
+            acessos.registrar(s, "login_falhou", conta_id=u.conta_id, usuario_id=u.id)
         raise erro_credenciais()
 
+    recusa = None
     if not u.email_confirmado:
-        raise AppError(403, "email_nao_confirmado",
-                       "Confirme seu e-mail antes de entrar. Procure a mensagem que enviamos "
-                       "(veja também o spam) ou peça um novo link.")
-    if u.situacao == "pendente":
-        raise AppError(403, "acesso_pendente",
-                       "Seu acesso ainda não foi aprovado. O administrador da conta precisa liberar sua entrada.")
-    if u.situacao == "bloqueado":
-        raise AppError(403, "acesso_bloqueado",
-                       "Seu acesso está bloqueado. Fale com o administrador da sua conta.")
+        recusa = AppError(403, "email_nao_confirmado",
+                          "Confirme seu e-mail antes de entrar. Procure a mensagem que enviamos "
+                          "(veja também o spam) ou peça um novo link.")
+    elif u.situacao == "pendente":
+        recusa = AppError(403, "acesso_pendente",
+                          "Seu acesso ainda não foi aprovado. O administrador da conta precisa liberar sua entrada.")
+    elif u.situacao == "bloqueado":
+        recusa = AppError(403, "acesso_bloqueado",
+                          "Seu acesso está bloqueado. Fale com o administrador da sua conta.")
+    if recusa is not None:
+        with em_conta(u.conta_id) as s:
+            acessos.registrar(s, "login_falhou", conta_id=u.conta_id, usuario_id=u.id)
+        raise recusa
 
     novo_hash = gerar_hash(dados.senha) if precisa_rehash(u.senha_hash) else None
     with em_conta(u.conta_id) as s:
@@ -160,6 +171,7 @@ def entrar(dados, ip: str | None, agente: str | None) -> dict:
         s.execute(update(Usuario).where(Usuario.id == u.id).values(**valores))
         s.flush()
         registrar(s, "login_ok", "sucesso", {"aparelho": descrever_aparelho(agente)}, usuario_id=u.id)
+        acessos.registrar(s, "login", conta_id=u.conta_id, usuario_id=u.id)
         usuario = s.get(Usuario, u.id, populate_existing=True)
         permissoes = permissoes_do_perfil(s, usuario.perfil)
         return {
@@ -252,6 +264,7 @@ def redefinir_senha(token: str, senha: str) -> str:
                   .values(senha_hash=novo_hash, email_confirmado=True))
         revogadas = revogar_sessoes(s, t.usuario_id)
         registrar(s, "senha_redefinida", "atencao", {"sessoes_encerradas": revogadas}, usuario_id=t.usuario_id)
+        acessos.registrar(s, "senha_redefinida", conta_id=t.conta_id, usuario_id=t.usuario_id)
     return "Senha alterada! Entre com a nova senha."
 
 
@@ -277,6 +290,7 @@ def pedir_acesso(dados) -> str:
             token = criar_token(s, u.id, conta_id, "confirmar_email")
             registrar(s, "usuario_criado", "info",
                       {"origem": "pedido_de_acesso", "nome": u.nome, "email": u.email, "perfil": "consulta"})
+            acessos.registrar(s, "pedido_acesso", conta_id=conta_id, usuario_id=u.id)
     except IntegrityError:
         return MSG_PEDIDO
     emails.confirmar_email(dados.nome, dados.email, token, conta_id)

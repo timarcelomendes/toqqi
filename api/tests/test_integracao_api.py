@@ -82,7 +82,10 @@ def test_chave_mostrada_uma_vez_e_trocada(client, admin, dono):
 
     eventos = client.get(f"{API}/auditoria", headers=h).json()["itens"]
     gerada = [e for e in eventos if e["evento"] == "chave_gerada"]
-    assert len(gerada) == 2 and gerada[0]["gravidade"] == "atencao"
+    assert len(gerada) == 1 and gerada[0]["gravidade"] == "atencao"
+    # etapa 5f: a segunda é "gerada de novo", com o começo da anterior
+    (regerada,) = [e for e in eventos if e["evento"] == "chave_regerada"]
+    assert regerada["gravidade"] == "atencao" and regerada["detalhe"]["prefixo_anterior"] == primeira[:12] + "…"
     assert all(primeira not in str(e) and segunda_chave not in str(e) for e in eventos)
     assert any(e["evento"] == "chave_revogada" for e in eventos)
 

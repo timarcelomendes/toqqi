@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 
+from toqqi.core.auditoria import GRUPOS, grupos_json
 from toqqi.core.deps import Contexto, requer
 from toqqi.core.filtros import data_filtro
 from toqqi.core.paginacao import Pagina, pagina
@@ -24,11 +25,19 @@ def listar(
     gravidade: Annotated[Literal["", "info", "sucesso", "atencao", "erro"] | None, Query()] = None,
     busca: Annotated[str | None, Query(max_length=100)] = None,
     pagina: Annotated[int, Query(ge=1, le=100000)] = 1,
+    grupo: Annotated[Literal[("", *GRUPOS)] | None, Query()] = None,  # type: ignore[valid-type]
     ctx: Contexto = Depends(VER),
 ):
     return servico.listar(
-        ctx, _data(de, "de"), _data(ate, "ate"), gravidade or None, (busca or "").strip() or None, pagina
+        ctx, _data(de, "de"), _data(ate, "ate"), gravidade or None, (busca or "").strip() or None, pagina,
+        grupo or None,
     )
+
+
+@router.get("/grupos")
+def grupos(ctx: Contexto = Depends(VER)):
+    """Os grupos dos eventos, na ordem da tela: [{chave, rotulo}] (etapa 5f)."""
+    return grupos_json()
 
 
 @router.get("/emails")

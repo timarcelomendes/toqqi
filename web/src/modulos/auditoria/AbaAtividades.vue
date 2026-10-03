@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // Auditoria › Atividades: tudo o que aconteceu de importante na conta (quem fez, o quê e quando), com filtros de
-// período, gravidade e busca. Era a tela inteira da Auditoria até a etapa 5e, que trouxe a aba "E-mails enviados".
+// período, gravidade, grupo (etapa 5f) e busca. Era a tela inteira da Auditoria até a etapa 5e, que trouxe a aba
+// "E-mails enviados".
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ChevronDown, ChevronLeft, ChevronRight, History, Search, UserRound } from 'lucide-vue-next'
-import { auditoriaApi, mensagemDoErro, type Gravidade, type ItemAuditoria } from '@/api'
+import { auditoriaApi, gruposAuditoriaApi, mensagemDoErro, type GrupoAuditoria, type Gravidade, type ItemAuditoria } from '@/api'
 import { formatarDataHora, hojeIso } from '@/utils/datas'
 import { GRAVIDADES, rotuloEventoAuditoria } from '@/utils/rotulos'
 import Alerta from '@/components/ui/Alerta.vue'
@@ -13,8 +14,13 @@ import Carregando from '@/components/ui/Carregando.vue'
 import EstadoVazio from '@/components/ui/EstadoVazio.vue'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
 import Selecao from '@/components/ui/Selecao.vue'
+import { camposDetalhe, textoDetalhe } from './detalhes'
 
-const filtros = reactive({ de: hojeIso(-30), ate: hojeIso(), gravidade: '' as Gravidade | '', busca: '' })
+const filtros = reactive({ de: hojeIso(-30), ate: hojeIso(), gravidade: '' as Gravidade | '', grupo: '', busca: '' })
+// Etapa 5f: os grupos vêm da API (GET /auditoria/grupos), na ordem dela; sem eles, o filtro fica só com "Todos".
+const grupos = ref<GrupoAuditoria[]>([])
+const opcoesGrupo = computed(() => grupos.value.map((g) => ({ valor: g.chave, rotulo: g.rotulo })))
+const rotuloGrupo = (chave: string | null | undefined) => (chave ? (grupos.value.find((g) => g.chave === chave)?.rotulo ?? null) : null)
 const pagina = ref(1)
 const itens = ref<ItemAuditoria[]>([])
 const total = ref(0)
@@ -28,7 +34,7 @@ let espera: ReturnType<typeof setTimeout> | undefined
 const opcoesGravidade = (Object.keys(GRAVIDADES) as Gravidade[]).map((g) => ({ valor: g, rotulo: GRAVIDADES[g].rotulo }))
 const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / (porPagina.value || 20))))
 const erroPeriodo = computed(() => (filtros.de && filtros.ate && filtros.de > filtros.ate ? 'A data inicial é depois da final.' : null))
-const temFiltro = computed(() => !!filtros.gravidade || !!filtros.busca.trim())
+const temFiltro = computed(() => !!filtros.gravidade || !!filtros.grupo || !!filtros.busca.trim())
 
 async function carregar() {
   if (erroPeriodo.value) return
@@ -38,7 +44,7 @@ async function carregar() {
   erro.value = null
   try {
     const r = await auditoriaApi.listar(
-      { de: filtros.de, ate: filtros.ate, gravidade: filtros.gravidade, busca: filtros.busca.trim(), pagina: pagina.value },
+      { de: filtros.de, ate: filtros.ate, gravidade: filtros.gravidade, grupo: filtros.grupo, busca: filtros.busca.trim(), pagina: pagina.value },
       controlador.signal,
     )
     itens.value = r.itens
@@ -60,8 +66,8 @@ function irPara(p: number) {
   document.getElementById('conteudo')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-// Datas e gravidade: busca na hora. Texto: espera a pessoa parar de digitar.
-watch(() => [filtros.de, filtros.ate, filtros.gravidade], () => {
+// Datas, gravidade e grupo: busca na hora. Texto: espera a pessoa parar de digitar.
+watch(() => [filtros.de, filtros.ate, filtros.gravidade, filtros.grupo], () => {
   pagina.value = 1
   carregar()
 })
@@ -75,7 +81,19 @@ watch(() => filtros.busca, () => {
 
 function limparFiltros() {
   filtros.gravidade = ''
+  filtros.grupo = ''
   filtros.busca = ''
+}
+
+let controladorGrupos: AbortController | null = null
+async function carregarGrupos() {
+  controladorGrupos = new AbortController()
+  try {
+    const r = await gruposAuditoriaApi.listar(controladorGrupos.signal)
+    grupos.value = Array.isArray(r) ? r.filter((g) => g && typeof g.chave === 'string' && g.chave && typeof g.rotulo === 'string') : []
+  } catch {
+    /* sem os grupos (servidor antigo ou falha): o filtro fica só com "Todos" e a lista segue */
+  }
 }
 
 function alternar(id: ItemAuditoria['id']) {
@@ -85,19 +103,13 @@ function alternar(id: ItemAuditoria['id']) {
   abertos.value = s
 }
 
-function detalheTexto(d: ItemAuditoria['detalhe']): string | null {
-  if (d === null || d === undefined || d === '') return null
-  if (typeof d === 'string') return d
-  return null
-}
-function detalheCampos(d: ItemAuditoria['detalhe']): [string, string][] {
-  if (!d || typeof d !== 'object') return []
-  return Object.entries(d).map(([k, v]) => [k.replace(/_/g, ' '), typeof v === 'object' ? JSON.stringify(v) : String(v)])
-}
-
-onMounted(carregar)
+onMounted(() => {
+  carregar()
+  void carregarGrupos()
+})
 onBeforeUnmount(() => {
   controlador?.abort()
+  controladorGrupos?.abort()
   clearTimeout(espera)
 })
 </script>
@@ -105,11 +117,24 @@ onBeforeUnmount(() => {
 <template>
   <!-- Uma raiz só: a tela de Auditoria esconde a aba com v-show -->
   <div data-aba-atividades>
-    <div class="cartao mb-4 grid gap-3 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-4">
-      <Campo v-model="filtros.de" rotulo="De" tipo="date" :max="filtros.ate || undefined" :erro="erroPeriodo" />
-      <Campo v-model="filtros.ate" rotulo="Até" tipo="date" :min="filtros.de || undefined" :max="hojeIso()" />
-      <Selecao v-model="filtros.gravidade" rotulo="Gravidade" :opcoes="opcoesGravidade" vazio="Todas" />
-      <Campo v-model="filtros.busca" rotulo="Buscar" tipo="search" placeholder="Evento, pessoa, detalhe…">
+    <!--
+      Os filtros quebram de linha pela largura que cada um precisa (e não em colunas iguais): o "Grupo" mostra
+      "Importações, edições e exportações" inteiro e a busca, a dica inteira. Com o menu aberto em 1280 px: período,
+      gravidade e grupo numa linha e a busca embaixo; no celular, um embaixo do outro.
+    -->
+    <div class="cartao mb-4 flex flex-wrap gap-3 p-4 sm:p-5">
+      <Campo v-model="filtros.de" rotulo="De" tipo="date" :max="filtros.ate || undefined" :erro="erroPeriodo" class="min-w-[10.5rem] flex-1" />
+      <Campo v-model="filtros.ate" rotulo="Até" tipo="date" :min="filtros.de || undefined" :max="hojeIso()" class="min-w-[10.5rem] flex-1" />
+      <Selecao v-model="filtros.gravidade" rotulo="Gravidade" :opcoes="opcoesGravidade" vazio="Todas" class="min-w-[9.5rem] flex-1" />
+      <Selecao
+        v-model="filtros.grupo"
+        rotulo="Grupo"
+        :opcoes="opcoesGrupo"
+        vazio="Todos"
+        class="min-w-[min(21rem,100%)] flex-[2]"
+        data-filtro-grupo
+      />
+      <Campo v-model="filtros.busca" rotulo="Buscar" tipo="search" placeholder="Evento, pessoa, detalhe…" class="min-w-[min(15rem,100%)] flex-[2]">
         <template #antes><Search class="size-4" aria-hidden="true" /></template>
       </Campo>
     </div>
@@ -159,11 +184,16 @@ onBeforeUnmount(() => {
             <span class="sr-only">{{ abertos.has(item.id) ? 'Esconder detalhes' : 'Ver detalhes' }}</span>
           </button>
           <div v-if="abertos.has(item.id)" :id="`detalhe-${item.id}`" class="bg-superficie-2/40 px-4 pb-4 pt-1 text-sm sm:px-5">
-            <p v-if="detalheTexto(item.detalhe)" class="whitespace-pre-line text-texto-suave">{{ detalheTexto(item.detalhe) }}</p>
+            <p v-if="textoDetalhe(item.detalhe)" class="whitespace-pre-line text-texto-suave">{{ textoDetalhe(item.detalhe) }}</p>
             <dl class="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-              <template v-for="[k, v] in detalheCampos(item.detalhe)" :key="k">
-                <dt class="capitalize text-texto-fraco">{{ k }}</dt>
-                <dd class="break-all text-texto">{{ v }}</dd>
+              <!-- Os eventos da 5f vêm em português (./detalhes); o resto, com a chave crua, como sempre. -->
+              <template v-for="(c, i) in camposDetalhe(item)" :key="`${i}-${c.rotulo}`">
+                <dt class="text-texto-fraco" :class="{ capitalize: c.generico }">{{ c.rotulo }}</dt>
+                <dd class="min-w-0 text-texto" :class="c.generico ? 'break-all' : c.codigo ? 'break-all font-mono text-xs leading-5' : 'break-words'">{{ c.valor }}</dd>
+              </template>
+              <template v-if="rotuloGrupo(item.grupo)">
+                <dt class="text-texto-fraco">Grupo</dt>
+                <dd class="text-texto">{{ rotuloGrupo(item.grupo) }}</dd>
               </template>
               <dt class="text-texto-fraco">Evento</dt>
               <dd class="font-mono text-xs leading-5 text-texto">{{ item.evento }}</dd>

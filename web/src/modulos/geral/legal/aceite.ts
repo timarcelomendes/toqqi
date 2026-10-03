@@ -8,9 +8,19 @@ import { VIGENTE_DESDE } from './versao'
 /**
  * Páginas que quem tem aceite pendente ainda pode abrir. `/assinatura` fica livre para o administrador poder cancelar
  * sem aceitar a versão nova (o CDC não permite condicionar o cancelamento ao aceite); a rota já exige a permissão
- * `assinatura.gerenciar`. O menu do AppLayout leva a outras telas, mas a guarda manda de volta ao aceite.
+ * `assinatura.gerenciar`. Etapa 5f: `/configuracoes/dados-da-conta` também, para o administrador baixar ou apagar os
+ * dados da conta (portabilidade e eliminação, LGPD art. 18) sem aceitar a versão nova; a rota já exige o perfil
+ * administrador. O menu do AppLayout leva a outras telas, mas a guarda manda de volta ao aceite.
  */
-export const ROTAS_LIVRES = ['/aceite', '/termos', '/privacidade', '/confirmar-email', '/redefinir-senha', '/assinatura'] as const
+export const ROTAS_LIVRES = [
+  '/aceite',
+  '/termos',
+  '/privacidade',
+  '/confirmar-email',
+  '/redefinir-senha',
+  '/assinatura',
+  '/configuracoes/dados-da-conta',
+] as const
 
 const PADRAO = '/inicio'
 

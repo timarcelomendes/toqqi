@@ -322,4 +322,7 @@ def test_rota_interna_de_tarefas(client, monkeypatch):
                                "passos": {"prontas": 0, "falharam": 0, "limite": 0}},  # etapa 5d
                         "picos": {"picos": 0, "emails": 0},
                         "resumo": {"contas": 0, "emails": 0},
-                        "limpeza": {"emails_apagados": 0}}  # etapa 5e: por último
+                        "limpeza": {"emails_apagados": 0, "acessos_apagados": 0,  # etapa 5e: por último
+                                    "encerradas": r.json()["limpeza"]["encerradas"]}}  # 5f: depende da hora
+    encerradas = r.json()["limpeza"]["encerradas"]
+    assert encerradas is None or encerradas["modo"] == "simular"

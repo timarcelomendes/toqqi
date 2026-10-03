@@ -39,7 +39,7 @@ def test_lista_com_a_cobranca(client, dono, contas, asaas_falso):
     assert alfa["situacao"] == "ativa" and alfa["pago_ate"] == "2026-11-14" and alfa["atrasada_desde"] is None
     assert alfa["assinatura"] == {"plano": "empresa", "valor": 799.0, "situacao": "ativa"}
     assert set(alfa) == {"id", "nome", "plano", "situacao", "teste_ate", "usuarios", "criada_em", "pago_ate",
-                         "atrasada_desde", "assinatura", "admins"}
+                         "atrasada_desde", "assinatura", "admins", "exclusao_em"}
     client.post(f"{API}/assinatura/cancelar", headers=a["h"])
     assert listar(client, root)["Alfa"]["assinatura"] is None  # só a ativa
 

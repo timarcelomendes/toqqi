@@ -251,6 +251,7 @@ def modelo_meta(**extra) -> dict:
         "name": "pesquisa_toqqi", "language": "pt_BR", "status": "APPROVED", "category": "UTILITY", "id": "1",
         "components": [
             {"type": "BODY", "text": "Olá, {{1}}! A {{2}} quer saber como foi {{3}}. Leva 1 minuto."},
+            {"type": "FOOTER", "text": "Para não receber mais pesquisas, responda SAIR."},
             {"type": "BUTTONS", "buttons": [{"type": "QUICK_REPLY", "text": "Não quero receber"},
                                             {"type": "URL", "text": "Responder", "url": "http://app.teste/r/{{1}}"}]},
         ],
