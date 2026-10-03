@@ -1,15 +1,17 @@
-"""Imagens da conta: o logo da empresa e o logo de cada formulário.
+"""Imagens da conta: o logo da empresa, o logo de cada formulário e o banco de imagens (etapa 5e, `banco.py`).
 
-Ficam no banco (tabela `imagens`, uma por uso) e saem sem login em GET /publico/imagens/{chave}. A chave é
+Ficam no banco (tabela `imagens`; um logo por uso) e saem sem login em GET /publico/imagens/{chave}. A chave é
 aleatória (43 caracteres url-safe): a URL não se adivinha e o conteúdo dela nunca muda. Trocar a imagem apaga a
 anterior e grava outra com chave nova, então a URL muda e os caches (navegador, proxy de imagens do Gmail) se
-renovam sozinhos. Só PNG ou JPEG, conferidos pelos primeiros bytes (não pela extensão), até 300 KB.
+renovam sozinhos. Só PNG ou JPEG, conferidos pelos primeiros bytes (não pela extensão): até 300 KB nos logos e até
+1 MB no banco de imagens, que também guarda o nome do arquivo (limpo) e as dimensões lidas do cabeçalho.
 
 Onde o cliente vê o logo (página da pesquisa e e-mails): o do formulário; sem ele, o da conta (`logo_para_cliente`).
 """
 import hashlib
 import re
 import secrets
+import unicodedata
 
 from sqlalchemy import delete, exists, select
 from sqlalchemy.orm import Session
@@ -19,12 +21,18 @@ from toqqi.core.db import modo_sistema
 from toqqi.core.errors import AppError
 from toqqi.modelos import Imagem
 
-LIMITE_BYTES = 300 * 1024  # 307200
+LIMITE_BYTES = 300 * 1024  # 307200: logos
 MSG_ARQUIVO = "Use uma imagem PNG ou JPG de até 300 KB."
+LIMITE_BANCO = 1024 * 1024  # 1048576: banco de imagens
+MSG_BANCO = "Use uma imagem PNG ou JPG de até 1 MB."
+MAX_NOME = 120
+MAX_DIMENSAO = 2**31 - 1  # coluna integer
 CAMINHO = "/api/v1/publico/imagens/"
 CACHE = "public, max-age=31536000, immutable"
 _RE_CHAVE = re.compile(r"[A-Za-z0-9_-]{32,128}")
 _ASSINATURAS = ((b"\x89PNG\r\n\x1a\n", "image/png"), (b"\xff\xd8\xff", "image/jpeg"))
+# marcadores SOF do JPEG (início do quadro, com as dimensões); C4 (DHT), C8 (JPG) e CC (DAC) não são
+_SOF = frozenset({0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF})
 
 
 # ---- arquivo enviado ----------------------------------------------------------
@@ -37,14 +45,64 @@ def tipo_da_imagem(dados: bytes) -> str | None:
     return None
 
 
-def ler_envio(arquivo) -> tuple[bytes, str]:
+def ler_envio(arquivo, limite: int = LIMITE_BYTES, mensagem: str = MSG_ARQUIVO) -> tuple[bytes, str]:
     """(bytes, tipo) do arquivo enviado (multipart `arquivo`), lendo no máximo o limite + 1 byte. Tipo errado,
-    arquivo vazio ou grande demais → 422 no campo `arquivo`."""
-    dados = arquivo.file.read(LIMITE_BYTES + 1)
+    arquivo vazio ou grande demais → 422 no campo `arquivo` (padrão: o limite e a mensagem dos logos)."""
+    dados = arquivo.file.read(limite + 1)
     tipo = tipo_da_imagem(dados)
-    if tipo is None or len(dados) > LIMITE_BYTES:
-        raise AppError(422, "dados_invalidos", MSG_ARQUIVO, {"arquivo": MSG_ARQUIVO})
+    if tipo is None or len(dados) > limite:
+        raise AppError(422, "dados_invalidos", mensagem, {"arquivo": mensagem})
     return dados, tipo
+
+
+def _dimensoes_png(dados: bytes) -> tuple[int, int] | None:
+    # assinatura (8) + tamanho do bloco (4) + "IHDR" (4) + largura (4) + altura (4), inteiros big-endian
+    if len(dados) < 24 or dados[12:16] != b"IHDR":
+        return None
+    return int.from_bytes(dados[16:20], "big"), int.from_bytes(dados[20:24], "big")
+
+
+def _dimensoes_jpeg(dados: bytes) -> tuple[int, int] | None:
+    """Percorre os segmentos até o primeiro SOF: FF Cn, tamanho (2), precisão (1), altura (2), largura (2)."""
+    i, n = 2, len(dados)
+    while i + 4 <= n:
+        if dados[i] != 0xFF:
+            return None
+        marcador = dados[i + 1]
+        if marcador == 0xFF:  # bytes de preenchimento antes do marcador
+            i += 1
+            continue
+        if marcador in (0x01, 0xD8) or 0xD0 <= marcador <= 0xD7:  # marcadores sem tamanho
+            i += 2
+            continue
+        if marcador in (0xD9, 0xDA):  # fim da imagem ou início dos dados comprimidos, sem SOF antes
+            return None
+        tamanho = int.from_bytes(dados[i + 2:i + 4], "big")
+        if tamanho < 2:
+            return None
+        if marcador in _SOF:
+            if i + 9 > n:
+                return None
+            return int.from_bytes(dados[i + 7:i + 9], "big"), int.from_bytes(dados[i + 5:i + 7], "big")
+        i += 2 + tamanho
+    return None
+
+
+def dimensoes(dados: bytes, tipo: str) -> tuple[int | None, int | None]:
+    """(largura, altura) lidas do cabeçalho PNG (IHDR) ou JPEG (SOF); (None, None) se não der para ler."""
+    medidas = _dimensoes_png(dados) if tipo == "image/png" else _dimensoes_jpeg(dados)
+    if medidas is None or not all(0 < x <= MAX_DIMENSAO for x in medidas):
+        return None, None
+    return medidas
+
+
+def nome_do_arquivo(nome: str | None) -> str | None:
+    """Nome do arquivo enviado, sem pastas, sem caracteres de controle nem invisíveis (formato e controles
+    bidirecionais), com os espaços juntos e até 120 caracteres; vazio = None."""
+    base = (nome or "").replace("\\", "/").rsplit("/", 1)[-1]
+    base = "".join(" " if unicodedata.category(c) == "Cc" else c for c in base
+                   if unicodedata.category(c) not in ("Cf", "Cs"))
+    return " ".join(base.split())[:MAX_NOME].strip() or None
 
 
 # ---- URLs ---------------------------------------------------------------------
@@ -75,26 +133,33 @@ def url_aceita_no_tema(url: str) -> bool:
 
 # ---- gravação -----------------------------------------------------------------
 
+def nova_imagem(conta_id: int, uso: str, dados: bytes, tipo: str, **campos) -> Imagem:
+    """Imagem nova (ainda não gravada) com chave aleatória e o sha256 dos bytes."""
+    return Imagem(conta_id=conta_id, uso=uso, chave=secrets.token_urlsafe(32), tipo=tipo, dados=dados,
+                  tamanho=len(dados), sha256=hashlib.sha256(dados).hexdigest(), **campos)
+
+
 def gravar(s: Session, uso: str, dados: bytes, tipo: str, conta_id: int, formulario_id: int | None = None) -> str:
     """Troca a imagem do uso (logo da conta ou do formulário): apaga a anterior e grava outra, com chave nova.
     Quem chama trava o dono (conta ou formulário) antes, para duas trocas ao mesmo tempo não colidirem no índice
     único. Devolve a URL pública."""
     dono = Imagem.formulario_id == formulario_id if uso == "logo_formulario" else Imagem.conta_id == conta_id
     s.execute(delete(Imagem).where(Imagem.conta_id == conta_id, Imagem.uso == uso, dono))
-    chave = secrets.token_urlsafe(32)
-    s.add(Imagem(conta_id=conta_id, uso=uso, formulario_id=formulario_id, chave=chave, tipo=tipo, dados=dados,
-                 tamanho=len(dados), sha256=hashlib.sha256(dados).hexdigest()))
+    imagem = nova_imagem(conta_id, uso, dados, tipo, formulario_id=formulario_id)
+    s.add(imagem)
     s.flush()
-    return url_publica(chave)
+    return url_publica(imagem.chave)
 
 
 def copiar_para_formulario(s: Session, url: str | None, conta_id: int, formulario_id: int) -> str | None:
-    """Formulário copiado: se `url` é uma imagem da plataforma desta conta, grava uma cópia como logo do formulário
-    novo (chave nova) e devolve a URL dela; senão None (endereço de fora fica como está)."""
+    """Formulário copiado: se `url` é um logo enviado à plataforma por esta conta, grava uma cópia como logo do
+    formulário novo (chave nova) e devolve a URL dela; senão None (endereço de fora — e imagem do banco de imagens, que
+    não muda nem passa a valer como logo de 300 KB — fica como está)."""
     chave = chave_da_url(url)
     if chave is None:
         return None
-    original = s.scalar(select(Imagem).where(Imagem.conta_id == conta_id, Imagem.chave == chave))
+    original = s.scalar(select(Imagem).where(Imagem.conta_id == conta_id, Imagem.chave == chave,
+                                             Imagem.uso != "banco"))
     if original is None:
         return None
     return gravar(s, "logo_formulario", original.dados, original.tipo, conta_id, formulario_id)

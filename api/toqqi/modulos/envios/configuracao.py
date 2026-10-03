@@ -1,4 +1,10 @@
-"""Configurações de envio da conta e pré-condições de qualquer envio."""
+"""Configurações de envio da conta e pré-condições de qualquer envio.
+
+Visual dos e-mails de pesquisa (etapa 5e): `email_cor` (#RRGGBB em maiúsculas; nula = a cor do formulário do
+envio), `email_mostrar_logo`, `email_imagem_topo_id` (uma imagem do banco de imagens da conta), `email_assinatura` e
+`email_rodape` (texto puro). No JSON, a imagem de topo sai como `email_imagem_topo: {id, url, largura, altura} | null`.
+`visual` resolve tudo isso para um envio (cor de destaque, logo, imagem), lido na hora de montar cada e-mail.
+"""
 from datetime import time
 
 from sqlalchemy import select
@@ -7,8 +13,10 @@ from sqlalchemy.orm import Session
 
 from toqqi.core.config import config
 from toqqi.core.errors import AppError
-from toqqi.modelos import ConfigEnvios, Conta, Formulario
+from toqqi.modelos import ConfigEnvios, Conta, Formulario, Imagem
 from toqqi.modulos.assinatura.regras import liberada, mensagem_pausa
+from toqqi.modulos.envios import mensagens
+from toqqi.modulos.imagens.servico import logo_para_cliente, url_publica
 
 DIAS_LEMBRETES_PADRAO = [3, 7, 15]
 PADROES = {
@@ -39,6 +47,12 @@ PADROES = {
         "detrator": "Olá, {nome}! Obrigado por ser sincero com a gente. Sentimos muito que a sua experiência "
                     "não tenha sido boa; a {empresa} vai usar a sua opinião para melhorar.",
     },
+    # etapa 5e: visual dos e-mails de pesquisa
+    "email_cor": None,
+    "email_mostrar_logo": True,
+    "email_imagem_topo_id": None,
+    "email_assinatura": None,
+    "email_rodape": None,
 }
 CAMPOS = list(PADROES) + ["formulario_id"]
 ROTA_CONFIG = "/configuracoes/envios"
@@ -66,12 +80,34 @@ def _hora(t: time) -> str:
     return t.strftime("%H:%M")
 
 
-def config_json(cfg: ConfigEnvios) -> dict:
-    dados = {c: getattr(cfg, c) for c in CAMPOS}
+def imagem_topo(s: Session, cfg: ConfigEnvios) -> Imagem | None:
+    """A imagem de topo dos e-mails (do banco de imagens da conta), se houver."""
+    if cfg.email_imagem_topo_id is None:
+        return None
+    return s.scalar(select(Imagem).where(Imagem.id == cfg.email_imagem_topo_id, Imagem.conta_id == cfg.conta_id,
+                                         Imagem.uso == "banco"))
+
+
+def config_json(cfg: ConfigEnvios, topo: Imagem | None = None) -> dict:
+    """A configuração para a tela; `topo` = `imagem_topo(s, cfg)`."""
+    dados = {c: getattr(cfg, c) for c in CAMPOS if c != "email_imagem_topo_id"}
     dados["janela_inicio"] = _hora(cfg.janela_inicio)
     dados["janela_fim"] = _hora(cfg.janela_fim)
     dados["dias_lembretes"] = list(cfg.dias_lembretes)
+    dados["email_imagem_topo"] = None if topo is None else {
+        "id": topo.id, "url": url_publica(topo.chave), "largura": topo.largura, "altura": topo.altura}
     return dados
+
+
+def visual(s: Session, cfg: ConfigEnvios, conta_id: int, tema: dict | None) -> mensagens.Visual:
+    """O visual de um e-mail de pesquisa da conta; `tema` = o do formulário do envio (cor e logo)."""
+    tema = tema or {}
+    topo = imagem_topo(s, cfg)
+    return mensagens.Visual(
+        cor=mensagens.cor_de_destaque(cfg.email_cor, tema.get("cor")),
+        logo_url=logo_para_cliente(s, conta_id, tema.get("logo_url")) if cfg.email_mostrar_logo else None,
+        imagem_topo=mensagens.ImagemTopo(url_publica(topo.chave), topo.largura, topo.altura) if topo else None,
+        assinatura=cfg.email_assinatura, rodape=cfg.email_rodape)
 
 
 def prazo_aguardando(cfg: ConfigEnvios) -> int:

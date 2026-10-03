@@ -183,7 +183,7 @@ def _desativar(s: Session, w: Webhook) -> None:
     s.execute(update(WebhookEntrega).where(WebhookEntrega.webhook_id == w.id, WebhookEntrega.status == "pendente")
               .values(status="falhou", erro=MSG_DESATIVADO).execution_options(synchronize_session=False))
     registrar(s, "webhook_desativado", "erro", {"webhook_id": w.id, "url": w.url})
-    avisar_admins(s, "Um webhook da Toqqi foi desativado", [
+    avisar_admins(s, w.conta_id, "Um webhook da Toqqi foi desativado", [
         f"O webhook {w.url} falhou {MAX_FALHAS_SEGUIDAS} vezes seguidas e foi desativado.",
         "Confira se o endereço está no ar e ligue o webhook de novo em Integrações.",
     ], ("Abrir Integrações", f"{config().FRONTEND_URL.rstrip('/')}/integracoes"))

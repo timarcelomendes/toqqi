@@ -232,9 +232,10 @@ describe('Termos de uso e Política de privacidade (versão 2)', () => {
   const RECURSOS = ['Análise de comentários', 'Passos das ações', 'Resumo do painel', 'Parecer dos relatórios', 'ToqqiAI']
 
   it('versão 2, vigente desde hoje (02/10/2026): a tela de aceite e o topo dos documentos mostram essa data', () => {
-    expect(VERSAO_DOCUMENTOS).toBe(2)
+    // Etapa 5e: a versão 3 (registro de e-mails enviados) veio por cima, no mesmo dia (ver etapa5eLogica.test.ts).
+    expect(VERSAO_DOCUMENTOS).toBeGreaterThanOrEqual(2)
     expect(VIGENTE_DESDE).toBe('2026-10-02')
-    expect(textoVersao(VERSAO_DOCUMENTOS)).toBe('Versão 2 · vigente desde 02/10/2026')
+    expect(textoVersao(2)).toBe('Versão 2 · vigente desde 02/10/2026')
     // Quem aceitou a versão 1 vê a tela de aceite de novo, com a data da versão 2.
     expect(textoAbertura({ versao_atual: 2, versao_aceita: 1, aceito_em: '2026-09-01T12:00:00Z', pendente: true })).toBe(
       'Atualizamos os Termos de uso e a Política de privacidade em 02/10/2026.',

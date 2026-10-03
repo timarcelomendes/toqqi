@@ -201,6 +201,9 @@ def test_novas_tentativas_e_desativacao(client, admin, destino, monkeypatch, don
     assert sql(dono, "select count(*) from webhook_entregas where status = 'pendente'")[0][0] == 0
     aviso, = emails_para("ana@alfa.com.br")[-1:]
     assert aviso.assunto == "Um webhook da Toqqi foi desativado" and URL in aviso.texto
+    # etapa 5e: entra no registro de e-mails enviados da conta, como aviso aos administradores
+    assert sql(dono, "select tipo, destinatario, assunto, situacao from emails_enviados where tipo = 'aviso'") == [
+        ("aviso", "ana@alfa.com.br", aviso.assunto, "enviado")]
     assert any(a["evento"] == "webhook_desativado"
                for a in client.get(f"{API}/auditoria", headers=h).json()["itens"])
 

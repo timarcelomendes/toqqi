@@ -92,10 +92,20 @@ describe('prévia do e-mail', () => {
     expect([b.rotuloMin, b.rotuloMax]).toEqual(['Nada provável', 'Muito provável'])
   })
 
-  it('CSAT: 5 botões; personalizado: botão "Responder pesquisa"', () => {
+  it('CSAT: 5 botões com os rótulos padrão; personalizado: botão "Responder pesquisa"', () => {
     const csat = blocoNota('csat')
     expect(csat.tipo === 'csat' && csat.botoes.map((x) => x.nota)).toEqual([1, 2, 3, 4, 5])
+    expect(csat.tipo === 'csat' && [csat.titulo, csat.rotuloMin, csat.rotuloMax]).toEqual(['', 'Muito insatisfeito', 'Muito satisfeito'])
     expect(blocoNota('personalizado')).toEqual({ tipo: 'botao', texto: 'Responder pesquisa' })
+  })
+
+  it('título e rótulos da pergunta principal, com as variáveis do formulário (como o bloco da nota da API)', () => {
+    const p = { titulo: 'De 0 a 10, quanto você indicaria a {empresa}, {nome}?', rotulo_min: 'Jamais', rotulo_max: 'Com certeza' }
+    const b = blocoNota('nps', p, { nome: 'Maria Souza', empresa: 'Acme' })
+    expect(b.tipo === 'nps' && [b.titulo, b.rotuloMin, b.rotuloMax]).toEqual(['De 0 a 10, quanto você indicaria a Acme, Maria?', 'Jamais', 'Com certeza'])
+    // rótulo vazio usa o padrão
+    const c = blocoNota('csat', { titulo: 'Como foi?', rotulo_min: '', rotulo_max: null })
+    expect(c.tipo === 'csat' && [c.titulo, c.rotuloMin, c.rotuloMax]).toEqual(['Como foi?', 'Muito insatisfeito', 'Muito satisfeito'])
   })
 
   it('monta remetente, assunto, parágrafos e rodapé', () => {

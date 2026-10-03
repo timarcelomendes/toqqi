@@ -137,6 +137,7 @@ class Aviso:
     assunto: str
     paragrafos: list[str]
     botao: tuple[str, str]
+    conta_id: int
 
 
 _coletados: ContextVar[list | None] = ContextVar("avisos_indicacao_apos_commit", default=None)
@@ -163,7 +164,8 @@ def enviar_avisos(avisos: Iterable[Aviso]) -> None:
         log.info("%d aviso(s) de indicação não enviado(s): o envio de e-mails não está configurado.", len(avisos))
         return
     for a in avisos:
-        email.enviar(a.para, a.assunto, a.paragrafos, a.botao, assunto_no_log="Nova indicação")
+        email.enviar(a.para, a.assunto, a.paragrafos, a.botao, assunto_no_log="Nova indicação", conta_id=a.conta_id,
+                     tipo="indicacao")
 
 
 def _quem_indicou(empresa: Empresa | None, contato: Contato | None) -> tuple[str, str]:
@@ -207,7 +209,7 @@ def _coletar_aviso(s: Session, i: Indicacao) -> None:
         paragrafos.append("A indicação está sem responsável: escolha quem vai cuidar dela no Toqqi.")
     botao = ("Ver indicações no Toqqi", f"{config().FRONTEND_URL.rstrip('/')}{CAMINHO_TELA}")
     for para in destinos:
-        lista.append(Aviso(para, f"Nova indicação de {curto}: {indicado}", paragrafos, botao))
+        lista.append(Aviso(para, f"Nova indicação de {curto}: {indicado}", paragrafos, botao, i.conta_id))
 
 
 # ---- consulta e formato -------------------------------------------------------------------

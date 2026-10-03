@@ -690,3 +690,12 @@ def teto_do_mes(dono, conta_id: int) -> tuple[int, int, int]:
     linhas = sql(dono, "select analises, tokens_entrada, tokens_saida from ia_uso_mensal where conta_id = :c "
                        "and mes = :m", c=conta_id, m=relogio.hoje().replace(day=1))
     return tuple(linhas[0]) if linhas else (0, 0, 0)
+
+
+# ---- etapa 5e: e-mails enviados -------------------------------------------------------
+
+def emails_enviados(client, h: dict, **filtros) -> list[dict]:
+    """Itens de Auditoria › E-mails enviados (GET /auditoria/emails), mais novos primeiro."""
+    r = client.get(f"{API}/auditoria/emails", headers=h, params={"por_pagina": 200, **filtros})
+    assert r.status_code == 200, r.text
+    return r.json()["itens"]

@@ -126,6 +126,10 @@ def test_indicacao_publica_cria_com_responsavel_email_e_webhook(client, alfa, do
 
     m, = emails_para("rita@alfa.com.br")
     assert m.assunto == "Nova indicação de Mercado Bom Preço: João da Silva, Padaria Real"
+    # etapa 5e: entra no registro de e-mails enviados da conta, sem o nome de quem foi indicado no assunto (excluir a
+    # indicação a pedido da pessoa não pode deixar o nome dela no registro)
+    assert sql(dono, "select tipo, destinatario, assunto, situacao from emails_enviados where tipo = 'indicacao'") == [
+        ("indicacao", "rita@alfa.com.br", "Nova indicação", "enviado")]
     assert "Mercado Bom Preço (Ana Souza) indicou João da Silva (Padaria Real)." in m.texto
     assert "WhatsApp ou telefone: (11) 98765-4321" in m.texto and "E-mail: joao@padariareal.com.br" in m.texto
     assert "Observação: Compra toda semana." in m.texto

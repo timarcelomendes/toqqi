@@ -348,6 +348,12 @@ class ConfigEnvios(Base):
     robo_rodou_em: Mapped[datetime | None] = mapped_column(TZ)
     lembretes_rodou_em: Mapped[date | None] = mapped_column(Date)
     atualizado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    # etapa 5e: visual dos e-mails de pesquisa (texto puro; nenhum HTML da conta entra no e-mail)
+    email_cor: Mapped[str | None] = mapped_column(Text)  # #RRGGBB (maiúsculas); nula = a cor do formulário do envio
+    email_mostrar_logo: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    email_imagem_topo_id: Mapped[int | None] = mapped_column(BigInteger)  # imagem 'banco' da conta (SET NULL)
+    email_assinatura: Mapped[str | None] = mapped_column(Text)  # até 300
+    email_rodape: Mapped[str | None] = mapped_column(Text)  # até 500
 
 
 class Envio(Base):
@@ -508,12 +514,12 @@ class ConfigAcoes(Base):
 
 
 class Imagem(Base):
-    """Logo da conta ou de um formulário. `dados` só é lido quando pedido (deferred): os bytes não vêm junto nas
-    buscas de URL."""
+    """Logo da conta ou de um formulário, ou imagem do banco de imagens da conta (etapa 5e). `dados` só é lido quando
+    pedido (deferred): os bytes não vêm junto nas buscas de URL."""
     __tablename__ = "imagens"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
-    uso: Mapped[str] = mapped_column(Text)  # logo_conta | logo_formulario
+    uso: Mapped[str] = mapped_column(Text)  # logo_conta | logo_formulario | banco
     formulario_id: Mapped[int | None] = mapped_column(BigInteger)
     chave: Mapped[str] = mapped_column(Text)
     tipo: Mapped[str] = mapped_column(Text)
@@ -521,6 +527,10 @@ class Imagem(Base):
     tamanho: Mapped[int] = mapped_column(Integer)
     sha256: Mapped[str] = mapped_column(Text)
     criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    # etapa 5e (banco de imagens): nome do arquivo enviado (limpo) e dimensões lidas do cabeçalho (nulas se não deu)
+    nome: Mapped[str | None] = mapped_column(Text)
+    largura: Mapped[int | None] = mapped_column(Integer)
+    altura: Mapped[int | None] = mapped_column(Integer)
 
 
 # ---- etapa 4b: IA, picos e resumo semanal ----------------------------------------
@@ -716,3 +726,19 @@ class Oferta(Base):
     resultado: Mapped[str | None] = mapped_column(Text)  # aceitou | recusou | sem_resposta
     valor: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))  # só 'aceitou'
     resultado_em: Mapped[datetime | None] = mapped_column(TZ)
+
+
+# ---- etapa 5e: registro de e-mails enviados ------------------------------------------------
+
+class EmailEnviado(Base):
+    """E-mail que saiu (ou tentou sair) em nome de uma conta: pesquisas e e-mails do sistema. Nada do corpo; guardado
+    por 90 dias (tarefa `limpeza`)."""
+    __tablename__ = "emails_enviados"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    tipo: Mapped[str] = mapped_column(Text)  # core.email.TIPOS
+    destinatario: Mapped[str] = mapped_column(CITEXT)
+    assunto: Mapped[str] = mapped_column(Text)  # como saiu, cortado em 300
+    situacao: Mapped[str] = mapped_column(Text)  # enviado | falhou
+    erro: Mapped[str | None] = mapped_column(Text)  # texto simples de core.email.traduzir_falha, só com 'falhou'
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)

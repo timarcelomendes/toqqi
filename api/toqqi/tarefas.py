@@ -1,13 +1,17 @@
 """Tarefas periódicas: `python -m toqqi.tarefas
-[assinaturas|robo|lembretes|pendentes|webhooks|ia|picos|resumo|tudo]` (padrão: tudo).
+[assinaturas|robo|lembretes|pendentes|webhooks|ia|picos|resumo|limpeza|tudo]` (padrão: tudo).
 
 Também disponíveis em POST /api/v1/interno/tarefas (cabeçalho X-Tarefas-Token). Em produção, o Cron Job
 `toqqi-tarefas` do Render roda este comando a cada 15 minutos; cada tarefa decide por conta se é hora de agir.
-`tudo` roda na ordem: assinaturas, pendentes, robô, lembretes, webhooks, ia, picos, resumo (assinaturas primeiro,
-para a liberação dos envios já valer; a IA antes dos picos, para eles já usarem as análises novas).
+`tudo` roda na ordem: assinaturas, pendentes, robô, lembretes, webhooks, ia, picos, resumo, limpeza (assinaturas
+primeiro, para a liberação dos envios já valer; a IA antes dos picos, para eles já usarem as análises novas; a limpeza
+por último, depois de tudo o que manda e-mails).
 
 A tarefa `ia` analisa as respostas pendentes e, depois, no mesmo tempo da rodada, sugere os passos das ações
 pendentes (etapa 5d): {analisadas, falharam, limite, passos: {prontas, falharam, limite}}.
+
+A tarefa `limpeza` (etapa 5e) apaga o que passou do prazo de guarda: os e-mails enviados com mais de 90 dias, em
+lotes ({emails_apagados}). A etapa 5f acrescenta outras limpezas a ela.
 """
 import json
 import logging
@@ -16,12 +20,13 @@ import time as relogio_real
 
 from toqqi.modulos.acoes import passos
 from toqqi.modulos.assinatura import conferencia as assinaturas
+from toqqi.modulos.auditoria import emails as emails_enviados
 from toqqi.modulos.envios import automacao
 from toqqi.modulos.ia import servico as ia
 from toqqi.modulos.integracoes import webhooks
 from toqqi.modulos.relatorios import emails
 
-TAREFAS = ("assinaturas", "robo", "lembretes", "pendentes", "webhooks", "ia", "picos", "resumo", "tudo")
+TAREFAS = ("assinaturas", "robo", "lembretes", "pendentes", "webhooks", "ia", "picos", "resumo", "limpeza", "tudo")
 
 
 def executar(qual: str = "tudo") -> dict:
@@ -45,7 +50,14 @@ def executar(qual: str = "tudo") -> dict:
         resultado["picos"] = emails.picos()
     if qual in ("resumo", "tudo"):
         resultado["resumo"] = emails.resumo()
+    if qual in ("limpeza", "tudo"):
+        resultado["limpeza"] = limpeza()
     return resultado
+
+
+def limpeza() -> dict:
+    """Tarefa `limpeza`: apaga o que passou do prazo de guarda. Etapa 5e: os e-mails enviados com mais de 90 dias."""
+    return {"emails_apagados": emails_enviados.limpar()}
 
 
 def main(argv: list[str]) -> int:

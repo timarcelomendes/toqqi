@@ -17,10 +17,10 @@ Descrição: o comentário do cliente (só o que ele escreveu), as opções que 
 leva ao cadastro) e o contexto do pedido.
 
 Alerta: ação alta com responsável que tem e-mail → e-mail "Alerta de risco" pelo provedor da plataforma (e-mail do
-sistema: não entra no histórico de envios), só se o provedor conta como configurado pela mesma regra dos envios
-de pesquisa (o `console` não conta em produção: comentário e dados do cliente não vão parar no log). Quem grava a
-resposta envolve o trabalho em `coletar_alertas()` e agenda `enviar_alertas` depois do commit (BackgroundTasks);
-sem coletor, o alerta não sai.
+sistema: não entra no histórico de envios, mas entra no registro de e-mails enviados da conta, tipo `alerta_risco`),
+só se o provedor conta como configurado pela mesma regra dos envios de pesquisa (o `console` não conta em produção:
+comentário e dados do cliente não vão parar no log). Quem grava a resposta envolve o trabalho em `coletar_alertas()` e
+agenda `enviar_alertas` depois do commit (BackgroundTasks); sem coletor, o alerta não sai.
 """
 import logging
 from collections.abc import Iterable, Iterator
@@ -59,6 +59,7 @@ class Alerta:
     assunto: str
     paragrafos: list[str]
     botao: tuple[str, str]
+    conta_id: int
 
 
 _coletados: ContextVar[list | None] = ContextVar("alertas_apos_commit", default=None)
@@ -85,7 +86,7 @@ def enviar_alertas(alertas: Iterable[Alerta]) -> None:
         log.info("%d alerta(s) de risco não enviado(s): o envio de e-mails não está configurado.", len(alertas))
         return
     for a in alertas:
-        email.enviar(a.para, a.assunto, a.paragrafos, a.botao)
+        email.enviar(a.para, a.assunto, a.paragrafos, a.botao, conta_id=a.conta_id, tipo="alerta_risco")
 
 
 # ---- regra ------------------------------------------------------------------
@@ -136,6 +137,7 @@ def _alerta(acao: Acao, r: Resposta, alvo: str, contato: Contato | None, para: s
             f"Prazo para tratar: {acao.prazo.strftime('%d/%m/%Y')}.",
         ],
         botao=("Tratar no Toqqi", link),
+        conta_id=r.conta_id,
     )
 
 

@@ -77,14 +77,14 @@ def permissoes_do_perfil(s: Session, perfil: str) -> list[str]:
 
 def cadastrar(dados, ip: str | None, agente: str | None = None) -> str:
     senha_hash = gerar_hash(dados.senha)  # antes de qualquer consulta: tempo igual nos dois caminhos
-    aviso_existente: tuple[str, str] | None = None
-    confirmacao: tuple[str, str, str] | None = None
+    aviso_existente: tuple[str, str, int] | None = None
+    confirmacao: tuple[str, str, str, int] | None = None
     try:
         # Modo sistema: ainda não existe conta, e o e-mail é único entre todas as contas.
         with modo_sistema() as s:
             existente = s.scalar(select(Usuario).where(Usuario.email == dados.email))
             if existente is not None:
-                aviso_existente = (existente.nome, existente.email)
+                aviso_existente = (existente.nome, existente.email, existente.conta_id)
             else:
                 agora = _agora()
                 conta = Conta(
@@ -109,7 +109,7 @@ def cadastrar(dados, ip: str | None, agente: str | None = None) -> str:
                           usuario_id=u.id, conta_id=conta.id)
                 # "Li e aceito" do cadastro (aceite_termos: true, obrigatório): vale como aceite da versão atual
                 termos.gravar(s, u, "cadastro", ip, agente, conta_id=conta.id)
-                confirmacao = (u.nome, u.email, token)
+                confirmacao = (u.nome, u.email, token, conta.id)
     except IntegrityError:
         # Corrida com outro cadastro do mesmo e-mail: resposta igual, nada criado.
         return MSG_CADASTRO
@@ -209,7 +209,7 @@ def reenviar_confirmacao(email: str) -> str:
     if u is not None and not u.email_confirmado:
         with em_conta(u.conta_id) as s:
             token = criar_token(s, u.id, u.conta_id, "confirmar_email")
-        emails.confirmar_email(u.nome, u.email, token)
+        emails.confirmar_email(u.nome, u.email, token, u.conta_id)
     return MSG_REENVIO
 
 
@@ -219,7 +219,7 @@ def esqueci_senha(email: str) -> str:
     if u is not None:
         with em_conta(u.conta_id) as s:
             token = criar_token(s, u.id, u.conta_id, "redefinir_senha")
-        emails.redefinir_senha(u.nome, u.email, token)
+        emails.redefinir_senha(u.nome, u.email, token, u.conta_id)
     return MSG_ESQUECI
 
 
@@ -279,7 +279,7 @@ def pedir_acesso(dados) -> str:
                       {"origem": "pedido_de_acesso", "nome": u.nome, "email": u.email, "perfil": "consulta"})
     except IntegrityError:
         return MSG_PEDIDO
-    emails.confirmar_email(dados.nome, dados.email, token)
+    emails.confirmar_email(dados.nome, dados.email, token, conta_id)
     return MSG_PEDIDO
 
 

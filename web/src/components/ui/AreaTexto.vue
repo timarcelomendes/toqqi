@@ -12,21 +12,34 @@ const props = withDefaults(
     linhas?: number
     rotuloOculto?: boolean
     maximo?: number
+    /** Mostra "usados/máximo" ao lado do rótulo (precisa de `maximo`). */
+    contador?: boolean
   }>(),
   { linhas: 3 },
 )
 const modelo = defineModel<string>({ default: '' })
 const id = `area-${useId()}`
-const descritoPor = computed(() => [props.erro ? `${id}-erro` : '', props.dica ? `${id}-dica` : ''].filter(Boolean).join(' ') || undefined)
+const comContador = computed(() => props.contador && props.maximo !== undefined)
+const descritoPor = computed(
+  () =>
+    [props.erro ? `${id}-erro` : '', props.dica ? `${id}-dica` : '', comContador.value ? `${id}-contagem` : ''].filter(Boolean).join(' ') ||
+    undefined,
+)
+const perto = computed(() => props.maximo !== undefined && (modelo.value ?? '').length > props.maximo * 0.9)
 const area = ref<HTMLTextAreaElement | null>(null)
 defineExpose({ elemento: area })
 </script>
 
 <template>
   <div class="flex flex-col gap-1.5" :class="$attrs.class">
-    <label :for="id" class="text-sm font-semibold text-texto" :class="{ 'sr-only': rotuloOculto }">
-      {{ rotulo }} <span v-if="opcional" class="font-normal text-texto-fraco">(opcional)</span>
-    </label>
+    <div class="flex items-end justify-between gap-2" :class="{ 'sr-only': rotuloOculto && !comContador }">
+      <label :for="id" class="text-sm font-semibold text-texto" :class="{ 'sr-only': rotuloOculto }">
+        {{ rotulo }} <span v-if="opcional" class="font-normal text-texto-fraco">(opcional)</span>
+      </label>
+      <span v-if="comContador" :id="`${id}-contagem`" class="text-xs tabular-nums" :class="perto ? 'text-atencao' : 'text-texto-fraco'">
+        <span class="sr-only">Caracteres usados: </span>{{ (modelo ?? '').length }}/{{ maximo }}
+      </span>
+    </div>
     <textarea
       :id="id"
       ref="area"
@@ -36,7 +49,7 @@ defineExpose({ elemento: area })
       :maxlength="maximo"
       :aria-invalid="erro ? 'true' : undefined"
       :aria-describedby="descritoPor"
-      class="w-full resize-y rounded-xl border bg-superficie px-3.5 py-2.5 text-[0.95rem] text-texto placeholder:text-texto-fraco/80 transition-colors focus:outline-none focus:ring-3"
+      class="w-full resize-y rounded-xl border bg-superficie px-3.5 py-2.5 text-[0.95rem] text-texto placeholder:text-texto-fraco/80 transition-colors focus:outline-none focus:ring-3 disabled:cursor-not-allowed disabled:bg-superficie-2 disabled:text-texto-suave"
       :class="erro ? 'border-erro focus:ring-erro/20' : 'border-borda-forte hover:border-texto-fraco/60 focus:border-marca focus:ring-marca/20'"
     />
     <p v-if="erro" :id="`${id}-erro`" class="text-sm font-medium text-erro">{{ erro }}</p>

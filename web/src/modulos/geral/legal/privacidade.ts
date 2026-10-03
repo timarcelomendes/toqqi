@@ -97,6 +97,11 @@ export const PRIVACIDADE: DocumentoLegal = {
               'Um código derivado do IP, com sal diário, só para evitar respostas repetidas no mesmo dia.',
               'Gerado quando a pessoa envia a resposta.',
             ],
+            [
+              'Quem recebe e-mails pelo Toqqi (clientes da empresa assinante e usuários)',
+              'Registro de cada e-mail que sai em nome de uma conta, das pesquisas e do sistema: o endereço de quem recebeu, o assunto, a situação (enviado ou falhou), o erro, quando falha, e a data. Não guardamos o conteúdo da mensagem nesse registro.',
+              'Gerado quando o e-mail é enviado.',
+            ],
           ],
         },
         {
@@ -126,6 +131,10 @@ export const PRIVACIDADE: DocumentoLegal = {
             [
               'Segurança, prevenção a fraude e abuso, auditoria, limites de uso.',
               'Legítimo interesse (IX) e obrigação legal (II).',
+            ],
+            [
+              'Mostrar à empresa assinante, em Auditoria › E-mails enviados, quais e-mails saíram em nome dela e quais falharam, para ela corrigir endereços e acompanhar os envios.',
+              'Execução de contrato (V) e legítimo interesse (IX).',
             ],
             ['Suporte e atendimento aos seus pedidos.', 'Execução de contrato (V) e legítimo interesse (IX).'],
             ['Melhorar o serviço, com dados agregados ou anonimizados.', 'Legítimo interesse (IX).'],
@@ -316,6 +325,7 @@ export const PRIVACIDADE: DocumentoLegal = {
             'Registros de acesso (data, hora e IP): por pelo menos 6 meses (Marco Civil, art. 15) [a confirmar: hoje eles são apagados junto com a conta ou o usuário].',
             'Dados fiscais e de cobrança: pelo prazo legal [a confirmar: prazo fiscal aplicável, em geral 5 anos].',
             'Respostas e contatos dos clientes: a empresa assinante controla e pode apagar quando quiser. Ao excluir um contato, o nome e o e-mail ficam no registro de auditoria por [a confirmar: prazo de guarda da auditoria], e o e-mail ou telefone fica na lista de descadastro, para continuarmos respeitando o pedido da pessoa.',
+            'Registro de e-mails enviados (endereço de quem recebeu, assunto, situação e erro): 90 dias. Depois disso, é apagado automaticamente.',
             'Cópias de segurança (backups): [a confirmar: se há backups e por quanto tempo].',
             'Histórico dos aceites dos termos (e das retiradas do aceite): guardado como prova, mesmo quando o texto muda, mesmo depois de o aceite ser retirado e mesmo depois que um usuário é removido da equipe (guardamos o e-mail e o nome de quem aceitou), com base no exercício regular de direitos (art. 7º, VI), por [a confirmar: prazo, sugerido 5 anos depois do fim da conta].',
           ],

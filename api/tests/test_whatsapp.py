@@ -277,6 +277,9 @@ def test_franquia_avisos_queda_para_email_e_excedente(client, admin, meta, dono)
     assert evento(client, chave, telefone="11900000002").json()["canal"] == "whatsapp"
     aviso = emails_para("ana@alfa.com.br")[-1]
     assert aviso.assunto == "A franquia de WhatsApp do mês acabou" and "por e-mail" in aviso.texto
+    # etapa 5e: os dois avisos entram no registro de e-mails enviados da conta
+    assert sql(dono, "select assunto from emails_enviados where tipo = 'aviso' order by id") == [
+        ("Você já usou 80% da franquia de WhatsApp do mês",), ("A franquia de WhatsApp do mês acabou",)]
     n_avisos = len(emails_para("ana@alfa.com.br"))
 
     # acabou: e-mail se houver, senão só o link

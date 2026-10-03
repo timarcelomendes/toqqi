@@ -321,4 +321,5 @@ def test_rota_interna_de_tarefas(client, monkeypatch):
                         "ia": {"analisadas": 0, "falharam": 0, "limite": 0,
                                "passos": {"prontas": 0, "falharam": 0, "limite": 0}},  # etapa 5d
                         "picos": {"picos": 0, "emails": 0},
-                        "resumo": {"contas": 0, "emails": 0}}
+                        "resumo": {"contas": 0, "emails": 0},
+                        "limpeza": {"emails_apagados": 0}}  # etapa 5e: por último

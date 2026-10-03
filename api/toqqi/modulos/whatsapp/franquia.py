@@ -90,12 +90,12 @@ def _avisar(s: Session, uso: WhatsappUso, lim: int, wc: WhatsappConta) -> None:
         seguir = ("Como o excedente está ligado, as próximas mensagens continuam pelo WhatsApp e são cobradas à "
                   "parte (R$ 1,50 cada)." if wc.excedente_ativo else
                   f"Até o fim do mês, as pesquisas vão por e-mail para quem tiver e-mail. {ligar}")
-        avisar_admins(s, "A franquia de WhatsApp do mês acabou", [
+        avisar_admins(s, wc.conta_id, "A franquia de WhatsApp do mês acabou", [
             f"A sua conta usou as {lim} mensagens de WhatsApp automático incluídas no plano neste mês.", seguir,
         ], botao)
     elif uso.usadas >= math.ceil(lim * 0.8) and not uso.avisou_80:
         uso.avisou_80 = True
-        avisar_admins(s, "Você já usou 80% da franquia de WhatsApp do mês", [
+        avisar_admins(s, wc.conta_id, "Você já usou 80% da franquia de WhatsApp do mês", [
             f"A sua conta já usou {uso.usadas} das {lim} mensagens de WhatsApp automático incluídas no plano "
             "neste mês.",
             f"Quando a franquia acabar, as pesquisas vão por e-mail para quem tiver e-mail. {ligar}",

@@ -8,6 +8,11 @@ pela tarefa de pendentes.
 Canal: `ConfigEnvios.canal` define a ordem (WhatsApp antes do e-mail quando não é "email"). O WhatsApp reserva
 a franquia ao criar o envio; se a mensagem não sai, a reserva volta e, com "whatsapp_e_email", um envio por
 e-mail substitui o que falhou.
+
+E-mail: montado com o visual da conta (`configuracao.visual`, com o tema do formulário do convite ou, no
+agradecimento, do formulário respondido) e registrado em `emails_enviados` pelo `core.email.enviar_mensagem` (tipo =
+o do envio). O agradecimento ganha a variável {motivo}: o comentário do cliente numa linha, cortado em 200 caracteres
+(vazio sem comentário).
 """
 import logging
 from collections.abc import Iterable
@@ -20,12 +25,12 @@ from sqlalchemy.orm import Session
 from toqqi.core import relogio
 from toqqi.core.db import em_conta
 from toqqi.core.email import FalhaEnvio, Mensagem, enviar_mensagem
+from toqqi.core.ia import sem_controle
 from toqqi.core.segredos import decifrar
 from toqqi.modelos import ConfigEnvios, Conta, Contato, Convite, Empresa, Envio, Formulario, Resposta, WhatsappConta
 from toqqi.modulos.envios import mensagens
-from toqqi.modulos.envios.configuracao import obter, provedor_ok
+from toqqi.modulos.envios.configuracao import obter, provedor_ok, visual
 from toqqi.modulos.envios.descadastro import esta_descadastrado
-from toqqi.modulos.imagens.servico import logo_para_cliente
 from toqqi.modulos.respostas.convites import link_do_convite, novo_convite, token_do_convite
 from toqqi.modulos.whatsapp import franquia, graph, modelo
 
@@ -35,6 +40,13 @@ Pares = list[tuple[int, int]]
 RETOMAR_APOS = timedelta(minutes=10)
 TEXTO_AGRADECIMENTO = {"promotor": "promotor", "satisfeito": "promotor", "neutro": "neutro",
                        "detrator": "detrator", "insatisfeito": "detrator"}
+MAX_MOTIVO = 200
+
+
+def motivo(comentario: str | None) -> str:
+    """{motivo} do agradecimento: o comentário do cliente numa linha (quebras, tabs e espaços seguidos viram um
+    espaço), cortado em 200 caracteres, sem reticências — como a prévia do site; "" sem comentário."""
+    return " ".join(sem_controle(comentario or "").split())[:MAX_MOTIVO].rstrip()
 
 
 def ordem_canais(cfg: ConfigEnvios) -> tuple[str, ...]:
@@ -120,10 +132,10 @@ def _montar(s: Session, e: Envio) -> Mensagem | MensagemWhatsapp:
         if r is None or r.grupo is None:
             raise NaoEnviar("A resposta foi excluída antes do envio.")
         v["nota"] = str(r.nota)
+        v["motivo"] = motivo(r.comentario_cliente)  # por último: o comentário não passa por outra troca
         f = s.get(Formulario, r.formulario_id)  # o formulário respondido
-        logo = logo_para_cliente(s, e.conta_id, (f.tema or {}).get("logo_url") if f else None)
         return mensagens.email_agradecimento(texto=cfg.agradecimento[TEXTO_AGRADECIMENTO[r.grupo]], v=v,
-                                             logo_url=logo, **comum)
+                                             visual=visual(s, cfg, e.conta_id, f.tema if f else None), **comum)
     convite = s.get(Convite, e.convite_id) if e.convite_id else None
     if convite is None or convite.token_semente is None:
         raise NaoEnviar("O convite foi excluído antes do envio.")
@@ -146,8 +158,7 @@ def _montar(s: Session, e: Envio) -> Mensagem | MensagemWhatsapp:
     return mensagens.email_pesquisa(
         assunto=cfg.assunto_lembrete if lembrete else cfg.assunto_convite,
         texto=cfg.texto_lembrete if lembrete else cfg.texto_convite,
-        perguntas=f.perguntas, link=link_do_convite(token), v=v,
-        logo_url=logo_para_cliente(s, e.conta_id, (f.tema or {}).get("logo_url")), **comum)
+        perguntas=f.perguntas, link=link_do_convite(token), v=v, visual=visual(s, cfg, e.conta_id, f.tema), **comum)
 
 
 # ---- resultado --------------------------------------------------------------
@@ -209,10 +220,11 @@ def _processar(conta_id: int, envio_id: int) -> Pares:
         if e is None or e.situacao != "pendente" or (e.tentativa_em and agora - e.tentativa_em < RETOMAR_APOS):
             return []  # já resolvido, ou outro processo está enviando
         e.tentativa_em = agora
+        tipo = e.tipo
         try:
             mensagem = _montar(s, e)
-        except NaoEnviar as motivo:
-            return _gravar_resultado(s, e, str(motivo))
+        except NaoEnviar as nao:
+            return _gravar_resultado(s, e, str(nao))
     wamid, erro, erro_da_conta = None, None, False
     if isinstance(mensagem, MensagemWhatsapp):
         try:
@@ -221,7 +233,7 @@ def _processar(conta_id: int, envio_id: int) -> Pares:
             erro, erro_da_conta = graph.traduzir(f.status, f.codigo)
     else:
         try:
-            enviar_mensagem(mensagem)
+            enviar_mensagem(mensagem, conta_id=conta_id, tipo=tipo)  # registra em emails_enviados
         except FalhaEnvio as f:
             erro = f.mensagem
     with em_conta(conta_id) as s:

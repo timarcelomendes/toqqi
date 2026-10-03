@@ -3,6 +3,8 @@
 // mensagem do WhatsApp com os textos de Configurações › Envios, o logo e os botões de nota deste formulário.
 // Etapa 5c: com as indicações ligadas, terminar a página com nota de promotor mostra o cartão de indicação de exemplo
 // (com o envio desligado), com os textos de Configurações › Crescimento.
+// Etapa 5e: o e-mail sai com o visual de Configurações › Envios (cor, logo, imagem de topo, assinatura e rodapé); sem cor
+// própria da conta, vale a cor deste formulário, a que está na tela (mesmo antes de salvar).
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ImageIcon, RotateCcw } from 'lucide-vue-next'
@@ -17,6 +19,7 @@ import PreviaEmail from '@/modulos/configuracoes/PreviaEmail.vue'
 import PreviaWhatsapp from '@/modulos/configuracoes/PreviaWhatsapp.vue'
 import { previaConvite } from '@/modulos/configuracoes/configCrescimento'
 import { montarPreviaEmail, renderizarMensagem } from '@/modulos/configuracoes/mensagens'
+import { perguntaPrincipal } from '@/pesquisa/logica'
 
 // `titulo`: o rótulo "Pré-visualização" no topo (a janela do celular já tem o próprio título).
 const props = withDefaults(
@@ -69,7 +72,13 @@ const exemplo = computed(() => ({
   link: `${window.location.origin}/r/exemplo`,
 }))
 const previaEmail = computed(() =>
-  config.value ? montarPreviaEmail(config.value, 'convite', props.tipo, exemplo.value, logo.value.url || null) : null,
+  config.value
+    ? montarPreviaEmail(config.value, 'convite', props.tipo, exemplo.value, logo.value.url || null, { temaCor: props.tema.cor, pergunta: perguntaPrincipal(props.perguntas) })
+    : null,
+)
+// "Usando o logo da empresa" só quando o canal mostra o logo (no e-mail, "Mostrar o logo" pode estar desligado).
+const avisoLogoEmpresa = computed(
+  () => logo.value.daEmpresa && (canal.value === 'pagina' || (canal.value === 'email' && config.value?.email_mostrar_logo !== false)),
 )
 const textoWhatsapp = computed(() => (config.value ? renderizarMensagem(config.value.texto_whatsapp, exemplo.value) : ''))
 
@@ -141,13 +150,13 @@ async function indicacaoExemplo(): Promise<ConviteIndicacao | null> {
     </div>
 
     <div class="flex flex-col gap-0.5 border-t border-borda bg-superficie px-3 py-2 text-xs text-texto-fraco">
-      <p v-if="logo.daEmpresa && canal !== 'whatsapp'" class="flex items-center gap-1.5 font-semibold text-texto-suave" data-aviso-logo>
+      <p v-if="avisoLogoEmpresa" class="flex items-center gap-1.5 font-semibold text-texto-suave" data-aviso-logo>
         <ImageIcon class="size-3.5 shrink-0" aria-hidden="true" /> Usando o logo da empresa
       </p>
       <p v-if="canal === 'pagina'">Exemplo com cliente “Maria” e referência “Pedido 12345”. Nada é gravado aqui.</p>
       <template v-else>
         <p>
-          {{ canal === 'email' ? 'Convite por e-mail' : 'Mensagem do botão WhatsApp' }} com os textos de Configurações › Envios.
+          {{ canal === 'email' ? 'Convite por e-mail com os textos e o visual' : 'Mensagem do botão WhatsApp com os textos' }} de Configurações › Envios.
           Exemplo com a cliente Maria, da Mercado Bom Preço.
         </p>
         <RouterLink v-if="podeEditarMensagens" to="/configuracoes/envios" class="link self-start font-semibold" data-editar-mensagens>

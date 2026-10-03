@@ -1,10 +1,17 @@
-// Imagens enviadas para a API (logo da empresa e do formulário): as mesmas regras do servidor.
+// Imagens enviadas para a API (logo da empresa e do formulário; etapa 5e: o banco de imagens dos e-mails): as mesmas
+// regras do servidor.
 
 /** Até 300 KB (307.200 bytes), como a API. */
 export const LIMITE_LOGO = 300 * 1024
 
 /** A mesma mensagem da API (422 `arquivo`). */
 export const MENSAGEM_LOGO = 'Use uma imagem PNG ou JPG de até 300 KB.'
+
+/** Banco de imagens (etapa 5e): até 1 MB (1.048.576 bytes). */
+export const LIMITE_IMAGEM_BANCO = 1024 * 1024
+
+/** A mesma mensagem da API (422 `arquivo` em POST /imagens). */
+export const MENSAGEM_IMAGEM_BANCO = 'Use uma imagem PNG ou JPG de até 1 MB.'
 
 /** Para o seletor de arquivos: só PNG e JPG. */
 export const ACEITA_LOGO = 'image/png,image/jpeg'
@@ -30,15 +37,25 @@ async function inicioDoArquivo(f: Blob, n: number): Promise<Uint8Array | null> {
 const comeca = (b: Uint8Array, assinatura: number[]) => assinatura.every((v, i) => b[i] === v)
 
 /**
- * Confere o arquivo antes de enviar: até 300 KB e PNG ou JPG de verdade (pelos primeiros bytes, como o servidor,
- * e não pela extensão). Devolve a mensagem do problema ou null se está tudo certo.
+ * Confere o arquivo antes de enviar: até `limite` bytes e PNG ou JPG de verdade (pelos primeiros bytes, como o
+ * servidor, e não pela extensão). Devolve `mensagem` se houver problema, ou null se está tudo certo.
  */
-export async function conferirLogo(f: File): Promise<string | null> {
-  if (!f.size || f.size > LIMITE_LOGO) return MENSAGEM_LOGO
+export async function conferirImagem(f: File, limite: number, mensagem: string): Promise<string | null> {
+  if (!f.size || f.size > limite) return mensagem
   const inicio = await inicioDoArquivo(f, 8)
-  if (inicio) return comeca(inicio, PNG) || comeca(inicio, JPEG) ? null : MENSAGEM_LOGO
+  if (inicio) return comeca(inicio, PNG) || comeca(inicio, JPEG) ? null : mensagem
   // Sem conseguir ler (navegador antigo): vale o tipo informado; o servidor confere de novo.
-  return f.type === 'image/png' || f.type === 'image/jpeg' ? null : MENSAGEM_LOGO
+  return f.type === 'image/png' || f.type === 'image/jpeg' ? null : mensagem
+}
+
+/** Logo da empresa ou do formulário: até 300 KB. */
+export function conferirLogo(f: File): Promise<string | null> {
+  return conferirImagem(f, LIMITE_LOGO, MENSAGEM_LOGO)
+}
+
+/** Imagem do banco de imagens (etapa 5e): até 1 MB. */
+export function conferirImagemBanco(f: File): Promise<string | null> {
+  return conferirImagem(f, LIMITE_IMAGEM_BANCO, MENSAGEM_IMAGEM_BANCO)
 }
 
 /** Imagem guardada pela própria plataforma (logo enviado como arquivo): `.../publico/imagens/{chave}`. */

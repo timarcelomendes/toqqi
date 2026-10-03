@@ -1,6 +1,6 @@
-"""Aplicação FastAPI do Toqqi (etapas 1 a 5c: acesso, equipe, cadastros, formulários, páginas públicas, envios,
+"""Aplicação FastAPI do Toqqi (etapas 1 a 5e: acesso, equipe, cadastros, formulários, páginas públicas, envios,
 integrações, WhatsApp automático, respostas, planos de ação, painel, IA por resposta, relatórios, assinatura, Ajuda,
-assistente e crescimento)."""
+assistente, crescimento, IA sob demanda e e-mails: banco de imagens e e-mails enviados)."""
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -31,6 +31,7 @@ from toqqi.modulos.envios.rotas import router as envios
 from toqqi.modulos.envios.rotas import router_interno as interno
 from toqqi.modulos.equipe.rotas import router as equipe
 from toqqi.modulos.formularios.rotas import router as formularios
+from toqqi.modulos.imagens.rotas import router as imagens
 from toqqi.modulos.importacao.rotas import router as importacao
 from toqqi.modulos.integracoes.rotas import router as integracoes
 from toqqi.modulos.integracoes.rotas import router_chave as integracao
@@ -43,9 +44,18 @@ from toqqi.modulos.whatsapp.rotas import router as whatsapp
 from toqqi.modulos.whatsapp.rotas import router_publico as whatsapp_publico
 
 PREFIXO = "/api/v1"
-# Rotas públicas (sem login) que só recebem pouco texto: o corpo maior que isto é recusado (413) sem ser lido inteiro.
-# A indicação tem poucos campos curtos (nome, empresa, telefone, e-mail e observação de até 500 caracteres).
-LIMITES_DE_CORPO = [("POST", rf"{PREFIXO}/publico/convites/[^/]+/indicacoes", 20 * 1024)]
+# Corpo maior que isto é recusado (413) sem ser lido inteiro. A indicação (pública) tem poucos campos curtos (nome,
+# empresa, telefone, e-mail e observação de até 500 caracteres). Os envios de arquivo são lidos pelo FastAPI antes de o
+# login ser conferido: o teto vale o limite do arquivo + folga do multipart (o arquivo um pouco acima do limite ainda
+# chega à rota e recebe a mensagem de sempre; os enormes param aqui).
+_FOLGA_MULTIPART = 64 * 1024
+LIMITES_DE_CORPO = [
+    ("POST", rf"{PREFIXO}/publico/convites/[^/]+/indicacoes", 20 * 1024),
+    ("POST", rf"{PREFIXO}/imagens", 1024 * 1024 + _FOLGA_MULTIPART),
+    ("PUT", rf"{PREFIXO}/conta/logo", 300 * 1024 + _FOLGA_MULTIPART),
+    ("POST", rf"{PREFIXO}/formularios/[^/]+/logo", 300 * 1024 + _FOLGA_MULTIPART),
+    ("POST", rf"{PREFIXO}/importacao/analisar", 5 * 1024 * 1024 + _FOLGA_MULTIPART),
+]
 log = logging.getLogger("toqqi")
 if not log.handlers:  # mensagens da aplicação (inclusive INFO) aparecem no log do Render
     _h = logging.StreamHandler()
@@ -100,7 +110,7 @@ def create_app() -> FastAPI:
     )
 
     for r in (acesso, equipe, conta, auditoria, plataforma, cadastros, empresas, contatos, importacao,
-              formularios, publico, envios, interno, integracoes, whatsapp, integracao, whatsapp_publico,
+              formularios, imagens, publico, envios, interno, integracoes, whatsapp, integracao, whatsapp_publico,
               respostas, acoes, crescimento, painel, relatorios, assinatura, asaas_webhook, ajuda, assistente):
         app.include_router(r, prefix=PREFIXO)
 

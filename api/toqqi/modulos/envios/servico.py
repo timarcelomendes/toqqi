@@ -1,4 +1,11 @@
-"""Envios: configuração, fila, disparo manual, histórico, WhatsApp e execução manual das tarefas."""
+"""Envios: configuração (inclusive o visual dos e-mails de pesquisa), fila, disparo manual, histórico, WhatsApp e
+execução manual das tarefas.
+
+Visual dos e-mails (etapa 5e): a imagem de topo precisa ser uma imagem do banco de imagens da conta (outra → 422 no
+campo); ela é conferida com FOR KEY SHARE, e a exclusão no banco de imagens trava a imagem antes de conferir se está em
+uso, então as duas não se cruzam. O e-mail de teste usa a configuração salva e entra no registro de e-mails enviados
+(tipo `teste`).
+"""
 from datetime import datetime, time, timedelta
 
 from sqlalchemy import and_, exists, func, not_, or_, select
@@ -11,7 +18,7 @@ from toqqi.core.deps import Contexto
 from toqqi.core.email import FalhaEnvio, enviar_mensagem
 from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.paginacao import Pagina
-from toqqi.modelos import Conta, Contato, Empresa, Envio, Formulario, Usuario
+from toqqi.modelos import Conta, Contato, Empresa, Envio, Formulario, Imagem, Usuario
 from toqqi.modulos.contatos.servico import formulario_para_envio
 from toqqi.modulos.envios import automacao, mensagens
 from toqqi.modulos.envios.configuracao import (
@@ -21,8 +28,10 @@ from toqqi.modulos.envios.configuracao import (
     erro_pre_condicao,
     exigir,
     formulario_ok,
+    imagem_topo,
     obter,
     pre_condicoes,
+    visual,
 )
 from toqqi.modulos.envios.descadastro import esta_descadastrado
 from toqqi.modulos.envios.esquemas import FiltrosFila
@@ -34,13 +43,14 @@ from toqqi.modulos.envios.processamento import (
     ordem_canais,
     whatsapp_da_config,
 )
-from toqqi.modulos.imagens.servico import logo_para_cliente
 from toqqi.modulos.respostas.convites import link_do_convite, novo_convite
 from toqqi.modulos.whatsapp import franquia
 
 Pares = list[tuple[int, int]]
 MAX_IGNORADOS = 500
-ANULAVEIS = {"responder_para", "remetente_nome"}
+ANULAVEIS = {"responder_para", "remetente_nome", "email_cor", "email_imagem_topo_id", "email_assinatura",
+             "email_rodape"}
+MSG_IMAGEM_TOPO = "Escolha uma imagem do banco de imagens da conta."
 
 
 # ---- configuração -----------------------------------------------------------
@@ -52,10 +62,17 @@ def ver_pre_condicoes(ctx: Contexto) -> dict:
 
 def ver_config(ctx: Contexto) -> dict:
     with em_conta(ctx.conta_id) as s:
-        return config_json(obter(s))
+        cfg = obter(s)
+        return config_json(cfg, imagem_topo(s, cfg))
 
 
-def _validar(s, v: dict) -> None:
+def _imagem_do_banco(s, conta_id: int, imagem_id: int) -> bool:
+    """A imagem é do banco de imagens da conta? Trava com FOR KEY SHARE até o fim da transação (a exclusão espera)."""
+    return s.scalar(select(Imagem.id).where(Imagem.id == imagem_id, Imagem.conta_id == conta_id,
+                                            Imagem.uso == "banco").with_for_update(read=True, key_share=True)) is not None
+
+
+def _validar(s, v: dict, conta_id: int) -> None:
     campos: dict[str, str] = {}
     if v["janela_fim"] <= v["janela_inicio"]:
         campos["janela_fim"] = "O fim da janela precisa ser depois do início."
@@ -71,6 +88,8 @@ def _validar(s, v: dict) -> None:
     f = s.get(Formulario, v["formulario_id"]) if v["formulario_id"] else None
     if f is None or not f.ativo or f.arquivado:
         campos["formulario_id"] = "Escolha um formulário ativo da conta."
+    if v["email_imagem_topo_id"] is not None and not _imagem_do_banco(s, conta_id, v["email_imagem_topo_id"]):
+        campos["email_imagem_topo_id"] = MSG_IMAGEM_TOPO
     if campos:
         raise AppError(422, "dados_invalidos", "Confira os campos destacados.", campos)
 
@@ -86,13 +105,13 @@ def salvar_config(ctx: Contexto, dados) -> dict:
         if "lembretes" in novos and "dias_lembretes" not in novos and len(v["dias_lembretes"]) != v["lembretes"]:
             atuais = list(cfg.dias_lembretes)
             v["dias_lembretes"] = (atuais if len(atuais) >= v["lembretes"] else DIAS_LEMBRETES_PADRAO)[: v["lembretes"]]
-        _validar(s, v)
-        antes = config_json(cfg)
+        _validar(s, v, ctx.conta_id)
+        antes = config_json(cfg, imagem_topo(s, cfg))
         for c, valor in v.items():
             setattr(cfg, c, valor)
         cfg.atualizado_em = relogio.agora()
         s.flush()
-        depois = config_json(cfg)
+        depois = config_json(cfg, imagem_topo(s, cfg))
         mudou = sorted(c for c in depois if depois[c] != antes[c])
         if mudou:
             registrar(s, "config_envios", "info", {"campos": mudou}, usuario_id=ctx.usuario_id)
@@ -100,6 +119,7 @@ def salvar_config(ctx: Contexto, dados) -> dict:
 
 
 def enviar_teste(ctx: Contexto) -> dict:
+    """Um convite de exemplo para quem pediu, com a configuração salva (textos e visual)."""
     with em_conta(ctx.conta_id) as s:
         cfg = obter(s)
         exigir(s, cfg, ("provedor", "formulario"))
@@ -109,10 +129,9 @@ def enviar_teste(ctx: Contexto) -> dict:
             conta_id=ctx.conta_id, para=ctx.email, empresa=empresa, assunto=cfg.assunto_convite,
             texto=cfg.texto_convite, perguntas=f.perguntas, link=mensagens.link_formulario_publico(f.codigo_publico),
             v=mensagens.variaveis(empresa, ctx.usuario.get("nome")), remetente_nome=cfg.remetente_nome,
-            responder_para=cfg.responder_para,
-            logo_url=logo_para_cliente(s, ctx.conta_id, (f.tema or {}).get("logo_url")))
+            responder_para=cfg.responder_para, visual=visual(s, cfg, ctx.conta_id, f.tema))
     try:
-        enviar_mensagem(m)
+        enviar_mensagem(m, conta_id=ctx.conta_id, tipo="teste")
     except FalhaEnvio as falha:
         raise AppError(409, "falha_envio", falha.mensagem)
     return {"mensagem": f"Enviamos um exemplo para {ctx.email}."}

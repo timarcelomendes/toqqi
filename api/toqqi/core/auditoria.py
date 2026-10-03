@@ -68,6 +68,8 @@ ROTULOS = {
     "indicacao_atualizada": "Situação de uma indicação alterada",
     "indicacao_excluida": "Indicação excluída (pedido da pessoa indicada)",
     "config_crescimento": "Configurações de crescimento alteradas",
+    "imagem_enviada": "Imagem enviada ao banco de imagens",
+    "imagem_excluida": "Imagem excluída do banco de imagens",
 }
 
 

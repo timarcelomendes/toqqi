@@ -3,7 +3,8 @@
 Destinatários: usuários ativos, com e-mail confirmado e permissão `painel.ver` (admin sempre), com a preferência
 ligada (`recebe_alertas` / `recebe_resumo_semanal`, em Minha conta). Só com provedor de e-mail real (`provedor_ok`)
 e conta liberada (assinatura em dia). São e-mails do sistema (`core.email.enviar`, o visual do "Alerta de risco"), um
-por pessoa, e não entram no histórico de envios.
+por pessoa, e não entram no histórico de envios (entram no registro de e-mails enviados da conta: tipos `pico` e
+`resumo_semanal`).
 
 As tarefas rodam por conta (a lista vem do modo sistema, o trabalho de cada conta em em_conta); uma conta com erro
 não derruba as outras.
@@ -169,7 +170,7 @@ def picos_conta(conta_id: int) -> dict:
     for alerta_id, pico, exemplos in novos:  # depois do commit: o alerta já está gravado
         assunto, paragrafos, botao = _email_pico(conta_nome, pico, exemplos)
         for destino in para:
-            email.enviar(destino, assunto, paragrafos, botao, rodape(conta_nome))
+            email.enviar(destino, assunto, paragrafos, botao, rodape(conta_nome), conta_id=conta_id, tipo="pico")
         emails += len(para)
         with em_conta(conta_id) as s:
             s.execute(update(AlertaPico).where(AlertaPico.id == alerta_id)
@@ -329,7 +330,8 @@ def resumo_conta(conta_id: int, semana: date) -> dict | None:
         conta_nome = conta.nome
     assunto, paragrafos = conteudo
     for destino in para:  # depois do commit: o resumo já está registrado
-        email.enviar(destino, assunto, paragrafos, ("Abrir o painel", _url("/inicio")), rodape(conta_nome))
+        email.enviar(destino, assunto, paragrafos, ("Abrir o painel", _url("/inicio")), rodape(conta_nome),
+                     conta_id=conta_id, tipo="resumo_semanal")
     with em_conta(conta_id) as s:
         s.execute(update(ResumoSemanal).where(ResumoSemanal.id == resumo_id)
                   .values(enviado_em=relogio.agora(), destinatarios=len(para)))

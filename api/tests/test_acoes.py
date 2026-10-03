@@ -11,6 +11,7 @@ from util import (
     criar_empresa,
     criar_form,
     criar_responsavel,
+    emails_enviados,
     emails_para,
     form_padrao,
     link_pesquisa,
@@ -171,6 +172,10 @@ def test_alerta_ao_responsavel(client, cliente):
     a = _acao_da_ultima_resposta(client, h)
     m, = emails_para("rita@alfa.com.br")
     assert m.assunto == "Alerta de risco: Atacado Norte deu nota 2"
+    # etapa 5e: entra no registro de e-mails enviados da conta
+    assert [(e["tipo"], e["tipo_rotulo"], e["assunto"], e["situacao"])
+            for e in emails_enviados(client, h, tipo="alerta_risco")] == [
+        ("alerta_risco", "Alerta de risco", m.assunto, "enviado")]
     assert "Atacado Norte deu nota 2 e precisa de atenção." in m.texto
     assert "Nota: 2 · Categoria: Detrator (NPS)" in m.texto
     assert "Comentário: Produto veio quebrado" in m.texto

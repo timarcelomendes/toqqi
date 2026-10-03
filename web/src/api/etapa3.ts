@@ -2,6 +2,7 @@
 import { api, requisitar } from './cliente'
 import type {
   ConfigEnvios,
+  DadosConfigEnvios,
   ContatoEnvio,
   Descadastro,
   Envio,
@@ -57,7 +58,9 @@ export interface FiltrosHistorico {
 export const enviosApi = {
   preCondicoes: () => api.get<PreCondicoes>('/envios/pre-condicoes'),
   configuracao: () => api.get<ConfigEnvios>('/envios/configuracao'),
-  salvarConfiguracao: (dados: Partial<ConfigEnvios>) => api.put<ConfigEnvios>('/envios/configuracao', dados),
+  /** Etapa 5e: o visual vai junto; a imagem de topo pelo id (`email_imagem_topo_id`). */
+  salvarConfiguracao: (dados: DadosConfigEnvios) => api.put<ConfigEnvios>('/envios/configuracao', dados),
+  /** Usa a configuração salva (a tela só deixa enviar sem mudanças pendentes). */
   enviarTeste: () => api.post<Mensagem>('/envios/configuracao/teste'),
   resumo: () => api.get<ResumoEnvios>('/envios/resumo'),
   contatos: (filtros: FiltrosFila = {}, sinal?: AbortSignal) =>

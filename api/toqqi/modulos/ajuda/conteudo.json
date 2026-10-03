@@ -1074,6 +1074,10 @@
             {
               "tipo": "paragrafo",
               "texto": "Nas linhas “Não saiu”, o botão “Tentar de novo” reenvia a mensagem. Dá para tentar de novo apenas o erro mais recente do contato."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Quer ver todos os e-mails que saíram em nome da conta, inclusive os do Toqqi para a equipe (confirmação de e-mail, alertas, resumo semanal)? Veja Auditoria › E-mails enviados."
             }
           ]
         },
@@ -2852,7 +2856,7 @@
               "itens": [
                 "Empresa: nome, dados, endereço e logo da sua empresa.",
                 "Segurança: tempo de sessão e domínios de e-mail liberados.",
-                "Envios: quando, com que frequência e com quais palavras a pesquisa chega aos clientes.",
+                "Envios: quando, com que frequência e com quais palavras a pesquisa chega aos clientes, e o visual dos e-mails (cor, logo, imagem de topo, assinatura e rodapé).",
                 "Planos de ação: prazos das ações automáticas.",
                 "IA: análise dos comentários, como a IA escreve (modelo e estilo), passos nas ações e cota de inteligência artificial."
               ]
@@ -2985,7 +2989,7 @@
             },
             {
               "tipo": "dica",
-              "texto": "Comece com os envios desligados, confira os textos, clique em “Enviar um exemplo para mim” e só então ligue."
+              "texto": "Comece com os envios desligados, confira os textos e o visual, clique em “Enviar e-mail de teste” e só então ligue."
             }
           ]
         },
@@ -3008,7 +3012,10 @@
             "prévia",
             "modelo de mensagem",
             "{nome}",
-            "{link}"
+            "{link}",
+            "{motivo}",
+            "{nota}",
+            "e-mail de teste"
           ],
           "blocos": [
             {
@@ -3025,7 +3032,91 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Em Agradecimento, ligue “Agradecer quem responde” para mandar um e-mail curto logo depois da resposta, com um texto para quem deu nota alta (9 ou 10), média (7 ou 8) ou baixa (0 a 6). Nesses textos, {nota} mostra a nota que o cliente deu. O agradecimento só vai para quem tem e-mail e não saiu da lista."
+              "texto": "Em Agradecimento, ligue “Agradecer quem responde” para mandar um e-mail curto logo depois da resposta, com um texto para quem deu nota alta (9 ou 10), média (7 ou 8) ou baixa (0 a 6). Nesses textos, {nota} mostra a nota que o cliente deu e {motivo} mostra o que ele comentou, numa linha só e com até 200 caracteres (sem comentário, {motivo} fica vazio). O agradecimento só vai para quem tem e-mail e não saiu da lista."
+            },
+            {
+              "tipo": "dica",
+              "texto": "“Enviar e-mail de teste” manda um convite de exemplo para o seu e-mail com os textos e o visual que estão salvos. Com mudanças não salvas, o botão fica desligado: salve primeiro. O teste também aparece em Auditoria › E-mails enviados."
+            }
+          ]
+        },
+        {
+          "id": "visual-dos-emails",
+          "titulo": "Visual dos e-mails: cor, logo, imagem de topo, assinatura e rodapé",
+          "somente_admin": true,
+          "atalho": "config_envios",
+          "palavras": [
+            "visual do e-mail",
+            "aparência do e-mail",
+            "cor do e-mail",
+            "cor de destaque",
+            "logo no e-mail",
+            "imagem de topo",
+            "banner",
+            "cabeçalho do e-mail",
+            "assinatura",
+            "rodapé",
+            "layout do e-mail",
+            "personalizar e-mail",
+            "html"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Configurações › Envios, a seção “Visual dos e-mails” muda a cara do convite, do lembrete e do agradecimento sem precisar de HTML: você escolhe num formulário e o Toqqi monta o e-mail, que funciona no Gmail, no Outlook e no celular."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Cor de destaque: com “Usar a cor do formulário” ligado, vale a cor do formulário de cada pesquisa. Desligado, escolha uma cor (formato #RRGGBB, como #D63A18). Ela aparece na faixa do alto do e-mail e no botão “Responder pesquisa”.",
+                "Se a cor for clara demais, o texto do botão fica escuro para continuar legível. Os botões da nota continuam vermelho, amarelo e verde.",
+                "Mostrar o logo: vale o logo do formulário da pesquisa; sem ele, o logo da empresa.",
+                "Imagem de topo: uma imagem do banco de imagens da conta, na largura do e-mail, logo abaixo do logo. O tamanho que fica melhor é 1200 × 400 px.",
+                "Assinatura (até 300 caracteres): entra depois do texto e da nota, em cinza.",
+                "Rodapé (até 500 caracteres): entra no fim do e-mail. As linhas “Você recebeu esta pesquisa porque é cliente de…” e “Não quero mais receber pesquisas” entram sempre."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Assinatura e rodapé são texto puro: quebras de linha valem, mas negrito, links e HTML não. A prévia ao lado mostra o convite, o lembrete e o agradecimento com o visual, na hora. Clique em “Salvar alterações” para valer nos próximos e-mails."
+            }
+          ]
+        },
+        {
+          "id": "banco-de-imagens",
+          "titulo": "Banco de imagens da conta",
+          "somente_admin": true,
+          "atalho": "config_envios",
+          "palavras": [
+            "banco de imagens",
+            "imagens",
+            "enviar imagem",
+            "subir imagem",
+            "trocar imagem",
+            "excluir imagem",
+            "imagem em uso",
+            "limite de imagens",
+            "png",
+            "jpg",
+            "tamanho da imagem"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O banco de imagens guarda as imagens que a conta pode usar no visual dos e-mails. Ele abre em “Escolher imagem” ou “Trocar”, na Imagem de topo de Configurações › Envios."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Enviar imagem: PNG ou JPG de até 1 MB. Para o topo do e-mail, use 1200 × 400 px.",
+                "Cada imagem mostra o nome do arquivo e as dimensões. A que está no topo dos e-mails aparece como “Em uso”.",
+                "A conta guarda até 30 imagens. Para enviar outra, exclua uma que não usa mais.",
+                "Uma imagem em uso não pode ser excluída: troque ou remova a imagem de topo antes."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "As imagens ficam num endereço difícil de adivinhar, aberto sem login, para aparecerem no e-mail de quem recebe. Não use imagens com dados pessoais. Os logos da empresa e dos formulários continuam em Empresa e no editor de formulários, com até 300 KB, e não aparecem no banco."
             }
           ]
         },
@@ -3362,7 +3453,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Em Administração › Auditoria, você vê tudo o que aconteceu de importante na conta: quem fez, o quê e quando. Entram, por exemplo, entradas no sistema, mudanças na equipe e nas configurações, importações e chaves de integração geradas."
+              "texto": "Em Administração › Auditoria, a aba Atividades mostra tudo o que aconteceu de importante na conta: quem fez, o quê e quando. Entram, por exemplo, entradas no sistema, mudanças na equipe e nas configurações, importações, imagens enviadas ou excluídas e chaves de integração geradas. A aba E-mails enviados lista os e-mails que saíram em nome da conta."
             },
             {
               "tipo": "lista",
@@ -3376,6 +3467,43 @@
             {
               "tipo": "paragrafo",
               "texto": "Só quem tem a permissão “Ver o registro de atividades”, o administrador, acessa esta tela."
+            }
+          ]
+        },
+        {
+          "id": "auditoria-emails-enviados",
+          "titulo": "Auditoria: e-mails enviados",
+          "somente_admin": true,
+          "atalho": null,
+          "palavras": [
+            "e-mails enviados",
+            "emails enviados",
+            "e-mail falhou",
+            "e-mail não chegou",
+            "email não chegou",
+            "registro de e-mails",
+            "falhas de envio",
+            "destinatário",
+            "situação do e-mail",
+            "ver só as falhas"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Auditoria › E-mails enviados aparece cada e-mail que saiu em nome da conta: convites, lembretes, agradecimentos e o e-mail de teste, e também os e-mails do Toqqi para a equipe, como confirmação de e-mail, redefinição de senha, alerta de risco, resumo semanal, pico de reclamações, nova indicação e avisos aos administradores."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Cada linha mostra a data, o tipo, o destinatário, o assunto, a situação e, quando falhou, o motivo em linguagem simples.",
+                "Enviado quer dizer que o provedor de e-mail aceitou a mensagem. Devoluções da caixa de quem recebe não aparecem aqui.",
+                "Filtros: período (o padrão são os últimos 30 dias, até 90), situação, tipo e busca por destinatário ou assunto.",
+                "Se algum e-mail falhou nos últimos 7 dias, um aviso no alto mostra quantos, com o botão “Ver só as falhas”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O Toqqi guarda os últimos 90 dias e apaga os mais antigos sozinho. Só quem tem a permissão “Ver o registro de atividades”, o administrador, acessa esta tela."
             }
           ]
         }

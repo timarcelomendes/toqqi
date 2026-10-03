@@ -137,7 +137,7 @@ def reenviar_confirmacao(ctx: Contexto, usuario_id: int) -> str:
             return "O e-mail deste usuário já está confirmado."
         token = criar_token(s, u.id, ctx.conta_id, "confirmar_email")
         nome, email = u.nome, u.email
-    emails.confirmar_email(nome, email, token)
+    emails.confirmar_email(nome, email, token, ctx.conta_id)
     return f"Enviamos um novo link de confirmação para {email}."
 
 

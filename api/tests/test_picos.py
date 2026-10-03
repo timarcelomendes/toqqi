@@ -194,6 +194,9 @@ def test_alerta_de_pico_uma_vez_a_cada_7_dias(client, conta, dono, monkeypatch):
     (reclamacoes, media, enviado, destinatarios), = sql(
         dono, "select reclamacoes, media_anterior, enviado_em, destinatarios from alertas_pico")
     assert (reclamacoes, float(media), destinatarios) == (6, 0.0, 1) and enviado is not None
+    # etapa 5e: entra no registro de e-mails enviados da conta
+    assert sql(dono, "select conta_id, tipo, destinatario, assunto, situacao from emails_enviados where tipo = 'pico'"
+               ) == [(a["conta"]["id"], "pico", "ana@alfa.com.br", "Pico de reclamações: Prazo e entrega", "enviado")]
     # mesma rodada de novo, ou daqui a 6 dias: não repete
     assert tarefas.executar("picos")["picos"] == {"picos": 0, "emails": 0}
     fixar_relogio(monkeypatch, relogio.agora() + timedelta(days=6))

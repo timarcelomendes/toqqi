@@ -1,4 +1,4 @@
-// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b, -5a, -5b, -5c e -5d).
+// Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b, -5a, -5b, -5c, -5d e -5e).
 import type { Contexto, GrupoNota, Pergunta, Tema } from '@/pesquisa/tipos'
 
 export type Perfil = 'admin' | 'gestor' | 'consulta'
@@ -527,7 +527,26 @@ export interface ConfigEnvios {
   agradecimento: Agradecimentos
   /** Etapa 3b: por onde a pesquisa sai. Se não vier (API antiga), vale "email". */
   canal?: CanalConfig
+  /**
+   * Etapa 5e (visual dos e-mails de pesquisa; opcionais porque a API antiga não manda). Cor de destaque `#RRGGBB`;
+   * null = a cor do tema do formulário do envio.
+   */
+  email_cor?: string | null
+  /** Mostra o logo (o do formulário; sem ele, o da empresa). Sem o campo, vale true. */
+  email_mostrar_logo?: boolean
+  /** Imagem de topo: uma imagem do banco de imagens da conta. */
+  email_imagem_topo?: ImagemTopoEmail | null
+  /** Texto puro, até 300 (null = sem assinatura). */
+  email_assinatura?: string | null
+  /** Texto puro, até 500 (null = só as linhas fixas do rodapé). */
+  email_rodape?: string | null
 }
+
+/**
+ * Corpo de PUT /envios/configuracao (parcial: só os campos enviados mudam). A imagem de topo vai pelo id
+ * (`email_imagem_topo_id`: uma imagem do banco da conta, ou null), não pelo objeto que o GET devolve.
+ */
+export type DadosConfigEnvios = Partial<Omit<ConfigEnvios, 'email_imagem_topo'>> & { email_imagem_topo_id?: Id | null }
 
 export interface ResumoEnvios {
   na_fila: number
@@ -1852,4 +1871,86 @@ export interface ResultadoGeracaoIa<C = unknown> {
   item: ItemGeracaoIa<C>
   cota: CotaIa
   pode_gerar_em: string | null
+}
+
+// ───────────────────────── Etapa 5e (docs/api-etapa-5e.md) ─────────────────────────
+
+/** A imagem de topo dos e-mails, como vem em GET /envios/configuracao. Dimensões nulas quando não deu para ler. */
+export interface ImagemTopoEmail {
+  id: Id
+  url: string
+  largura: number | null
+  altura: number | null
+}
+
+/** Item do banco de imagens da conta (GET /imagens e a resposta 201 de POST /imagens). */
+export interface ImagemBanco {
+  id: Id
+  /** URL pública (/publico/imagens/{chave}), sem login. */
+  url: string
+  /** Nome do arquivo enviado, limpo (até 120); pode faltar. */
+  nome: string | null
+  /** "image/png" ou "image/jpeg". */
+  tipo: string
+  /** Em bytes. */
+  tamanho: number
+  largura: number | null
+  altura: number | null
+  criada_em: string
+  /** É a imagem de topo dos e-mails (a configuração salva): não dá para excluir. */
+  em_uso: boolean
+}
+
+/** GET /imagens: só as do banco, mais novas primeiro, e o limite da conta (30). */
+export interface BancoImagens {
+  itens: ImagemBanco[]
+  limite: number
+}
+
+/** Quem gerou cada e-mail registrado em Auditoria › E-mails enviados (a API manda também o rótulo em português). */
+export type TipoEmailEnviado =
+  | 'convite'
+  | 'lembrete'
+  | 'agradecimento'
+  | 'teste'
+  | 'confirmacao'
+  | 'senha'
+  | 'boas_vindas'
+  | 'alerta_risco'
+  | 'resumo_semanal'
+  | 'pico'
+  | 'indicacao'
+  | 'aviso'
+  | 'cobranca'
+  | (string & {})
+
+/** `enviado`: o provedor aceitou (devoluções da caixa de quem recebe não aparecem); `falhou`: com o erro em texto simples. */
+export type SituacaoEmailEnviado = 'enviado' | 'falhou'
+
+export interface EmailEnviado {
+  id: Id
+  tipo: TipoEmailEnviado
+  tipo_rotulo: string
+  destinatario: string
+  /** Como saiu (cortado em 300). Nada do corpo. */
+  assunto: string
+  situacao: SituacaoEmailEnviado | (string & {})
+  erro: string | null
+  criado_em: string
+}
+
+/** GET /auditoria/emails: a página e as falhas da conta nos últimos 7 dias (sem os filtros). */
+export interface PaginaEmailsEnviados extends Pagina<EmailEnviado> {
+  falhas_7_dias: number
+}
+
+/** Filtros de GET /auditoria/emails. Sem `de`/`ate`, a API usa os últimos 30 dias (até 90). */
+export interface FiltrosEmailsEnviados {
+  de?: string
+  ate?: string
+  situacao?: SituacaoEmailEnviado | ''
+  tipo?: TipoEmailEnviado | ''
+  busca?: string
+  pagina?: number
+  por_pagina?: number
 }

@@ -17,7 +17,7 @@ from toqqi.modelos import AceiteTermos, Usuario
 # Versão dos dois documentos (Termos de uso e Política de privacidade). Precisa ser IGUAL ao número em
 # web/src/modulos/geral/legal/versao.ts: mudou o texto de forma relevante, sobe os dois juntos no mesmo commit
 # (todo mundo vê a tela de aceite de novo).
-VERSAO_DOCUMENTOS = 2  # 2 (etapa 5d): a Política passa a descrever os cinco recursos de IA
+VERSAO_DOCUMENTOS = 3  # 2 (etapa 5d): os cinco recursos de IA; 3 (etapa 5e): o registro de e-mails enviados (90 dias)
 
 AGENTE_MAX = 400
 ORIGENS = ("cadastro", "tela")

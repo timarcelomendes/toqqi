@@ -128,6 +128,10 @@ def test_conteudo_de_uma_semana(client, conta, dono):
     assert '<a href="http://app.teste/minha-conta" style="color:#666">Minha conta</a>' in m.html
     (semana, enviado, destinatarios), = sql(dono, "select semana, enviado_em, destinatarios from resumos_semanais")
     assert semana == w and enviado is not None and destinatarios == 1
+    # etapa 5e: entra no registro de e-mails enviados da conta
+    assert sql(dono, "select conta_id, tipo, destinatario, assunto, situacao from emails_enviados "
+                     "where tipo = 'resumo_semanal'") == [(a["conta"]["id"], "resumo_semanal", "ana@alfa.com.br",
+                                                            m.assunto, "enviado")]
 
 
 def test_semana_sem_nps_e_sem_detratores(client, conta, dono):

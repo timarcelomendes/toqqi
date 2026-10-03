@@ -94,7 +94,13 @@ const rotas: RouteRecordRaw[] = [
       },
       { path: 'configuracoes/ia', name: 'config-ia', component: () => import('@/modulos/configuracoes/IaView.vue'), meta: { titulo: 'Inteligência artificial', permissao: 'configuracoes.gerenciar' } },
       { path: 'integracoes', name: 'integracoes', component: () => import('@/modulos/integracoes/IntegracoesView.vue'), meta: { titulo: 'Integrações', admin: true } },
-      { path: 'auditoria', name: 'auditoria', component: () => import('@/modulos/auditoria/AuditoriaView.vue'), meta: { titulo: 'Auditoria', permissao: 'auditoria.ver' } },
+      // Etapa 5e: abas "Atividades" (/auditoria) e "E-mails enviados" (/auditoria/emails; /auditoria?aba=emails também abre).
+      {
+        path: 'auditoria/:aba(atividades|emails)?',
+        name: 'auditoria',
+        component: () => import('@/modulos/auditoria/AuditoriaView.vue'),
+        meta: { titulo: 'Auditoria', permissao: 'auditoria.ver', manterRolagem: true },
+      },
       { path: 'plataforma', name: 'plataforma', component: () => import('@/modulos/plataforma/PlataformaView.vue'), meta: { titulo: 'Plataforma', superadmin: true } },
     ],
   },

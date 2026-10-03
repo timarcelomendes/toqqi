@@ -131,7 +131,7 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
   que já existiam.
 
 ## Etapa 3a: envios
-- **Tarefas periódicas**: `python -m toqqi.tarefas [assinaturas|robo|lembretes|pendentes|webhooks|ia|picos|resumo|tudo]` ou
+- **Tarefas periódicas**: `python -m toqqi.tarefas [assinaturas|robo|lembretes|pendentes|webhooks|ia|picos|resumo|limpeza|tudo]` ou
   `POST /api/v1/interno/tarefas` com `X-Tarefas-Token` (comparação em tempo constante). Em produção, a rotina do GitHub
   (`.github/workflows/tarefas.yml`) chama a rota a cada 30 minutos (o Cron Job `toqqi-tarefas` do Render, que roda o
   comando direto no banco, está comentado no `render.yaml` para quando valer o custo); cada conta decide se é hora (janela, dias úteis, 6 h entre rodadas do robô, lembretes uma vez
@@ -527,6 +527,31 @@ Contrato em `../docs/api-etapa-5d.md`; migração `0013_ia_sob_demanda` (colunas
   'falhou' na hora) e `[ia:demora=N]` (responde depois de N segundos, até 30). Num comentário de cliente (resumo e
   passos) ou no nome da conta (resumo e parecer).
 
+## Etapa 5e: e-mails (visual guiado, banco de imagens, e-mails do sistema na cor da marca, e-mails enviados)
+Contrato em `../docs/api-etapa-5e.md`; migração `0014_emails` (colunas do visual em `config_envios`, `imagens` com
+`uso = 'banco'`, `nome`, `largura`, `altura`; tabela `emails_enviados` com RLS forçado).
+- **Visual dos e-mails de pesquisa** (`envios/configuracao.py` → `visual()`, montado em `envios/mensagens.py`): cor
+  de destaque (`email_cor`, guardada `#RRGGBB` em maiúsculas; nula = `tema.cor` do formulário do envio; nenhuma
+  válida = `#D63A18`), logo (`email_mostrar_logo`), imagem de topo (uma imagem do banco da conta, `width="544"`),
+  assinatura (300) e rodapé (500), sempre texto puro escapado (nenhum HTML da conta entra). Texto do botão
+  "Responder pesquisa": branco com contraste ≥ 4,5:1 (luminância relativa da WCAG), senão `#111827`. Assinatura e
+  rodapé perdem os caracteres de controle (menos a quebra de linha; tab vira espaço) e os controles bidirecionais.
+  O agradecimento ganha `{motivo}` (o comentário do cliente numa linha, até 200 caracteres, sem reticências).
+- **Banco de imagens** (`imagens/banco.py`, `GET/POST /imagens`, `DELETE /imagens/{id}`, `configuracoes.gerenciar`):
+  PNG/JPEG pelos bytes, até 1 MB, até 30 por conta (contagem sob trava por conta); dimensões lidas do cabeçalho
+  (IHDR/SOF). A imagem de topo é uma chave composta `(email_imagem_topo_id, conta_id)` com `ON DELETE SET NULL
+  (email_imagem_topo_id)`; o PUT confere a imagem com `FOR KEY SHARE` e a exclusão trava a imagem antes de conferir
+  "em uso", então os dois não se cruzam. Logos continuam com 300 KB e fora do banco.
+- **E-mails do sistema** (`core/email.enviar`): botão `#D63A18` com texto branco; links e o "copie este endereço"
+  (agora um link) em `#B02F13`.
+- **Registro de e-mails enviados** (`core/email.registrar_envio`): `enviar(..., conta_id=, tipo=)` e
+  `enviar_mensagem(m, conta_id=, tipo=)` gravam uma linha depois da tentativa, numa transação própria (`em_conta`);
+  falha ao gravar só vai para o log (sem dados). Sem `conta_id` ou `tipo`, nada é gravado. Tipos e rótulos em
+  `core.email.TIPOS`. `GET /auditoria/emails` (`auditoria.ver`, `modulos/auditoria/emails.py`) com filtros, busca sem
+  acento e `falhas_7_dias`. A tarefa `limpeza` (também em `tudo`, por último) apaga as linhas com mais de 90 dias, em
+  lotes de 5.000: `{emails_apagados}`.
+- `VERSAO_DOCUMENTOS = 3` (a Política cita o registro de e-mails enviados): todo mundo vê a tela de aceite de novo.
+
 ## Estrutura
 ```
 toqqi/
@@ -540,8 +565,9 @@ toqqi/
   modulos/acesso/         cadastro, entrar, sair, confirmar, reenviar, esqueci, redefinir, pedir-acesso, /eu
   modulos/equipe/         usuários da conta e matriz de permissões
   modulos/conta/          segurança (duração da sessão, domínios liberados), dados da empresa e logo da conta
-  modulos/imagens/        imagens da conta (logo da empresa e dos formulários): envio, URL pública, logo do cliente
-  modulos/auditoria/      registro de atividades
+  modulos/imagens/        imagens da conta (logo da empresa e dos formulários): envio, URL pública, logo do cliente;
+                          banco de imagens da conta (banco.py, rotas /imagens)
+  modulos/auditoria/      registro de atividades e e-mails enviados (emails.py: lista e limpeza)
   modulos/plataforma/     área do superadmin
   modulos/cadastros/      grupos, segmentos, perfis, cargos e responsáveis (teste do Teams)
   modulos/empresas/       empresas (clientes da conta)
@@ -570,6 +596,7 @@ alembic/versions/0005_respostas_acoes.py   data/origem/temas/análise das respos
 alembic/versions/0006_dados_empresa.py   dados da empresa em `contas` e tabela `imagens` (logos) + RLS
 alembic/versions/0007_ia_relatorios.py   IA por resposta, reclamação/elogio por tema, uso da IA, picos, resumos + RLS
 alembic/versions/0008_assinaturas.py   cobrança em `contas`, assinaturas, cobranças e avisos do Asaas + RLS
+alembic/versions/0014_emails.py   visual dos e-mails, banco de imagens e `emails_enviados` + RLS
 scripts/asaas_falso.py             Asaas falso (desenvolvimento local e testes)
 tests/                             pytest
 ```

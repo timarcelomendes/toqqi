@@ -6,7 +6,11 @@ from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, model_va
 from pydantic_core import PydanticCustomError
 
 from toqqi.core.filtros import DataFiltro
-from toqqi.core.validacao import Email, EmailOpcional, Texto, TextoAte
+from toqqi.core.validacao import Email, EmailOpcional, IdBanco, Texto, TextoAte
+from toqqi.modulos.crescimento.esquemas import limpar
+
+MSG_COR = "Use uma cor no formato #RRGGBB, como #D63A18."
+_RE_COR = re.compile(r"#[0-9a-fA-F]{6}")
 
 
 def _hora(v):
@@ -28,10 +32,41 @@ def _vazio_none(v):
     return None if v == "" else v
 
 
+def _cor(v):
+    """#RRGGBB (maiúsculas ou minúsculas), guardada como #RRGGBB em maiúsculas; vazio ou nulo = nula."""
+    if v is None or v == "":
+        return None
+    if not isinstance(v, str) or not _RE_COR.fullmatch(v.strip()):
+        raise PydanticCustomError("toqqi_cor", MSG_COR)
+    return v.strip().upper()
+
+
+def _texto_do_email(maximo: int):
+    """Assinatura e rodapé dos e-mails: texto puro sem caracteres de controle (menos a quebra de linha; tab vira
+    espaço), nem controles bidirecionais; vazio ou nulo = nulo; acima de `maximo` (depois da limpeza) = 422."""
+    longo = f"Use no máximo {maximo} caracteres."
+
+    def validar(v):
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise PydanticCustomError("toqqi_texto", "Informe um texto.")
+        if len(v) > maximo * 4:  # nem limpa: a limpeza percorre o texto inteiro
+            raise PydanticCustomError("toqqi_texto", longo)
+        v = limpar(v, linhas=True)
+        if len(v) > maximo:
+            raise PydanticCustomError("toqqi_texto", longo)
+        return v or None
+    return Annotated[str | None, BeforeValidator(validar)]
+
+
 Hora = Annotated[time, BeforeValidator(_hora)]
 Assunto = Annotated[Texto, Field(min_length=1, max_length=150), AfterValidator(_uma_linha)]
 TextoLongo = Annotated[Texto, Field(min_length=1, max_length=2000)]
 Dia = Annotated[int, Field(ge=1, le=30)]
+CorEmail = Annotated[str | None, BeforeValidator(_cor)]
+Assinatura = _texto_do_email(300)
+Rodape = _texto_do_email(500)
 
 
 class AgradecimentoIn(BaseModel):
@@ -63,6 +98,12 @@ class ConfigIn(BaseModel):
     agradecimento_ativo: bool | None = None
     agradecimento: AgradecimentoIn | None = None
     canal: Literal["email", "whatsapp", "whatsapp_e_email"] | None = None
+    # etapa 5e: visual dos e-mails de pesquisa (nulo apaga a cor, a imagem, a assinatura e o rodapé)
+    email_cor: CorEmail = None
+    email_mostrar_logo: bool | None = None
+    email_imagem_topo_id: IdBanco | None = None
+    email_assinatura: Assinatura = None
+    email_rodape: Rodape = None
 
 
 Opcional = BeforeValidator(_vazio_none)
