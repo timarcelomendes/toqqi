@@ -7,7 +7,8 @@ databases:
     databaseName: toqqi
     user: toqqi
     region: oregon
-    plan: free            # o plano gratuito expira em 30 dias e só pode haver 1 por conta; depois: basic-256mb
+    # Sem `plan`: o plano do banco é escolhido no painel do Render e o Blueprint mantém o atual. Com `plan: free` aqui, depois
+    # de passar o banco para o plano pago, toda sincronização falha ("cannot downgrade database ... to Free").
     postgresMajorVersion: "16"
 
 services:
