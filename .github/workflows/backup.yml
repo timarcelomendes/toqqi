@@ -1,0 +1,72 @@
+name: Backup do banco
+# Todo dia, copia o banco de produção (Render), criptografa e guarda no Cloudflare R2 por 30 dias. Em toda execução, a
+# cópia é baixada de volta, decifrada e restaurada num PostgreSQL 16 vazio (o serviço abaixo), e a rotina confere
+# tabelas, versão das migrações e número de linhas. Só fica verde se a cópia guardada funciona de verdade.
+# Guia (criar o bucket e os segredos, restaurar numa emergência): docs/backup.md. O script é scripts/backup/backup.sh.
+# Segredos do repositório: BACKUP_DATABASE_URL, BACKUP_PASSPHRASE, R2_ACCOUNT_ID, R2_BUCKET, R2_ACCESS_KEY_ID e
+# R2_SECRET_ACCESS_KEY. Sem nenhum deles, a rotina avisa que ainda não está configurada e termina sem erro.
+# O repositório é público e este log também: o script não mostra nada do banco (nem contagens) e nada é guardado como
+# artefato nem em cache.
+# Se uma execução agendada falhar, o GitHub avisa por e-mail quem mudou a linha `cron` por último.
+# O GitHub desliga rotinas agendadas de repositórios públicos depois de 60 dias sem commits (avisa por e-mail; religar
+# em Actions). Se isso acontecer, o backup para em silêncio: veja a seção "Se o backup falhar" do docs/backup.md.
+on:
+  schedule:
+    - cron: "23 6 * * *"   # UTC = 03:23 em Brasília; fora da hora cheia, quando o GitHub mais atrasa
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Backup do banco
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      # Banco vazio e descartável só para testar a restauração. A senha não protege nada: o serviço só existe durante a execução.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: so-para-este-teste
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Conferir as ferramentas
+        run: |
+          set -euo pipefail
+          # O cliente do PostgreSQL precisa ser da mesma versão do banco (16). A imagem do GitHub já traz; se não, instala.
+          if ! pg_dump --version 2>/dev/null | grep -q ' 16\.'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client-16
+          fi
+          if [ -d /usr/lib/postgresql/16/bin ]; then echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"; fi
+          # O AWS CLI (conversa com o R2) também já vem na imagem.
+          if ! command -v aws >/dev/null 2>&1; then
+            curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip
+            unzip -q /tmp/awscliv2.zip -d /tmp
+            sudo /tmp/aws/install
+          fi
+          /usr/lib/postgresql/16/bin/pg_dump --version
+          aws --version
+          gpg --version | head -n 1
+
+      - name: Fazer o backup e conferir a restauração
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RESTAURACAO_DATABASE_URL: postgresql://postgres:so-para-este-teste@localhost:5432/postgres
+        run: bash scripts/backup/backup.sh

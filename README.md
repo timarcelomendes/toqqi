@@ -78,3 +78,12 @@ ainda não está disponível. Detalhes em `docs/api-etapa-5a.md` e `api/README.m
 Variáveis com `value:` no `render.yaml` são reaplicadas a cada sincronização do Blueprint. Para trocar o
 `EMAIL_PROVIDER` (ex.: ZeptoMail), altere o arquivo, não o painel do Render, e acrescente `EMAIL_FROM` e
 `ZEPTOMAIL_TOKEN` na toqqi-api (e no toqqi-tarefas, se o Cron Job estiver ligado).
+
+## Backup
+Todo dia às 03:23 (Brasília), a rotina do GitHub `.github/workflows/backup.yml` copia o banco de produção, criptografa e guarda no
+Cloudflare R2 por 30 dias (sempre ficam pelo menos 7 cópias). Em cada execução a cópia é baixada, decifrada e restaurada num banco
+de teste, e a rotina só fica verde se tabelas, migrações e número de linhas baterem. O log é público, então nada do banco aparece
+nele. Precisa de 6 segredos no GitHub (`BACKUP_DATABASE_URL`, `BACKUP_PASSPHRASE`, `R2_ACCOUNT_ID`, `R2_BUCKET`,
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`); sem eles, a rotina avisa que ainda não está configurada e termina sem erro. A senha da
+criptografia também vai para o gerenciador de senhas: sem ela, as cópias não abrem. Passo a passo, restauração numa emergência e
+ensaio de restauração em `docs/backup.md`.
