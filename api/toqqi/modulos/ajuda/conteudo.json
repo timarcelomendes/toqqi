@@ -135,7 +135,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "No Início, o cartão “Primeiros passos” mostra o que falta fazer. A ordem é esta:"
+              "texto": "No Início, a linha “Primeiros passos: X de 4. Próximo: …” mostra o que falta fazer. A ordem é esta:"
             },
             {
               "tipo": "passos",
@@ -347,7 +347,7 @@
                 "Escolha o arquivo (ou arraste) e clique em “Continuar”.",
                 "Em “O que é cada coluna?”, confira o que o Toqqi reconheceu e ajuste. Use “Não importar” nas colunas que não servem.",
                 "Escolha como reconhecer quem já está cadastrado: pelo e-mail, pelo código do seu sistema ou pelo telefone.",
-                "Clique em “Conferir”, veja o resultado e clique em “Importar”."
+                "Clique em “Conferir”, veja o resultado e clique em “Importar N contatos”."
               ]
             },
             {
@@ -1187,7 +1187,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Busque por contato, empresa ou comentário. Em “Filtros”, filtre por Período, Categoria (Detratores, Neutros e Promotores no NPS; Insatisfeitos, Neutros e Satisfeitos no CSAT), Tipo de pesquisa, Tema, Empresa, Grupo de empresas, Perfil do contato e Arquivadas."
+              "texto": "Busque por contato, empresa ou comentário e escolha o período, ao lado de “Filtros” (o padrão é “Todo o período”). Em “Filtros”, filtre por Categoria (Detratores, Neutros e Promotores no NPS; Insatisfeitos, Neutros e Satisfeitos no CSAT), Tipo de pesquisa, Tema, Empresa, Grupo de empresas, Perfil do contato e Arquivadas."
             },
             {
               "tipo": "paragrafo",
@@ -1293,7 +1293,7 @@
                 "Em Respostas, clique em “Importar respostas antigas”.",
                 "Prepare a planilha: uma resposta por linha, com o e-mail do contato, a data e a nota de 0 a 10. Empresa e comentário são opcionais.",
                 "Escolha o arquivo e, em “O que é cada coluna?”, confira as colunas.",
-                "Clique em “Conferir” e depois em “Importar”."
+                "Clique em “Conferir” e depois em “Importar N respostas”."
               ]
             },
             {
@@ -1411,7 +1411,7 @@
     {
       "id": "painel",
       "titulo": "Início e painel",
-      "resumo": "Os números do Início: NPS, CSAT, taxa de resposta, ações em aberto, receita em risco, picos de reclamação e o resumo da IA.",
+      "resumo": "Os números do Início: NPS e “O que mudou”, resumo da IA, receita em risco, planos de ação, CSAT, taxa de resposta, os últimos 12 meses, temas, tom dos comentários e empresas.",
       "secoes": [
         {
           "id": "o-que-mostra-o-inicio",
@@ -1429,27 +1429,31 @@
             "números",
             "kpi",
             "métricas",
+            "cartões",
             "como estamos"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "O Início responde a duas perguntas: como estão seus clientes e o que precisa de cuidado hoje. De cima para baixo, você vê estes blocos:"
+              "texto": "O Início responde a duas perguntas: como estão seus clientes e o que precisa de cuidado hoje. De cima para baixo, você vê:"
             },
             {
               "tipo": "lista",
               "itens": [
-                "Picos de reclamação (só quando houver) e Primeiros passos (enquanto faltar algum).",
-                "NPS do período, Variação do NPS, Satisfação (CSAT) e Taxa de resposta.",
-                "Resumo da IA, logo abaixo do NPS: três frases sobre o período, geradas quando você pede (só com a inteligência artificial ligada na plataforma).",
-                "Precisa de atenção: ações abertas, vencidas e receita em risco.",
-                "Evolução do NPS mês a mês e Assuntos mais citados.",
-                "Movimentação, Palavras mais citadas, Comentários recentes e Empresas (menor e maior NPS)."
+                "A data, a saudação e os filtros em pílulas (período, grupo e “Só ativas”), com “Exportar CSV” e “Como ler os números” logo abaixo.",
+                "A linha “Primeiros passos: X de 4. Próximo: …”, enquanto faltar algum passo. “Ocultar” esconde a linha neste navegador; “Mostrar primeiros passos”, no fim da página, traz de volta.",
+                "O cartão do NPS, com o título do período, como “NPS dos últimos 90 dias”: o medidor, a faixa e a variação; ao lado, “O que mudou”, com até 3 botões, e a barra de detratores, neutros e promotores.",
+                "“Resumo da IA”: três frases sobre o período, geradas quando você pede (só com a inteligência artificial ligada na plataforma).",
+                "Os indicadores “Receita em risco”, “Planos de ação”, “Satisfação (CSAT)” e “Taxa de resposta”.",
+                "“NPS nos últimos 12 meses” e “Quem mudou de lado”.",
+                "“Do que estão falando” e, ao lado, “Tom dos comentários” e “Palavras que mais aparecem”.",
+                "“O que os clientes disseram por último” e “Empresas: onde cuidar e onde crescer”.",
+                "“Como ler o painel”, um guia curto dos termos."
               ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "Quem não tem a permissão de ver o painel encontra no Início apenas uma tela de boas-vindas."
+              "texto": "No teste grátis, quem cuida da assinatura vê também, no alto, um cartão com os dias que faltam. Quem não tem a permissão de ver o painel encontra no Início apenas uma tela de boas-vindas."
             }
           ]
         },
@@ -1463,7 +1467,10 @@
             "últimos 90 dias",
             "datas",
             "grupo",
+            "todos os grupos",
             "só ativas",
+            "só empresas ativas",
+            "pílulas",
             "exportar",
             "baixar dados",
             "csv",
@@ -1473,21 +1480,25 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "O Início abre nos Últimos 90 dias. Em “Período”, escolha Últimos 7 dias, Últimos 30 dias, Últimos 90 dias, Últimos 12 meses, Todo o período ou “Escolher as datas” (De e Até)."
+              "texto": "Os filtros ficam no alto, em pílulas. O período abre em “Últimos 90 dias”: escolha Últimos 7 dias, Últimos 30 dias, Últimos 90 dias, Últimos 12 meses, Todo o período ou “Escolher as datas” (De e Até)."
             },
             {
               "tipo": "paragrafo",
-              "texto": "“Grupo de empresas” mostra só os clientes de um grupo. “Só empresas ativas”, ligado por padrão, tira as respostas de empresas desativadas; respostas sem empresa sempre contam. Respostas arquivadas nunca entram."
+              "texto": "A pílula do grupo, “Todos os grupos”, aparece quando a conta tem grupos de empresas e mostra só os clientes de um grupo. “Só ativas” vem ligado e tira as respostas de empresas desativadas (as sem empresa continuam); clique nele para desligar. Respostas arquivadas nunca entram."
             },
             {
               "tipo": "paragrafo",
-              "texto": "“Exportar CSV” baixa os dados do painel (exige a permissão de exportar dados do painel). “Como ler os números” abre, no fim da página, um guia curto dos termos."
+              "texto": "Os filtros valem para a tela toda, com exceções: “NPS nos últimos 12 meses” e o indicador “Planos de ação” seguem o grupo e “Só ativas”, mas não o período, e o pico de reclamações é sempre da conta inteira, nos últimos 7 dias. Os filtros ficam no endereço da página: o link abre o Início com eles."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Exportar CSV” baixa as respostas com os filtros da tela (pede a permissão “Exportar dados do painel”). “Como ler os números” abre, no fim da página, o guia “Como ler o painel”."
             }
           ]
         },
         {
           "id": "nps-no-inicio",
-          "titulo": "O cartão de NPS: número, faixa e decisores",
+          "titulo": "O cartão do NPS: medidor, faixa e decisores",
           "somente_admin": false,
           "atalho": "inicio",
           "palavras": [
@@ -1497,25 +1508,31 @@
             "neutros",
             "detratores",
             "faixa",
+            "medidor",
             "cálculo",
             "excelente",
             "crítico",
             "decisor",
             "cor do nps",
-            "quanto é um bom nps"
+            "quanto é um bom nps",
+            "distribuição"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "O cartão NPS mostra o número do período, a faixa e uma barra com detratores (0 a 6), neutros (7 e 8) e promotores (9 e 10). Clique num grupo para ver as respostas dele."
+              "texto": "O cartão do NPS tem o título do período, como “NPS dos últimos 90 dias”. O medidor vai de −100 a 100, com as faixas vermelha (abaixo de 0), âmbar (0 a 49) e verde (50 ou mais), e o marcador no valor. O número fica no centro, em cor neutra: a cor está nas faixas do medidor e no selo embaixo dele."
             },
             {
               "tipo": "paragrafo",
-              "texto": "NPS = % de promotores menos % de detratores, de −100 a 100, arredondado (12,5 vira 13). Faixas: Excelente (75 ou mais), Muito bom (50 a 74), Pode melhorar (0 a 49) e Crítico (abaixo de 0). O número fica verde a partir de 50, âmbar de 0 a 49 e vermelho abaixo de 0."
+              "texto": "NPS = % de promotores menos % de detratores, de −100 a 100, arredondado (12,5 vira 13). Faixas do selo: Excelente (75 ou mais), Muito bom (50 a 74), Pode melhorar (0 a 49) e Crítico (abaixo de 0). Embaixo do selo fica a variação sobre o período anterior."
             },
             {
               "tipo": "paragrafo",
-              "texto": "“NPS dos decisores” é a mesma conta só com os contatos que têm o perfil “Decisor” no cadastro, ou seja, quem decide a compra."
+              "texto": "Depois de “O que mudou”, a barra mostra detratores (0 a 6), neutros (7 e 8) e promotores (9 e 10), com a quantidade e a porcentagem. Clique num grupo para ver as respostas dele. Embaixo vêm o total de respostas de NPS e o NPS dos decisores."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O NPS dos decisores é a mesma conta só com os contatos que têm o perfil “Decisor” no cadastro, ou seja, quem decide a compra. Sem respostas de NPS no período, o cartão avisa “Nenhuma resposta de NPS neste período”."
             }
           ]
         },
@@ -1539,7 +1556,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "O cartão “Resumo da IA”, logo abaixo do NPS, resume o período em três frases: o que precisa melhorar, o que está funcionando e o próximo passo. A IA lê os números do Início com os filtros da tela (período, grupo de empresas e “Só empresas ativas”) e até 8 comentários recentes desse recorte."
+              "texto": "O cartão “Resumo da IA”, logo abaixo do NPS, resume o período em três frases: o que precisa melhorar, o que está funcionando e o próximo passo. A IA lê os números do Início com os filtros da tela (período, grupo de empresas e “Só ativas”) e até 8 comentários recentes desse recorte."
             },
             {
               "tipo": "passos",
@@ -1572,6 +1589,8 @@
           "atalho": "inicio",
           "palavras": [
             "variação",
+            "variação do nps",
+            "subiu ou caiu",
             "comparar período",
             "período anterior",
             "csat",
@@ -1585,30 +1604,36 @@
           ],
           "blocos": [
             {
+              "tipo": "paragrafo",
+              "texto": "A variação fica no cartão do NPS, embaixo do selo da faixa, como “▼ 11 pontos sobre os 90 dias antes (34)”: ▲ quando o NPS subiu, ▼ quando caiu, e entre parênteses o NPS de antes. A comparação é com o período anterior de mesmo tamanho. Em “Todo o período”, ou sem NPS no período anterior, aparece “Sem período anterior com NPS para comparar”."
+            },
+            {
               "tipo": "lista",
               "itens": [
-                "Variação do NPS: quantos pontos o NPS subiu ou caiu em relação ao período anterior, que tem o mesmo tamanho. Só aparece quando você escolhe um período e há respostas nos dois.",
-                "Satisfação (CSAT): a porcentagem de notas 4 e 5 e a média, de 1 a 5. Verde a partir de 80%, âmbar a partir de 60%.",
-                "Taxa de resposta: dos contatos que receberam a pesquisa no período, quantos responderam."
+                "“Satisfação (CSAT)”: a porcentagem de notas 4 e 5, a média de 1 a 5 e o total de respostas. Verde a partir de 80%, âmbar a partir de 60% e vermelho abaixo disso.",
+                "“Taxa de resposta”: dos contatos que receberam a pesquisa no período, quantos responderam. Abaixo de 20%, aparece “Amostra pequena”: os números podem não mostrar o que todos pensam."
               ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "Se menos de 20% responderam, o Toqqi avisa “Amostra pequena”: os números podem não mostrar o que todos pensam."
+              "texto": "Sem dados no período, o indicador fica apagado e traz um atalho, se o seu perfil abre a tela: “Incluir a pergunta 1–5 num formulário” no CSAT e “Ir para Envios” na taxa."
             }
           ]
         },
         {
           "id": "precisa-de-atencao-e-receita-em-risco",
-          "titulo": "Precisa de atenção e receita em risco",
+          "titulo": "Receita em risco e planos de ação",
           "somente_admin": false,
           "atalho": "inicio",
           "palavras": [
+            "precisa de atenção",
             "ações abertas",
             "ações vencidas",
+            "planos vencidos",
             "tratar",
             "valor mensal",
             "contrato",
+            "carteira",
             "churn",
             "risco de perder cliente",
             "dinheiro em risco",
@@ -1618,69 +1643,110 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "O bloco “Precisa de atenção” conta as ações abertas (de qualquer data) e as vencidas, que passaram do prazo. Cada empresa com ação aberta aparece com o NPS, o responsável e o último comentário de detrator. O botão “Tratar” abre a ação mais urgente dela."
+              "texto": "Na faixa de indicadores do Início, “Receita em risco” e “Planos de ação” mostram o que precisa de cuidado."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "“Receita em risco”: a soma do valor mensal do contrato das empresas que tiveram pelo menos um detrator no período, como “R$ 48 mil /mês”. Embaixo, quantas empresas são e quanto isso representa da carteira, a soma do valor mensal das empresas do filtro.",
+                "Se alguma dessas empresas não tem o valor do contrato, o indicador avisa, com o link “Completar em Empresas”. Se nenhuma empresa do filtro tem valor, ele fica apagado, com “Cadastre o valor mensal das empresas”.",
+                "“Planos de ação”: quantos estão abertos, de qualquer data, e quantos estão vencidos, que passaram do prazo. Os números abrem Planos de ação; o dos vencidos abre só os vencidos.",
+                "O link “Tratar”, seguido do nome da empresa, abre a ação mais urgente (as vencidas vêm primeiro)."
+              ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "A “Receita em risco” soma o valor mensal do contrato das empresas que tiveram pelo menos um detrator no período. Se alguma empresa não tem o valor cadastrado, o Início avisa e leva você a Contatos, aba Empresas, para completar."
+              "texto": "Os dois seguem o grupo e “Só ativas”. A receita em risco segue também o período; os planos de ação, não."
             }
           ]
         },
         {
           "id": "picos-de-reclamacao",
-          "titulo": "Picos de reclamação",
+          "titulo": "O que mudou e picos de reclamação",
           "somente_admin": false,
           "atalho": "inicio",
           "palavras": [
+            "o que mudou",
+            "manchete",
+            "pico",
             "alerta de reclamação",
             "aumento de reclamações",
             "tema em alta",
             "problema recorrente",
             "reclamações subindo",
             "crise",
-            "pico"
+            "faixa de picos",
+            "ver as reclamações",
+            "ver os detratores"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Quando um assunto passa do normal, aparece no topo do Início, e na aba Temas de Relatórios, um aviso como “Pico de reclamações em Prazo e entrega”, com o botão “Ver respostas”. Quem recebe os alertas por e-mail também é avisado (veja Minha conta)."
+              "texto": "Ao lado do medidor, “O que mudou” resume o período numa frase, montada por regras (sem IA e sem gastar a cota). Vale a primeira destas situações:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Pico de reclamações num tema, como “8 reclamações de Prazo e entrega em 7 dias, quando a média era 2 por semana”. Se o NPS também caiu 5 pontos ou mais, a frase começa por “O NPS caiu”.",
+                "Queda ou alta de 5 pontos ou mais no NPS, comparado com o período anterior.",
+                "Empresas com detrator no período, quanto somam por mês em contrato e os planos de ação abertos e vencidos.",
+                "Nada disso: “Tudo estável” e quanto o NPS variou."
+              ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "Há pico quando um tema teve 3 ou mais reclamações nos últimos 7 dias e pelo menos o dobro da média semanal das 4 semanas anteriores. Um tema conta como reclamação quando a IA vê sentimento negativo nele ou, sem análise da IA, quando vem de uma resposta de detrator ou insatisfeito. O aviso não depende dos filtros da tela."
+              "texto": "A linha de baixo traz a situação seguinte. Os botões, conforme o seu perfil: “Ver as N reclamações” do tema nos 7 dias; “Ver os detratores”, se não há plano de ação aberto, ou os planos, como “Ver os 2 planos vencidos”; e “Perguntar ao ToqqiAI”, que abre o chat com a pergunta “O que explica a variação do NPS no período?” já escrita."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Há pico quando um tema teve 3 ou mais reclamações nos últimos 7 dias e pelo menos o dobro da média semanal das 4 semanas anteriores. Um tema conta como reclamação quando a IA vê sentimento negativo nele ou, sem análise da IA, quando vem de uma resposta de detrator ou insatisfeito."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O pico é da conta inteira, sem os filtros da tela: no Início, só entra em “O que mudou” quando o período vai até hoje, sem grupo escolhido. Em Relatórios › Temas, cada pico vira uma faixa com o botão “Ver respostas”. Quem recebe os alertas por e-mail também é avisado (veja Minha conta)."
             }
           ]
         },
         {
           "id": "assuntos-movimentacao-e-empresas",
-          "titulo": "Assuntos, movimentação, palavras e empresas",
+          "titulo": "Evolução, quem mudou de lado, assuntos, tom, palavras e empresas",
           "somente_admin": false,
           "atalho": "inicio",
           "palavras": [
             "gráfico",
-            "evolução",
+            "evolução do nps",
             "histórico do nps",
-            "temas",
+            "mês a mês",
+            "12 meses",
+            "quem mudou de lado",
+            "movimentação",
             "resgatado",
             "deixou de ser promotor",
-            "palavras",
+            "do que estão falando",
+            "assuntos mais citados",
+            "temas",
+            "tom dos comentários",
+            "negativos",
             "nuvem de palavras",
-            "ranking de empresas",
-            "melhores clientes",
-            "piores clientes",
+            "palavras mais citadas",
             "comentários recentes",
-            "mês a mês"
+            "ranking de empresas",
+            "cuidar primeiro",
+            "mais satisfeitas",
+            "melhores clientes",
+            "piores clientes"
           ],
           "blocos": [
             {
               "tipo": "lista",
               "itens": [
-                "Evolução do NPS: o NPS mês a mês. “Ver em tabela” troca o gráfico pelos números.",
-                "Assuntos mais citados: os temas dos comentários de NPS, a nota média de quem falou de cada um e a variação das menções.",
-                "Movimentação: compara a última nota de cada contato com a anterior. Resgatado era detrator e agora deu 9 ou 10. Deixou de ser promotor dava 9 ou 10 e agora deu 8 ou menos.",
-                "Palavras mais citadas: as que mais aparecem nos comentários, contando uma vez por resposta.",
-                "Comentários recentes: o que os clientes escreveram por último; clique para analisar.",
-                "Empresas: Menor NPS e Maior NPS. Só entram empresas com 3 ou mais respostas de NPS no período."
+                "“NPS nos últimos 12 meses”: o NPS mês a mês nos 12 meses que terminam no fim do período, com os meses do período marcados. Segue o grupo e “Só ativas”. “Ver em tabela” mostra os números.",
+                "“Quem mudou de lado”: a última nota de cada contato comparada com a anterior. Resgatados eram detratores e deram 9 ou 10; os que deixaram de ser promotores davam 9 ou 10 e deram 8 ou menos. “Ver as N pessoas” mostra quem.",
+                "“Do que estão falando”: os temas mais citados nos comentários de NPS, com as reclamações à esquerda da barra e as outras menções à direita; ao lado, ▲ ou ▼ (menções a mais ou a menos que no período anterior) e a nota média. Clique num tema para ver as respostas.",
+                "“Tom dos comentários”: pela análise da IA, a porcentagem de comentários negativos, com a diferença em pontos para o período anterior, e a barra de negativos, mistos, neutros e positivos. Sem análise, o bloco avisa se os comentários estão na fila ou se a análise por IA está desligada (Configurações › IA).",
+                "“Palavras que mais aparecem”: quanto maior a palavra, em mais comentários ela aparece. Clique numa palavra para ver as respostas.",
+                "“O que os clientes disseram por último”: os comentários mais recentes, com a nota e quem disse. Clique num deles para abrir a resposta; “Ver todas” abre Respostas.",
+                "“Empresas: onde cuidar e onde crescer”: “Cuidar primeiro” traz as de menor NPS e “Mais satisfeitas”, as de maior, cada uma com uma régua de −100 a 100. Só entram empresas com 3 ou mais respostas de NPS no período."
               ]
             }
           ]
@@ -2192,7 +2258,7 @@
             },
             {
               "tipo": "dica",
-              "texto": "Para ir direto à ação mais urgente de uma empresa, use “Tratar” no bloco “Precisa de atenção” do Início."
+              "texto": "Para ir direto à ação mais urgente, use o link “Tratar”, seguido do nome da empresa, no indicador “Planos de ação” do Início."
             }
           ]
         },
@@ -2871,7 +2937,7 @@
     {
       "id": "configuracoes",
       "titulo": "Configurações",
-      "resumo": "Dados da empresa, segurança, envios, planos de ação, inteligência artificial (modelo, estilo, passos e cota) e dados da conta (exportar tudo e zona de risco; só administrador muda).",
+      "resumo": "Dados da empresa, segurança, envios, planos de ação, crescimento, inteligência artificial (modelo, estilo, passos e cota) e dados da conta (exportar tudo e zona de risco; só administrador muda).",
       "secoes": [
         {
           "id": "o-que-tem-em-configuracoes",
@@ -2901,17 +2967,18 @@
                 "Segurança: tempo de sessão e domínios de e-mail liberados.",
                 "Envios: quando, com que frequência e com quais palavras a pesquisa chega aos clientes, e o visual dos e-mails (cor, logo, imagem de topo, assinatura e rodapé).",
                 "Planos de ação: prazos das ações automáticas.",
+                "Crescimento: o convite de indicação para quem deu nota alta e o texto da oferta pelo WhatsApp.",
                 "IA: análise dos comentários, como a IA escreve (modelo e estilo), passos nas ações e cota de inteligência artificial.",
                 "Dados da conta: baixar todos os dados da conta e a zona de risco, para apagar dados de uma vez (só administrador)."
               ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "Empresa, Segurança e IA aparecem para quem tem a permissão “Alterar as configurações da conta” (o administrador). Envios e Planos de ação também aparecem para quem pode ver envios e planos de ação, mas só leem: o aviso “Você pode ver as configurações, mas só um administrador consegue mudar” explica."
+              "texto": "Empresa, Segurança e IA aparecem para quem tem a permissão “Alterar as configurações da conta” (o administrador). Envios, Planos de ação e Crescimento também aparecem para quem pode ver envios, planos de ação ou indicações e oportunidades, mas só leem: um aviso explica que só um administrador consegue mudar."
             },
             {
               "tipo": "dica",
-              "texto": "Em Empresa, Envios e Planos de ação, “Salvar alterações” fica numa barra fixa embaixo da tela e, se você for para outra tela com algo não salvo, o Toqqi pergunta “Sair sem salvar?”. Em Segurança, “Salvar alterações” fica no fim da página, sem barra fixa, e o Toqqi não avisa se você sair sem salvar. Em IA não há “Salvar alterações”: cada escolha (interruptores, modelo e estilo) vale na hora."
+              "texto": "Em Empresa, Envios, Planos de ação e Crescimento, “Salvar alterações” fica numa barra fixa embaixo da tela e, se você for para outra tela com algo não salvo, o Toqqi pergunta “Sair sem salvar?”. Em Segurança, “Salvar alterações” fica no fim da página, sem barra fixa, e o Toqqi não avisa se você sair sem salvar. Em IA não há “Salvar alterações”: cada escolha (interruptores, modelo e estilo) vale na hora."
             }
           ]
         },

@@ -70,8 +70,8 @@ def test_conteudo_real_valido():
 
 def test_dica_de_configuracoes_diz_onde_fica_o_salvar():
     """Conferido nas telas (web/src/modulos/configuracoes): a barra fixa com “Salvar alterações” e o aviso “Sair sem
-    salvar?” existem em Empresa, Envios e Planos de ação; Segurança tem os botões no fim do formulário e não avisa; IA
-    não tem “Salvar alterações” (o interruptor vale na hora). A dica não pode dizer “em todas as telas”."""
+    salvar?” existem em Empresa, Envios, Planos de ação e Crescimento (5c); Segurança tem os botões no fim do formulário e
+    não avisa; IA não tem “Salvar alterações” (o interruptor vale na hora). A dica não pode dizer “em todas as telas”."""
     if not ajuda.CAMINHO.exists():
         pytest.skip("api/toqqi/modulos/ajuda/conteudo.json ainda não existe")
     dados = json.loads(ajuda.CAMINHO.read_text(encoding="utf-8"))
@@ -80,7 +80,7 @@ def test_dica_de_configuracoes_diz_onde_fica_o_salvar():
     dica, = [b["texto"] for b in secao["blocos"] if b["tipo"] == "dica"]
     assert "todas as telas" not in dica.lower()
     barra, seguranca, ia = dica.split(". Em ")
-    assert barra.startswith("Em Empresa, Envios e Planos de ação, “Salvar alterações” fica numa barra fixa")
+    assert barra.startswith("Em Empresa, Envios, Planos de ação e Crescimento, “Salvar alterações” fica numa barra fixa")
     assert "“Sair sem salvar?”" in barra
     assert seguranca.startswith("Segurança, “Salvar alterações” fica no fim da página, sem barra fixa")
     assert "não avisa" in seguranca
