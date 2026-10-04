@@ -1,5 +1,520 @@
 {
   "versao": 1,
+  "jornadas": [
+    {
+      "id": "cadastrar-seus-clientes",
+      "grupo": "ciclo",
+      "titulo": "Cadastrar seus clientes",
+      "objetivo": "Trazer sua lista de clientes para o Toqqi, com a empresa e o responsável de cada um.",
+      "somente_admin": false,
+      "onde": [
+        "Contatos",
+        "Importar planilha"
+      ],
+      "atalho": "importar_contatos",
+      "como": [
+        "Em Contatos, clique em “Importar planilha” e deixe marcado “Contatos”. Para cadastrar um cliente só, use “Novo contato”.",
+        "Clique em “Baixar planilha modelo” para partir dela, ou em “Já tenho minha planilha”. Uma pessoa por linha, com nome e e-mail ou telefone.",
+        "Escolha o arquivo (.csv, .xlsx ou .xls, até 5 MB) e clique em “Continuar”.",
+        "Em “O que é cada coluna?”, confira o que o Toqqi reconheceu, como Empresa e Responsável. Use “Não importar” nas colunas que não servem.",
+        "Clique em “Conferir”, veja quantas linhas estão prontas e clique em “Importar N contatos”."
+      ],
+      "resultado": "A tela “Importação concluída!” mostra quantos contatos são novos, quantos foram atualizados e quantos ficaram de fora. Em Contatos, cada pessoa aparece com a empresa e, se pode receber a pesquisa, com a situação “Na fila”. Empresas e responsáveis que ainda não existiam são criados sozinhos.",
+      "veja": [
+        "contatos#importar-planilha-de-contatos",
+        "contatos#importacao-conferencia-e-problemas",
+        "contatos#cadastrar-e-editar-contato"
+      ],
+      "palavras": [
+        "cadastrar seus clientes",
+        "importar contatos",
+        "subir lista",
+        "planilha",
+        "excel",
+        "csv",
+        "planilha modelo",
+        "novo contato",
+        "lista de contatos",
+        "carregar contatos",
+        "trazer contatos",
+        "base de contatos",
+        "mapear colunas"
+      ]
+    },
+    {
+      "id": "preparar-a-pesquisa",
+      "grupo": "ciclo",
+      "titulo": "Preparar a pesquisa",
+      "objetivo": "Deixar a pesquisa do jeito da sua empresa: as perguntas, a cor, o logo e os textos que o cliente vê.",
+      "somente_admin": false,
+      "onde": [
+        "Formulários"
+      ],
+      "atalho": "formularios",
+      "como": [
+        "Em Formulários, abra a “Pesquisa NPS”, que já vem pronta, ou clique em “Novo formulário”, escolha um modelo e clique em “Criar formulário”.",
+        "Na aba Perguntas, ajuste o texto de cada pergunta e use “Adicionar pergunta” para incluir outras.",
+        "Na aba Aparência, escolha a cor principal, o logo e os textos de boas-vindas e de agradecimento.",
+        "Confira na pré-visualização (“Pré-visualizar” ou o painel ao lado, em tela grande) a página, o e-mail e o WhatsApp, e clique em “Salvar”."
+      ],
+      "resultado": "O formulário fica salvo (o alto da tela mostra “Salvo em”, com a data e a hora) e com “Recebendo respostas” ligado. Um formulário novo só vai no convite dos envios quando o administrador o escolhe em Configurações › Envios, em “Formulário do convite”.",
+      "veja": [
+        "formularios#criar-um-formulario",
+        "formularios#perguntas-do-formulario",
+        "formularios#aparencia-do-formulario"
+      ],
+      "palavras": [
+        "preparar a pesquisa",
+        "formulário",
+        "novo formulário",
+        "criar formulário",
+        "editar perguntas",
+        "questionário",
+        "modelo pronto",
+        "aparência",
+        "cor e logo",
+        "boas-vindas",
+        "pré-visualizar",
+        "nota nps",
+        "csat"
+      ]
+    },
+    {
+      "id": "ligar-os-envios",
+      "grupo": "ciclo",
+      "titulo": "Ligar os envios",
+      "objetivo": "Conferir o convite que o cliente recebe e ligar os envios, para a pesquisa poder sair por e-mail e, se você quiser, sozinha.",
+      "somente_admin": true,
+      "onde": [
+        "Configurações",
+        "Envios"
+      ],
+      "atalho": "config_envios",
+      "como": [
+        "Em Configurações › Envios, em “Pesquisa enviada”, confira o “Formulário do convite”: a conta já começa com a “Pesquisa NPS”.",
+        "Em Mensagens, ajuste o assunto e o texto do convite e do lembrete e a “Mensagem do WhatsApp”. “Como o cliente vê” mostra a prévia.",
+        "Se quiser, em “Visual dos e-mails”, escolha a cor, o logo, a imagem de topo, a assinatura e o rodapé.",
+        "Clique em “Salvar alterações” e depois em “Enviar e-mail de teste”, no alto da tela, para receber o convite na sua caixa.",
+        "Ligue “Enviar pesquisas por e-mail”. Para a pesquisa sair sozinha, ligue também “Envio automático” e confira o “Horário de envio”. Clique em “Salvar alterações”."
+      ],
+      "resultado": "Na tela Envios, o aviso “Falta pouco para as pesquisas por e-mail começarem a sair” some e os botões de envio por e-mail ficam liberados. Os lembretes saem sozinhos para quem não respondeu e, com o “Envio automático”, a pesquisa sai sozinha para quem está “Na fila”, no horário escolhido.",
+      "veja": [
+        "configuracoes#configuracoes-de-envio-ligar-canal-e-horario",
+        "configuracoes#configuracoes-de-envio-mensagens",
+        "envios#envio-automatico-lembretes-e-horario"
+      ],
+      "palavras": [
+        "ligar os envios",
+        "configurar",
+        "automático",
+        "robô",
+        "agendar",
+        "chave geral",
+        "texto do convite",
+        "assunto do e-mail",
+        "formulário do convite",
+        "e-mail de teste",
+        "horário",
+        "lembretes",
+        "remetente",
+        "visual do e-mail",
+        "ativar"
+      ]
+    },
+    {
+      "id": "enviar-a-pesquisa",
+      "grupo": "ciclo",
+      "titulo": "Enviar a pesquisa",
+      "objetivo": "Mandar a pesquisa agora para os clientes que você escolher, por e-mail ou pelo WhatsApp.",
+      "somente_admin": false,
+      "onde": [
+        "Envios",
+        "Contatos"
+      ],
+      "atalho": "envios",
+      "como": [
+        "Em Envios, na aba Contatos, marque quem vai receber. “Marcar todos desta página” ajuda; o máximo é 500 de uma vez.",
+        "Clique em “Enviar para selecionados”. Para mandar a todos que estão “Na fila”, use “Enviar para toda a fila”.",
+        "Confira o número e clique em “Enviar para N contatos”. Só marque “Enviar mesmo para quem está em descanso” se tiver um bom motivo.",
+        "Para mandar pelo WhatsApp, clique no botão verde na linha do contato: a mensagem abre pronta e você aperta Enviar."
+      ],
+      "resultado": "A janela mostra quantas pesquisas estão saindo e quem ficou de fora, com o motivo. A lista se atualiza sozinha, cada contato passa a “Aguardando resposta” e o envio aparece na aba Histórico. Quem recebeu por e-mail e não responder ganha os lembretes nos dias escolhidos.",
+      "veja": [
+        "envios#enviar-por-email-agora",
+        "envios#enviar-pelo-whatsapp",
+        "envios#situacao-dos-contatos"
+      ],
+      "palavras": [
+        "enviar a pesquisa",
+        "disparar",
+        "mandar",
+        "agora",
+        "manual",
+        "toda a fila",
+        "selecionar contatos",
+        "em massa",
+        "convite",
+        "whatsapp",
+        "e-mail",
+        "quem ficou de fora",
+        "descanso"
+      ]
+    },
+    {
+      "id": "ler-as-respostas",
+      "grupo": "ciclo",
+      "titulo": "Ler as respostas",
+      "objetivo": "Ver o que cada cliente respondeu, achar as notas que pedem atenção e registrar o que a equipe entendeu.",
+      "somente_admin": false,
+      "onde": [
+        "Respostas",
+        "Analisar"
+      ],
+      "atalho": "respostas",
+      "como": [
+        "Abra Respostas: as notas e os comentários aparecem da resposta mais recente para a mais antiga.",
+        "Escolha o período (o padrão é “Todo o período”) e, em “Filtros”, a Categoria, como Detratores, o Tema ou a Empresa. A busca acha contato, empresa ou comentário.",
+        "Clique em “Analisar” na linha para ver tudo o que o cliente respondeu, pergunta por pergunta.",
+        "Em “Análise da equipe”, preencha “O que faltou” e “O que combinamos com o cliente”, marque os Temas e clique em “Salvar análise”."
+      ],
+      "resultado": "No topo, o NPS, o CSAT e o total de respostas mudam conforme os filtros. A análise fica guardada na resposta, com quem analisou e quando. Com a IA ligada, a caixa “Análise da IA” traz o resumo, o sentimento e os temas do comentário.",
+      "veja": [
+        "respostas#ver-e-filtrar-as-respostas",
+        "respostas#analisar-uma-resposta",
+        "respostas#temas-e-sentimento"
+      ],
+      "palavras": [
+        "ler as respostas",
+        "notas",
+        "comentários",
+        "feedback",
+        "avaliações",
+        "filtrar",
+        "detratores",
+        "analisar",
+        "o que faltou",
+        "análise da equipe",
+        "temas",
+        "sentimento",
+        "reclamações"
+      ]
+    },
+    {
+      "id": "tratar-um-cliente-insatisfeito",
+      "grupo": "ciclo",
+      "titulo": "Tratar um cliente insatisfeito",
+      "objetivo": "Cuidar de quem deu nota baixa: falar com o cliente, contar o que foi feito e concluir a ação no prazo.",
+      "somente_admin": false,
+      "onde": [
+        "Planos de ação"
+      ],
+      "atalho": "planos_de_acao",
+      "como": [
+        "Em Planos de ação, comece pela coluna A fazer. “Só vencidas” mostra as ações que passaram do prazo.",
+        "Clique no título do cartão para abrir a ação e leia a “Resposta que deu origem”.",
+        "Mude a Situação para Em andamento e clique em “Salvar”. Com a IA ligada, os “Passos sugeridos pela IA” ajudam a começar.",
+        "Fale com o cliente. Ao terminar, mude a Situação para Concluída, escolha o Responsável, conte em “O que foi feito” e clique em “Concluir ação”."
+      ],
+      "resultado": "O cartão vai para a coluna Concluído, com o nome de quem concluiu, e “O que foi feito” fica guardado no histórico da ação. A ação sai das abertas no Início e entra nas “Concluídas no período” de Relatórios › Operação.",
+      "veja": [
+        "planos-de-acao#tratar-e-concluir-uma-acao",
+        "planos-de-acao#o-que-e-um-plano-de-acao",
+        "planos-de-acao#passos-sugeridos-pela-ia"
+      ],
+      "palavras": [
+        "tratar um cliente insatisfeito",
+        "detrator",
+        "nota baixa",
+        "plano de ação",
+        "ação",
+        "concluir ação",
+        "o que foi feito",
+        "prazo vencido",
+        "reclamação",
+        "follow-up",
+        "resolver problema",
+        "passos sugeridos"
+      ]
+    },
+    {
+      "id": "acompanhar-os-numeros",
+      "grupo": "ciclo",
+      "titulo": "Acompanhar os números",
+      "objetivo": "Saber, numa tela só, como está a satisfação dos clientes e o que mudou no período.",
+      "somente_admin": false,
+      "onde": [
+        "Início"
+      ],
+      "atalho": "inicio",
+      "como": [
+        "No Início, escolha o período nos filtros do alto (o padrão é “Últimos 90 dias”) e, se quiser, um grupo de empresas. “Só ativas” já vem ligado.",
+        "Leia o cartão do NPS: o número, a faixa, como “Muito bom”, e quanto ele subiu ou caiu sobre o período anterior.",
+        "Em “O que mudou”, veja o fato principal do período e use os botões, como “Ver os detratores” ou “Perguntar ao ToqqiAI”.",
+        "Confira os indicadores: Receita em risco, Planos de ação, Satisfação (CSAT) e Taxa de resposta.",
+        "Desça para ver o NPS mês a mês, “Quem mudou de lado”, “Do que estão falando” e os comentários. Na dúvida, clique em “Como ler os números”."
+      ],
+      "resultado": "Você vê o NPS do período com a faixa e a variação, o que mais mudou e o que precisa de cuidado, como a receita em risco e os planos vencidos. Com a IA ligada, “Gerar resumo”, no “Resumo da IA”, escreve três frases sobre o período e gasta 1 análise da cota de IA, ou 2 no “Mais detalhado”.",
+      "veja": [
+        "painel#o-que-mostra-o-inicio",
+        "painel#periodo-e-filtros-do-inicio",
+        "painel#nps-no-inicio"
+      ],
+      "palavras": [
+        "acompanhar os números",
+        "painel",
+        "dashboard",
+        "indicadores",
+        "nps do período",
+        "variação do nps",
+        "csat",
+        "taxa de resposta",
+        "receita em risco",
+        "o que mudou",
+        "resumo da ia",
+        "visão geral",
+        "como estamos"
+      ]
+    },
+    {
+      "id": "descobrir-onde-agir",
+      "grupo": "ciclo",
+      "titulo": "Descobrir onde agir",
+      "objetivo": "Saber quais clientes e quais assuntos tratar primeiro, pelo risco e pelo valor de cada um.",
+      "somente_admin": false,
+      "onde": [
+        "Relatórios",
+        "Empresas"
+      ],
+      "atalho": "relatorios",
+      "como": [
+        "Em Relatórios, na aba Empresas, escolha o Período e, se quiser, o Grupo de empresas.",
+        "Na tabela, a ordem “Em risco primeiro” já vem escolhida: as empresas com detrator aparecem antes, das que pagam mais para as que pagam menos.",
+        "No quadro “NPS × valor do contrato”, clique em “Proteger já” para ver na tabela só os clientes grandes e insatisfeitos.",
+        "Clique no nome de uma empresa para abrir o histórico dela, com as respostas e as ações.",
+        "Na aba Grupos de clientes, veja “O que resolver primeiro”: os temas mais citados e com a nota mais baixa.",
+        "Se quiser, clique em “Parecer da IA” e em “Gerar parecer”: um resumo e até 3 recomendações para a semana."
+      ],
+      "resultado": "Você sai com a lista do que tratar primeiro: as empresas em risco, quanto elas pagam por mês e os temas que mais derrubam a nota. O link da página guarda os filtros, para mostrar o mesmo relatório a um colega, e “Exportar CSV” baixa a tabela inteira.",
+      "veja": [
+        "relatorios#empresas-nps-cobertura-e-receita",
+        "relatorios#matriz-nps-x-valor",
+        "relatorios#grupos-de-clientes-e-o-que-resolver-primeiro"
+      ],
+      "palavras": [
+        "descobrir onde agir",
+        "relatórios",
+        "prioridades",
+        "clientes em risco",
+        "receita em risco",
+        "matriz nps",
+        "proteger já",
+        "o que resolver primeiro",
+        "ranking de empresas",
+        "parecer da ia",
+        "recomendações",
+        "churn",
+        "por onde começar"
+      ]
+    },
+    {
+      "id": "crescer-com-quem-esta-feliz",
+      "grupo": "ciclo",
+      "titulo": "Crescer com quem está feliz",
+      "objetivo": "Transformar clientes satisfeitos em indicações e em novas vendas, falando com a pessoa certa.",
+      "somente_admin": false,
+      "onde": [
+        "Crescimento",
+        "Indicações"
+      ],
+      "atalho": "crescimento",
+      "como": [
+        "Em Crescimento, clique em “Convite e oferta”: o administrador liga “Convidar quem deu nota alta para indicar”, ajusta os textos e clica em “Salvar alterações”.",
+        "Na aba Indicações, abra cada indicação e mude a Situação conforme o contato avança: Em contato, Virou cliente ou Não avançou. Clique em “Salvar”.",
+        "Na aba Oportunidades, escolha a lista “Pode crescer” ou “Promotores recentes”.",
+        "Clique em “Oferecer pelo WhatsApp”: a conversa abre com o texto da oferta pronto para o contato sugerido.",
+        "Depois da conversa, clique em “Registrar resultado”, escolha Aceitou, Recusou ou Sem resposta e clique em “Salvar resultado”."
+      ],
+      "resultado": "Quem dá 9 ou 10 num convite (5 no CSAT) pode indicar outra empresa no fim da pesquisa, e a indicação chega em Indicações com o responsável certo. No alto, o resumo dos últimos 90 dias mostra as indicações recebidas, as que viraram cliente, a receita mensal e as ofertas feitas e aceitas.",
+      "veja": [
+        "crescimento#indicacoes-dos-promotores",
+        "crescimento#oportunidades-de-oferta",
+        "crescimento#configurar-o-crescimento"
+      ],
+      "palavras": [
+        "crescer com quem está feliz",
+        "indicações",
+        "indicação",
+        "indicar empresa",
+        "promotores",
+        "oportunidades",
+        "oferta",
+        "upsell",
+        "venda cruzada",
+        "convite de indicação",
+        "recompensa",
+        "oferecer pelo whatsapp",
+        "vender mais",
+        "clientes satisfeitos"
+      ]
+    },
+    {
+      "id": "perguntar-ao-toqqiai",
+      "grupo": "alem",
+      "titulo": "Perguntar ao ToqqiAI",
+      "objetivo": "Perguntar em português sobre os resultados dos seus clientes ou sobre como usar o Toqqi, e ter a resposta na hora.",
+      "somente_admin": false,
+      "onde": [
+        "Qualquer tela",
+        "Botão ToqqiAI"
+      ],
+      "atalho": null,
+      "como": [
+        "Clique no botão “ToqqiAI”, no canto inferior direito de qualquer tela. No celular, o chat abre em tela cheia.",
+        "Escreva na caixa “Faça uma pergunta”, como “Quais clientes têm o NPS mais baixo nos últimos 90 dias?”, ou clique numa sugestão.",
+        "Aperte Enter para enviar. Cada pergunta gasta 1 análise da cota de IA do plano, ou 2 no modelo “Mais detalhado”.",
+        "Para seguir no mesmo assunto, pergunte em seguida. Para mudar de assunto, clique em “Nova conversa”."
+      ],
+      "resultado": "A resposta traz os números da sua conta, com o período e o total de respostas, ou o passo a passo de uso, com botões como “Abrir Relatórios” para ir à tela certa. No alto do chat, “Restam X de Y análises este mês” mostra o que sobra da cota.",
+      "veja": [
+        "assistente#o-que-e-o-assistente",
+        "assistente#o-que-o-assistente-responde",
+        "assistente#cota-de-analises-do-plano"
+      ],
+      "palavras": [
+        "perguntar ao toqqiai",
+        "assistente",
+        "chat",
+        "inteligência artificial",
+        "robô",
+        "chatbot",
+        "tirar dúvida",
+        "cota de análises",
+        "nova conversa",
+        "exemplos",
+        "nps de um cliente"
+      ]
+    },
+    {
+      "id": "trazer-a-equipe",
+      "grupo": "alem",
+      "titulo": "Trazer a equipe",
+      "objetivo": "Dar acesso ao Toqqi às pessoas da sua empresa, cada uma com o perfil certo.",
+      "somente_admin": true,
+      "onde": [
+        "Equipe",
+        "Pessoas"
+      ],
+      "atalho": "equipe",
+      "como": [
+        "Em Equipe, na aba “Pessoas”, clique em “Novo usuário”.",
+        "Preencha Nome e E-mail e escolha o Perfil: Administrador, Gestor ou Consulta. O Cargo é opcional.",
+        "Em “Senha inicial”, clique em “Gerar senha forte” e em “Copiar senha”. Depois, clique em “Criar usuário”.",
+        "Passe o e-mail e a senha para a pessoa por um canal seguro. Ela pode trocar a senha em Minha conta.",
+        "Quem pediu acesso pela tela de entrada aparece no aviso “N pessoas pediram acesso”: clique em “Ver pedidos” e em “Aprovar”."
+      ],
+      "resultado": "A pessoa aparece na lista como “Ativo”, já com o e-mail confirmado, e entra com a senha que você passou. O menu dela mostra só as telas que o perfil permite. Para mudar o que Gestor e Consulta podem fazer, use a aba “Permissões”.",
+      "veja": [
+        "equipe#adicionar-e-gerenciar-pessoas",
+        "equipe#perfis-administrador-gestor-e-consulta",
+        "equipe#aprovar-pedidos-de-acesso"
+      ],
+      "palavras": [
+        "trazer a equipe",
+        "novo usuário",
+        "convidar",
+        "adicionar pessoa",
+        "colaborador",
+        "usuários",
+        "perfil de acesso",
+        "permissões",
+        "gestor",
+        "consulta",
+        "administrador",
+        "pedido de acesso",
+        "senha inicial"
+      ]
+    },
+    {
+      "id": "ligar-o-seu-sistema",
+      "grupo": "alem",
+      "titulo": "Ligar o seu sistema e o WhatsApp automático",
+      "objetivo": "Fazer a pesquisa sair sozinha quando o sistema da sua empresa avisa uma entrega, e chegar pelo WhatsApp do número da empresa.",
+      "somente_admin": true,
+      "onde": [
+        "Integrações"
+      ],
+      "atalho": "integracoes",
+      "como": [
+        "Em Integrações, na aba “Chave de integração”, clique em “Gerar chave” e em “Copiar chave”, marque “Já copiei e guardei em um lugar seguro” e clique em “Concluir”.",
+        "Na aba “Como conectar”, entregue a chave e os exemplos prontos a quem cuida do sistema da empresa. Vale também para Zapier, Make e n8n.",
+        "Para o WhatsApp automático, abra a aba “WhatsApp automático” e siga as etapas na sua conta da Meta. Leva cerca de 30 minutos.",
+        "Na última etapa, preencha o formulário com os dados do número e o token e clique em “Conectar WhatsApp”: o Toqqi confere tudo com a Meta.",
+        "Em Configurações › Envios, em “Por onde a pesquisa sai”, escolha “WhatsApp com e-mail de reserva” e clique em “Salvar alterações”.",
+        "Na aba “WhatsApp automático”, em “Enviar um teste”, informe o seu celular e clique em “Enviar teste”."
+      ],
+      "resultado": "A cada entrega, o seu sistema avisa o Toqqi e o cliente recebe a pesquisa sem ninguém enviar; a aba “Chave de integração” mostra o “Último uso”. Com o WhatsApp conectado, a aba “WhatsApp automático” mostra o número, a etiqueta “Enviando” e a “Franquia do mês”, e as pesquisas saem do número da empresa.",
+      "veja": [
+        "integracoes#ligar-seu-sistema-zapier-make-n8n",
+        "integracoes#conectar-o-whatsapp-automatico",
+        "integracoes#usar-testar-e-desconectar-o-whatsapp"
+      ],
+      "palavras": [
+        "ligar o seu sistema e o whatsapp automático",
+        "integração",
+        "chave de integração",
+        "api",
+        "erp",
+        "zapier",
+        "make",
+        "n8n",
+        "webhook",
+        "meta business",
+        "pedido entregue",
+        "token permanente",
+        "conectar número"
+      ]
+    },
+    {
+      "id": "assinar-um-plano",
+      "grupo": "alem",
+      "titulo": "Assinar um plano",
+      "objetivo": "Escolher o plano da conta e pagar, para continuar enviando pesquisas depois do teste grátis.",
+      "somente_admin": true,
+      "onde": [
+        "Assinatura"
+      ],
+      "atalho": "assinatura",
+      "como": [
+        "Abra Assinatura, ou clique em “Escolher plano” no selo do teste grátis, no topo da tela.",
+        "Em “Escolha um plano”, clique no plano que comporta os seus contatos ativos. Os que não comportam ficam bloqueados.",
+        "Em “Dados de cobrança”, confira Razão social, CPF ou CNPJ, Telefone e E-mail de cobrança: as faturas saem com eles.",
+        "Leia o resumo da primeira fatura e clique em “Assinar o plano”, seguido do nome do plano.",
+        "No cartão “Fatura em aberto”, clique em “Pagar” e escolha Pix, boleto ou cartão."
+      ],
+      "resultado": "Com o pagamento confirmado (Pix e cartão em segundos, boleto em até 3 dias úteis), o selo da conta passa a “Ativa”, com “Pago até” e a data. Quem assina durante o teste continua testando, e a primeira fatura vence no último dia dele.",
+      "veja": [
+        "assinatura#assinar-um-plano",
+        "assinatura#planos-precos-e-limite-de-contatos",
+        "assinatura#pagar-a-fatura-e-historico"
+      ],
+      "palavras": [
+        "assinar um plano",
+        "contratar",
+        "pagar",
+        "fatura",
+        "pix",
+        "boleto",
+        "cartão",
+        "preço",
+        "mensalidade",
+        "teste grátis",
+        "dados de cobrança",
+        "quanto custa",
+        "essencial",
+        "profissional"
+      ]
+    }
+  ],
   "topicos": [
     {
       "id": "primeiros-passos",
@@ -148,6 +663,10 @@
             },
             {
               "tipo": "paragrafo",
+              "texto": "Cada etapa tem a sua jornada em Ajuda › Jornadas: onde fica, como fazer e o resultado."
+            },
+            {
+              "tipo": "paragrafo",
               "texto": "Sua conta já vem com dois formulários prontos: “Pesquisa NPS” e “Satisfação pós-entrega” (CSAT). Para criar outros, use Formulários."
             },
             {
@@ -223,7 +742,7 @@
               "itens": [
                 "Início, Contatos, Envios, Formulários, Respostas, Planos de ação, Crescimento e Relatórios: o dia a dia.",
                 "Administração: Equipe, Configurações, Integrações, Assinatura e Auditoria. Cada item só aparece para quem tem a permissão.",
-                "Ajuda: no rodapé da barra, acima de “Recolher menu”. Use o campo “Buscar na ajuda” para achar um assunto.",
+                "Ajuda: no rodapé da barra, acima de “Recolher menu”. Ela abre nas Jornadas: onde fica, como fazer e o resultado de cada funcionalidade. Use o campo “Buscar na ajuda” para achar um assunto.",
                 "Menu da sua conta: no topo da tela, com “Minha conta” e “Sair”.",
                 "ToqqiAI: botão no canto inferior direito, para tirar dúvidas de uso e perguntar sobre os resultados."
               ]

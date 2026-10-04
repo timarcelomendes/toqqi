@@ -1,6 +1,20 @@
-// Regras puras da Ajuda (sem Vue): leitura defensiva do conteúdo, texto sem acento, busca nas seções e o trecho de
-// cada resultado. O conteúdo vem de GET /ajuda (docs/api-etapa-5b.md §3.1) e é texto puro.
-import type { BlocoAjuda, ConteudoAjuda, SecaoAjuda, TopicoAjuda } from '@/api/tipos'
+// Regras puras da Ajuda (sem Vue): leitura defensiva do conteúdo, texto sem acento, busca nas jornadas e nas seções e o
+// trecho de cada resultado; das jornadas, o número, a próxima, o "Saiba mais" e o tópico "dono". O conteúdo vem de
+// GET /ajuda (docs/api-etapa-5b.md §3.1; jornadas em docs/ajuda-jornadas.md) e é texto puro.
+import type { BlocoAjuda, ConteudoAjuda, GrupoJornada, JornadaAjuda, SecaoAjuda, TopicoAjuda } from '@/api/tipos'
+
+/** O id de tópico `jornadas` é reservado: é o endereço da página Jornadas (/ajuda/jornadas). */
+export const ID_JORNADAS = 'jornadas'
+export const TITULO_JORNADAS = 'Jornadas'
+
+/** Os grupos de jornadas, na ordem da página. */
+export const GRUPOS_JORNADA: readonly { id: GrupoJornada; titulo: string }[] = [
+  { id: 'ciclo', titulo: 'Do cadastro ao resultado' },
+  { id: 'alem', titulo: 'Para ir além' },
+]
+
+/** O conteúdo como a tela usa: as jornadas sempre numa lista (vazia quando o conteúdo não tem). */
+export type ConteudoLido = ConteudoAjuda & { jornadas: JornadaAjuda[] }
 
 /** Sem acento e em minúsculas ("Importação" → "importacao"). */
 export function semAcento(texto: string): string {
@@ -35,12 +49,43 @@ function lerSecao(s: unknown): SecaoAjuda | null {
   }
 }
 
+/** Uma jornada sem id, título, onde, como ou resultado fica de fora; grupo desconhecido vira `alem`. */
+function lerJornada(j: unknown): JornadaAjuda | null {
+  if (!j || typeof j !== 'object') return null
+  const r = j as Record<string, unknown>
+  const onde = textos(r.onde)
+  const como = textos(r.como)
+  if (!ehTexto(r.id) || !ehTexto(r.titulo) || !onde.length || !como.length || !ehTexto(r.resultado)) return null
+  return {
+    id: r.id,
+    grupo: r.grupo === 'ciclo' ? 'ciclo' : 'alem',
+    titulo: r.titulo,
+    objetivo: ehTexto(r.objetivo) ? r.objetivo : '',
+    somente_admin: r.somente_admin === true,
+    onde,
+    atalho: ehTexto(r.atalho) ? r.atalho : null,
+    como,
+    resultado: r.resultado,
+    veja: textos(r.veja),
+    palavras: textos(r.palavras),
+  }
+}
+
 /**
- * O conteúdo como a tela usa: tópicos e seções sem id ou título ficam de fora, assim como blocos de tipo desconhecido
- * (o conteúdo está sendo escrito; um item malformado não derruba a tela). Ids repetidos: vale o primeiro.
+ * O conteúdo como a tela usa: jornadas, tópicos e seções sem id ou título ficam de fora, assim como blocos de tipo
+ * desconhecido (o conteúdo está sendo escrito; um item malformado não derruba a tela). Ids repetidos: vale o primeiro.
+ * Sem `jornadas` (conteúdo antigo), a lista vem vazia.
  */
-export function lerConteudo(bruto: unknown): ConteudoAjuda {
+export function lerConteudo(bruto: unknown): ConteudoLido {
   const r = bruto && typeof bruto === 'object' ? (bruto as Record<string, unknown>) : {}
+  const jornadas: JornadaAjuda[] = []
+  const idsJornadas = new Set<string>()
+  for (const j of Array.isArray(r.jornadas) ? r.jornadas : []) {
+    const jornada = lerJornada(j)
+    if (!jornada || idsJornadas.has(jornada.id)) continue
+    idsJornadas.add(jornada.id)
+    jornadas.push(jornada)
+  }
   const topicos: TopicoAjuda[] = []
   const idsTopicos = new Set<string>()
   for (const t of Array.isArray(r.topicos) ? r.topicos : []) {
@@ -58,7 +103,61 @@ export function lerConteudo(bruto: unknown): ConteudoAjuda {
     }
     topicos.push({ id: tt.id, titulo: tt.titulo, resumo: ehTexto(tt.resumo) ? tt.resumo : '', secoes })
   }
-  return { versao: typeof r.versao === 'number' ? r.versao : 1, topicos }
+  return { versao: typeof r.versao === 'number' ? r.versao : 1, jornadas, topicos }
+}
+
+export interface JornadaNumerada {
+  jornada: JornadaAjuda
+  /** 1 a N nas do ciclo, na ordem do conteúdo; null nas "para ir além". */
+  numero: number | null
+}
+
+/** As jornadas de um grupo, na ordem do conteúdo, com o número (só no ciclo). */
+export function jornadasDoGrupo(jornadas: readonly JornadaAjuda[], grupo: GrupoJornada): JornadaNumerada[] {
+  return jornadas.filter((j) => j.grupo === grupo).map((jornada, i) => ({ jornada, numero: grupo === 'ciclo' ? i + 1 : null }))
+}
+
+/** A jornada seguinte do ciclo; null na última do ciclo e nas "para ir além". */
+export function proximaJornada(jornadas: readonly JornadaAjuda[], jornada: JornadaAjuda): JornadaAjuda | null {
+  if (jornada.grupo !== 'ciclo') return null
+  const ciclo = jornadas.filter((j) => j.grupo === 'ciclo')
+  const i = ciclo.findIndex((j) => j.id === jornada.id)
+  return i < 0 ? null : (ciclo[i + 1] ?? null)
+}
+
+/** "topico#secao" em partes; sem "#" ou com uma das partes vazia, null. */
+export function lerReferencia(referencia: string): { topico: string; secao: string } | null {
+  const i = referencia.indexOf('#')
+  if (i <= 0 || i === referencia.length - 1) return null
+  return { topico: referencia.slice(0, i), secao: referencia.slice(i + 1) }
+}
+
+export interface ReferenciaAjuda {
+  topico: TopicoAjuda
+  secao: SecaoAjuda
+}
+
+/** O "Saiba mais" da jornada: as seções do `veja` que existem no conteúdo, na ordem, sem repetir (as outras somem). */
+export function referenciasDaJornada(topicos: readonly TopicoAjuda[], jornada: JornadaAjuda): ReferenciaAjuda[] {
+  const lista: ReferenciaAjuda[] = []
+  const vistas = new Set<string>()
+  for (const ref of jornada.veja) {
+    const partes = lerReferencia(ref)
+    const topico = partes && topicos.find((t) => t.id === partes.topico)
+    const secao = partes && topico ? topico.secoes.find((s) => s.id === partes.secao) : undefined
+    if (!topico || !secao || vistas.has(`${topico.id}#${secao.id}`)) continue
+    vistas.add(`${topico.id}#${secao.id}`)
+    lista.push({ topico, secao })
+  }
+  return lista
+}
+
+/** As jornadas cujo primeiro `veja` é do tópico (o tópico "dono"): a chamada para a jornada no topo dele. */
+export function jornadasDoTopico(jornadas: readonly JornadaAjuda[], topicoId: string): JornadaAjuda[] {
+  return jornadas.filter((j) => {
+    const primeira = j.veja[0]
+    return !!primeira && lerReferencia(primeira)?.topico === topicoId
+  })
 }
 
 /** O texto de um bloco numa linha só (passos numerados), para a busca e o trecho dos resultados. */
@@ -129,8 +228,12 @@ function contem(texto: string, palavra: string): boolean {
 }
 
 export interface ResultadoAjuda {
-  topico: TopicoAjuda
-  secao: SecaoAjuda
+  /** O tópico da seção; numa jornada, a página Jornadas (`{id: 'jornadas', titulo: 'Jornadas'}`). */
+  topico: Pick<TopicoAjuda, 'id' | 'titulo'>
+  /** A seção achada; numa jornada, o id e o título dela (a âncora: /ajuda/jornadas#<id>). */
+  secao: Pick<SecaoAjuda, 'id' | 'titulo'>
+  /** A jornada achada; null numa seção. */
+  jornada: JornadaAjuda | null
   /** O começo do bloco que tem a palavra procurada (ou do primeiro), cortado em ~180 caracteres. */
   trecho: string
 }
@@ -143,34 +246,64 @@ function cortar(texto: string, maximo = 180): string {
 }
 
 /**
- * Procura em todos os tópicos, sem acento e sem diferenciar maiúsculas, pela raiz das palavras ("importação" acha
- * "Importar uma planilha"): palavra no título da seção ou nas palavras-chave vale 3, no texto dos blocos vale 1. Primeiro as seções com mais palavras do termo, depois as de mais pontos, e na
- * ordem do conteúdo quando empatam.
+ * O texto de uma jornada em partes, como o da API (docs/ajuda-jornadas.md §2): o objetivo, "Onde: A › B", os passos
+ * numerados numa linha e o resultado. `busca` é o que a busca compara (o caminho sem o rótulo "Onde:").
+ */
+function partesDaJornada(j: JornadaAjuda): { texto: string; busca: string }[] {
+  const passos = textoDoBloco({ tipo: 'passos', itens: j.como })
+  const partes = [
+    { texto: j.objetivo, busca: j.objetivo },
+    { texto: `Onde: ${j.onde.join(' › ')}`, busca: j.onde.join(' ') },
+    { texto: passos, busca: passos },
+    { texto: j.resultado, busca: j.resultado },
+  ]
+  return partes.filter((p) => p.texto).map((p) => ({ texto: p.texto, busca: paraBusca(p.busca) }))
+}
+
+/** Quantas palavras do termo o item tem e os pontos (3 no título ou nas palavras-chave, 1 no texto); e a primeira parte do texto com uma delas (-1 se nenhuma). */
+function pontuar(palavras: string[], forte: string, partes: string[]) {
+  let acertos = 0
+  let pontos = 0
+  for (const p of palavras) {
+    const noForte = contem(forte, p)
+    const noTexto = partes.some((b) => contem(b, p))
+    if (noForte || noTexto) acertos++
+    pontos += (noForte ? 3 : 0) + (noTexto ? 1 : 0)
+  }
+  return { acertos, pontos, parte: partes.findIndex((b) => palavras.some((p) => contem(b, p))) }
+}
+
+/**
+ * Procura nas jornadas e em todos os tópicos, sem acento e sem diferenciar maiúsculas, pela raiz das palavras
+ * ("importação" acha "Importar uma planilha"): palavra no título ou nas palavras-chave vale 3, no texto (os blocos da
+ * seção; o objetivo, o onde, os passos e o resultado da jornada) vale 1. Primeiro os itens com mais palavras do termo,
+ * depois os de mais pontos; no empate, as jornadas antes das seções e cada uma na ordem do conteúdo.
  */
 export function buscarNaAjuda(conteudo: ConteudoAjuda, termo: string, limite = 20): ResultadoAjuda[] {
   const palavras = palavrasDaBusca(termo)
   if (!palavras.length) return []
   const achados: (ResultadoAjuda & { acertos: number; pontos: number; ordem: number })[] = []
   let ordem = 0
+  for (const jornada of conteudo.jornadas ?? []) {
+    ordem++
+    const partes = partesDaJornada(jornada)
+    const forte = paraBusca(`${jornada.titulo} ${jornada.palavras.join(' ')}`)
+    const { acertos, pontos, parte } = pontuar(palavras, forte, partes.map((p) => p.busca))
+    if (!acertos) continue
+    const trecho = cortar(partes[parte >= 0 ? parte : 0]?.texto ?? '')
+    const topico = { id: ID_JORNADAS, titulo: TITULO_JORNADAS }
+    achados.push({ topico, secao: { id: jornada.id, titulo: jornada.titulo }, jornada, trecho, acertos, pontos, ordem })
+  }
   for (const topico of conteudo.topicos) {
     for (const secao of topico.secoes) {
       ordem++
       const forte = paraBusca(`${secao.titulo} ${secao.palavras.join(' ')}`)
-      const blocos = secao.blocos.map((b) => paraBusca(textoDoBloco(b)))
-      let acertos = 0
-      let pontos = 0
-      for (const p of palavras) {
-        const noForte = contem(forte, p)
-        const noTexto = blocos.some((b) => contem(b, p))
-        if (noForte || noTexto) acertos++
-        pontos += (noForte ? 3 : 0) + (noTexto ? 1 : 0)
-      }
+      const { acertos, pontos, parte } = pontuar(palavras, forte, secao.blocos.map((b) => paraBusca(textoDoBloco(b))))
       if (!acertos) continue
-      const i = blocos.findIndex((b) => palavras.some((p) => contem(b, p)))
-      const bloco = secao.blocos[i >= 0 ? i : 0]
-      achados.push({ topico, secao, trecho: bloco ? cortar(textoDoBloco(bloco)) : '', acertos, pontos, ordem })
+      const bloco = secao.blocos[parte >= 0 ? parte : 0]
+      achados.push({ topico, secao, jornada: null, trecho: bloco ? cortar(textoDoBloco(bloco)) : '', acertos, pontos, ordem })
     }
   }
   achados.sort((a, b) => b.acertos - a.acertos || b.pontos - a.pontos || a.ordem - b.ordem)
-  return achados.slice(0, limite).map(({ topico, secao, trecho }) => ({ topico, secao, trecho }))
+  return achados.slice(0, limite).map(({ topico, secao, jornada, trecho }) => ({ topico, secao, jornada, trecho }))
 }

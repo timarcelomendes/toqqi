@@ -1603,9 +1603,35 @@ export interface TopicoAjuda {
   secoes: SecaoAjuda[]
 }
 
+/** Grupo da jornada: `ciclo` ("Do cadastro ao resultado", numeradas e com "Próxima jornada") ou `alem` ("Para ir além"). */
+export type GrupoJornada = 'ciclo' | 'alem'
+
+/** Uma jornada da Ajuda (docs/ajuda-jornadas.md §1): onde fica, como fazer e o resultado. Texto puro. */
+export interface JornadaAjuda {
+  /** kebab-case, único entre as jornadas; é a âncora do endereço (/ajuda/jornadas#cadastrar-seus-clientes). */
+  id: string
+  grupo: GrupoJornada
+  titulo: string
+  objetivo: string
+  somente_admin: boolean
+  /** O caminho até a tela, em pedaços, sem o "›" (a tela põe o separador). */
+  onde: string[]
+  /** Tela indicada (chave de §5.4 da 5b) ou null. */
+  atalho: ChaveAtalho | (string & {}) | null
+  /** 2 a 6 passos curtos. */
+  como: string[]
+  /** O que a pessoa vê no fim. */
+  resultado: string
+  /** 1 a 3 referências "topico#secao"; a primeira diz o tópico "dono" da jornada. */
+  veja: string[]
+  palavras: string[]
+}
+
 /** GET /ajuda: o conteúdo inteiro, como está no arquivo da API. */
 export interface ConteudoAjuda {
   versao: number
+  /** Opcional no formato (conteúdo antigo não tem); depois de `lerConteudo`, sempre uma lista. */
+  jornadas?: JornadaAjuda[]
   topicos: TopicoAjuda[]
 }
 

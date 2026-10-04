@@ -43,13 +43,14 @@ export interface Acesso {
   admin: boolean
 }
 
-function conhecida(chave: string): chave is ChaveAtalho {
-  return Object.prototype.hasOwnProperty.call(ATALHOS, chave)
+/** Se a chave é de uma tela da tabela (uma chave desconhecida não é atalho nenhum, nem negado). */
+export function atalhoConhecido(chave: string | null | undefined): chave is ChaveAtalho {
+  return !!chave && Object.prototype.hasOwnProperty.call(ATALHOS, chave)
 }
 
 /** O atalho, se a chave é conhecida e a pessoa pode abrir a tela; senão null. */
 export function atalhoPermitido(chave: string | null | undefined, acesso: Acesso): Atalho | null {
-  if (!chave || !conhecida(chave)) return null
+  if (!atalhoConhecido(chave)) return null
   const d = ATALHOS[chave]
   if (d.admin && !acesso.admin) return null
   if (d.permissao && !acesso.pode(d.permissao)) return null

@@ -164,7 +164,8 @@ describe('Ajuda: conteúdo e busca', () => {
     expect(CONTEUDO.topicos.map((t) => t.id)).toEqual(['contatos', 'configuracoes'])
     expect(CONTEUDO.topicos[1]!.secoes.map((s) => s.id)).toEqual(['notificacoes'])
     expect(CONTEUDO.topicos[1]!.secoes[0]!.blocos).toEqual([{ tipo: 'dica', texto: 'A IA avisa quando um detrator responde.' }])
-    expect(lerConteudo(null)).toEqual({ versao: 1, topicos: [] })
+    // Jornadas (docs/ajuda-jornadas.md §3): depois de lerConteudo, `jornadas` é sempre uma lista (vazia sem jornadas).
+    expect(lerConteudo(null)).toEqual({ versao: 1, jornadas: [], topicos: [] })
   })
 
   it('sem acento, sem diferenciar maiúsculas, com plural; título e palavras-chave pesam mais', () => {

@@ -37,7 +37,9 @@ até 12 meses e nunca passa de hoje; pedido mais longo: explique o limite e resp
 - Para comparar com o período anterior, use "anterior" e "variacao" de indicadores (variação em pontos de NPS).
 
 Dúvidas de uso
-- Chame buscar_ajuda, resuma os passos e indique a tela pelo atalho.
+- Chame buscar_ajuda. Quando vier uma jornada (topico "Jornadas") sobre a dúvida, responda em três partes, cada uma \
+começando numa linha: "Onde:" (o caminho no menu), "Como:" (os passos curtos, cada um numa linha com "- ") e \
+"Resultado:" (o que a pessoa vê no fim). Senão, resuma os passos. Nos dois casos, indique a tela pelo atalho.
 
 Resposta
 - "resposta": português do Brasil, direto, até umas 8 linhas. Texto simples: sem links, endereços, imagens, HTML ou \
