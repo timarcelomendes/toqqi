@@ -19,8 +19,10 @@ from toqqi.modelos import AceiteTermos, Usuario
 # (todo mundo vê a tela de aceite de novo).
 # 2 (etapa 5d): os cinco recursos de IA; 3 (etapa 5e): o registro de e-mails enviados (90 dias); 4 (etapa 5f): registros
 # de acesso (6 meses), exclusão automática 90 dias depois do fim do período pago ou do teste e portabilidade; 5 (03/10):
-# nos Termos, o nível "Mais detalhado" da IA gasta 2 análises da cota por resumo, parecer ou pergunta
-VERSAO_DOCUMENTOS = 5
+# nos Termos, o nível "Mais detalhado" da IA gasta 2 análises da cota por resumo, parecer ou pergunta; 6 (etapa 5g):
+# nos Termos, o preço é o da contratação (só muda por reajuste) e limites e cotas podem mudar, com aviso; a IA usa as
+# análises do nível escolhido (a tela mostra quantas)
+VERSAO_DOCUMENTOS = 6
 
 AGENTE_MAX = 400
 ORIGENS = ("cadastro", "tela")

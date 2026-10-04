@@ -12,6 +12,8 @@ body{margin:0;background:#F8FAFC}
 a{color:#B02F13}a:hover{color:#8C2814}
 .wrap{max-width:1160px;margin:0 auto;padding:0 24px;box-sizing:border-box}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border-radius:12px;font-weight:600;font-size:16px;text-decoration:none;box-sizing:border-box}
+/* Texto com número (data-p) num <span> só: solto no botão, o número vira um item do flex e o gap abre espaço em volta dele. */
+.btn > span{text-align:center}
 .btn-p{background:#D63A18;color:#FFFFFF}.btn-p:hover{background:#B02F13;color:#FFFFFF}
 .btn-s{background:#FFFFFF;color:#0F172A;border:1px solid #CBD5E1}.btn-s:hover{background:#F1F5F9;color:#0F172A}
 .nav a{color:#475569;text-decoration:none;font-weight:600;font-size:15px}.nav a:hover{color:#0F172A}
@@ -93,6 +95,8 @@ details[open] .mais{transform:rotate(45deg)}
 .tplanos tbody th{text-align:left;font-weight:500;color:#334155}
 .tplanos thead th{font-size:15px;font-weight:700;color:#0F172A;background:#F8FAFC;position:sticky;top:0}
 .tplanos thead th span{display:block;font-size:12px;font-weight:600;color:#64748B;margin-top:2px}
+/* O preço dentro do "R$ 149" do cabeçalho (data-p, trocado pelo site.ts) fica na mesma linha. */
+.tplanos thead th span span{display:inline;margin:0;font-size:inherit;color:inherit}
 .tplanos td{font-weight:700;color:#0F172A;width:18%}
 .tplanos td svg{display:inline-block;vertical-align:middle}
 .tplanos .tdest{background:#FFF8F6}

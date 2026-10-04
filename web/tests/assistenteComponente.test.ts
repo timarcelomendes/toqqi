@@ -47,7 +47,10 @@ const RESPOSTA = (p: Partial<RespostaAssistente> = {}): RespostaAssistente => ({
 const erroApi = (status: number, codigo: string, mensagem: string) => new Response(JSON.stringify({ erro: { codigo, mensagem } }), { status })
 /** Resta 1 análise: não dá para o Mais detalhado (cada pergunta gasta 2). */
 const RESTA_1 = { usadas: 499, limite: 500, restantes: 1, mes: '2026-10' }
+/** A frase do 409 da API (desde 03/10 ela sugere o nível mais barato que cabe no que resta). */
 const INSUFICIENTE = 'Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo mês.'
+/** A do site, quando a API não mandou a dela: sem citar nível (as análises de cada um mudam em Plataforma › Parâmetros). */
+const INSUFICIENTE_SITE = 'O nível escolhido gasta 2 análises e resta 1. Troque o nível em Configurações › IA ou aguarde o próximo mês.'
 
 /**
  * Tela larga ou estreita, alta ou baixa (celular deitado, zoom de 200%); com ou sem "reduzir movimento" (sem, a resposta
@@ -795,7 +798,8 @@ describe('erros', () => {
     expect(w.find('[data-erro] button').exists()).toBe(false) // sem "Tentar de novo"
     expect(caixa(w).element.disabled).toBe(true)
     const bloqueio = w.get('[data-bloqueio]')
-    expect(t(bloqueio.text())).toContain(INSUFICIENTE)
+    // O estado lido de novo não traz a frase: a do site.
+    expect(t(bloqueio.text())).toContain(INSUFICIENTE_SITE)
     expect(bloqueio.get('a').attributes('href')).toBe('/configuracoes/ia')
     expect(t(bloqueio.get('a').text())).toBe('Trocar o nível')
     // O estado lido de novo traz o que resta de verdade (a cota de antes era 488).
@@ -811,7 +815,7 @@ describe('erros', () => {
     expect(botaoFlutuante(w).exists()).toBe(true)
     await abrir(w)
     expect(caixa(w).element.disabled).toBe(true)
-    expect(t(w.get('[data-bloqueio]').text())).toBe(INSUFICIENTE)
+    expect(t(w.get('[data-bloqueio]').text())).toBe(INSUFICIENTE_SITE)
     expect(w.find('[data-bloqueio] a').exists()).toBe(false)
   })
 
@@ -826,7 +830,7 @@ describe('erros', () => {
     await abrir(w)
     await perguntar(w, 'Qual o NPS?')
     expect(caixa(w).element.disabled).toBe(true)
-    expect(t(w.get('[data-bloqueio]').text())).toContain(INSUFICIENTE)
+    expect(t(w.get('[data-bloqueio]').text())).toContain(INSUFICIENTE_SITE)
     expect(useAssistenteStore().estado?.motivo).toBe('cota_insuficiente')
     w.unmount()
 

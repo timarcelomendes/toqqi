@@ -9,7 +9,7 @@
     <meta property="og:site_name" content="Toqqi" />
     <meta property="og:locale" content="pt_BR" />
     <meta property="og:title" content="Toqqi: retenha quem está insatisfeito, cresça com quem está feliz" />
-    <meta property="og:description" content="Pesquisa de NPS e CSAT por e-mail e WhatsApp, comentários lidos por IA e planos de ação. 14 dias grátis, sem cartão." />
+    <meta property="og:description" content="Pesquisa de NPS e CSAT por e-mail e WhatsApp, comentários lidos por IA e planos de ação. Teste grátis, sem cartão." />
     <!-- ?v=2: endereço novo para os navegadores largarem o ícone antigo (balões) do cache. Ao trocar o ícone, suba o v. -->
     <link rel="icon" href="/favicon.ico?v=2" sizes="32x32" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
@@ -60,7 +60,7 @@
 <h1 style="margin:0;font-size:clamp(38px,5.6vw,60px);line-height:1.05;font-weight:800;letter-spacing:-.035em">Retenha quem está insatisfeito. <span style="color:#D63A18">Cresça com quem está feliz.</span></h1>
 <p class="lead" style="max-width:540px">O Toqqi envia a pesquisa por e-mail e WhatsApp, lê cada comentário com IA e transforma a resposta em ação: plano para o cliente em risco, indicação de quem recomenda você.</p>
 <div style="display:flex;flex-wrap:wrap;gap:12px">
-<a href="/cadastro" class="btn btn-p">Começar 14 dias grátis</a>
+<a href="/cadastro" class="btn btn-p"><span>Começar <span data-p="teste.dias">14</span> dias grátis</span></a>
 <a href="#como" class="btn btn-s">Ver como funciona</a>
 </div>
 <p style="margin:0;font-size:14px;color:#64748B">Sem cartão de crédito. Feito para a LGPD desde o primeiro dia.</p>
@@ -407,7 +407,7 @@ Retenha quem está insatisfeito. Cresça com quem está feliz.
 <div style="background:#111827;border:1px solid #1F2A3C;border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column">
 <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #1F2A3C">
 <svg width="32" height="32" viewBox="0 0 48 48" fill="none" aria-hidden="true" style="flex:none"><rect width="48" height="48" rx="11" fill="#FF5A36"/><g transform="translate(9.1 9.7) scale(0.21)" stroke="#FFFFFF" fill="none"><circle cx="33" cy="33" r="24.5" stroke-width="20"/><path d="M57.5 33 V92" stroke-width="20"/><circle cx="109" cy="33" r="24.5" stroke-width="20"/><path d="M133.5 33 V92" stroke-width="20"/><path d="M18 112 Q70 140 122 112" stroke-width="17" stroke-linecap="round"/></g></svg>
-<div style="display:flex;flex-direction:column"><span style="font-weight:700;font-size:15px">ToqqiAI</span><span style="font-size:12px;color:#94A3B8">Restam <span data-restam>497</span> de 500 perguntas no mês</span></div>
+<div style="display:flex;flex-direction:column"><span style="font-weight:700;font-size:15px">ToqqiAI</span><span style="font-size:12px;color:#94A3B8">Restam <span data-restam>497</span> de <span data-p="ia.cota.profissional">500</span> perguntas no mês</span></div>
 <span style="margin-left:auto;font-size:11px;color:#94A3B8;border:1px solid #1F2A3C;border-radius:999px;padding:3px 8px">Dados de exemplo</span>
 </div>
 
@@ -489,37 +489,37 @@ Retenha quem está insatisfeito. Cresça com quem está feliz.
 <div class="wrap" style="display:flex;flex-direction:column;gap:40px">
 <div style="display:flex;flex-direction:column;gap:14px;max-width:720px;margin:0 auto;text-align:center;align-items:center">
 <span class="rot">Planos</span>
-<h2 class="h2">Comece grátis por 14 dias</h2>
+<h2 class="h2">Comece grátis por <span data-p="teste.dias">14</span> dias</h2>
 <p class="lead">Sem cartão no teste. Depois, uma fatura por mês, paga por Pix, boleto ou cartão. Cancele quando quiser e use até o fim do período pago.</p>
 </div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:20px;align-items:stretch">
 <div class="cartao" style="padding:32px;display:flex;flex-direction:column;gap:22px;position:relative;">
 <div><h3 style="margin:0;font-size:20px;font-weight:700">Essencial</h3><p style="margin:6px 0 0;font-size:15px;color:#475569">Para começar a medir</p></div>
-<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:16px;font-weight:600">R$</span><span style="font-size:48px;font-weight:800;letter-spacing:-.03em;line-height:1">149</span><span style="font-size:15px;color:#64748B">/mês</span></div>
+<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:16px;font-weight:600">R$</span><span style="font-size:48px;font-weight:800;letter-spacing:-.03em;line-height:1" data-p="planos.essencial.preco">149</span><span style="font-size:15px;color:#64748B">/mês</span></div>
 <div style="display:flex;flex-direction:column;flex:1">
-<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Contatos ativos</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">300</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>WhatsApp automático</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">40/mês</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Perguntas ao ToqqiAI</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">100/mês</b></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Contatos ativos</span><b style="color:#0F172A;font-size:15px;white-space:nowrap"><span data-p="planos.essencial.contatos">300</span></b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>WhatsApp automático</span><b style="color:#0F172A;font-size:15px;white-space:nowrap"><span data-p="whatsapp.franquia.essencial">40</span>/mês</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Perguntas ao ToqqiAI</span><b style="color:#0F172A;font-size:15px;white-space:nowrap"><span data-p="ia.cota.essencial">100</span>/mês</b></div>
 <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#047857;padding-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Todos os recursos incluídos</div>
 </div>
-<a href="/cadastro" class="btn btn-s">Testar 14 dias grátis</a>
+<a href="/cadastro" class="btn btn-s"><span>Testar <span data-p="teste.dias">14</span> dias grátis</span></a>
 </div>
 <div class="cartao" style="padding:32px;display:flex;flex-direction:column;gap:22px;position:relative;border:2px solid #D63A18;">
 <span style="position:absolute;top:-14px;left:32px;background:#D63A18;color:#FFFFFF;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px">Recomendado</span>
 <div><h3 style="margin:0;font-size:20px;font-weight:700">Profissional</h3><p style="margin:6px 0 0;font-size:15px;color:#475569">Para a carteira inteira</p></div>
-<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:16px;font-weight:600">R$</span><span style="font-size:48px;font-weight:800;letter-spacing:-.03em;line-height:1">349</span><span style="font-size:15px;color:#64748B">/mês</span></div>
+<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:16px;font-weight:600">R$</span><span style="font-size:48px;font-weight:800;letter-spacing:-.03em;line-height:1" data-p="planos.profissional.preco">349</span><span style="font-size:15px;color:#64748B">/mês</span></div>
 <div style="display:flex;flex-direction:column;flex:1">
-<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Contatos ativos</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">1.500</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>WhatsApp automático</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">90/mês</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Perguntas ao ToqqiAI</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">500/mês</b></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Contatos ativos</span><b style="color:#0F172A;font-size:15px;white-space:nowrap"><span data-p="planos.profissional.contatos">1.500</span></b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>WhatsApp automático</span><b style="color:#0F172A;font-size:15px;white-space:nowrap"><span data-p="whatsapp.franquia.profissional">90</span>/mês</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Perguntas ao ToqqiAI</span><b style="color:#0F172A;font-size:15px;white-space:nowrap"><span data-p="ia.cota.profissional">500</span>/mês</b></div>
 <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#047857;padding-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Todos os recursos incluídos</div>
 </div>
-<a href="/cadastro" class="btn btn-p">Testar 14 dias grátis</a>
+<a href="/cadastro" class="btn btn-p"><span>Testar <span data-p="teste.dias">14</span> dias grátis</span></a>
 </div>
 <div class="cartao" style="padding:32px;display:flex;flex-direction:column;gap:22px;position:relative;">
 <div><h3 style="margin:0;font-size:20px;font-weight:700">Empresa</h3><p style="margin:6px 0 0;font-size:15px;color:#475569">Para operações maiores</p></div>
-<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:16px;font-weight:600">R$</span><span style="font-size:48px;font-weight:800;letter-spacing:-.03em;line-height:1">799</span><span style="font-size:15px;color:#64748B">/mês</span></div>
+<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:16px;font-weight:600">R$</span><span style="font-size:48px;font-weight:800;letter-spacing:-.03em;line-height:1" data-p="planos.empresa.preco">799</span><span style="font-size:15px;color:#64748B">/mês</span></div>
 <div style="display:flex;flex-direction:column;flex:1">
-<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Contatos ativos</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">sem limite</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>WhatsApp automático</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">200/mês</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Perguntas ao ToqqiAI</span><b style="color:#0F172A;font-size:15px;white-space:nowrap">2.000/mês</b></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Contatos ativos</span><b style="color:#0F172A;font-size:15px;white-space:nowrap"><span data-p="planos.empresa.contatos">sem limite</span></b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>WhatsApp automático</span><b style="color:#0F172A;font-size:15px;white-space:nowrap"><span data-p="whatsapp.franquia.empresa">200</span>/mês</b></div><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0"><span>Perguntas ao ToqqiAI</span><b style="color:#0F172A;font-size:15px;white-space:nowrap"><span data-p="ia.cota.empresa">2.000</span>/mês</b></div>
 <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#047857;padding-top:12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>Todos os recursos incluídos</div>
 </div>
-<a href="/cadastro" class="btn btn-s">Testar 14 dias grátis</a>
+<a href="/cadastro" class="btn btn-s"><span>Testar <span data-p="teste.dias">14</span> dias grátis</span></a>
 </div>
 </div>
 <div style="display:flex;flex-direction:column;align-items:center;gap:24px">
@@ -531,14 +531,14 @@ Retenha quem está insatisfeito. Cresça com quem está feliz.
 <div id="tabela-planos" class="an" hidden style="width:100%;display:flex;flex-direction:column;gap:14px">
 <div class="cartao" style="overflow-x:auto;padding:0">
 <table class="tplanos">
-<thead><tr><th scope="col" style="text-align:left">Recurso</th><th scope="col">Essencial<span>R$ 149</span></th><th scope="col" class="tdest">Profissional<span>R$ 349</span></th><th scope="col">Empresa<span>R$ 799</span></th></tr></thead>
+<thead><tr><th scope="col" style="text-align:left">Recurso</th><th scope="col">Essencial<span>R$ <span data-p="planos.essencial.preco">149</span></span></th><th scope="col" class="tdest">Profissional<span>R$ <span data-p="planos.profissional.preco">349</span></span></th><th scope="col">Empresa<span>R$ <span data-p="planos.empresa.preco">799</span></span></th></tr></thead>
 <tbody>
 <tr><th colspan="4" scope="colgroup" class="tgrupo">Limites</th></tr>
-<tr><th scope="row">Contatos ativos</th><td>300</td><td class="tdest">1.500</td><td>Sem limite</td></tr>
+<tr><th scope="row">Contatos ativos</th><td><span data-p="planos.essencial.contatos">300</span></td><td class="tdest"><span data-p="planos.profissional.contatos">1.500</span></td><td><span data-p="planos.empresa.contatos" data-p-maiuscula>Sem limite</span></td></tr>
 <tr><th scope="row">Usuários</th><td>Sem limite</td><td class="tdest">Sem limite</td><td>Sem limite</td></tr>
-<tr><th scope="row">WhatsApp automático (convites/mês)</th><td>40</td><td class="tdest">90</td><td>200</td></tr>
-<tr><th scope="row">Perguntas ao ToqqiAI por mês</th><td>100</td><td class="tdest">500</td><td>2.000</td></tr>
-<tr><th scope="row">Comentários lidos pela IA por mês</th><td>1.000</td><td class="tdest">5.000</td><td>20.000</td></tr>
+<tr><th scope="row">WhatsApp automático (convites/mês)</th><td><span data-p="whatsapp.franquia.essencial">40</span></td><td class="tdest"><span data-p="whatsapp.franquia.profissional">90</span></td><td><span data-p="whatsapp.franquia.empresa">200</span></td></tr>
+<tr><th scope="row">Perguntas ao ToqqiAI por mês</th><td><span data-p="ia.cota.essencial">100</span></td><td class="tdest"><span data-p="ia.cota.profissional">500</span></td><td><span data-p="ia.cota.empresa">2.000</span></td></tr>
+<tr><th scope="row">Comentários lidos pela IA por mês</th><td><span data-p="ia.teto.essencial">1.000</span></td><td class="tdest"><span data-p="ia.teto.profissional">5.000</span></td><td><span data-p="ia.teto.empresa">20.000</span></td></tr>
 <tr><th colspan="4" scope="colgroup" class="tgrupo">Pesquisas</th></tr>
 <tr><th scope="row">Formulários NPS e CSAT com a sua marca</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
 <tr><th scope="row">Envio por e-mail, manual e automático</th><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td class="tdest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td><td><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Incluído"><path d="M20 6 9 17l-5-5"></path></svg></td></tr>
@@ -567,8 +567,8 @@ Retenha quem está insatisfeito. Cresça com quem está feliz.
 </div>
 <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.6;color:#64748B;max-width:860px">
 <p style="margin:0"><b style="color:#475569">Opcional:</b> o WhatsApp automático precisa de uma conta da sua empresa na plataforma oficial da Meta; acabados os convites do mês, a pesquisa segue por e-mail. A API e os webhooks são para quem quer ligar o Toqqi ao próprio sistema.</p>
-<p style="margin:0">No teste grátis valem 20 convites de WhatsApp automático e até 1.000 comentários lidos pela IA. As perguntas ao ToqqiAI seguem o plano escolhido para o teste.</p>
-<p style="margin:0" data-nota-ia>No nível “Mais detalhado” da IA, cada pergunta ao ToqqiAI, resumo ou parecer conta como 2.</p>
+<p style="margin:0" data-nota-teste>No teste grátis valem <span data-p="whatsapp.franquia.teste">20</span> convites de WhatsApp automático e até <span data-p="ia.teto.teste">1.000</span> comentários lidos pela IA. As perguntas ao ToqqiAI seguem o plano escolhido para o teste.</p>
+<p style="margin:0" data-nota-ia>No nível “Mais detalhado” da IA, cada pergunta ao ToqqiAI, resumo ou parecer conta como <span data-p="ia.analises.detalhado">2</span>.</p>
 </div>
 </div>
 
@@ -620,7 +620,7 @@ Retenha quem está insatisfeito. Cresça com quem está feliz.
 <p class="lead">Crie a conta, importe seus clientes e mande a primeira pesquisa em minutos.</p>
 </div>
 <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start">
-<a href="/cadastro" class="btn btn-p" style="min-height:56px;font-size:17px;padding:0 28px">Começar 14 dias grátis</a>
+<a href="/cadastro" class="btn btn-p" style="min-height:56px;font-size:17px;padding:0 28px"><span>Começar <span data-p="teste.dias">14</span> dias grátis</span></a>
 <span style="font-size:14px;color:#64748B">Sem cartão de crédito</span>
 </div>
 </div>

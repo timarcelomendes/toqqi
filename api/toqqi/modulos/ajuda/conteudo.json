@@ -253,7 +253,7 @@
         "Confira os indicadores: Receita em risco, Planos de ação, Satisfação (CSAT) e Taxa de resposta.",
         "Desça para ver o NPS mês a mês, “Quem mudou de lado”, “Do que estão falando” e os comentários. Na dúvida, clique em “Como ler os números”."
       ],
-      "resultado": "Você vê o NPS do período com a faixa e a variação, o que mais mudou e o que precisa de cuidado, como a receita em risco e os planos vencidos. Com a IA ligada, “Gerar resumo”, no “Resumo da IA”, escreve três frases sobre o período e gasta 1 análise da cota de IA, ou 2 no “Mais detalhado”.",
+      "resultado": "Você vê o NPS do período com a faixa e a variação, o que mais mudou e o que precisa de cuidado, como a receita em risco e os planos vencidos. Com a IA ligada, “Gerar resumo”, no “Resumo da IA”, escreve três frases sobre o período e gasta análises da cota de IA conforme o modelo (veja em Configurações › IA).",
       "veja": [
         "painel#o-que-mostra-o-inicio",
         "painel#periodo-e-filtros-do-inicio",
@@ -371,7 +371,7 @@
       "como": [
         "Clique no botão “ToqqiAI”, no canto inferior direito de qualquer tela. No celular, o chat abre em tela cheia.",
         "Escreva na caixa “Faça uma pergunta”, como “Quais clientes têm o NPS mais baixo nos últimos 90 dias?”, ou clique numa sugestão.",
-        "Aperte Enter para enviar. Cada pergunta gasta 1 análise da cota de IA do plano, ou 2 no modelo “Mais detalhado”.",
+        "Aperte Enter para enviar. Cada pergunta gasta análises da cota de IA do plano conforme o modelo: Rápido {{ia.analises.rapido}}, Equilibrado {{ia.analises.equilibrado}} e Mais detalhado {{ia.analises.detalhado}}.",
         "Para seguir no mesmo assunto, pergunte em seguida. Para mudar de assunto, clique em “Nova conversa”."
       ],
       "resultado": "A resposta traz os números da sua conta, com o período e o total de respostas, ou o passo a passo de uso, com botões como “Abrir Relatórios” para ir à tela certa. No alto do chat, “Restam X de Y análises este mês” mostra o que sobra da cota.",
@@ -568,7 +568,6 @@
             "login",
             "acessar",
             "teste grátis",
-            "14 dias",
             "confirmar email",
             "email de confirmação",
             "nova conta",
@@ -580,14 +579,14 @@
               "itens": [
                 "Na tela de entrada, clique em “Criar conta”.",
                 "Preencha Nome da empresa, Seu nome, E-mail de trabalho e uma senha. O WhatsApp é opcional.",
-                "Marque “Li e aceito os termos” e clique em “Começar 14 dias grátis”.",
+                "Marque “Li e aceito os termos” e clique em “Começar {{teste.dias}} dias grátis”.",
                 "Abra o e-mail que enviamos e clique no link para confirmar. Sem confirmar, você não entra.",
                 "Volte à tela de entrada, informe e-mail e senha e clique em “Entrar”."
               ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "O teste dura 14 dias e não pede cartão. Quem cria a conta vira administrador. A senha precisa ter de 8 a 70 caracteres, com letra maiúscula, número e símbolo."
+              "texto": "O teste dura {{teste.dias}} dias e não pede cartão. Quem cria a conta vira administrador. A senha precisa ter de 8 a 70 caracteres, com letra maiúscula, número e símbolo."
             },
             {
               "tipo": "dica",
@@ -1050,7 +1049,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Limite de contatos ativos: Essencial 300, Profissional 1.500 e Empresa sem limite. No limite, o Toqqi não deixa cadastrar, importar nem reativar contatos. Troque de plano em Assinatura ou desative quem você não usa mais."
+              "texto": "Limite de contatos ativos: Essencial {{planos.essencial.contatos}}, Profissional {{planos.profissional.contatos}} e Empresa {{planos.empresa.contatos}}. No limite, o Toqqi não deixa cadastrar, importar nem reativar contatos. Troque de plano em Assinatura ou desative quem você não usa mais."
             }
           ]
         },
@@ -2088,11 +2087,11 @@
             {
               "tipo": "lista",
               "itens": [
-                "Cada geração usa 1 análise da cota de IA do plano, ou 2 no modelo “Mais detalhado”. Se der erro, as análises voltam para a cota.",
+                "Cada geração usa análises da cota de IA do plano, conforme o modelo: Rápido {{ia.analises.rapido}}, Equilibrado {{ia.analises.equilibrado}} e Mais detalhado {{ia.analises.detalhado}}. Se der erro, as análises voltam para a cota.",
                 "O resumo fica salvo para aqueles filtros até alguém gerar de novo. O rodapé mostra quando ele foi gerado, por quem e com qual modelo.",
                 "Depois de gerar, “Gerar de novo” espera 30 segundos, e a espera vale para a conta toda.",
                 "Sem respostas de NPS nem de CSAT no período, o Toqqi avisa e não gasta a análise.",
-                "Com a assinatura pausada, a cota do mês esgotada ou, no “Mais detalhado”, só 1 análise restante, o cartão explica e não gera. Com 1 restante, dá para trocar para o “Equilibrado” em Configurações › IA."
+                "Com a assinatura pausada, a cota do mês esgotada ou menos análises restantes do que o nível gasta, o cartão explica e não gera. Nesse último caso, o aviso indica o nível mais econômico que cabe no que resta, para trocar em Configurações › IA (se nenhum couber, a cota renova no dia 1º)."
               ]
             },
             {
@@ -2675,7 +2674,7 @@
             {
               "tipo": "lista",
               "itens": [
-                "Cada parecer usa 1 análise da cota de IA do plano, ou 2 no modelo “Mais detalhado”; se der erro, as análises voltam.",
+                "Cada parecer usa análises da cota de IA do plano, conforme o modelo (Rápido {{ia.analises.rapido}}, Equilibrado {{ia.analises.equilibrado}} e Mais detalhado {{ia.analises.detalhado}}); se der erro, as análises voltam.",
                 "O parecer fica salvo para aqueles filtros até alguém gerar de novo. Entre uma geração e outra, a conta espera 30 segundos.",
                 "Vão para a IA só números e nomes de empresas e de responsáveis, nunca comentários nem dados dos contatos.",
                 "O botão não aparece se a inteligência artificial não estiver ligada na plataforma."
@@ -3404,7 +3403,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Cada plano inclui pesquisas por WhatsApp automático por mês: Essencial 40, Profissional 90 e Empresa 200. A franquia renova todo mês, conta só os convites enviados pelo WhatsApp automático e aparece em uma barra na aba “WhatsApp automático”. Os administradores recebem um e-mail quando ela chega a 80% e quando acaba."
+              "texto": "Cada plano inclui pesquisas por WhatsApp automático por mês: Essencial {{whatsapp.franquia.essencial}}, Profissional {{whatsapp.franquia.profissional}} e Empresa {{whatsapp.franquia.empresa}}. A franquia renova todo mês, conta só os convites enviados pelo WhatsApp automático e aparece em uma barra na aba “WhatsApp automático”. Os administradores recebem um e-mail quando ela chega a 80% e quando acaba."
             },
             {
               "tipo": "lista",
@@ -3824,7 +3823,6 @@
             "rápido",
             "equilibrado",
             "mais detalhado",
-            "2 análises",
             "objetiva",
             "criativa",
             "tom da ia",
@@ -3839,7 +3837,7 @@
             {
               "tipo": "lista",
               "itens": [
-                "Modelo: “Rápido” (respostas curtas e rápidas), “Equilibrado” (o padrão, bom para o dia a dia) ou “Mais detalhado” (análises mais cuidadosas, que podem demorar mais). O Rápido e o Equilibrado usam 1 análise da cota por pergunta ou por geração; o Mais detalhado usa 2.",
+                "Modelo: “Rápido” (respostas curtas e rápidas), “Equilibrado” (o padrão, bom para o dia a dia) ou “Mais detalhado” (análises mais cuidadosas, que podem demorar mais). Análises da cota por pergunta ou por geração: Rápido {{ia.analises.rapido}}, Equilibrado {{ia.analises.equilibrado}} e Mais detalhado {{ia.analises.detalhado}}.",
                 "Estilo: “Objetiva” (frases curtas, só o essencial), “Equilibrada” (claro e cordial, o padrão) ou “Criativa” (tom mais próximo e ideias práticas). Em nenhum estilo a IA inventa números.",
                 "“Sugerir passos nas ações”: ligado, a ação criada a partir de uma resposta ganha até 3 passos sugeridos pela IA, sem gastar a cota do plano. Desligado, as ações que ainda esperavam os passos ficam sem eles."
               ]
@@ -3874,7 +3872,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "A seção “Cota de IA do plano” mostra quantas análises você usou no mês, como “120 de 500”, e renova no dia 1º. Cada pergunta ao ToqqiAI, cada resumo do Início e cada parecer dos Relatórios usam 1 análise, ou 2 no modelo “Mais detalhado” (se der erro, elas voltam). No “Mais detalhado”, com só 1 análise restante, o ToqqiAI, o resumo e o parecer avisam e esperam: troque para o “Equilibrado” ou aguarde o próximo mês. A análise automática de cada resposta e os passos das ações não entram nessa conta: contam só no limite mensal de segurança. A cota é de 100 análises no Essencial, 500 no Profissional e 2.000 no Empresa."
+              "texto": "A seção “Cota de IA do plano” mostra quantas análises você usou no mês, como “120 de {{ia.cota.profissional}}”, e renova no dia 1º. Cada pergunta ao ToqqiAI, cada resumo do Início e cada parecer dos Relatórios usam análises conforme o modelo: Rápido {{ia.analises.rapido}}, Equilibrado {{ia.analises.equilibrado}} e Mais detalhado {{ia.analises.detalhado}} (se der erro, elas voltam). Com menos análises restantes do que o nível gasta, o ToqqiAI, o resumo e o parecer avisam e esperam: troque para o nível mais econômico que cabe no que resta (o aviso diz qual) ou aguarde o próximo mês. A análise automática de cada resposta e os passos das ações não entram nessa conta: contam só no limite mensal de segurança. A cota é de {{ia.cota.essencial}} análises no Essencial, {{ia.cota.profissional}} no Profissional e {{ia.cota.empresa}} no Empresa."
             },
             {
               "tipo": "paragrafo",
@@ -4245,7 +4243,6 @@
           "somente_admin": false,
           "atalho": "assinatura",
           "palavras": [
-            "14 dias",
             "teste acabou",
             "período de teste",
             "trial",
@@ -4264,7 +4261,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Toda conta nova começa com 14 dias de teste grátis, sem cartão. O topo mostra “Teste grátis: faltam N dias” (no celular, “Teste: N dias”); para quem cuida da assinatura, ele leva à tela Assinatura e, até alguém assinar, também o Início mostra um cartão com os dias que faltam e o botão “Ver planos”. Na tela Assinatura, um selo mostra a situação da conta:"
+              "texto": "Toda conta nova começa com {{teste.dias}} dias de teste grátis, sem cartão. O topo mostra “Teste grátis: faltam N dias” (no celular, “Teste: N dias”); para quem cuida da assinatura, ele leva à tela Assinatura e, até alguém assinar, também o Início mostra um cartão com os dias que faltam e o botão “Ver planos”. Na tela Assinatura, um selo mostra a situação da conta:"
             },
             {
               "tipo": "lista",
@@ -4340,8 +4337,6 @@
             "essencial",
             "profissional",
             "empresa",
-            "300 contatos",
-            "1500 contatos",
             "sem limite",
             "sem fidelidade",
             "contratar",
@@ -4358,14 +4353,14 @@
             {
               "tipo": "lista",
               "itens": [
-                "Essencial: R$ 149,00 por mês, até 300 contatos ativos.",
-                "Profissional: R$ 349,00 por mês, até 1.500 contatos ativos.",
-                "Empresa: R$ 799,00 por mês, contatos ativos sem limite."
+                "Essencial: {{planos.essencial.preco}} por mês. Contatos ativos: {{planos.essencial.contatos}}.",
+                "Profissional: {{planos.profissional.preco}} por mês. Contatos ativos: {{planos.profissional.contatos}}.",
+                "Empresa: {{planos.empresa.preco}} por mês. Contatos ativos: {{planos.empresa.contatos}}."
               ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "Em Administração › Assinatura, o quadro “Contatos ativos” mostra quantos você usa, como “120 de 300”. Só contatos ativos contam. Um plano que não comporta os seus contatos ativos de hoje fica bloqueado: desative contatos antes de escolhê-lo."
+              "texto": "Em Administração › Assinatura, o quadro “Contatos ativos” mostra quantos você usa, como “120 de {{planos.essencial.contatos}}”. Só contatos ativos contam. Um plano que não comporta os seus contatos ativos de hoje fica bloqueado: desative contatos antes de escolhê-lo."
             },
             {
               "tipo": "paragrafo",
@@ -4908,22 +4903,22 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Cada pergunta ao ToqqiAI usa 1 análise da cota mensal do seu plano: 100 no Essencial, 500 no Profissional e 2.000 no Empresa. No modelo “Mais detalhado”, que o administrador escolhe em Configurações › IA, cada pergunta usa 2. No alto do chat, aparece “Restam X de Y análises este mês”."
+              "texto": "Cada pergunta ao ToqqiAI usa análises da cota mensal do seu plano: {{ia.cota.essencial}} no Essencial, {{ia.cota.profissional}} no Profissional e {{ia.cota.empresa}} no Empresa. Quantas cada pergunta usa depende do modelo, que o administrador escolhe em Configurações › IA: Rápido {{ia.analises.rapido}}, Equilibrado {{ia.analises.equilibrado}} e Mais detalhado {{ia.analises.detalhado}}. No alto do chat, aparece “Restam X de Y análises este mês”."
             },
             {
               "tipo": "lista",
               "itens": [
-                "Pergunta que dá erro e fica sem resposta não gasta a análise: ela é devolvida.",
-                "Se o ToqqiAI responde, a análise foi usada, mesmo quando a resposta é recusar um assunto.",
+                "Pergunta que dá erro e fica sem resposta não gasta análises: elas são devolvidas.",
+                "Se o ToqqiAI responde, as análises foram usadas, mesmo quando a resposta é recusar um assunto.",
                 "A cota renova no dia 1º de cada mês.",
-                "O resumo do Início e o parecer dos Relatórios usam a mesma cota: 1 análise por geração, ou 2 no “Mais detalhado”.",
-                "No “Mais detalhado”, com só 1 análise restante, o chat avisa e não envia a pergunta: troque para o “Equilibrado” em Configurações › IA ou aguarde o próximo mês.",
+                "O resumo do Início e o parecer dos Relatórios usam a mesma cota, com as mesmas análises por modelo.",
+                "Com menos análises restantes do que o nível gasta, o chat avisa e não envia a pergunta: troque em Configurações › IA para o nível mais econômico que cabe no que resta (o aviso diz qual) ou aguarde o próximo mês.",
                 "A análise automática de cada comentário e os passos das ações não entram nesta conta, e o interruptor “Analisar comentários com IA” não liga nem desliga o ToqqiAI."
               ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "Acabou a cota? O chat explica: “O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.” O administrador vê o uso em Configurações › IA, na seção “Cota de IA do plano”, e pode trocar de plano em Assinatura. No teste grátis, vale a cota do plano do teste."
+              "texto": "Acabou a cota? O chat explica: “O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.” O administrador vê o uso em Configurações › IA, na seção “Cota de IA do plano”, e pode trocar de plano em Assinatura. No teste grátis, vale a cota do plano do teste, o {{teste.plano}}."
             }
           ]
         },

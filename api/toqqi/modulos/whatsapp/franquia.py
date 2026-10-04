@@ -5,6 +5,11 @@ lembrete), não o "link pronto" nem a mensagem de teste. A reserva acontece quan
 linha do mês travada (sem corrida entre robô, envio manual e eventos); se a mensagem não sair, ela volta
 (`devolver`). Acabou: o envio cai para e-mail, salvo com o excedente ligado (cobrado à parte).
 Avisos por e-mail aos administradores aos 80% e aos 100%, uma vez por mês.
+
+Etapa 5g: as franquias são parâmetros da plataforma (`whatsapp.franquia.{plano}`, `.cortesia` e `.teste`; padrões
+Essencial 40, Profissional 90, Empresa 200, Cortesia 200 e teste 20) e valem na próxima reserva. Abaixo do já usado no
+mês: sem franquia até o mês virar (e-mail ou excedente), e a primeira reserva sem franquia manda uma vez o aviso de
+"acabou" (pelo `avisou_100`); subir libera na hora. O excedente (R$ 1,50) fica no código.
 """
 import math
 
@@ -12,13 +17,13 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from toqqi.core import relogio
+from toqqi.core import parametros, relogio
 from toqqi.core.avisos import avisar_admins
 from toqqi.core.config import config
 from toqqi.modelos import Conta, WhatsappConta, WhatsappUso
 
-LIMITES = {"essencial": 40, "profissional": 90, "empresa": 200, "cortesia": 200, "teste": 20}
 VALOR_EXCEDENTE = 1.50
+FRANQUIAS = ("essencial", "profissional", "empresa", "cortesia", "teste")
 
 
 def plano_da_franquia(conta: Conta) -> str:
@@ -26,7 +31,8 @@ def plano_da_franquia(conta: Conta) -> str:
 
 
 def limite(conta: Conta) -> int:
-    return LIMITES.get(plano_da_franquia(conta), 0)
+    plano = plano_da_franquia(conta)
+    return parametros.valor(f"whatsapp.franquia.{plano}") if plano in FRANQUIAS else 0
 
 
 def mes_atual() -> str:
@@ -68,6 +74,7 @@ def reservar(s: Session, wc: WhatsappConta) -> str | None:
         uso.usadas += 1
         _avisar(s, uso, lim, wc)
         return "franquia"
+    _avisar(s, uso, lim, wc)  # a franquia baixou abaixo do já usado: o "acabou" sai uma vez (avisou_100)
     if wc.excedente_ativo:
         uso.excedentes += 1
         return "excedente"

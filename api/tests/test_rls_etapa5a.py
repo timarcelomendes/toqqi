@@ -109,7 +109,7 @@ def test_api_de_a_nao_ve_nem_mexe_na_assinatura_de_b(client, ab, dono, asaas_fal
     d = client.get(f"{API}/assinatura", headers=h).json()
     assert (d["assinatura"], d["fatura_aberta"], d["cobrancas"]) == (None, None, [])
     assert d["conta"]["situacao"] == "teste"
-    for metodo, rota, corpo in (("put", "/plano", {"plano": "empresa"}), ("post", "/cancelar", None)):
+    for metodo, rota, corpo in (("put", "/plano", {"plano": "empresa", "preco": "799.00"}), ("post", "/cancelar", None)):
         r = client.request(metodo.upper(), f"{API}/assinatura{rota}", headers=h, json=corpo)
         assert r.status_code == 409 and r.json()["erro"]["codigo"] == "sem_assinatura"
     assert sql(dono, "select plano, situacao from assinaturas") == [("profissional", "ativa")]

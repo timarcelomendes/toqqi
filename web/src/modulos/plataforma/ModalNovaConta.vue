@@ -13,6 +13,8 @@ import Campo from '@/components/ui/Campo.vue'
 import CampoSenha from '@/components/ui/CampoSenha.vue'
 import Modal from '@/components/ui/Modal.vue'
 
+/** Etapa 5g: `teste.dias` (Plataforma › Parâmetros), lido por quem abre a janela; sem ele, 14. */
+withDefaults(defineProps<{ diasTeste?: number }>(), { diasTeste: 14 })
 const aberto = defineModel<boolean>('aberto', { default: false })
 const emit = defineEmits<{ criada: [] }>()
 const regras = useRegrasSenha()
@@ -77,7 +79,7 @@ async function salvar() {
         <div class="grid gap-2 sm:grid-cols-2">
           <label
             v-for="op in [
-              { valor: 'teste' as const, rotulo: 'Teste grátis', desc: '14 dias para conhecer o Toqqi.' },
+              { valor: 'teste' as const, rotulo: 'Teste grátis', desc: `${diasTeste} dias para conhecer o Toqqi.` },
               { valor: 'cortesia' as const, rotulo: 'Cortesia', desc: 'Sem cobrança e sem data para acabar.' },
             ]"
             :key="op.valor"

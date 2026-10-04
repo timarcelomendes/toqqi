@@ -40,16 +40,17 @@ class Config(BaseSettings):
     IA_MODELO: str = "gpt-5-mini"
     IA_ESFORCO: str = "minimal"  # vazio = não manda `reasoning`
     IA_BASE_URL: str = "https://api.openai.com"
-    # Assistente (etapa 5b): mesma chave e mesmo provedor da IA por resposta; cada pergunta gasta 1 análise da cota
-    # mensal do plano, 2 no nível Mais detalhado (Essencial 100, Profissional 500, Empresa 2.000; cortesia =
-    # IA_COTA_CORTESIA).
+    # Assistente (etapa 5b): mesma chave e mesmo provedor da IA por resposta; cada pergunta gasta as análises do nível
+    # da cota mensal do plano. Etapa 5g: IA_COTA_CORTESIA, IA_ASSISTENTE_*, IA_MODELO_* e IA_ESFORCO_* (abaixo) e
+    # EXCLUSAO_AUTOMATICA são só o PADRÃO dos parâmetros da plataforma (core.parametros): o que a equipe Toqqi salvar em
+    # Plataforma › Parâmetros vale mais. IA_MODELO/IA_ESFORCO (análise de cada resposta) ficam fora dos parâmetros.
     IA_ASSISTENTE_MODELO: str = "gpt-5-mini"
     IA_ASSISTENTE_ESFORCO: str = "low"  # vazio = não manda `reasoning`
     IA_COTA_CORTESIA: int = Field(default=500, ge=0)
     # Níveis de modelo (etapa 5d, Configurações › IA): valem para o assistente, o resumo do painel, o parecer dos
     # relatórios e os passos das ações (a análise de cada resposta segue com IA_MODELO/IA_ESFORCO). Esforço vazio =
     # não manda `reasoning`; no equilibrado, vazio = o do assistente (IA_ASSISTENTE_MODELO/IA_ASSISTENTE_ESFORCO).
-    # O custo na cota de cada nível (1, 1 e 2 análises) fica em `ia_texto.MODELOS`, não aqui.
+    # O custo na cota de cada nível (padrão 1, 1 e 2 análises) fica em `ia_texto.MODELOS`, não aqui.
     IA_MODELO_RAPIDO: str = "gpt-5-nano"
     IA_ESFORCO_RAPIDO: str = "minimal"
     IA_MODELO_EQUILIBRADO: str = ""
@@ -72,6 +73,7 @@ class Config(BaseSettings):
     # Etapa 5f: exclusão automática das contas encerradas (tarefa `limpeza`): `ligada` avisa e exclui (com os freios
     # de assinatura.exclusao); `simular` só conta e registra no log. Qualquer outro valor (ex.: "desligada") também só
     # simula, com um aviso no log a cada rodada: um valor errado não impede a API de subir nem liga a exclusão.
+    # Etapa 5g: é só o padrão de `teste.exclusao_automatica` (Plataforma › Parâmetros vale mais).
     EXCLUSAO_AUTOMATICA: str = "simular"
     # Papel restrito da aplicação. Com APP_DB_PASSWORD definido, a API cria/atualiza esse papel
     # na subida (usando a conexão de migração) e passa a se conectar com ele. Ideal para o Render,

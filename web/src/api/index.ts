@@ -31,6 +31,7 @@ export * from './etapa5c'
 export * from './etapa5d'
 export * from './etapa5e'
 export * from './etapa5f'
+export * from './etapa5g'
 export * from './empresa'
 
 const publico = { autenticar: false } as const

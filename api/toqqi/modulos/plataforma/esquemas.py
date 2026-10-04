@@ -14,7 +14,7 @@ class NovaContaIn(BaseModel):
 
 
 class EstenderTesteIn(BaseModel):
-    dias: Annotated[int, Field(ge=1, le=365)] = 14
+    dias: Annotated[int, Field(ge=1, le=365)] | None = None  # sem `dias`: `teste.dias` (parâmetros da plataforma)
 
 
 class ExcluirContaIn(BaseModel):

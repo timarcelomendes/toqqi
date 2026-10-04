@@ -7,6 +7,10 @@
 // - Depois de assinar (ou de clicar em "Pagar"), busca de novo a cada 10 s por até 2 min, até a fatura esperada
 //   aparecer paga (o Asaas cria a do mês seguinte até 40 dias antes: pode haver outra em aberto). Quando a conta
 //   difere da sessão (pagou noutro aparelho, venceu...), atualiza a sessão: o aviso do topo e os envios dependem dela.
+// - Etapa 5g: assinar e trocar de plano mandam sempre o preço que a tela mostrou; se ele mudou (409 `preco_mudou`), a
+//   tela busca os planos de novo e mostra a mensagem da API (ninguém paga o que não viu). Se a API recusar o preço
+//   mandado (422 no campo `preco`, ex.: página aberta antes de uma atualização do site), o alerta traz a mensagem dela
+//   ("Recarregue a página para ver o preço atual do plano.") e "Recarregar", que recarrega a página.
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ArrowRightLeft, CreditCard, ExternalLink, FileText, Pencil, RefreshCw, XCircle } from 'lucide-vue-next'
 import { assinaturaApi, mensagemDoErro, type EstadoAssinatura, type FaturaAberta } from '@/api'
@@ -213,6 +217,12 @@ const errosForm = computed(() => ({
 }))
 const secaoForm = ref<HTMLElement | null>(null)
 const formAssinar = ref<HTMLFormElement | null>(null)
+/** 422 no campo `preco`: a API não aceitou o preço que esta tela mandou; só recarregando a página. */
+const erroPreco = computed(() => erros.preco ?? null)
+
+function recarregarPagina() {
+  location.reload()
+}
 
 function limparErros() {
   limpar()
@@ -247,7 +257,7 @@ async function assinar() {
     focarPrimeiroErro()
     return
   }
-  const r = await executar(() => assinaturaApi.assinar({ ...corpoCobranca(form.value), plano: p.chave }))
+  const r = await executar(() => assinaturaApi.assinar({ ...corpoCobranca(form.value), plano: p.chave, preco: p.preco }))
   if (!r) {
     // Já tem assinatura ou virou cortesia (outra aba, a equipe Toqqi): mostra como está agora.
     if (codigoErro.value === 'ja_assinada' || codigoErro.value === 'cortesia') {
@@ -256,6 +266,13 @@ async function assinar() {
     } else if (codigoErro.value === 'limite_do_plano') {
       // A contagem de contatos ativos mudou desde que a tela abriu: os cartões mostram a de agora.
       await atualizar()
+    } else if (codigoErro.value === 'preco_mudou') {
+      // O preço do plano mudou desde que a tela abriu: os cartões e o resumo da fatura mostram o de agora.
+      await atualizar()
+    } else if (erroPreco.value) {
+      // Nenhum campo do formulário a corrigir: o foco vai ao "Recarregar" do alerta.
+      await nextTick()
+      formAssinar.value?.querySelector<HTMLElement>('[data-recarregar]')?.focus()
     } else focarPrimeiroErro()
     return
   }
@@ -464,8 +481,13 @@ onBeforeUnmount(() => {
             <h2 id="t-cobranca" class="text-lg font-bold text-texto">Dados de cobrança</h2>
             <p class="mt-1 text-sm text-texto-suave">Vieram dos dados da empresa. Confira antes de assinar: as faturas saem com eles.</p>
           </div>
-          <Alerta v-if="erroGeral" :tom="codigoErro === 'limite_do_plano' ? 'atencao' : 'erro'">
-            {{ erroGeral }}
+          <Alerta
+            v-if="erroGeral"
+            :tom="erroPreco || codigoErro === 'limite_do_plano' || codigoErro === 'preco_mudou' ? 'atencao' : 'erro'"
+            data-erro-assinar
+          >
+            {{ erroPreco ?? erroGeral }}
+            <button v-if="erroPreco" type="button" class="link ml-1" data-recarregar @click="recarregarPagina">Recarregar</button>
             <RouterLink v-if="codigoErro === 'limite_do_plano' && sessao.pode('contatos.ver')" to="/contatos" class="link ml-1">Ver contatos</RouterLink>
           </Alerta>
           <CamposCobranca v-model="form" :erros="errosForm" :desabilitado="enviando" />
@@ -523,6 +545,6 @@ onBeforeUnmount(() => {
     </section>
   </div>
 
-  <ModalTrocarPlano v-if="dados?.assinatura" v-model:aberto="trocarAberto" :estado="dados" @trocado="aoMudarAssinatura" />
+  <ModalTrocarPlano v-if="dados?.assinatura" v-model:aberto="trocarAberto" :estado="dados" @trocado="aoMudarAssinatura" @recarregar="atualizar" />
   <ModalDadosCobranca v-if="dados?.assinatura" v-model:aberto="dadosAberto" :dados="dados.assinatura.dados" :disponivel="dados.disponivel" @salvo="aplicar" />
 </template>

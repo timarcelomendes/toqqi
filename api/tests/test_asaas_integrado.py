@@ -4,7 +4,7 @@ os webhooks indo do Asaas falso para a API."""
 from datetime import date, datetime, time
 
 import pytest
-from util import API, FUSO, assinar, conta_pronta, fixar_relogio, situacao_conta, sql
+from util import API, FUSO, assinar, conta_pronta, fixar_relogio, situacao_conta, sql, trocar_plano
 
 from toqqi import tarefas
 
@@ -78,7 +78,7 @@ def test_fluxo_completo(client, dono, admin, asaas_falso, monkeypatch):
 
     # troca de plano: valor novo no Asaas e na fatura em aberto
     terceira = asaas_falso.simular("proxima", sid)["cobranca"]["id"]
-    r = client.put(f"{API}/assinatura/plano", headers=h, json={"plano": "empresa"})
+    r = trocar_plano(client, h, "empresa")
     assert r.status_code == 200, r.text
     assert r.json()["assinatura"]["plano"] == "empresa" and r.json()["fatura_aberta"]["valor"] == 799.0
     assert asaas_falso.dados["cobrancas"][terceira]["value"] == 799.0

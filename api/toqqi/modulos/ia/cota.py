@@ -1,7 +1,9 @@
 """Cota de IA do plano (etapa 5b): análises por mês do calendário de São Paulo, em `ia_uso_mensal.cota_usada`.
 
-Essencial 100, Profissional 500, Empresa 2.000; a conta em teste usa a do plano do teste e a cortesia usa
-`IA_COTA_CORTESIA`. Gastam a cota as perguntas ao assistente (5b) e o resumo do painel e o parecer dos relatórios
+Limites (etapa 5g: parâmetros da plataforma, `ia.cota.{plano}` e `ia.cota.cortesia`; padrões Essencial 100,
+Profissional 500, Empresa 2.000 e cortesia `IA_COTA_CORTESIA`, 500): a conta em teste usa a do plano dela (o do
+teste) e a cortesia, a da cortesia; plano desconhecido vale como o de `teste.plano`. Mudou o limite: vale na próxima
+reserva (abaixo do já usado no mês, sem saldo até o mês virar). Gastam a cota as perguntas ao assistente (5b) e o resumo do painel e o parecer dos relatórios
 (5d), cada um com as análises do nível de modelo da conta (`ia_texto.analises_do_nivel`: 1 no Rápido e no
 Equilibrado, 2 no Mais detalhado, desde 03/10). A análise de cada resposta (4b) e os passos das ações ficam fora
 dela, só com o teto de segurança (`ia_uso_mensal.analises`).
@@ -13,8 +15,9 @@ análises no mês da reserva, mesmo que o mês já tenha virado.
 
 Sem saldo para o custo do nível (`motivo_sem_saldo`): nenhuma análise restante → "cota_esgotada" (como antes);
 restam algumas, mas menos que o custo (ex.: resta 1 e o Mais detalhado gasta 2) → "cota_insuficiente", com a
-mensagem que sugere o Equilibrado (`mensagem_insuficiente`). `erro_sem_saldo` monta o 409 de quando a reserva não
-passou.
+mensagem que sugere o nível mais barato que cabe no que resta, ou diz que a cota renova no próximo mês se nenhum cabe
+(`mensagem_insuficiente`; revisão da 5g: antes, sempre o Equilibrado). `erro_sem_saldo` monta o 409 de quando a
+reserva não passou.
 """
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -24,14 +27,11 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from toqqi.core import ia_texto, relogio
-from toqqi.core.config import config
+from toqqi.core import ia_texto, parametros, relogio
 from toqqi.core.db import em_conta
 from toqqi.core.errors import AppError
 from toqqi.modelos import Conta, IaUsoMensal
 
-COTA_PLANO = {"essencial": 100, "profissional": 500, "empresa": 2000}
-PLANO_PADRAO = "profissional"
 MSG_ESGOTADA = "O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º."
 
 
@@ -48,11 +48,18 @@ def mes_atual() -> date:
     return relogio.hoje().replace(day=1)
 
 
-def limite(conta: Conta) -> int:
-    """Análises por mês: cortesia → IA_COTA_CORTESIA; demais situações (inclusive teste) → pelo plano da conta."""
+def chave_do_limite(conta: Conta) -> str:
+    """O parâmetro da cota da conta: cortesia → `ia.cota.cortesia`; demais situações (inclusive teste) → pelo plano
+    da conta (desconhecido → o de `teste.plano`)."""
     if conta.situacao == "cortesia":
-        return max(0, config().IA_COTA_CORTESIA)
-    return COTA_PLANO.get(conta.plano or PLANO_PADRAO, COTA_PLANO[PLANO_PADRAO])
+        return "ia.cota.cortesia"
+    plano = conta.plano if conta.plano in parametros.PLANOS else parametros.valor("teste.plano")
+    return f"ia.cota.{plano}"
+
+
+def limite(conta: Conta) -> int:
+    """Análises por mês da conta (`chave_do_limite`)."""
+    return max(0, int(parametros.valor(chave_do_limite(conta))))
 
 
 def estado(s: Session, conta: Conta) -> dict:
@@ -92,13 +99,25 @@ def motivo_sem_saldo(uso: dict, custo: int) -> str | None:
     return None
 
 
+def nivel_que_cabe(restantes: int) -> str | None:
+    """O nível mais barato que cabe em `restantes` análises (entre os de mesmo custo, o mais completo: com os padrões,
+    o Equilibrado); None se nenhum cabe."""
+    cabem = [(ia_texto.analises_do_nivel(n), -i, n) for i, n in enumerate(ia_texto.NIVEIS)
+             if ia_texto.analises_do_nivel(n) <= restantes]
+    return min(cabem)[2] if cabem else None
+
+
 def mensagem_insuficiente(restantes: int, nivel: str | None) -> str:
     """"Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou aguarde
-    o próximo mês." (no plural a partir de 2)."""
+    o próximo mês." (no plural a partir de 2), sugerindo o nível mais barato que cabe no que resta (`nivel_que_cabe`);
+    se nenhum cabe, "Nenhum nível gasta tão pouco: a cota renova no dia 1º do próximo mês."."""
     resta = "Resta 1 análise" if restantes == 1 else f"Restam {restantes} análises"
-    padrao = ia_texto.rotulo_do_nivel(ia_texto.NIVEL_PADRAO)
-    return (f"{resta} e o nível {ia_texto.rotulo_do_nivel(nivel)} gasta {ia_texto.analises_do_nivel(nivel)}. "
-            f"Troque para o {padrao} em Configurações › IA ou aguarde o próximo mês.")
+    inicio = f"{resta} e o nível {ia_texto.rotulo_do_nivel(nivel)} gasta {ia_texto.analises_do_nivel(nivel)}."
+    sugerido = nivel_que_cabe(restantes)
+    if sugerido is None:
+        return f"{inicio} Nenhum nível gasta tão pouco: a cota renova no dia 1º do próximo mês."
+    return (f"{inicio} Troque para o {ia_texto.rotulo_do_nivel(sugerido)} em Configurações › IA ou aguarde o próximo "
+            "mês.")
 
 
 def erro_sem_saldo(s: Session, conta: Conta, nivel: str | None) -> AppError:

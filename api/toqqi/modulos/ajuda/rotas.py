@@ -9,5 +9,6 @@ router = APIRouter(prefix="/ajuda", tags=["ajuda"])
 
 @router.get("")
 def ajuda(_: Contexto = Depends(requer())):
-    """O conteúdo da Ajuda como está ({versao, jornadas, topicos}), para qualquer usuário logado."""
-    return JSONResponse(servico.carregar(), headers={"Cache-Control": "private, max-age=300"})
+    """O conteúdo da Ajuda ({versao, jornadas, topicos}), com as marcas dos parâmetros trocadas pelos valores de hoje,
+    para qualquer usuário logado. Cache de 60 s no navegador (um parâmetro mudado aparece logo)."""
+    return JSONResponse(servico.conteudo(), headers={"Cache-Control": "private, max-age=60"})

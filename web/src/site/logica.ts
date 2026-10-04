@@ -74,3 +74,86 @@ export const CONVERSA: FalaConversa[] = [
 ]
 
 export const COTA_EXEMPLO = 500
+
+// ── Números dos planos (etapa 5g) ───────────────────────────────────────────
+// O HTML traz os padrões do código (para buscadores e quem não roda JavaScript); depois de abrir, o site busca
+// GET /publico/planos e troca cada `<span data-p="{chave}">` pelo valor de agora (Plataforma › Parâmetros).
+
+/** Quanto o site espera a resposta antes de desistir (e ficar com o HTML). */
+export const TEMPO_PLANOS_MS = 5000
+
+/** Os padrões do código (docs/api-etapa-5g.md §2) que o HTML mostra em cada `data-p`. */
+export const PADROES_SITE: Record<string, string | number | null> = {
+  'planos.essencial.preco': '149.00',
+  'planos.profissional.preco': '349.00',
+  'planos.empresa.preco': '799.00',
+  'planos.essencial.contatos': 300,
+  'planos.profissional.contatos': 1500,
+  'planos.empresa.contatos': null,
+  'ia.cota.essencial': 100,
+  'ia.cota.profissional': 500,
+  'ia.cota.empresa': 2000,
+  'ia.teto.essencial': 1000,
+  'ia.teto.profissional': 5000,
+  'ia.teto.empresa': 20000,
+  'ia.teto.teste': 1000,
+  'whatsapp.franquia.essencial': 40,
+  'whatsapp.franquia.profissional': 90,
+  'whatsapp.franquia.empresa': 200,
+  'whatsapp.franquia.teste': 20,
+  'teste.dias': 14,
+  'ia.analises.detalhado': 2,
+}
+
+type Objeto = Record<string, unknown>
+const ehObjeto = (v: unknown): v is Objeto => typeof v === 'object' && v !== null && !Array.isArray(v)
+
+/**
+ * Acha o valor de uma chave do §2 no corpo de GET /publico/planos (`{planos: [{chave, preco, contatos, whatsapp,
+ * ia_cota, ia_teto}], teste: {dias, plano, whatsapp, ia_teto}, ia_analises: {…}}`). Chave que não está lá → undefined.
+ */
+export function valorPublico(corpo: unknown, chave: string): unknown {
+  if (!ehObjeto(corpo)) return undefined
+  const [grupo, a, b] = chave.split('.')
+  const plano = (k: string | undefined): Objeto | undefined =>
+    Array.isArray(corpo.planos) ? (corpo.planos as unknown[]).find((p): p is Objeto => ehObjeto(p) && p.chave === k) : undefined
+  const teste = ehObjeto(corpo.teste) ? corpo.teste : undefined
+  const campo = (o: Objeto | undefined, nome: string) => (o && nome in o ? o[nome] : undefined)
+  if (grupo === 'planos' && b === 'preco') return campo(plano(a), 'preco')
+  if (grupo === 'planos' && b === 'contatos') return campo(plano(a), 'contatos')
+  if (grupo === 'ia' && a === 'cota') return campo(plano(b), 'ia_cota')
+  if (grupo === 'ia' && a === 'teto') return b === 'teste' ? campo(teste, 'ia_teto') : campo(plano(b), 'ia_teto')
+  if (grupo === 'whatsapp' && a === 'franquia') return b === 'teste' ? campo(teste, 'whatsapp') : campo(plano(b), 'whatsapp')
+  if (grupo === 'teste' && (a === 'dias' || a === 'plano')) return campo(teste, a)
+  if (grupo === 'ia' && a === 'analises') return ehObjeto(corpo.ia_analises) ? campo(corpo.ia_analises, b ?? '') : undefined
+  return undefined
+}
+
+const fmtInteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 })
+const fmtCentavos = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/**
+ * O texto do `data-p` para o valor: preço inteiro "149" (com centavos, "149,90"); contatos sem limite "sem limite"
+ * ("Sem limite" com `data-p-maiuscula`); os outros, inteiros com milhar ("1.500"). Valor que não serve → null (o HTML fica).
+ */
+export function textoNumeroSite(chave: string, valor: unknown, maiuscula = false): string | null {
+  if (chave.endsWith('.preco')) {
+    const n = typeof valor === 'number' ? valor : typeof valor === 'string' && valor.trim() ? Number(valor) : Number.NaN
+    if (!Number.isFinite(n) || n < 0) return null
+    const centavos = Math.round(n * 100)
+    return centavos % 100 === 0 ? fmtInteiro.format(centavos / 100) : fmtCentavos.format(centavos / 100)
+  }
+  if (chave.endsWith('.contatos') && valor === null) return maiuscula ? 'Sem limite' : 'sem limite'
+  if (typeof valor !== 'number' || !Number.isInteger(valor) || valor < 0) return null
+  return fmtInteiro.format(valor)
+}
+
+/** O "Restam N" da conversa: a cota do Profissional menos as perguntas respondidas (nunca negativo). */
+export function restamNaConversa(cota: number, respondidas: number): number {
+  return Math.max(0, cota - respondidas)
+}
+
+/** O "Restam N" da conversa parada (a do HTML, com as 3 perguntas já respondidas). */
+export function restamParado(cota: number): number {
+  return restamNaConversa(cota, CONVERSA.length)
+}

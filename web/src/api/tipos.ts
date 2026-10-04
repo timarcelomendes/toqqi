@@ -2071,3 +2071,94 @@ export interface GrupoAuditoria {
   chave: string
   rotulo: string
 }
+
+// ───────────────────────── Etapa 5g (docs/api-etapa-5g.md) ─────────────────────────
+
+/** Os quatro grupos de Plataforma › Parâmetros, na ordem da tela. */
+export type GrupoParametros = 'planos' | 'ia' | 'whatsapp' | 'teste'
+
+/** De onde vem o valor em uso: salvo na tela (banco), da variável de ambiente ou do código. */
+export type OrigemParametro = 'banco' | 'ambiente' | 'codigo'
+
+/** Valor de um parâmetro: dinheiro em texto ("149.00"), inteiro, null (sem limite) ou texto. */
+export type ValorParametro = string | number | null
+
+/** Um grupo de GET /plataforma/parametros (e a resposta do PUT). */
+export interface GrupoParametrosPlataforma {
+  grupo: GrupoParametros | (string & {})
+  rotulo: string
+  /** Id da última linha do histórico do grupo (0 sem nenhuma): vai no PUT. */
+  versao: number
+  alterado_em: string | null
+  alterado_por: string | null
+  valores: Record<string, ValorParametro>
+  padroes: Record<string, ValorParametro>
+  origens: Record<string, OrigemParametro | (string & {})>
+  /** Só no PUT do grupo `ia`: os níveis cujo modelo foi testado na OpenAI antes de salvar. */
+  testados?: string[]
+}
+
+export interface ParametrosPlataforma {
+  grupos: GrupoParametrosPlataforma[]
+}
+
+/** Uma mudança (valores efetivos, antes e depois). */
+export interface MudancaParametro {
+  chave: string
+  de: ValorParametro
+  para: ValorParametro
+}
+
+export interface ExemploImpactoParametro {
+  id: Id
+  nome: string
+  uso: number
+}
+
+/** Contas atingidas por um valor que diminui (ou pelas análises que aumentam); `exemplos`: até 5, de maior uso. */
+export interface ImpactoParametro {
+  chave: string
+  contas: number
+  exemplos: ExemploImpactoParametro[]
+}
+
+/** POST /plataforma/parametros/{grupo}/previa. */
+export interface PreviaParametros {
+  mudancas: MudancaParametro[]
+  precisa_confirmar: boolean
+  impactos: ImpactoParametro[]
+}
+
+/** Item de GET /plataforma/parametros/historico (mais novos primeiro). */
+export interface ItemHistoricoParametros {
+  id: Id
+  criado_em: string
+  grupo: GrupoParametros | (string & {})
+  /** E-mail de quem salvou. */
+  por: string
+  mudancas: MudancaParametro[]
+}
+
+export type PaginaHistoricoParametros = Pagina<ItemHistoricoParametros>
+
+/** Um plano de GET /publico/planos (`preco` no formato de GET /assinatura/planos). */
+export interface PlanoPublico {
+  chave: ChavePlano | (string & {})
+  nome: string
+  preco: ValorDecimal
+  /** null = sem limite. */
+  contatos: number | null
+  /** Franquia mensal do WhatsApp automático. */
+  whatsapp: number
+  /** Cota de IA do plano (perguntas ao ToqqiAI, resumos e pareceres). */
+  ia_cota: number
+  /** Teto de segurança (comentários lidos pela IA e passos das ações). */
+  ia_teto: number
+}
+
+/** GET /publico/planos (sem login): os números que o site e as telas públicas mostram. */
+export interface PlanosPublicos {
+  planos: PlanoPublico[]
+  teste: { dias: number; plano: ChavePlano | (string & {}); whatsapp: number; ia_teto: number }
+  ia_analises: { rapido: number; equilibrado: number; detalhado: number }
+}

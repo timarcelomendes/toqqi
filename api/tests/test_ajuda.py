@@ -277,7 +277,7 @@ def test_get_ajuda_para_todos_os_perfis(client, exemplo):
               membro(client, admin["h"], "consulta@alfa.com.br", "consulta")["h"]):
         r = client.get(f"{API}/ajuda", headers=h)
         assert r.status_code == 200 and r.json() == exemplo
-        assert r.headers["cache-control"] == "private, max-age=300"
+        assert r.headers["cache-control"] == "private, max-age=60"  # etapa 5g: 300 → 60
     assert client.get(f"{API}/ajuda").status_code == 401
 
 

@@ -1,4 +1,7 @@
-"""Regras de acesso: cadastro, entrada, confirmação, senha, pedido de acesso, sessões."""
+"""Regras de acesso: cadastro, entrada, confirmação, senha, pedido de acesso, sessões.
+
+Etapa 5g: a conta nova começa com `teste.dias` de teste no plano `teste.plano` (parâmetros da plataforma; padrões 14
+dias e Profissional)."""
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -7,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from toqqi.apresentacao import conta_json, usuario_json
-from toqqi.core import acessos, relogio
+from toqqi.core import acessos, parametros, relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.deps import Contexto
@@ -29,7 +32,6 @@ from toqqi.modulos.acesso import emails, termos
 from toqqi.modulos.formularios.semear import semear_conta
 from toqqi.modulos.imagens.servico import logo_da_conta
 
-DIAS_TESTE = 14
 VALIDADE = {"confirmar_email": timedelta(hours=24), "redefinir_senha": timedelta(minutes=30)}
 SESSAO_LEMBRAR = timedelta(days=30)
 
@@ -88,10 +90,12 @@ def cadastrar(dados, ip: str | None, agente: str | None = None) -> str:
                 aviso_existente = (existente.nome, existente.email, existente.conta_id)
             else:
                 agora = _agora()
+                dias = parametros.valor("teste.dias")
                 conta = Conta(
                     # o fim do teste segue o relógio das regras que o leem (assinatura.regras); tokens e sessões
                     # seguem no relógio real
-                    nome=dados.empresa, situacao="teste", teste_ate=relogio.agora() + timedelta(days=DIAS_TESTE),
+                    nome=dados.empresa, situacao="teste", teste_ate=relogio.agora() + timedelta(days=dias),
+                    plano=parametros.valor("teste.plano"),
                     termos_aceitos_em=agora, termos_ip=ip,
                     # registro da versão aceita no cadastro da conta; a fonte da versão é termos.VERSAO_DOCUMENTOS
                     # e a prova de cada pessoa fica em aceites_termos

@@ -6,7 +6,7 @@ import { useId } from 'vue'
 import { Check, CheckCircle2, Circle, UsersRound } from 'lucide-vue-next'
 import type { PlanoAssinatura } from '@/api/tipos'
 import { formatarMoeda, formatarNumero } from '@/utils/formatos'
-import { RECURSOS_PLANOS, cabeNoPlano, rotuloLimite } from './logica'
+import { RECURSOS_PLANOS, cabeNoPlano, rotuloLimite, textoContratado } from './logica'
 
 const props = withDefaults(
   defineProps<{
@@ -20,8 +20,10 @@ const props = withDefaults(
     bloquearSemEspaco?: boolean
     desabilitado?: boolean
     compacto?: boolean
+    /** Etapa 5g: o valor que a conta paga no plano atual (o contratado); diferente do preço de hoje, aparece no cartão. */
+    contratado?: PlanoAssinatura['preco'] | null
   }>(),
-  { atual: null, rotuloAtual: 'Plano atual', bloquearSemEspaco: true, desabilitado: false, compacto: false },
+  { atual: null, rotuloAtual: 'Plano atual', bloquearSemEspaco: true, desabilitado: false, compacto: false, contratado: null },
 )
 const escolhido = defineModel<string | null>({ default: null })
 /** `porPonteiro`: escolheu com mouse ou toque (com o teclado, a tela não rola sozinha). */
@@ -30,6 +32,7 @@ const emit = defineEmits<{ escolheu: [chave: string, porPonteiro: boolean] }>()
 const nome = `plano-${useId()}`
 const cabe = (p: PlanoAssinatura) => cabeNoPlano(p, props.contatosAtivos)
 const bloqueado = (p: PlanoAssinatura) => props.desabilitado || (props.bloquearSemEspaco && !cabe(p))
+const contratadoDe = (p: PlanoAssinatura) => (props.atual === p.chave ? textoContratado(props.contratado, p.preco) : null)
 
 let ponteiro = false
 function aoApertar() {
@@ -76,6 +79,7 @@ function aoMudar(chave: string) {
               <span v-if="atual === p.chave" class="rounded-full bg-superficie-2 px-2 py-0.5 text-xs font-semibold text-texto-suave">{{ rotuloAtual }}</span>
             </span>
             <span class="text-sm text-texto-suave">{{ rotuloLimite(p.contatos) }}</span>
+            <span v-if="contratadoDe(p)" class="text-xs text-texto-suave" data-contratado>{{ contratadoDe(p) }}</span>
             <span v-if="!cabe(p)" class="text-xs font-semibold text-atencao">Não comporta os {{ formatarNumero(contatosAtivos) }} contatos ativos de hoje.</span>
           </span>
           <span class="shrink-0 text-right">
@@ -104,6 +108,7 @@ function aoMudar(chave: string) {
               <span class="flex items-start gap-2"><UsersRound class="mt-0.5 size-4 shrink-0 text-texto-fraco" aria-hidden="true" />{{ rotuloLimite(p.contatos) }}</span>
               <span class="flex items-start gap-2"><Check class="mt-0.5 size-4 shrink-0 text-sucesso" aria-hidden="true" />{{ RECURSOS_PLANOS }}</span>
             </span>
+            <span v-if="contratadoDe(p)" class="text-xs text-texto-suave" data-contratado>{{ contratadoDe(p) }}</span>
           </span>
           <span v-if="!cabe(p)" class="rounded-lg bg-atencao-suave px-3 py-2 text-xs font-semibold text-atencao">
             Você tem {{ formatarNumero(contatosAtivos) }} contatos ativos: este plano permite até {{ formatarNumero(p.contatos ?? 0) }}.{{

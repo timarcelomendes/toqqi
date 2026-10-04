@@ -99,7 +99,7 @@ registros de acesso guardam o endereço inteiro.
 | `IA_COTA_CORTESIA` | Análises de IA por mês (cota do plano) das contas em cortesia (padrão `500`) |
 | `IA_MODELO_RAPIDO` / `IA_ESFORCO_RAPIDO` | Nível "Rápido" de Configurações › IA (padrão `gpt-5-nano` / `minimal`; gasta 1 análise da cota por geração ou pergunta). Ao trocar o modelo, confira o esforço: `minimal` só existe na família `gpt-5`; nos modelos 5.1 em diante o menor é `none` (com `minimal`, toda chamada desse nível volta 400) |
 | `IA_MODELO_EQUILIBRADO` / `IA_ESFORCO_EQUILIBRADO` | Nível "Equilibrado" (o padrão das contas; gasta 1 análise); vazios (padrão) = os do assistente |
-| `IA_MODELO_DETALHADO` / `IA_ESFORCO_DETALHADO` | Nível "Mais detalhado" (padrão `gpt-5` / `low`; gasta 2 análises da cota por geração ou pergunta, porque custa umas 5 vezes o Equilibrado). Em qualquer nível, esforço vazio = não manda `reasoning`; os níveis valem para o assistente, o resumo do painel, o parecer dos relatórios e os passos das ações (a análise de cada resposta segue com `IA_MODELO`/`IA_ESFORCO`). O custo de cada nível na cota fica no código (`core/ia_texto.py`, `MODELOS`): ao trocar o modelo de um nível por um bem mais caro ou mais barato, reveja o custo também |
+| `IA_MODELO_DETALHADO` / `IA_ESFORCO_DETALHADO` | Nível "Mais detalhado" (padrão `gpt-5` / `low`; gasta 2 análises da cota por geração ou pergunta, porque custa umas 5 vezes o Equilibrado). Em qualquer nível, esforço vazio = não manda `reasoning`; os níveis valem para o assistente, o resumo do painel, o parecer dos relatórios e os passos das ações (a análise de cada resposta segue com `IA_MODELO`/`IA_ESFORCO`). O custo padrão de cada nível na cota fica no código (`core/ia_texto.py`, `MODELOS`) e é editado em Plataforma › Parâmetros: ao trocar o modelo de um nível por um bem mais caro ou mais barato, reveja o custo também |
 | `ASAAS_API_KEY` | Chave de API do Asaas (da plataforma), na toqqi-api (e no toqqi-tarefas, se o Cron Job estiver ligado). Vazia = sem cobrança online |
 | `ASAAS_WEBHOOK_TOKEN` | Token do webhook do Asaas (cabeçalho `asaas-access-token`), só em toqqi-api. Vazio = webhook desligado (404) |
 | `ASAAS_URL` | Opcional: sobrepõe o endereço da API do Asaas (Asaas falso local). Vazio = o endereço segue a chave |
@@ -108,6 +108,12 @@ registros de acesso guardam o endereço inteiro.
 
 A etapa 2 não criou variáveis novas. `FRONTEND_URL` também é a base dos links de convite (`/r/{token}`)
 e `JWT_SECRET` entra no sal diário do hash de IP das respostas públicas.
+
+**Etapa 5g:** `IA_COTA_CORTESIA`, `IA_ASSISTENTE_MODELO`/`IA_ASSISTENTE_ESFORCO` (no nível Equilibrado),
+`IA_MODELO_*`/`IA_ESFORCO_*` dos níveis e `EXCLUSAO_AUTOMATICA` passaram a ser só o **padrão** dos parâmetros da
+plataforma: o que a equipe Toqqi salvar em Plataforma › Parâmetros vale mais (e o custo de cada nível na cota também é
+editado lá). Ficam só nas variáveis: `OPENAI_API_KEY`, `IA_PROVEDOR`, `IA_MODELO`/`IA_ESFORCO` (análise de cada
+resposta) e `SUPERADMIN_EMAILS`.
 
 ## Testes
 ```bash
@@ -621,6 +627,64 @@ NULL/CASCADE da zona de risco). Módulo novo `modulos/dados/` (rotas em `/conta`
   `teste_ate` do cadastro, da Plataforma e do "+14 dias" pelo relógio das regras (`relogio.agora()`).
 - `VERSAO_DOCUMENTOS = 4` (a Política e os Termos citam os registros de acesso e a exclusão automática).
 
+## Etapa 5g: parâmetros da plataforma (preços, limites, IA, WhatsApp e teste)
+Contrato em `../docs/api-etapa-5g.md`; migração `0016_parametros`. Módulos novos `core/parametros.py` (chaves, padrões,
+validação, formato e cache) e `modulos/plataforma/parametros.py` (serviço e rotas).
+- **Valor de cada chave** = linha em `parametros` > variável de ambiente (as de antes) > código. O banco guarda só o
+  que difere do padrão (tabela vazia = tudo como antes); salvar igual ao padrão apaga a linha. 40 chaves em 4 grupos
+  (`planos`, `ia`, `whatsapp`, `teste`): preço e contatos de cada plano; cota de IA (3 planos e cortesia), modelo,
+  esforço e análises de cada nível, teto de segurança (3 planos, cortesia, teste); franquia do WhatsApp (idem); dias e
+  plano do teste e o modo da exclusão automática. Ficam fora: `OPENAI_API_KEY`, `IA_PROVEDOR`, `IA_MODELO`/
+  `IA_ESFORCO`, `SUPERADMIN_EMAILS`, o excedente do WhatsApp (R$ 1,50) e as regras da exclusão (90 e 7 dias, 20 e 100
+  por dia).
+- **Cache**: as linhas são lidas por um engine próprio (`db.engine_parametros`: 1 conexão + 1, 3 s de espera por ela,
+  3 s para conectar e 3 s de `statement_timeout`; nunca o pool principal, de que quem chamou pode estar segurando uma
+  conexão dentro de `em_conta`), em modo sistema, e valem 30 s por processo (`CACHE_SEGUNDOS`). Uma leitura por vez:
+  com o cache vencido, uma thread lê e as outras seguem com os últimos valores; sem valor nenhum, esperam a leitura em
+  andamento. A API lê ao subir (`parametros.aquecer()` no `lifespan`). Quem salva limpa na hora (a leitura que já
+  estava em andamento não vale como nova). Em outro processo (outro worker, `python -m toqqi.tarefas`), a mudança vale
+  em até 30 s; o limite de contatos do banco (função `limite_contatos`, agora STABLE, lida pelo gatilho), na hora.
+  Falha ao ler: os últimos valores (log de aviso) e nova tentativa só depois de 5 s (`ESPERA_FALHA`); sem nenhuma
+  leitura boa, sobe `ParametrosIndisponiveis` (nunca o padrão em silêncio). A tela, a prévia e o PUT leem o banco
+  direto.
+- **Linha fora do formato** (só gravada à mão): chave desconhecida é ignorada; valor fora do tipo vale o padrão (log de
+  erro), menos o preço: fica o último valor bom lido ou, sem leitura anterior, `valor` daquela chave sobe
+  `ParametroInvalido`. A função `limite_contatos` aceita as mesmas linhas que o Python (null ou número inteiro de 1 a
+  1.000.000; texto, booleano, fração e fora da faixa valem o padrão). A tela mostra o padrão no lugar da linha ruim e
+  o PUT do grupo apaga as linhas fora do formato do grupo (mesmo sem outra mudança; sem histórico).
+- **Tabela `parametros`**: só `chave` e `valor` (quem alterou e quando ficam em `parametros_historico`; o "Alterado em
+  … por …" da tela vem da última linha do histórico do grupo). A conta lê só as linhas dos limites, pela `ler_limites`.
+- **Quem lê**: `core/planos.py` (`preco`, `planos_json`, `limite_contatos(s, …)`/`limite_da_conta` pelo banco),
+  `assinatura/servico.py` (preço atual ao assinar e trocar, adoção pelo preço atual e pela descrição do plano,
+  `teste.plano` no `recalcular` só para quem perde a assinatura sem nunca ter pago), `ia/cota.py`, `core/ia_texto.py` (`modelo_do_nivel`, `analises_do_nivel`, frase do custo montada em
+  `opcoes_json`; `testar`), `ia/regras.py`, `whatsapp/franquia.py`, `acesso/servico.cadastrar` e
+  `plataforma/servico.criar_conta` (`teste.dias` e `plano = teste.plano`), "+N dias" sem `dias` e
+  `assinatura/exclusao._modo`.
+- **Preço novo só para assinaturas novas e trocas de plano**: `assinaturas.valor` é o contratado; a conferência diária
+  compara o Asaas com ele (nunca com o preço atual); salvar um preço não chama o Asaas. Assinar e trocar mandam `preco`
+  (o que a tela mostrou; obrigatório: sem ele, 422 no campo): diferente do atual → 409 `preco_mudou` antes de chamar o
+  Asaas. A assinatura viva no Asaas e desconhecida aqui só é adotada com o valor (preço atual) e a descrição
+  ("Toqqi – plano X") do mesmo plano. Limites, cotas, tetos e
+  franquias valem na hora para todas as contas (baixar não apaga nada; abaixo do uso, sem saldo até o mês virar; o
+  "acabou" do WhatsApp sai uma vez).
+- **Rotas** (superadmin): `GET /plataforma/parametros`, `POST /plataforma/parametros/{grupo}/previa`,
+  `PUT /plataforma/parametros/{grupo}` (validação → nada mudou → confirmação (409 `confirmacao_necessaria`) → teste do
+  modelo novo na OpenAI, fora da transação (recusa 422 no campo, sem resposta 503 `teste_ia_indisponivel`) → trava
+  `parametros`, versão (409 `parametros_alterados`), grava, histórico e o evento global `parametros_alterados`) e
+  `GET /plataforma/parametros/historico`. Público: `GET /publico/planos` (60/min por IP, `Cache-Control: public,
+  max-age=60`), para o site da raiz trocar os números do HTML.
+- **Ajuda**: marcas `{{chave}}` no `conteudo.json`, trocadas em `GET /ajuda` (agora `max-age=60`) e na busca do
+  assistente (`ajuda.servico.conteudo()`); `validar` recusa marca desconhecida ou incompleta.
+- **Teste**: `teste.dias` e `teste.plano` valem para contas novas e o "+N dias"; o teste em andamento fica no plano dele
+  (o `recalcular` só volta ao `teste.plano` de hoje quem perde a assinatura sem nunca ter pago, na mesma transação:
+  `encerrar` e o descarte do sandbox marcam a conta).
+- **IA**: as análises por nível não diminuem do Rápido ao Mais detalhado (422 no campo); o `cota_insuficiente` sugere o
+  nível mais barato que cabe no que resta (empate: o mais completo) ou diz que a cota renova no próximo mês.
+- Mudança duradoura de um padrão pede também o código (`core/parametros.py`) e o HTML do site da raiz
+  (`tests/test_site_numeros.py` confere cada `data-p` do `web/index.html` com os padrões do código).
+- `VERSAO_DOCUMENTOS = 6` (Termos: preço da contratação, limites e cotas que podem mudar com aviso, análises da IA
+  conforme o nível).
+
 ## Estrutura
 ```
 toqqi/
@@ -639,7 +703,7 @@ toqqi/
                           banco de imagens da conta (banco.py, rotas /imagens)
   modulos/auditoria/      registro de atividades (com os grupos) e e-mails enviados (emails.py: lista e limpeza)
   modulos/dados/          dados da conta: exportar todos os dados (exportacao.py) e zona de risco (zona.py)
-  modulos/plataforma/     área do superadmin
+  modulos/plataforma/     área do superadmin: contas e parâmetros da plataforma (parametros.py, com /publico/planos)
   modulos/cadastros/      grupos, segmentos, perfis, cargos e responsáveis (teste do Teams)
   modulos/empresas/       empresas (clientes da conta)
   modulos/contatos/       contatos e link de pesquisa manual
@@ -669,6 +733,8 @@ alembic/versions/0007_ia_relatorios.py   IA por resposta, reclamação/elogio po
 alembic/versions/0008_assinaturas.py   cobrança em `contas`, assinaturas, cobranças e avisos do Asaas + RLS
 alembic/versions/0014_emails.py   visual dos e-mails, banco de imagens e `emails_enviados` + RLS
 alembic/versions/0015_dados_conta.py   `registros_acesso` (RLS só de gravação), aviso de exclusão em `contas`, índices
+alembic/versions/0016_parametros.py   `parametros` e `parametros_historico` (RLS só sistema; limites de contatos em
+                                   conta), `limite_contatos` STABLE lendo a tabela
 scripts/asaas_falso.py             Asaas falso (desenvolvimento local e testes)
 tests/                             pytest
 ```

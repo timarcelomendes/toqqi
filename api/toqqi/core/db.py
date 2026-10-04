@@ -36,12 +36,23 @@ def usar_url_app(url: str) -> None:
     _url_app_forcada = url
     engine.cache_clear()
     _fabrica.cache_clear()
+    engine_parametros.cache_clear()
 
 
 @lru_cache
 def engine() -> Engine:
     return create_engine(_url_app_forcada or config().url_app, pool_pre_ping=True, future=True,
                          hide_parameters=True)
+
+
+@lru_cache
+def engine_parametros() -> Engine:
+    """Engine pequeno e separado, só para o cache dos parâmetros da plataforma (`core.parametros`): quem lê pode estar
+    dentro de uma transação de `em_conta`, segurando uma conexão do pool principal, e com todas elas presas a leitura
+    pelo pool principal esperaria o `pool_timeout` dele (30 s). Uma leitura por vez por processo (o cache garante):
+    1 conexão (+1 de folga), no máximo 3 s de espera por ela e 3 s para conectar. Mesma URL do modo sistema."""
+    return create_engine(_url_app_forcada or config().url_app, pool_size=1, max_overflow=1, pool_timeout=3,
+                         pool_pre_ping=True, future=True, hide_parameters=True, connect_args={"connect_timeout": 3})
 
 
 @lru_cache

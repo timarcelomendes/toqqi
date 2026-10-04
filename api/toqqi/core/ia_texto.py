@@ -14,12 +14,20 @@ configuração; os outros 4xx, menos 408/409/429, configuração com tentativa; 
 `invalid_prompt` definitiva), rede e tempo esgotado (transitória), `refusal` (definitiva), resposta incompleta, sem
 texto, JSON inválido ou que não é um objeto (transitória). O log nunca leva os dados, o texto nem a chave.
 
-Níveis (§5.2): rapido = IA_MODELO_RAPIDO / IA_ESFORCO_RAPIDO; equilibrado = IA_MODELO_EQUILIBRADO /
-IA_ESFORCO_EQUILIBRADO (vazios = IA_ASSISTENTE_MODELO / IA_ASSISTENTE_ESFORCO); detalhado = IA_MODELO_DETALHADO /
-IA_ESFORCO_DETALHADO. Esforço vazio = não manda `reasoning`; modelo vazio = o do assistente; nível desconhecido vale
-como equilibrado. Cada nível gasta `analises` da cota do plano por geração (resumo, parecer) ou pergunta ao
-assistente (`analises_do_nivel`): 1 no rápido e no equilibrado, 2 no mais detalhado (decisão de 03/10: o gpt-5 custa
-à Toqqi umas 5 vezes o gpt-5-mini). Estilos (§5.3): uma linha a mais no fim das instruções (nenhuma no equilibrado).
+Níveis (§5.2; etapa 5g: parâmetros da plataforma `ia.modelo.{nivel}`, `ia.esforco.{nivel}` e `ia.analises.{nivel}`,
+editados em Plataforma › Parâmetros; as variáveis são só o padrão): rapido = IA_MODELO_RAPIDO / IA_ESFORCO_RAPIDO;
+equilibrado = IA_MODELO_EQUILIBRADO / IA_ESFORCO_EQUILIBRADO (vazios = IA_ASSISTENTE_MODELO / IA_ASSISTENTE_ESFORCO);
+detalhado = IA_MODELO_DETALHADO / IA_ESFORCO_DETALHADO (modelo vazio = o do assistente). Esforço vazio = não manda
+`reasoning`; nível desconhecido vale como equilibrado. Cada nível gasta `analises` da cota do plano por geração
+(resumo, parecer) ou pergunta ao assistente (`analises_do_nivel`; padrões 1 no rápido e no equilibrado, 2 no mais
+detalhado, de `MODELOS`); a descrição de cada nível na tela leva a frase do custo montada ("Gasta 1 análise da cota.").
+Modelo e esforço valem na próxima chamada; as análises, na próxima reserva (a devolução segue a reserva). Estilos
+(§5.3): uma linha a mais no fim das instruções (nenhuma no equilibrado).
+
+`testar(modelo, esforco)` (etapa 5g, antes de salvar um modelo ou esforço novo): `POST /v1/responses` com `model`,
+`reasoning` (se houver esforço), `input` "Responda apenas: ok", `max_output_tokens` 16 e `store: false`, 20 s, pelo
+provedor da IA; qualquer 2xx vale (mesmo `incomplete`). Levanta `Falha` (tipos de `ia.FalhaIA`). Os tokens não entram
+em conta alguma.
 
 Provedor `memoria` (testes e teste integrado), como o do assistente: `memoria.programar(...)` enfileira as próximas
 saídas — um dict (o conteúdo, que vira o texto JSON da resposta), uma resposta inteira (dict com `output`, ex.:
@@ -40,12 +48,15 @@ from dataclasses import dataclass, field
 
 import httpx
 
-from toqqi.core import ia
+from toqqi.core import ia, parametros
 from toqqi.core.config import config
 
 TEMPO_LIMITE = 45  # segundos por chamada
 MAX_SAIDA = 1500
 TOKENS_MEMORIA = (200, 50)  # (entrada, saída) de cada chamada ao provedor de memória
+TEMPO_TESTE = 20  # segundos do teste do modelo (Plataforma › Parâmetros)
+ENTRADA_TESTE = "Responda apenas: ok"
+SAIDA_TESTE = 16
 _MARCAS = re.compile(r"<\s*/?\s*dados\s*>", re.IGNORECASE)
 
 
@@ -60,15 +71,15 @@ class Opcao:
 
 @dataclass(frozen=True)
 class Nivel(Opcao):
-    """Um nível de modelo, com as análises da cota do plano que cada geração ou pergunta gasta nele."""
+    """Um nível de modelo, com as análises da cota do plano que cada geração ou pergunta gasta nele (o padrão do
+    parâmetro `ia.analises.{valor}`; a descrição vai sem a frase do custo, montada em `opcoes_json`)."""
     analises: int = 1
 
 
 MODELOS = (
-    Nivel("rapido", "Rápido", "Respostas curtas e rápidas. Gasta 1 análise da cota.", analises=1),
-    Nivel("equilibrado", "Equilibrado", "O padrão: bom para o dia a dia. Gasta 1 análise da cota.", analises=1),
-    Nivel("detalhado", "Mais detalhado", "Análises mais cuidadosas; pode demorar mais. Gasta 2 análises da cota.",
-          analises=2),
+    Nivel("rapido", "Rápido", "Respostas curtas e rápidas.", analises=1),
+    Nivel("equilibrado", "Equilibrado", "O padrão: bom para o dia a dia.", analises=1),
+    Nivel("detalhado", "Mais detalhado", "Análises mais cuidadosas; pode demorar mais.", analises=2),
 )
 ESTILOS = (
     Opcao("objetiva", "Objetiva", "Frases curtas, só o essencial."),
@@ -90,16 +101,10 @@ def nivel_valido(nivel: str | None) -> str:
 
 
 def modelo_do_nivel(nivel: str | None) -> tuple[str, str]:
-    """(modelo, esforço) do nível; esforço vazio = não manda `reasoning`."""
-    cfg = config()
-    assistente = cfg.IA_ASSISTENTE_MODELO.strip()
+    """(modelo, esforço) do nível (parâmetros `ia.modelo.*` e `ia.esforco.*`); esforço vazio = não manda
+    `reasoning`."""
     nivel = nivel_valido(nivel)
-    if nivel == "rapido":
-        return cfg.IA_MODELO_RAPIDO.strip() or assistente, cfg.IA_ESFORCO_RAPIDO.strip()
-    if nivel == "detalhado":
-        return cfg.IA_MODELO_DETALHADO.strip() or assistente, cfg.IA_ESFORCO_DETALHADO.strip()
-    return (cfg.IA_MODELO_EQUILIBRADO.strip() or assistente,
-            cfg.IA_ESFORCO_EQUILIBRADO.strip() or cfg.IA_ASSISTENTE_ESFORCO.strip())
+    return parametros.valor(f"ia.modelo.{nivel}"), parametros.valor(f"ia.esforco.{nivel}")
 
 
 def aplicar_nivel(corpo: dict, nivel: str | None) -> dict:
@@ -123,14 +128,28 @@ def rotulo_do_nivel(nivel: str | None) -> str:
 
 
 def analises_do_nivel(nivel: str | None) -> int:
-    """Análises da cota do plano que uma geração (resumo, parecer) ou uma pergunta ao assistente gasta no nível."""
-    return next(o.analises for o in MODELOS if o.valor == nivel_valido(nivel))
+    """Análises da cota do plano que uma geração (resumo, parecer) ou uma pergunta ao assistente gasta no nível
+    (parâmetro `ia.analises.{nivel}`)."""
+    return parametros.valor(f"ia.analises.{nivel_valido(nivel)}")
+
+
+def frase_do_custo(analises: int) -> str:
+    """ "Gasta 1 análise da cota." / "Gasta 3 análises da cota." """
+    return f"Gasta {analises} análise da cota." if analises == 1 else f"Gasta {analises} análises da cota."
 
 
 def opcoes_json(opcoes: tuple[Opcao, ...]) -> list[dict]:
-    """As opções como a tela recebe (GET /conta/ia); os níveis de modelo levam também `analises`."""
-    return [{"valor": o.valor, "rotulo": o.rotulo, "descricao": o.descricao,
-             **({"analises": o.analises} if isinstance(o, Nivel) else {})} for o in opcoes]
+    """As opções como a tela recebe (GET /conta/ia); os níveis de modelo levam também `analises` (as de hoje) e a
+    frase do custo no fim da descrição."""
+    saida = []
+    for o in opcoes:
+        if isinstance(o, Nivel):
+            analises = analises_do_nivel(o.valor)
+            saida.append({"valor": o.valor, "rotulo": o.rotulo, "descricao": f"{o.descricao} {frase_do_custo(analises)}",
+                          "analises": analises})
+        else:
+            saida.append({"valor": o.valor, "rotulo": o.rotulo, "descricao": o.descricao})
+    return saida
 
 
 # ---- corpo da chamada ---------------------------------------------------------------------------
@@ -240,6 +259,25 @@ def _provedor() -> Callable[[dict, float], dict]:
     if not ia.disponivel():
         raise Falha("configuracao", "IA desligada ou sem chave")
     return _openai
+
+
+def corpo_do_teste(modelo: str, esforco: str) -> dict:
+    corpo: dict = {"model": modelo, "input": ENTRADA_TESTE, "max_output_tokens": SAIDA_TESTE, "store": False}
+    if esforco:
+        corpo["reasoning"] = {"effort": esforco}
+    return corpo
+
+
+def testar(modelo: str, esforco: str) -> None:
+    """Uma chamada curta com o modelo e o esforço (antes de salvar um novo em Plataforma › Parâmetros): qualquer 2xx
+    vale, mesmo `incomplete`. Levanta `Falha` (configuração, definitiva ou transitória)."""
+    chamar = _provedor()
+    try:
+        chamar(corpo_do_teste(modelo, esforco), TEMPO_TESTE)
+    except Falha:
+        raise
+    except ia.FalhaIA as falha:
+        raise Falha(falha.tipo, falha.detalhe, falha.conta_tentativa) from None
 
 
 def gerar(nome_formato: str, instrucoes: str, dados: dict, esquema: dict, nivel: str | None,

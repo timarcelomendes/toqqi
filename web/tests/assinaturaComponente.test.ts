@@ -232,6 +232,8 @@ describe('Assinatura: sem assinatura', () => {
     await flushPromises()
     expect(chamadas(api, 'POST', '/assinatura')[0]!.corpo).toEqual({
       plano: 'profissional',
+      // Etapa 5g: o preço que a tela mostrou.
+      preco: '349.00',
       razao_social: 'Distribuidora Sol Nascente Ltda',
       documento: '11222333000181',
       email_cobranca: 'financeiro@sol.com.br',
@@ -454,7 +456,7 @@ describe('Assinatura: com assinatura', () => {
     expect(botao(janela(), 'Trocar para o Empresa').attributes('disabled')).toBeUndefined()
     await janela().get('form').trigger('submit')
     await flushPromises()
-    expect(chamadas(api, 'PUT', '/assinatura/plano')[0]!.corpo).toEqual({ plano: 'empresa' })
+    expect(chamadas(api, 'PUT', '/assinatura/plano')[0]!.corpo).toEqual({ plano: 'empresa', preco: '799.00' })
     expect(ultimoAviso()).toBe('Plano trocado para Empresa.')
     expect(chamadas(api, 'GET', '/eu')).toHaveLength(1)
     expect(t(w.get('#t-situacao').text())).toBe('Plano Empresa')

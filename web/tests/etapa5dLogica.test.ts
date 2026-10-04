@@ -40,7 +40,10 @@ import { PRIVACIDADE } from '@/modulos/geral/legal/privacidade'
 import { TERMOS } from '@/modulos/geral/legal/termos'
 import { VERSAO_DOCUMENTOS, VIGENTE_DESDE } from '@/modulos/geral/legal/versao'
 
+/** A frase do 409 da API (desde 03/10 ela sugere o nível mais barato que cabe no que resta). */
 const INSUFICIENTE = 'Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo mês.'
+/** A do site, quando a API não mandou a dela: sem citar nível (as análises de cada um mudam em Plataforma › Parâmetros). */
+const INSUFICIENTE_SITE = 'O nível escolhido gasta 2 análises e resta 1. Troque o nível em Configurações › IA ou aguarde o próximo mês.'
 
 describe('custo do nível (03/10: o Mais detalhado gasta 2 análises)', () => {
   it('o custo que veio da API: inteiro de 1 para cima; sem ele (ou estranho), 1', () => {
@@ -68,14 +71,18 @@ describe('custo do nível (03/10: o Mais detalhado gasta 2 análises)', () => {
     expect(readFileSync('index.html', 'utf8')).not.toMatch(/econ[ôo]mico/i)
   })
 
-  it('cota insuficiente: a mesma frase da API, montada com o que resta e o custo (plural a partir de 2)', () => {
-    expect(mensagemCotaInsuficiente(1, 2)).toBe(INSUFICIENTE)
+  it('cota insuficiente sem a frase da API: o que o nível gasta e o que resta, sem citar nível ("resta 1" no singular)', () => {
+    expect(mensagemCotaInsuficiente(1, 2)).toBe(INSUFICIENTE_SITE)
     expect(mensagemCotaInsuficiente(2, 3)).toBe(
-      'Restam 2 análises e o nível Mais detalhado gasta 3. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo mês.',
+      'O nível escolhido gasta 3 análises e restam 2. Troque o nível em Configurações › IA ou aguarde o próximo mês.',
     )
-    // Nunca uma frase que se contradiz (o custo acima do que resta) nem "Resta 0".
-    expect(mensagemCotaInsuficiente(1, 1)).toBe(INSUFICIENTE)
-    expect(mensagemCotaInsuficiente(0, 2)).toBe(INSUFICIENTE)
+    // Nunca uma frase que se contradiz (o custo igual ou abaixo do que resta) nem "resta 0".
+    expect(mensagemCotaInsuficiente(1, 1)).toBe(INSUFICIENTE_SITE)
+    expect(mensagemCotaInsuficiente(0, 2)).toBe(INSUFICIENTE_SITE)
+    // Os níveis e o que cada um gasta mudam em Plataforma › Parâmetros: quem sugere o nível que cabe é a API.
+    for (const [resta, custo] of [[1, 2], [2, 3], [4, 10]] as const) {
+      expect(mensagemCotaInsuficiente(resta, custo)).not.toMatch(/Rápido|Equilibrado|Mais detalhado/)
+    }
   })
 })
 
@@ -321,12 +328,12 @@ describe('Termos de uso e Política de privacidade (versão 2)', () => {
     expect(texto).toContain('Também há cinco recursos de inteligência artificial (IA):')
     expect(texto).toContain('A análise de comentários e os passos das ações já vêm ligados, e a Empresa pode desligá-los em Configurações › IA.')
     expect(texto).toContain('O resumo do painel, o parecer dos relatórios e o ToqqiAI só rodam quando alguém da conta pede')
-    expect(texto).toContain('cada resumo, parecer ou pergunta usa 1 análise da cota de IA do plano')
-    // 03/10: o Mais detalhado gasta 2 (ainda na versão 4, que não foi publicada: a versão e a data não mudam).
+    // Etapa 5g (versão 6): as análises de cada nível ficam na tela (Plataforma › Parâmetros pode mudar).
     expect(texto).toContain(
-      'usa 1 análise da cota de IA do plano (2 no nível Mais detalhado, que a Empresa escolhe em Configurações › IA).',
+      'cada resumo, parecer ou pergunta usa análises da cota de IA do plano, conforme o nível de modelo escolhido em Configurações › IA (a tela mostra quantas).',
     )
-    expect([VERSAO_DOCUMENTOS, VIGENTE_DESDE]).toEqual([5, '2026-10-03']) // 5: o nível Mais detalhado gasta 2
+    expect(texto).not.toContain('usa 1 análise da cota')
+    expect([VERSAO_DOCUMENTOS, VIGENTE_DESDE]).toEqual([6, '2026-10-03'])
     expect(texto).toContain('/privacidade#inteligencia-artificial')
     // O texto antigo (só dois recursos) saiu.
     expect(texto).not.toContain('A análise de comentários já vem ligada')

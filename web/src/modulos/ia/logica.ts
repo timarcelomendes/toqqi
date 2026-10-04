@@ -49,6 +49,24 @@ export function textoCusto(custo: number): string {
   return `Usa ${formatarNumero(n)} ${n === 1 ? 'análise' : 'análises'} de IA.`
 }
 
+/**
+ * Etapa 5g: as análises que cada nível gasta (Plataforma › Parâmetros pode mudar), pelas opções de GET /conta/ia:
+ * "Rápido 1, Equilibrado 1 e Mais detalhado 2". Sem o número nas opções (servidor antigo), null.
+ */
+export function textoAnalisesPorNivel(modelos: readonly { rotulo: string; analises?: number }[] | null | undefined): string | null {
+  const partes = (modelos ?? []).filter((m) => typeof m.analises === 'number').map((m) => `${m.rotulo} ${formatarNumero(m.analises!)}`)
+  if (!partes.length) return null
+  return partes.length === 1 ? partes[0]! : `${partes.slice(0, -1).join(', ')} e ${partes[partes.length - 1]}`
+}
+
+/** A frase do cartão da cota em Configurações › IA, com as análises de cada nível quando a API manda. */
+export function textoGastoDaCota(modelos: readonly { rotulo: string; analises?: number }[] | null | undefined): string {
+  const niveis = textoAnalisesPorNivel(modelos)
+  return `Cada pergunta ao ToqqiAI, cada resumo do painel e cada parecer dos relatórios usam análises da cota conforme o nível do modelo${
+    niveis ? `: ${niveis}` : ''
+  }. A análise de cada resposta e os passos das ações não entram nesta conta.`
+}
+
 /** O texto de quando não há nada salvo, com o custo de uma geração no nível da conta. */
 export function textoVazio(textos: TextosGeracaoIa, custo: number): string {
   return `${textos.vazio} ${textoCusto(custo)}`

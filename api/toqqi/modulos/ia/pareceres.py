@@ -259,7 +259,7 @@ def _chamar_e_salvar(ctx: Contexto, tipo: Tipo, recorte: Recorte, reserva: cota.
         nivel_log = logging.ERROR if falha.tipo == "configuracao" else logging.WARNING
         log.log(nivel_log, "IA sob demanda: falha %s (%s) no %s da conta %s; análises devolvidas: %d "
                 "(tokens=%d/%d).%s", falha.tipo, falha.detalhe, tipo.nome, ctx.conta_id, reserva.quantidade, *gastos,
-                " Confira OPENAI_API_KEY e os modelos dos níveis (IA_MODELO_*)." if falha.tipo == "configuracao"
+                " Confira OPENAI_API_KEY e os modelos em Plataforma › Parâmetros." if falha.tipo == "configuracao"
                 else "")
         raise AppError(503, "ia_indisponivel", tipo.msg_falha) from None
     except Exception as erro:

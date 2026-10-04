@@ -1,34 +1,39 @@
-"""Planos (preço e limite de contatos). O banco garante o mesmo limite (função limite_contatos + gatilho em
-contatos)."""
+"""Planos (chave e nome, na ordem da tela). Preço e limite de contatos são parâmetros da plataforma (etapa 5g,
+`core.parametros`: `planos.{plano}.preco` e `planos.{plano}.contatos`): `preco` e `planos_json` leem do cache (até 30 s
+em outro processo); o limite de contatos de uma conta é perguntado ao banco (`select limite_contatos(...)`, a mesma
+função do gatilho em contatos, que lê a tabela `parametros` na hora)."""
 from decimal import Decimal
 
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from toqqi.core import parametros
 from toqqi.core.errors import AppError
 from toqqi.modelos import Conta, Contato
 
-# (chave, nome, preço mensal em reais, contatos ativos — None = sem limite), na ordem da tela
-PLANOS = (
-    ("essencial", "Essencial", Decimal("149.00"), 300),
-    ("profissional", "Profissional", Decimal("349.00"), 1500),
-    ("empresa", "Empresa", Decimal("799.00"), None),
-)
-NOMES = {p[0]: p[1] for p in PLANOS}
-PRECOS = {p[0]: p[2] for p in PLANOS}
-LIMITE_CONTATOS = {p[0]: p[3] for p in PLANOS}
+PLANOS = (("essencial", "Essencial"), ("profissional", "Profissional"), ("empresa", "Empresa"))
+NOMES = dict(PLANOS)
 TRAVA_CONTATOS = 740221  # mesma trava consultiva do gatilho contatos_limite_plano (por conta)
 
 
+def preco(plano: str) -> Decimal:
+    """O preço atual do plano (vale para assinaturas novas e trocas de plano)."""
+    return parametros.valor(f"planos.{plano}.preco")
+
+
+def contatos_do_plano(plano: str) -> int | None:
+    """O limite de contatos ativos do plano pelo cache (None = sem limite); para uma conta, `limite_da_conta`."""
+    return parametros.valor(f"planos.{plano}.contatos")
+
+
 def planos_json() -> list[dict]:
-    return [{"chave": c, "nome": n, "preco": p, "contatos": lim} for c, n, p, lim in PLANOS]
+    """[{chave, nome, preco, contatos}] com o preço e o limite atuais."""
+    return [{"chave": c, "nome": n, "preco": preco(c), "contatos": contatos_do_plano(c)} for c, n in PLANOS]
 
 
-def limite_contatos(plano: str, situacao: str) -> int | None:
-    """Contatos ativos permitidos (None = ilimitado). Em teste vale o plano do teste."""
-    if situacao == "cortesia":
-        return None
-    return LIMITE_CONTATOS.get(plano)
+def limite_contatos(s: Session, plano: str, situacao: str) -> int | None:
+    """Contatos ativos permitidos (None = ilimitado; cortesia nunca tem limite), pela regra do gatilho do banco."""
+    return s.scalar(select(func.limite_contatos(plano, situacao)))
 
 
 def numero(n: int) -> str:
@@ -44,8 +49,7 @@ def erro_limite(limite: int) -> AppError:
 
 
 def limite_da_conta(s: Session, conta_id: int) -> int | None:
-    plano, situacao = s.execute(select(Conta.plano, Conta.situacao).where(Conta.id == conta_id)).one()
-    return limite_contatos(plano, situacao)
+    return s.scalar(select(func.limite_contatos(Conta.plano, Conta.situacao)).where(Conta.id == conta_id))
 
 
 def contatos_ativos(s: Session) -> int:

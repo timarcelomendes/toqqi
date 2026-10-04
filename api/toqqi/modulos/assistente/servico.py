@@ -203,7 +203,7 @@ def _responder(ctx: Contexto, pergunta: str, historico: list[MensagemIn] | None)
         log.log(nivel_log, "Assistente: falha %s (%s) na conta %s; análises devolvidas: %d (consultas=%d, "
                 "chamadas=%d, tokens=%d/%d).%s", falha.tipo, falha.detalhe, ctx.conta_id, reserva.quantidade,
                 falha.consultas, falha.chamadas, falha.tokens_entrada, falha.tokens_saida,
-                " Confira OPENAI_API_KEY e IA_ASSISTENTE_MODELO." if falha.tipo == "configuracao" else "")
+                " Confira OPENAI_API_KEY e os modelos em Plataforma › Parâmetros." if falha.tipo == "configuracao" else "")
         raise _indisponivel() from None
     except Exception as erro:
         # os tokens das chamadas já feitas: os da conversa inteira, ou o andamento que `conversar` anexou ao erro

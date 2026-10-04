@@ -18,6 +18,7 @@ GERENCIAR = requer("assinatura.gerenciar")
 
 @router.get("/planos")
 def planos(ctx: Contexto = Depends(requer())):
+    """Preço e limite atuais de cada plano (etapa 5g: parâmetros da plataforma)."""
     return planos_json()
 
 
@@ -33,7 +34,7 @@ def assinar(dados: AssinarIn, ctx: Contexto = Depends(GERENCIAR)):
 
 @router.put("/plano")
 def trocar_plano(dados: PlanoIn, ctx: Contexto = Depends(GERENCIAR)):
-    return servico.trocar_plano(ctx, dados.plano)
+    return servico.trocar_plano(ctx, dados.plano, dados.preco)
 
 
 @router.put("/dados")

@@ -3,6 +3,7 @@
 import { api } from './cliente'
 import type { CanalPublico } from '@/pesquisa/contexto'
 import type { Contexto, DadosIndicacao, FormularioPublico, Respostas, TelaFinal, Variaveis } from '@/pesquisa/tipos'
+import type { PlanosPublicos } from './tipos'
 
 export interface DescadastroPublico {
   email_mascarado: string
@@ -36,6 +37,11 @@ export const publicoApi = {
     codigo: string,
     dados: { respostas: Respostas; canal?: CanalPublico; referencia?: string; contexto?: Contexto },
   ) => api.post<TelaFinal | undefined>(`/publico/formularios/${seg(codigo)}/responder`, dados, publico),
+  /**
+   * Etapa 5g: preços e limites atuais dos planos, o teste e as análises por nível (sem login; 60/min por IP; cache de
+   * 60 s). O site da raiz troca os números do HTML por estes; Cadastro e Plataforma leem os dias do teste.
+   */
+  planos: (sinal?: AbortSignal) => api.get<PlanosPublicos>('/publico/planos', { ...publico, sinal }),
   descadastro: (token: string) => api.get<DescadastroPublico>(`/publico/descadastro/${seg(token)}`, publico),
   /** Sair da lista (com motivo opcional) ou, com `voltar`, voltar a receber. */
   alterarDescadastro: (token: string, corpo: { motivo?: string } | { voltar: true }) =>

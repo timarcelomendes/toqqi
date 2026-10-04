@@ -305,6 +305,18 @@ export function rotuloLimite(contatos: number | null | undefined): string {
   return contatos === null || contatos === undefined ? 'Contatos ativos sem limite' : `Até ${formatarNumero(contatos)} contatos ativos`
 }
 
+/**
+ * Etapa 5g: quem já assina paga o valor contratado, mesmo depois de o preço do plano mudar. No cartão do plano atual (ao
+ * trocar de plano): "Você paga R$ 349,00; hoje o plano custa R$ 399,00." (null quando os dois são iguais).
+ */
+export function textoContratado(contratado: PlanoAssinatura['preco'] | null | undefined, precoAtual: PlanoAssinatura['preco']): string | null {
+  if (contratado === null || contratado === undefined || contratado === '') return null
+  const a = Math.round(Number(contratado) * 100)
+  const b = Math.round(Number(precoAtual) * 100)
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a === b) return null
+  return `Você paga ${formatarMoeda(contratado)}; hoje o plano custa ${formatarMoeda(precoAtual)}.`
+}
+
 /** O plano comporta os contatos ativos de hoje. */
 export function cabeNoPlano(plano: Pick<PlanoAssinatura, 'contatos'>, contatosAtivos: number): boolean {
   return plano.contatos === null || contatosAtivos <= plano.contatos

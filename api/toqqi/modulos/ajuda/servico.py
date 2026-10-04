@@ -10,6 +10,12 @@ memória) e servido como está; `validar` (usada nos testes) confere ids em keba
 textos não vazios e nada de `<`, `http`, `www.` ou `**`. Arquivo ausente ou inválido: o erro vai para o log e a Ajuda
 fica vazia até o arquivo ser lido com sucesso.
 
+Marcas (etapa 5g): `{{chave}}` de um parâmetro da plataforma (`core.parametros.CAMPOS`, ex.: `{{teste.dias}}`,
+`{{planos.essencial.preco}}`) nos textos, trocadas pelo valor de hoje em `conteudo()` (o que GET /ajuda serve e a busca
+do assistente usa): dinheiro "R$ 149,00", inteiro "1.500", null "sem limite", plano pelo nome. O conteúdo trocado fica
+em cache e é refeito quando os valores mudam (cache dos parâmetros: até 30 s em outro processo). `validar` recusa
+marca desconhecida ou incompleta.
+
 Busca: jornadas e seções juntas, sem acento e sem diferenciar maiúsculas; cada palavra do termo com 3+ letras (menos
 as muito comuns, como "como" e "para") vale 3 pontos se aparece no título, 3 se aparece nas `palavras` e 1 se aparece
 no texto (os blocos da seção; o objetivo, o onde, o como e o resultado da jornada). A palavra casa pelo começo das
@@ -22,6 +28,7 @@ import re
 import threading
 from pathlib import Path
 
+from toqqi.core import parametros
 from toqqi.core.ia import cortar
 from toqqi.core.texto import sem_acento
 from toqqi.modulos.assistente.atalhos import CHAVES as ATALHOS
@@ -66,9 +73,11 @@ COMUNS = frozenset({
     "ter", "sao", "voce", "nao", "sim", "mais", "muito", "toqqi", "ajuda", "preciso", "quero",
 })
 _ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+_MARCA = re.compile(r"\{\{(.*?)\}\}")
 _NAO_ALFANUMERICO = re.compile(r"[^a-z0-9]+")
 
 _cache: dict[Path, dict] = {}
+_trocados: dict[Path, tuple[tuple, dict]] = {}  # caminho → (valores usados, conteúdo com as marcas trocadas)
 _trava = threading.Lock()
 
 
@@ -99,6 +108,37 @@ def carregar(caminho: Path | str | None = None) -> dict:
 
 def limpar_cache() -> None:
     _cache.clear()
+    _trocados.clear()
+
+
+def _valores_das_marcas() -> dict[str, str]:
+    return {c: parametros.formatar(c, parametros.valor(c)) for c in parametros.CAMPOS}
+
+
+def _trocar(obj, valores: dict[str, str]):
+    if isinstance(obj, str):
+        return _MARCA.sub(lambda m: valores.get(m.group(1).strip(), m.group(0)), obj) if "{{" in obj else obj
+    if isinstance(obj, dict):
+        return {k: _trocar(v, valores) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_trocar(v, valores) for v in obj]
+    return obj
+
+
+def conteudo(caminho: Path | str | None = None) -> dict:
+    """O conteúdo com as marcas `{{chave}}` trocadas pelos valores de hoje (refeito quando eles mudam). Não altere o
+    que volta."""
+    caminho = Path(caminho) if caminho else CAMINHO
+    bruto = carregar(caminho)
+    valores = _valores_das_marcas()
+    chave = tuple(valores.items())
+    guardado = _trocados.get(caminho)
+    if guardado is not None and guardado[0] == chave and _cache.get(caminho) is bruto:
+        return guardado[1]
+    trocado = _trocar(bruto, valores)
+    if _cache.get(caminho) is bruto:  # o conteúdo vazio (arquivo ausente ou inválido) não fica em cache
+        _trocados[caminho] = (chave, trocado)
+    return trocado
 
 
 # ---- validação (testes) ----------------------------------------------------------------
@@ -115,6 +155,11 @@ def validar(dados) -> list[str]:
         erros.extend(f"{onde}: contém {p!r}" for p in PROIBIDOS if p in baixo)
         if maximo is not None and len(valor) > maximo:
             erros.append(f"{onde}: passa de {maximo} caracteres")
+        for marca in _MARCA.findall(valor):
+            if marca.strip() not in parametros.CAMPOS:
+                erros.append(f"{onde}: marca desconhecida {{{{{marca}}}}}")
+        if "{{" in _MARCA.sub("", valor) or "}}" in _MARCA.sub("", valor):
+            erros.append(f"{onde}: marca incompleta (abra com {{{{ e feche com }}}})")
 
     def chaves(obj: dict, esperadas: set[str], onde: str) -> None:
         faltam, sobram = sorted(esperadas - set(obj)), sorted(set(obj) - esperadas)
@@ -354,7 +399,7 @@ def buscar(termo: str, limite: int = MAX_RESULTADOS, caminho: Path | str | None 
     procuradas = raizes(termo)
     if not procuradas or limite < 1:
         return []
-    dados = carregar(caminho)
+    dados = conteudo(caminho)  # etapa 5g: com as marcas dos parâmetros trocadas pelos valores de hoje
     # (topico, jornada ou seção, texto pesquisado, texto do resultado), na ordem do desempate
     candidatas = [(TOPICO_JORNADAS, jornada, _texto_das_partes(jornada), texto_da_jornada)
                   for jornada in _lista(dados.get("jornadas"))

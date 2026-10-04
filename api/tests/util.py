@@ -488,10 +488,15 @@ class AsaasFalso:
         return vivas[0]
 
     def criar_direto(self, conta_id: int, valor: float = 349.0, vencimento: str = "2026-10-15",
-                     cliente: str | None = None) -> dict:
+                     cliente: str | None = None, descricao: str | None = None) -> dict:
         """Assinatura criada no Asaas sem a API saber (o pedido esgotou o tempo ou o processo caiu antes de gravar),
-        com a referência da conta. Usa o cliente dado ou o primeiro da conta (criando um, se não houver)."""
+        com a referência da conta. Usa o cliente dado ou o primeiro da conta (criando um, se não houver). Sem
+        `descricao`, a que a API manda para o plano do valor nos preços padrão ("Toqqi – plano Essencial" para 149;
+        outro valor: "Toqqi")."""
         ref = f"toqqi-conta-{conta_id}"
+        if descricao is None:
+            plano = {149.0: "Essencial", 349.0: "Profissional", 799.0: "Empresa"}.get(float(valor))
+            descricao = f"Toqqi – plano {plano}" if plano else "Toqqi"
         if cliente is None:
             cliente = next((c["id"] for c in self.dados["clientes"].values() if c.get("externalReference") == ref),
                            None)
@@ -503,7 +508,7 @@ class AsaasFalso:
             cliente = r.json()["id"]
         r = self.http.post("/v3/subscriptions", headers={"access_token": "x"}, json={
             "customer": cliente, "billingType": "UNDEFINED", "value": valor, "nextDueDate": vencimento,
-            "cycle": "MONTHLY", "description": "Toqqi", "externalReference": ref})
+            "cycle": "MONTHLY", "description": descricao, "externalReference": ref})
         assert r.status_code == 200, r.text
         return r.json()
 
@@ -532,8 +537,25 @@ def aviso_asaas(client, corpo: dict, token: str = TOKEN_WEBHOOK):
     return client.post(f"{API}/asaas/webhook", json=corpo, headers={"asaas-access-token": token})
 
 
+def preco_atual(plano: str) -> str:
+    """O preço atual do plano como a tela o mostra ("349.00"), o que assinar e trocar de plano mandam em `preco`. Plano
+    desconhecido: o do Profissional (quem chama espera o 422 do plano)."""
+    from toqqi.core import parametros
+
+    chave = f"planos.{plano}.preco"
+    return parametros.para_json(chave, parametros.valor(chave)) if chave in parametros.CAMPOS else "349.00"
+
+
 def assinar(client, h: dict, plano: str = "profissional", **dados):
-    return client.post(f"{API}/assinatura", headers=h, json={"plano": plano, **DADOS_COBRANCA, **dados})
+    """POST /assinatura com os dados de cobrança e, sem `preco` em `dados`, o preço atual do plano."""
+    corpo = {"plano": plano, **DADOS_COBRANCA, **dados}
+    corpo.setdefault("preco", preco_atual(plano))
+    return client.post(f"{API}/assinatura", headers=h, json=corpo)
+
+
+def trocar_plano(client, h: dict, plano: str, **extra):
+    """PUT /assinatura/plano com o preço atual do plano (o que a tela mostrou)."""
+    return client.put(f"{API}/assinatura/plano", headers=h, json={"plano": plano, "preco": preco_atual(plano), **extra})
 
 
 def situacao_conta(dono, conta_id: int) -> tuple:
@@ -700,3 +722,35 @@ def emails_enviados(client, h: dict, **filtros) -> list[dict]:
     r = client.get(f"{API}/auditoria/emails", headers=h, params={"por_pagina": 200, **filtros})
     assert r.status_code == 200, r.text
     return r.json()["itens"]
+
+
+# ---- etapa 5g: parâmetros da plataforma -------------------------------------------------------
+
+def superadmin(client) -> dict:
+    """A conta da equipe Toqqi (SUPERADMIN_EMAILS dos testes), com o e-mail confirmado."""
+    return conta_pronta(client, "root@toqqi.com", empresa="Toqqi")
+
+
+def grupo_parametros(client, h: dict, nome: str) -> dict:
+    r = client.get(f"{API}/plataforma/parametros", headers=h)
+    assert r.status_code == 200, r.text
+    return next(g for g in r.json()["grupos"] if g["grupo"] == nome)
+
+
+def salvar_parametros(client, h: dict, nome: str, mudancas: dict, confirmar: bool = True, versao: int | None = None):
+    """PUT do grupo com os valores de hoje mais `mudancas` (chave → valor), na versão atual."""
+    g = grupo_parametros(client, h, nome)
+    return client.put(f"{API}/plataforma/parametros/{nome}", headers=h, json={
+        "versao": g["versao"] if versao is None else versao, "valores": {**g["valores"], **mudancas},
+        "confirmar": confirmar})
+
+
+def gravar_parametro(dono, chave: str, valor, limpar_cache: bool = True) -> None:
+    """Linha gravada direto no banco (como outro processo, ou alguém à mão, faria); o cache deste processo é limpo
+    (`limpar_cache=False`: fica como está, como num outro processo)."""
+    from toqqi.core import parametros
+
+    sql(dono, "insert into parametros (chave, valor) values (:c, cast(:v as jsonb)) "
+              "on conflict (chave) do update set valor = excluded.valor", c=chave, v=json.dumps(valor))
+    if limpar_cache:
+        parametros.invalidar()

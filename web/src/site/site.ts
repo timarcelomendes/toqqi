@@ -2,6 +2,8 @@
  * Comportamento da página do site (index.html na rota "/"): passos do "Como funciona", animação da Retenção,
  * conversa de exemplo do ToqqiAI, tabela de comparação dos planos e o rótulo "Abrir o Toqqi" para quem já entrou.
  * Sem Vue: a página é HTML estático e funciona sem JavaScript (tudo aparece parado e completo).
+ * Etapa 5g: depois de desenhar, busca os preços e limites de agora (GET /publico/planos, até 5 s) e troca cada
+ * `[data-p]`; se falhar ou demorar, ficam os números do HTML (os padrões do código).
  */
 // Fonte servida pelo próprio site, como no app (sem Google Fonts: o navegador não manda o IP a terceiros).
 import '@fontsource/plus-jakarta-sans/latin-400.css'
@@ -10,10 +12,28 @@ import '@fontsource/plus-jakarta-sans/latin-600.css'
 import '@fontsource/plus-jakarta-sans/latin-700.css'
 import '@fontsource/plus-jakarta-sans/latin-800.css'
 import './site.css'
-import { CONVERSA, COTA_EXEMPLO, formatarReais, proximoPasso, temSessao, valorContador } from './logica'
+import { publicoApi } from '@/api/publico'
+import {
+  CONVERSA,
+  COTA_EXEMPLO,
+  TEMPO_PLANOS_MS,
+  formatarReais,
+  proximoPasso,
+  restamNaConversa,
+  restamParado,
+  temSessao,
+  textoNumeroSite,
+  valorContador,
+  valorPublico,
+} from './logica'
 
 const INTERVALO_PASSOS = 5500
 const RISCO = 262399.99
+/** A cota da conversa de exemplo (a do Profissional): a contagem recomeça nela a cada volta. */
+let cotaConversa = COTA_EXEMPLO
+let conversaRodando = false
+/** Perguntas já respondidas na volta atual da conversa ("Restam" = cota − respondidas). */
+let respondidas = 0
 
 function reduzirMovimento(): boolean {
   try {
@@ -159,7 +179,6 @@ function conversa(calmo: boolean): void {
   // Parado: a conversa completa já está no HTML.
   if (calmo) return
 
-  let cota = COTA_EXEMPLO
   const espera = (ms: number) => new Promise<void>((ok) => window.setTimeout(ok, ms))
   const mostrarTexto = (t: string) => {
     digitado.textContent = t
@@ -175,10 +194,11 @@ function conversa(calmo: boolean): void {
   }
 
   const rodar = async () => {
+    conversaRodando = true
     for (;;) {
       lista.replaceChildren()
-      cota = COTA_EXEMPLO
-      restam.textContent = String(cota)
+      respondidas = 0
+      restam.textContent = String(restamNaConversa(cotaConversa, respondidas))
       await espera(500)
       for (const fala of CONVERSA) {
         for (let i = 1; i <= fala.pergunta.length; i++) {
@@ -199,8 +219,8 @@ function conversa(calmo: boolean): void {
         }
         pensando.hidden = true
         acrescentar(balaoResposta(fala.resposta, fala.consultou))
-        cota -= 1
-        restam.textContent = String(cota)
+        respondidas += 1
+        restam.textContent = String(restamNaConversa(cotaConversa, respondidas))
         await espera(2400 + fala.resposta.length * 18)
       }
       await espera(8000)
@@ -226,6 +246,41 @@ function comparar(): void {
   })
 }
 
+/** Troca os números do HTML pelos de GET /publico/planos (o que não vier certo fica como está). */
+function aplicarNumeros(corpo: unknown): void {
+  for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-p]'))) {
+    const chave = el.dataset.p ?? ''
+    const texto = textoNumeroSite(chave, valorPublico(corpo, chave), el.hasAttribute('data-p-maiuscula'))
+    if (texto !== null && el.textContent !== texto) el.textContent = texto
+  }
+  const cota = valorPublico(corpo, 'ia.cota.profissional')
+  if (typeof cota === 'number' && Number.isInteger(cota) && cota >= 0) {
+    cotaConversa = cota
+    // Parada (ou ainda sem aparecer), a conversa mostra a cota menos as 3 perguntas do HTML; rodando, a cota menos as
+    // respondidas nesta volta (e a próxima volta recomeça nela).
+    const restam = document.querySelector<HTMLElement>('[data-restam]')
+    if (restam) restam.textContent = String(conversaRodando ? restamNaConversa(cota, respondidas) : restamParado(cota))
+  }
+}
+
+function numerosDosPlanos(): void {
+  const controle = new AbortController()
+  let expirou = false
+  const prazo = window.setTimeout(() => {
+    expirou = true
+    controle.abort()
+  }, TEMPO_PLANOS_MS)
+  publicoApi
+    .planos(controle.signal)
+    .then((corpo) => {
+      if (!expirou) aplicarNumeros(corpo)
+    })
+    .catch(() => {
+      /* sem resposta: ficam os números do HTML */
+    })
+    .finally(() => window.clearTimeout(prazo))
+}
+
 const calmo = reduzirMovimento()
 if (!calmo) document.documentElement.classList.add('movimento')
 sessaoAberta()
@@ -233,3 +288,4 @@ passos(calmo)
 retencao(calmo)
 conversa(calmo)
 comparar()
+numerosDosPlanos()

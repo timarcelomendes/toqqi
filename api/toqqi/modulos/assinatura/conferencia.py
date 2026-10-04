@@ -7,8 +7,8 @@ a liberação valer antes dos envios):
 Conferência diária (uma vez por dia por conta com assinatura ativa ou cancelada há menos de 40 dias no ambiente atual,
 e por conta com cliente no Asaas ainda não conferida — um assinar que falhou ou caiu no meio):
 - concilia: assinatura viva no Asaas com a referência da conta e desconhecida aqui é adotada (conta sem assinatura
-  ativa, que não é cortesia, e valor de um plano) ou removida lá (auditoria); a cancelada aqui que segue viva lá é
-  removida;
+  ativa, que não é cortesia, com o valor de hoje e a descrição de um mesmo plano: `servico.plano_da_assinatura`) ou
+  removida lá (auditoria); a cancelada aqui que segue viva lá é removida;
 - assinatura ativa: lida no Asaas — removida, INACTIVE ou EXPIRED → cancelada aqui (auditoria); 404 → log de erro a
   cada dia e, no 3º dia seguido, cancelada aqui (auditoria, atenção); valor diferente do daqui → o do Asaas volta a ser
   o daqui, também nas faturas em aberto (auditoria, atenção); traz as cobranças (pega aviso perdido);
@@ -113,13 +113,13 @@ def _dados_do_cliente(conta: Conta, cliente_id) -> dict | None:
 
 
 def _adotar(s, conta: Conta, sub: dict) -> Assinatura | None:
-    """Grava aqui a assinatura viva no Asaas (com o plano do valor dela) e troca o plano da conta."""
+    """Grava aqui a assinatura viva no Asaas (com o plano do valor e da descrição dela) e troca o plano da conta."""
     valor = asaas.valor(sub.get("value"))
-    plano = servico.plano_do_valor(valor)
+    plano = servico.plano_da_assinatura(sub)
     dados = _dados_do_cliente(conta, sub.get("customer")) if plano is not None else None
     if plano is None or dados is None:
-        log.error("Assinaturas: a assinatura %s da conta %s no Asaas não tem o valor de um plano ou dados de cobrança "
-                  "válidos; não foi adotada.", sub["id"], conta.id)
+        log.error("Assinaturas: a assinatura %s da conta %s no Asaas não tem o valor e a descrição de um plano ou dados "
+                  "de cobrança válidos; não foi adotada.", sub["id"], conta.id)
         return None
     a = Assinatura(conta_id=conta.id, asaas_id=sub["id"], ambiente=asaas.ambiente(), plano=plano, valor=valor,
                    situacao="ativa", primeiro_vencimento=asaas.data(sub.get("nextDueDate")) or dia_de(relogio.agora()),
@@ -136,8 +136,8 @@ def _adotar(s, conta: Conta, sub: dict) -> Assinatura | None:
 
 def conciliar(s, conta: Conta) -> Assinatura | None:
     """Nunca duas assinaturas vivas no Asaas para a conta (chame com a conta travada). As desconhecidas com a
-    referência da conta: sem assinatura ativa (e sem ser cortesia), a mais nova com o valor de um plano é adotada; as
-    outras são removidas lá. As canceladas aqui que seguem vivas lá e as com a remoção pendente também são removidas.
+    referência da conta: sem assinatura ativa (e sem ser cortesia), a mais nova com o valor e a descrição de um mesmo
+    plano é adotada; as outras são removidas lá. As canceladas aqui que seguem vivas lá e as com a remoção pendente também são removidas.
     Devolve a adotada."""
     desconhecidas, remover = servico.assinaturas_no_asaas(s, conta)
     adotada = None
@@ -151,7 +151,7 @@ def conciliar(s, conta: Conta) -> Assinatura | None:
         else:
             motivo = "nao_adotada"
             for sub in desconhecidas:
-                if servico.plano_do_valor(asaas.valor(sub.get("value"))) is not None:
+                if servico.plano_da_assinatura(sub) is not None:
                     adotada = _adotar(s, conta, sub)
                     if adotada is not None:
                         motivo = "duplicada"

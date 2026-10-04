@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import { MailCheck } from 'lucide-vue-next'
 import { authApi, mensagemDoErro } from '@/api'
 import { useFormulario } from '@/composables/formulario'
+import { usarDiasTeste } from '@/composables/planosPublicos'
 import { apenasDigitos, emailValido, formatarTelefone } from '@/utils/validacao'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
@@ -17,6 +18,8 @@ const senhaOk = ref(false)
 const locais = reactive<Record<string, string | undefined>>({})
 const concluido = ref<string | null>(null)
 const reenvio = reactive({ enviando: false, mensagem: '' })
+/** Etapa 5g: os dias do teste vêm de Plataforma › Parâmetros (GET /publico/planos); carregando ou com falha, 14. */
+const diasTeste = usarDiasTeste()
 
 function validar(): boolean {
   locais.empresa = dados.empresa.trim() ? undefined : 'Informe o nome da sua empresa.'
@@ -71,7 +74,7 @@ async function reenviar() {
     <CabecalhoAcesso :icone="MailCheck" tom="sucesso" titulo="Confira o seu e-mail">
       <p class="mt-2 text-[0.95rem] leading-relaxed text-texto-suave">
         {{ concluido }} Enviamos para <strong class="text-texto">{{ dados.email }}</strong>. Clique no link para ativar
-        sua conta e começar seus 14 dias grátis.
+        sua conta e começar seus {{ diasTeste }} dias grátis.
       </p>
     </CabecalhoAcesso>
     <Alerta tom="info">Não chegou em alguns minutos? Olhe a caixa de spam ou promoções.</Alerta>
@@ -83,7 +86,7 @@ async function reenviar() {
   </template>
 
   <template v-else>
-    <CabecalhoAcesso titulo="Crie sua conta" descricao="Em poucos minutos você começa a ouvir seus clientes. 14 dias grátis, sem cartão." />
+    <CabecalhoAcesso titulo="Crie sua conta" :descricao="`Em poucos minutos você começa a ouvir seus clientes. ${diasTeste} dias grátis, sem cartão.`" />
     <Alerta v-if="erroGeral" tom="erro" class="mb-5">{{ erroGeral }}</Alerta>
     <form class="flex flex-col gap-4" novalidate @submit.prevent="enviar">
       <Campo v-model="dados.empresa" rotulo="Nome da empresa" autocomplete="organization" obrigatorio :erro="erro('empresa')" />
@@ -126,7 +129,7 @@ async function reenviar() {
         </CaixaSelecao>
         <p v-if="erro('aceite_termos')" class="pl-8 text-sm font-medium text-erro">{{ erro('aceite_termos') }}</p>
       </div>
-      <Botao tipo="submit" tamanho="lg" bloco :carregando="enviando" class="mt-2">Começar 14 dias grátis</Botao>
+      <Botao tipo="submit" tamanho="lg" bloco :carregando="enviando" class="mt-2">Começar {{ diasTeste }} dias grátis</Botao>
     </form>
     <p class="mt-6 border-t border-borda pt-6 text-center text-sm text-texto-suave">
       Já tem conta? <RouterLink to="/entrar" class="link">Entrar</RouterLink>

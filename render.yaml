@@ -56,6 +56,8 @@ services:
         sync: false
       - key: SUPERADMIN_EMAILS
         sync: false                 # o Render pergunta na criação
+      # Etapa 5g: as quatro abaixo (modelo e esforço do nível Equilibrado, cota da cortesia e exclusão automática) são
+      # só o padrão: o que a equipe Toqqi salvar em Plataforma › Parâmetros vale mais.
       - key: IA_ASSISTENTE_MODELO   # assistente (etapa 5b); a OPENAI_API_KEY fica só no painel do Render
         value: gpt-5-mini
       - key: IA_ASSISTENTE_ESFORCO

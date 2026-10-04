@@ -11,6 +11,9 @@
 // em Configurações › Dados da conta e, nos Termos, as mesmas regras no teste e no fim do contrato.
 // Versão 5, vigente desde 03/10/2026: nos Termos, o nível "Mais detalhado" da IA gasta 2 análises da cota por resumo,
 // parecer ou pergunta ao ToqqiAI (os outros níveis, 1).
-export const VERSAO_DOCUMENTOS = 5
+// Versão 6 (etapa 5g), vigente desde 03/10/2026: nos Termos, o preço é o da contratação e só muda por reajuste; limites
+// e cotas dos planos podem mudar (se diminuírem, com aviso); as análises que cada nível de IA gasta ficam na tela
+// (Configurações › IA), editáveis em Plataforma › Parâmetros. A Política de privacidade não muda.
+export const VERSAO_DOCUMENTOS = 6
 /** Data em que a versão atual (VERSAO_DOCUMENTOS) passou a valer (AAAA-MM-DD). */
 export const VIGENTE_DESDE = '2026-10-03'

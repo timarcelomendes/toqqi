@@ -11,9 +11,9 @@ nem conferência e os pagamentos dela não contam no `pago_ate`. Com a chave de 
 descartado (`limpar_outro_ambiente`, pela tarefa ou no próximo assinar).
 
 Nunca duas assinaturas vivas no Asaas para a mesma conta: antes de criar uma (e depois de um tempo esgotado ao criar),
-as assinaturas com a referência da conta ("toqqi-conta-{id}") são listadas; a desconhecida com o valor pedido é adotada
-(um pedido anterior chegou a criá-la) e as outras são removidas. Remoção que falha fica em `asaas_remocoes` para a
-tarefa tentar de novo.
+as assinaturas com a referência da conta ("toqqi-conta-{id}") são listadas; a desconhecida com o valor e a descrição do
+plano pedido é adotada (um pedido anterior chegou a criá-la) e as outras são removidas. Remoção que falha fica em
+`asaas_remocoes` para a tarefa tentar de novo.
 
 Travas (sempre nesta ordem): `assinatura:{conta}` (uma operação por vez por conta: rotas, avisos, conferência), a
 linha da conta (FOR NO KEY UPDATE: não segura as inclusões que só apontam para a conta, como contatos e respostas) e,
@@ -28,18 +28,18 @@ from sqlalchemy import and_, exists, func, or_, select, true, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from toqqi.core import asaas, relogio
+from toqqi.core import asaas, parametros, relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.db import em_conta, modo_sistema, travar
 from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError
 from toqqi.core.planos import (
     NOMES,
-    PRECOS,
     contatos_ativos,
     limite_contatos,
     numero,
     planos_json,
+    preco,
     travar_contatos,
 )
 from toqqi.core.texto import normalizar_telefone
@@ -52,7 +52,6 @@ log = logging.getLogger("toqqi.assinatura")
 CAMPOS_DADOS = ("razao_social", "documento", "email_cobranca", "telefone")
 ABERTAS = ("pendente", "vencida")
 HISTORICO = 12
-PLANO_DO_TESTE = "profissional"  # o plano de quem está no teste (e de quem saiu da assinatura sem nunca pagar)
 FORA_DO_AR = ("indisponivel", "configuracao")  # falhas em que as próximas chamadas também falhariam
 
 MSG_INDISPONIVEL = "A cobrança está temporariamente indisponível. Tente de novo em alguns minutos."
@@ -145,8 +144,26 @@ def referencia(conta_id: int) -> str:
     return f"toqqi-conta-{conta_id}"
 
 
-def plano_do_valor(valor: Decimal | None) -> str | None:
-    return next((p for p, v in PRECOS.items() if v == valor), None)
+def da_assinatura(sub: dict, plano: str) -> bool:
+    """A assinatura do Asaas é a que a API cria para `plano` hoje: o valor é o preço atual dele e a descrição é a dele
+    ("Toqqi – plano Profissional"). Só o valor não basta: entre mudanças de preço, o valor antigo de um plano pode ser
+    o atual de outro."""
+    return asaas.valor(sub.get("value")) == preco(plano) and sub.get("description") == descricao(plano)
+
+
+def plano_da_assinatura(sub: dict) -> str | None:
+    """O plano da assinatura do Asaas pelo valor e pela descrição (`da_assinatura`); preço antigo, descrição de outro
+    plano ou valor fora dos planos → None (não é adotada)."""
+    return next((p for p in NOMES if da_assinatura(sub, p)), None)
+
+
+def conferir_preco(plano: str, mostrado: Decimal) -> Decimal:
+    """O preço atual do plano; 409 `preco_mudou` se a tela mostrou outro (`mostrado`, obrigatório nas rotas)."""
+    atual = preco(plano)
+    if Decimal(mostrado) != atual:
+        raise AppError(409, "preco_mudou", f"O preço do plano {NOMES[plano]} mudou para {parametros.reais(atual)}. "
+                                           "Confira e confirme de novo.")
+    return atual
 
 
 def situacao_exibida(c: Cobranca, hoje: date) -> str:
@@ -241,13 +258,27 @@ def _situacao(s: Session, conta: Conta, ativa: Assinatura | None, agora: datetim
     return "cancelada" if conta.pago_ate is not None else "teste_expirado"
 
 
+PERDEU_ASSINATURA = "toqqi_perdeu_assinatura"  # em `Session.info`: contas que perderam a assinatura na transação
+
+
+def marcar_perda(s: Session, conta_id: int) -> None:
+    """A conta perdeu a assinatura (ou os pagamentos de outro ambiente) nesta transação: o `recalcular` dela, na mesma
+    transação, decide se ela volta ao plano do teste (`encerrar` e `limpar_outro_ambiente` marcam)."""
+    s.info.setdefault(PERDEU_ASSINATURA, set()).add(conta_id)
+
+
 def recalcular(s: Session, conta: Conta) -> tuple[str, str]:
     """Decide a situação da conta depois de qualquer mudança (assinar, cancelar, aviso, tarefa, plataforma) e refaz
     `pago_ate` (nunca diminui: maior vencimento pago + 1 mês − 1 dia, só de assinaturas do ambiente atual),
     `atrasada_desde` (vencimento mais antigo em atraso da assinatura ativa: vencida, ou pendente com o vencimento já
-    passado) e `primeiro_vencimento` (o da assinatura ativa). Quem fica sem assinatura sem nunca ter pago volta ao
-    plano do teste. `cortesia` não muda por cobrança. Chame com a conta travada. Devolve (antes, depois)."""
+    passado) e `primeiro_vencimento` (o da assinatura ativa). Quem perdeu a assinatura nesta transação (`encerrar`:
+    cancelou, removida ou não achada no Asaas; ou o descarte do sandbox) sem nunca ter pago volta ao plano do teste
+    (`teste.plano` de hoje, a regra da 5a); o teste em andamento, que nunca assinou (ou voltou ao teste antes),
+    fica no plano dele, mesmo que `teste.plano` mude depois (revisão da 5g). `cortesia` não muda por cobrança. Chame
+    com a conta travada. Devolve (antes, depois)."""
     anterior = conta.situacao
+    perdeu = conta.id in s.info.get(PERDEU_ASSINATURA, ())
+    s.info.get(PERDEU_ASSINATURA, set()).discard(conta.id)
     agora = relogio.agora()
     hoje = dia_de(agora)
     ativa = assinatura_ativa(s, conta.id)
@@ -266,9 +297,10 @@ def recalcular(s: Session, conta: Conta) -> tuple[str, str]:
     conta.atrasada_desde = min(atrasadas) if atrasadas else None
     if conta.situacao != "cortesia":
         conta.situacao = _situacao(s, conta, ativa, agora)
-        if (ativa is None and conta.pago_ate is None and conta.plano != PLANO_DO_TESTE
-                and ativa_de_outro_ambiente(s, conta.id) is None):
-            conta.plano = PLANO_DO_TESTE  # cancelou (ou perdeu a assinatura) sem nunca pagar: o plano do teste
+        if perdeu and ativa is None and conta.pago_ate is None and ativa_de_outro_ambiente(s, conta.id) is None:
+            plano_do_teste = parametros.valor("teste.plano")
+            if conta.plano != plano_do_teste:
+                conta.plano = plano_do_teste  # perdeu a assinatura sem nunca pagar: o plano do teste de hoje
     s.flush()
     return anterior, conta.situacao
 
@@ -290,6 +322,8 @@ def limpar_outro_ambiente(s: Session, conta: Conta) -> bool:
                "pago_ate_anterior": conta.pago_ate.isoformat() if conta.pago_ate else None}
     if ativa is not None:
         encerrar(s, ativa, None)
+    elif conta.pago_ate is not None:
+        marcar_perda(s, conta.id)  # os pagamentos (de sandbox) não valem mais: como quem nunca pagou
     if cliente:
         conta.asaas_cliente_id = conta.asaas_ambiente = None
     conta.pago_ate = conta.atrasada_desde = None
@@ -394,13 +428,15 @@ def ajustar_primeiro_vencimento(s: Session, a: Assinatura) -> None:
 
 
 def encerrar(s: Session, a: Assinatura, por: int | None) -> None:
-    """Marca a assinatura cancelada e as faturas em aberto dela como removidas (o Asaas apaga junto)."""
+    """Marca a assinatura cancelada e as faturas em aberto dela como removidas (o Asaas apaga junto). A conta fica
+    marcada como tendo perdido a assinatura (`marcar_perda`): quem chama recalcula na mesma transação."""
     a.situacao = "cancelada"
     a.cancelada_em = _agora_utc()
     a.cancelada_por = por
     a.nao_encontrada_desde = None
     s.execute(update(Cobranca).where(Cobranca.assinatura_id == a.id, Cobranca.situacao.in_(ABERTAS))
               .values(situacao="removida", atualizada_em=_agora_utc()))
+    marcar_perda(s, a.conta_id)
     s.flush()
 
 
@@ -488,12 +524,13 @@ def assinaturas_no_asaas(s: Session, conta: Conta) -> tuple[list[dict], list[tup
     return desconhecidas, remover
 
 
-def conciliar_para_assinar(s: Session, conta: Conta, valor: Decimal) -> dict | None:
-    """Antes de criar a assinatura (e depois de um tempo esgotado ao criar): a desconhecida mais nova com o valor
-    pedido é devolvida para ser adotada (um pedido anterior chegou a criá-la); as outras desconhecidas, as canceladas
-    aqui que seguem vivas lá e as com a remoção pendente são removidas."""
+def conciliar_para_assinar(s: Session, conta: Conta, plano: str, valor: Decimal) -> dict | None:
+    """Antes de criar a assinatura (e depois de um tempo esgotado ao criar): a desconhecida mais nova com o valor e a
+    descrição do plano pedido é devolvida para ser adotada (um pedido anterior chegou a criá-la); as outras
+    desconhecidas, as canceladas aqui que seguem vivas lá e as com a remoção pendente são removidas."""
     desconhecidas, remover = assinaturas_no_asaas(s, conta)
-    adotar = next((a for a in desconhecidas if asaas.valor(a.get("value")) == valor), None)
+    adotar = next((a for a in desconhecidas if asaas.valor(a.get("value")) == valor
+                   and a.get("description") == descricao(plano)), None)
     for a in desconhecidas:
         if a is not adotar:
             remover_sobrando(s, conta.id, a, "duplicada")
@@ -515,7 +552,7 @@ def _conferir_limite(s: Session, conta: Conta, plano: str, acao: str, travar_inc
     inclusão que esperou lê o plano novo. `travar_inclusoes=False` só para a conferência prévia (sem mudar o plano)."""
     if travar_inclusoes:
         travar_contatos(s, conta.id)
-    limite = limite_contatos(plano, conta.situacao)
+    limite = limite_contatos(s, plano, conta.situacao)
     if limite is None:
         return
     ativos = contatos_ativos(s)
@@ -623,7 +660,7 @@ def _desfazer_no_asaas(conta_id: int, asaas_id: str) -> None:
 def _criar_assinatura(ctx: Contexto, dados) -> dict:
     """2ª fase de assinar (ver `assinar`)."""
     amb = asaas.ambiente()
-    valor = PRECOS[dados.plano]
+    valor = conferir_preco(dados.plano, dados.preco)  # o preço pode ter mudado depois da 1ª fase
     nova: str | None = None  # criada (ou adotada) no Asaas e ainda não gravada aqui
     falha: asaas.FalhaAsaas | None = None
     resultado: dict = {}
@@ -638,7 +675,7 @@ def _criar_assinatura(ctx: Contexto, dados) -> dict:
             vencimento = regras.primeiro_vencimento(conta)
             adotada = None
             try:
-                adotada = conciliar_para_assinar(s, conta, valor)
+                adotada = conciliar_para_assinar(s, conta, dados.plano, valor)
                 _conferir_limite(s, conta, dados.plano, "assinar")  # trava as inclusões de contatos até gravar
                 if adotada is None:
                     try:
@@ -647,7 +684,7 @@ def _criar_assinatura(ctx: Contexto, dados) -> dict:
                     except asaas.FalhaAsaas as f:
                         if f.tipo != "indisponivel":
                             raise
-                        adotada = _depois_do_tempo_esgotado(s, conta, valor, f)
+                        adotada = _depois_do_tempo_esgotado(s, conta, dados.plano, valor, f)
                 if adotada is not None:
                     nova = adotada["id"]
                     vencimento = asaas.data(adotada.get("nextDueDate")) or vencimento
@@ -679,11 +716,12 @@ def _criar_assinatura(ctx: Contexto, dados) -> dict:
     return resultado
 
 
-def _depois_do_tempo_esgotado(s: Session, conta: Conta, valor: Decimal, falha: asaas.FalhaAsaas) -> dict:
+def _depois_do_tempo_esgotado(s: Session, conta: Conta, plano: str, valor: Decimal,
+                              falha: asaas.FalhaAsaas) -> dict:
     """A criação esgotou o tempo (ou o Asaas caiu): ela pode ter passado. Lista de novo e adota a que chegou a ser
     criada; sem ela (ou sem conseguir listar), a falha segue (503)."""
     try:
-        adotada = conciliar_para_assinar(s, conta, valor)
+        adotada = conciliar_para_assinar(s, conta, plano, valor)
     except asaas.FalhaAsaas:
         adotada = None
     if adotada is None:
@@ -697,9 +735,12 @@ def assinar(ctx: Contexto, dados) -> dict:
     2. a assinatura: concilia (adota a que um pedido anterior criou, remove as que sobram), cria com o primeiro
        vencimento da regra (tempo esgotado: lista de novo e adota se ela chegou a ser criada), busca a primeira fatura,
        troca o plano da conta e recalcula. Se a gravação falhar depois de criar no Asaas, ela é removida lá (e, se não
-       der, fica para a tarefa)."""
+       der, fica para a tarefa).
+    Vale o preço atual do plano (`planos.{plano}.preco`); `dados.preco` (o que a tela mostrou) diferente dele → 409
+    `preco_mudou` antes de chamar o Asaas (conferido nas duas fases)."""
     if not asaas.disponivel():
         raise nao_configurada()
+    conferir_preco(dados.plano, dados.preco)  # antes de qualquer chamada ao Asaas
     _garantir_cliente(ctx, dados)
     return _criar_assinatura(ctx, dados)
 
@@ -711,9 +752,11 @@ def _valor_no_asaas_e(asaas_id: str, valor: Decimal) -> bool:
         return False
 
 
-def trocar_plano(ctx: Contexto, plano: str) -> dict:
-    """Muda o valor no Asaas (também das faturas em aberto) e o plano da conta (e o limite de contatos) na hora. Tempo
-    esgotado no Asaas: confere a assinatura lá; com o valor novo já gravado, conclui aqui (senão 503)."""
+def trocar_plano(ctx: Contexto, plano: str, mostrado: Decimal) -> dict:
+    """Muda o valor no Asaas (também das faturas em aberto) e o plano da conta (e o limite de contatos) na hora, pelo
+    preço atual do plano novo (`mostrado`, o que a tela mostrou, diferente dele → 409 `preco_mudou` antes de chamar o
+    Asaas). O mesmo plano não muda nada (nem o valor contratado). Tempo esgotado no Asaas: confere a assinatura lá;
+    com o valor novo já gravado, conclui aqui (senão 503)."""
     mudou_no_asaas: tuple[str, str, Decimal] | None = None
     try:
         with em_conta(ctx.conta_id) as s:
@@ -722,10 +765,10 @@ def trocar_plano(ctx: Contexto, plano: str) -> dict:
             if a is None:
                 raise sem_assinatura()
             if a.plano != plano:
+                valor = conferir_preco(plano, mostrado)
                 _conferir_limite(s, conta, plano, "trocar")
                 if not asaas.disponivel():
                     raise nao_configurada()
-                valor = PRECOS[plano]
                 try:
                     asaas.atualizar_assinatura(a.asaas_id, valor, descricao(plano))
                 except asaas.FalhaAsaas as f:

@@ -103,7 +103,13 @@ const rotas: RouteRecordRaw[] = [
         component: () => import('@/modulos/auditoria/AuditoriaView.vue'),
         meta: { titulo: 'Auditoria', permissao: 'auditoria.ver', manterRolagem: true },
       },
-      { path: 'plataforma', name: 'plataforma', component: () => import('@/modulos/plataforma/PlataformaView.vue'), meta: { titulo: 'Plataforma', superadmin: true } },
+      // Etapa 5g: abas "Contas" (/plataforma) e "Parâmetros" (/plataforma/parametros); só superadmin.
+      {
+        path: 'plataforma/:aba(contas|parametros)?',
+        name: 'plataforma',
+        component: () => import('@/modulos/plataforma/PlataformaView.vue'),
+        meta: { titulo: 'Plataforma', superadmin: true, manterRolagem: true },
+      },
     ],
   },
   { path: '/:caminho(.*)*', name: 'nao-encontrada', component: () => import('@/modulos/geral/NaoEncontradaView.vue'), meta: { titulo: 'Página não encontrada' } },

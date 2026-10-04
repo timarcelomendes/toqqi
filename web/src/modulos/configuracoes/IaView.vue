@@ -4,6 +4,7 @@
 // Etapa 5b: a cota de IA do plano (cada pergunta ao assistente usa 1 análise).
 // Etapa 5d: "Como a IA escreve" (modelo, estilo e os passos sugeridos nas ações); o resumo do painel e o parecer dos
 // relatórios também gastam a cota. Desde 03/10, o nível Mais detalhado gasta 2 análises por pergunta, resumo ou parecer.
+// Etapa 5g: quantas análises cada nível gasta vem da API (Plataforma › Parâmetros pode mudar): a frase da cota lê das opções.
 import { computed, onMounted, ref, watch } from 'vue'
 import { Gauge, History, ShieldCheck, Sparkles } from 'lucide-vue-next'
 import { ApiError, iaApi, mensagemDoErro, type ConfigIa, type CotaIa } from '@/api'
@@ -20,6 +21,7 @@ import Carregando from '@/components/ui/Carregando.vue'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
 import Interruptor from '@/components/ui/Interruptor.vue'
 import Medidor from '@/components/ui/Medidor.vue'
+import { textoGastoDaCota } from '@/modulos/ia/logica'
 import { formatarMes } from '@/modulos/painel/logica'
 import { TEMAS_PADRAO } from '@/modulos/respostas/logica'
 import ComoIaEscreve from './ComoIaEscreve.vue'
@@ -174,10 +176,7 @@ onMounted(carregar)
           {{ formatarMes(cota.mes, 'longo') }}
         </p>
         <Medidor :valor="cota.usadas" :maximo="cota.limite" rotulo="Análises da cota do plano usadas neste mês" :texto="textoCota" />
-        <p class="text-sm text-texto-suave">
-          Cada pergunta ao ToqqiAI, cada resumo do painel e cada parecer dos relatórios usam 1 análise, ou 2 no modelo Mais detalhado. A
-          análise de cada resposta e os passos das ações não entram nesta conta.
-        </p>
+        <p class="text-sm text-texto-suave" data-gasto-cota>{{ textoGastoDaCota(dados.modelos) }}</p>
         <Alerta v-if="cota.limite > 0 && cota.restantes <= 0" tom="atencao">
           A cota deste mês acabou: o ToqqiAI, o resumo do painel e o parecer dos relatórios voltam no dia 1º.
         </Alerta>

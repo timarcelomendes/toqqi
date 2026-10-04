@@ -62,7 +62,10 @@ const COTA: CotaIa = { usadas: 12, limite: 500, restantes: 488, mes: '2026-10' }
 const COTA_DEPOIS: CotaIa = { usadas: 13, limite: 500, restantes: 487, mes: '2026-10' }
 /** Resta 1 análise: não dá para o Mais detalhado (gasta 2). */
 const RESTA_1: CotaIa = { usadas: 499, limite: 500, restantes: 1, mes: '2026-10' }
+/** A frase do 409 da API (desde 03/10 ela sugere o nível mais barato que cabe no que resta). */
 const INSUFICIENTE = 'Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo mês.'
+/** A do site, quando a API não mandou a dela: sem citar nível (as análises de cada um mudam em Plataforma › Parâmetros). */
+const INSUFICIENTE_SITE = 'O nível escolhido gasta 2 análises e resta 1. Troque o nível em Configurações › IA ou aguarde o próximo mês.'
 const GERADO_EM = '2026-10-02T17:30:00Z'
 const RESUMO = {
   melhorar: 'O prazo de entrega puxou o NPS para baixo nos últimos 90 dias.',
@@ -400,7 +403,7 @@ describe('Painel: cartão "Resumo da IA"', () => {
     let w = await abrir('/inicio', '/inicio', PainelView)
     let cartao = cartaoResumo(w)
     expect(cartao.findAll('[data-frases] dd')).toHaveLength(3) // o salvo continua
-    expect(t(cartao.get('[data-bloqueio]').text())).toContain(INSUFICIENTE)
+    expect(t(cartao.get('[data-bloqueio]').text())).toContain(INSUFICIENTE_SITE)
     const link = cartao.get('[data-link-trocar-nivel]')
     expect(link.attributes('href')).toBe('/configuracoes/ia')
     expect(t(link.text())).toBe('Trocar o nível')
@@ -413,7 +416,7 @@ describe('Painel: cartão "Resumo da IA"', () => {
     apiPainel({ 'GET /painel/resumo-ia': () => estado({ disponivel: false, motivo: 'cota_insuficiente', cota: RESTA_1, custo: 2 }) })
     w = await abrir('/inicio', '/inicio', PainelView)
     cartao = cartaoResumo(w)
-    expect(t(cartao.get('[data-bloqueio]').text())).toBe(INSUFICIENTE)
+    expect(t(cartao.get('[data-bloqueio]').text())).toBe(INSUFICIENTE_SITE)
     expect(cartao.find('[data-link-trocar-nivel]').exists()).toBe(false)
     expect(cartao.find('[data-vazio]').exists()).toBe(false)
     expect(cartao.find('[data-gerar-ia]').exists()).toBe(false)
@@ -455,7 +458,7 @@ describe('Painel: cartão "Resumo da IA"', () => {
     expect(t(cartao.get('[data-gerado]').text())).toContain('· Mais detalhado')
     expect(t(cartao.get('[data-restam]').text())).toBe('Resta 1 de 500 análises este mês')
     expect(cartao.find('[data-gerar-ia]').exists()).toBe(false)
-    expect(t(cartao.get('[data-bloqueio]').text())).toBe(INSUFICIENTE)
+    expect(t(cartao.get('[data-bloqueio]').text())).toBe(INSUFICIENTE_SITE)
     expect([assistente.disponivel, assistente.estado?.motivo, assistente.custo]).toEqual([false, 'cota_insuficiente', 2])
     expect(assistente.cota).toEqual(RESTA_1) // insuficiente não zera o que resta
   })
@@ -900,7 +903,7 @@ describe('Relatórios: "Parecer da IA"', () => {
       await w.get('[data-abrir-parecer]').trigger('click')
       await flushPromises()
       const d = dialogo(w)
-      expect(t(d.get('[data-bloqueio]').text())).toContain(INSUFICIENTE)
+      expect(t(d.get('[data-bloqueio]').text())).toContain(INSUFICIENTE_SITE)
       expect(d.find('[data-gerar-ia]').exists()).toBe(false)
       expect(d.find('[data-link-trocar-nivel]').exists()).toBe(link)
       if (link) expect(d.get('[data-link-trocar-nivel]').attributes('href')).toBe('/configuracoes/ia')

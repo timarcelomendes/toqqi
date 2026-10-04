@@ -10,10 +10,17 @@ export const assinaturaApi = {
   /**
    * Cria a assinatura no Asaas (a primeira fatura vence no último dia do teste ou amanhã). 409 `ja_assinada` e
    * `cortesia`; 422 `limite_do_plano` e `cobranca_recusada` (com campos); 503 `cobranca_indisponivel`.
+   * Etapa 5g: `preco` (obrigatório) é o que a tela mostrou; diferente do atual → 409 `preco_mudou` (antes de chamar o
+   * Asaas); faltando ou inválido → 422 no campo `preco` ("Recarregue a página para ver o preço atual do plano.").
    */
-  assinar: (dados: DadosCobranca & { plano: PlanoAssinatura['chave'] }) => api.post<EstadoAssinatura>('/assinatura', dados),
-  /** Também muda o valor das faturas em aberto. 409 `sem_assinatura`; 422 `limite_do_plano`. */
-  trocarPlano: (plano: PlanoAssinatura['chave']) => api.put<EstadoAssinatura>('/assinatura/plano', { plano }),
+  assinar: (dados: DadosCobranca & { plano: PlanoAssinatura['chave']; preco: PlanoAssinatura['preco'] }) =>
+    api.post<EstadoAssinatura>('/assinatura', dados),
+  /**
+   * Também muda o valor das faturas em aberto. 409 `sem_assinatura`; 422 `limite_do_plano`. Etapa 5g: sempre com o
+   * `preco` que a tela mostrou; diferente do atual → 409 `preco_mudou`; faltando ou inválido → 422 no campo `preco`.
+   */
+  trocarPlano: (plano: PlanoAssinatura['chave'], preco: PlanoAssinatura['preco']) =>
+    api.put<EstadoAssinatura>('/assinatura/plano', { plano, preco }),
   alterarDados: (dados: DadosCobranca) => api.put<EstadoAssinatura>('/assinatura/dados', dados),
   /** Remove a assinatura no Asaas (com as faturas em aberto); o uso segue até o fim do período pago. */
   cancelar: () => api.post<EstadoAssinatura>('/assinatura/cancelar'),

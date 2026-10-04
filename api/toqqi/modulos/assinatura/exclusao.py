@@ -28,8 +28,10 @@ e-mail aos administradores 7 dias antes; o backup do banco fica fora. As datas s
     avisada_em, exclusao_em, admins}` (`admins`: administradores ativos na hora; 0 = ninguém a avisar), sem dado
     pessoal (o log também). Ficam os registros de acesso e os eventos globais.
 - Rodada: a partir das 9h, uma vez por dia (já há `exclusao_automatica` global de hoje → pula; rodadas simultâneas
-  → a segunda pula, pela trava `exclusao_automatica`). Conta e registra no log; `EXCLUSAO_AUTOMATICA=ligada` age;
-  qualquer outro valor só simula (`simular`, o padrão; um valor desconhecido também deixa um aviso no log). Limites do
+  → a segunda pula, pela trava `exclusao_automatica`). Conta e registra no log; o modo é o parâmetro
+  `teste.exclusao_automatica` (etapa 5g, Plataforma › Parâmetros; vale na próxima rodada): `ligada` age, `simular` só
+  conta. Sem linha no banco, vale a variável `EXCLUSAO_AUTOMATICA` (`ligada` age; qualquer outro valor só simula, e um
+  valor que não seja `simular` deixa um aviso no log). Limites do
   dia (São Paulo), contados pelos eventos já gravados hoje e não pela rodada: até 100 avisos (`exclusao_avisada`) e
   20 exclusões (`conta_excluida_automatica`), das mais antigas; uma rodada que caiu no meio (sem o evento do dia), ou o
   evento do dia apagado à mão, roda de novo sem passar do limite. Cada aviso e cada exclusão na sua transação e no seu
@@ -44,7 +46,7 @@ from datetime import date, datetime, time, timedelta
 
 from sqlalchemy import exists, func, literal_column, select, text
 
-from toqqi.core import asaas, relogio
+from toqqi.core import asaas, parametros, relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.avisos import admins_a_avisar, avisar_admins
 from toqqi.core.config import config
@@ -206,14 +208,14 @@ def _feitos_hoje(s, evento: str, hoje: date, global_: bool = False) -> int:
 
 
 def _modo() -> str:
-    """`ligada` age; qualquer outro valor só simula (um que não seja `simular` também deixa um aviso no log)."""
-    valor = config().EXCLUSAO_AUTOMATICA
-    if valor == "ligada":
-        return "ligada"
-    if valor != "simular":
+    """O parâmetro `teste.exclusao_automatica`: `ligada` age; `simular` só conta. Sem linha no banco (vale a variável),
+    um valor de EXCLUSAO_AUTOMATICA que não seja 'ligada' nem 'simular' só simula e deixa um aviso no log."""
+    modo = parametros.valor("teste.exclusao_automatica")
+    variavel = config().EXCLUSAO_AUTOMATICA
+    if parametros.origem("teste.exclusao_automatica") != "banco" and variavel not in parametros.MODOS_EXCLUSAO:
         log.warning("Exclusão automática: EXCLUSAO_AUTOMATICA=%r não é 'ligada' nem 'simular'; a rodada só simula "
-                    "(conta e registra no log, sem avisar nem excluir).", valor)
-    return "simular"
+                    "(conta e registra no log, sem avisar nem excluir).", variavel)
+    return "ligada" if modo == "ligada" else "simular"
 
 
 def _uma_por_vez(contas: list[tuple[date, int]], limite: int, passo, etapa: str) -> tuple[int, int]:

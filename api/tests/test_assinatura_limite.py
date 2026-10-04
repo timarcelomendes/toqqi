@@ -10,7 +10,7 @@ import time
 
 import pytest
 from sqlalchemy import text
-from util import API, assinar, conta_pronta, encher_contatos, sql
+from util import assinar, conta_pronta, encher_contatos, sql, trocar_plano
 
 from toqqi.core import asaas
 from toqqi.core.db import RAIZ_API, em_conta
@@ -72,7 +72,7 @@ def _trocar_em_paralelo(client, h, monkeypatch) -> tuple[threading.Thread, dict,
     monkeypatch.setattr(asaas, "atualizar_assinatura", lento)
 
     def trocar():
-        resposta["r"] = client.put(f"{API}/assinatura/plano", headers=h, json={"plano": "essencial"})
+        resposta["r"] = trocar_plano(client, h, "essencial")
 
     t = threading.Thread(target=trocar)
     t.start()

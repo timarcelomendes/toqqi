@@ -7,13 +7,15 @@ Etapa 5f: `apagar_conta` (usada aqui e pela exclusão automática, `assinatura.e
 de todas as etapas; ficam os registros de acesso, os eventos globais e as remoções pendentes no Asaas. A lista traz
 `exclusao_em` (o dia da exclusão automática avisado, ou null). O fim do teste (criar conta e "+14 dias") segue o
 relógio das regras (`relogio.agora()`).
+Etapa 5g: a conta criada aqui (teste ou cortesia) começa no plano `teste.plano`, com `teste.dias` de teste; o "+N dias"
+sem `dias` soma `teste.dias` (parâmetros da plataforma). Os parâmetros em si ficam em `parametros.py`.
 """
 from datetime import timedelta
 
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.exc import IntegrityError
 
-from toqqi.core import relogio
+from toqqi.core import parametros, relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.db import modo_sistema
 from toqqi.core.deps import Contexto
@@ -63,7 +65,6 @@ from toqqi.modelos import (
     WhatsappConta,
     WhatsappUso,
 )
-from toqqi.modulos.acesso.servico import DIAS_TESTE
 from toqqi.modulos.assinatura import regras
 from toqqi.modulos.assinatura import servico as assinaturas
 from toqqi.modulos.formularios.semear import semear_conta
@@ -118,8 +119,10 @@ def criar_conta(ctx: Contexto, dados) -> dict:
     senha_hash = gerar_hash(dados.admin_senha)
     try:
         with modo_sistema() as s:
-            teste_ate = relogio.agora() + timedelta(days=DIAS_TESTE) if dados.situacao == "teste" else None
-            conta = Conta(nome=dados.empresa, situacao=dados.situacao, teste_ate=teste_ate)
+            dias = parametros.valor("teste.dias")
+            teste_ate = relogio.agora() + timedelta(days=dias) if dados.situacao == "teste" else None
+            conta = Conta(nome=dados.empresa, situacao=dados.situacao, teste_ate=teste_ate,
+                          plano=parametros.valor("teste.plano"))
             s.add(conta)
             s.flush()
             u = Usuario(conta_id=conta.id, nome=dados.admin_nome, email=dados.admin_email, senha_hash=senha_hash,
@@ -144,9 +147,13 @@ def _conta_travada(s, conta_id: int) -> Conta:
     return c
 
 
-def estender_teste(ctx: Contexto, conta_id: int, dias: int) -> dict:
-    """Soma a partir do fim do teste atual (ou de agora, se já acabou) e recalcula a situação (`teste`; `cancelada`
-    enquanto o período pago for mais longo). 409 `assinatura_ativa` para conta com assinatura ativa ou cortesia."""
+def estender_teste(ctx: Contexto, conta_id: int, dias: int | None = None) -> dict:
+    """Soma `dias` (sem eles, `teste.dias`) a partir do fim do teste atual (ou de agora, se já acabou) e recalcula a
+    situação (`teste`; `cancelada` enquanto o período pago for mais longo). O plano da conta fica (o teste em andamento
+    não segue `teste.plano`, que vale para contas novas). 409 `assinatura_ativa` para conta com assinatura ativa ou
+    cortesia."""
+    if dias is None:
+        dias = parametros.valor("teste.dias")
     with modo_sistema() as s:
         c = _conta_travada(s, conta_id)
         if c.situacao == "cortesia":

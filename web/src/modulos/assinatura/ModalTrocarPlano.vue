@@ -1,7 +1,10 @@
 <script setup lang="ts">
 // Trocar de plano: os 3 planos (o atual marcado), o novo valor, o efeito na fatura em aberto e no limite de contatos.
 // Plano menor com mais contatos ativos que o limite avisa antes e não deixa trocar (a API também recusaria, com 422).
-import { computed, ref, watch } from 'vue'
+// Etapa 5g: o plano atual mostra o valor contratado quando o preço de hoje é outro; trocar manda sempre o preço mostrado
+// e, se ele mudou nesse meio-tempo (409 `preco_mudou`), a tela relê os planos e explica. Se a API recusar o preço mandado
+// (422 no campo `preco`), o alerta traz a mensagem dela e "Recarregar", que recarrega a página.
+import { computed, nextTick, ref, watch } from 'vue'
 import { assinaturaApi, type EstadoAssinatura } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { useFormulario } from '@/composables/formulario'
@@ -14,12 +17,19 @@ import { efeitoTroca, planoPorChave } from './logica'
 
 const props = defineProps<{ estado: EstadoAssinatura }>()
 const aberto = defineModel<boolean>('aberto', { default: false })
-const emit = defineEmits<{ trocado: [EstadoAssinatura] }>()
+const emit = defineEmits<{ trocado: [EstadoAssinatura]; recarregar: [] }>()
 
 const sessao = useSessaoStore()
-const { enviando, erroGeral, executar, limpar } = useFormulario()
+const { enviando, erroGeral, codigoErro, erros, executar, limpar } = useFormulario()
 const atual = computed(() => props.estado.assinatura?.plano ?? null)
 const escolhido = ref<string | null>(null)
+const formTroca = ref<HTMLFormElement | null>(null)
+/** 422 no campo `preco`: a API não aceitou o preço que esta tela mandou; só recarregando a página. */
+const erroPreco = computed(() => erros.preco ?? null)
+
+function recarregarPagina() {
+  location.reload()
+}
 
 watch(aberto, (v) => {
   if (!v) return
@@ -34,8 +44,17 @@ const podeTrocar = computed(() => !!novo.value && !!efeito.value?.cabe && props.
 async function trocar() {
   const plano = novo.value
   if (!plano || !podeTrocar.value) return
-  const r = await executar(() => assinaturaApi.trocarPlano(plano.chave))
-  if (!r) return
+  const r = await executar(() => assinaturaApi.trocarPlano(plano.chave, plano.preco))
+  if (!r) {
+    // O preço mudou desde que a janela abriu: a tela busca os planos de novo e a mensagem da API explica.
+    if (codigoErro.value === 'preco_mudou') emit('recarregar')
+    else if (erroPreco.value) {
+      // O botão de trocar desligou enquanto enviava: o foco vai ao "Recarregar" do alerta (e fica na janela).
+      await nextTick()
+      formTroca.value?.querySelector<HTMLElement>('[data-recarregar]')?.focus()
+    }
+    return
+  }
   emit('trocado', r)
   avisar.sucesso(`Plano trocado para ${plano.nome}.`)
   aberto.value = false
@@ -49,8 +68,11 @@ async function trocar() {
     descricao="O novo valor vale para as próximas faturas e para as pendentes (as vencidas não mudam). O limite de contatos muda na hora."
     :bloqueado="enviando"
   >
-    <form id="form-trocar-plano" class="flex flex-col gap-4" novalidate @submit.prevent="trocar">
-      <Alerta v-if="erroGeral" tom="erro">{{ erroGeral }}</Alerta>
+    <form id="form-trocar-plano" ref="formTroca" class="flex flex-col gap-4" novalidate @submit.prevent="trocar">
+      <Alerta v-if="erroGeral" :tom="erroPreco || codigoErro === 'preco_mudou' ? 'atencao' : 'erro'" data-erro-troca>
+        {{ erroPreco ?? erroGeral }}
+        <button v-if="erroPreco" type="button" class="link ml-1" data-recarregar @click="recarregarPagina">Recarregar</button>
+      </Alerta>
       <EscolhaPlano
         v-model="escolhido"
         :planos="estado.planos"
@@ -59,6 +81,7 @@ async function trocar() {
         :atual="atual"
         :bloquear-sem-espaco="false"
         :desabilitado="enviando"
+        :contratado="estado.assinatura?.valor ?? null"
         compacto
       />
       <!-- Sempre na página, para o leitor de tela anunciar o efeito quando outro plano é escolhido. -->

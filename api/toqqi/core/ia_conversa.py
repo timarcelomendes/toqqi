@@ -2,8 +2,8 @@
 adaptador da 4b (`core.ia`, de onde vêm o `transporte`, a classificação dos erros HTTP e a disponibilidade).
 
 Cada chamada: `POST {IA_BASE_URL}/v1/responses` com `model` e `reasoning` do nível da conta (etapa 5d,
-`ia_texto.modelo_do_nivel`: o equilibrado, padrão, usa IA_ASSISTENTE_MODELO e IA_ASSISTENTE_ESFORCO; esforço vazio =
-não manda `reasoning`), `instructions`, `input` (o histórico como mensagens {role, content} e a pergunta), `tools`
+`ia_texto.modelo_do_nivel`, pelos parâmetros `ia.modelo.*`/`ia.esforco.*` da 5g: o equilibrado, padrão, usa por
+padrão IA_ASSISTENTE_MODELO e IA_ASSISTENTE_ESFORCO; esforço vazio = não manda `reasoning`), `instructions`, `input` (o histórico como mensagens {role, content} e a pergunta), `tools`
 (funções em modo estrito), `tool_choice`, `parallel_tool_calls: true`, `text.format` (JSON Schema estrito),
 `max_output_tokens: 2000`, `store: false` e `include: ["reasoning.encrypted_content"]`: a OpenAI não guarda nada e o
 raciocínio volta cifrado para seguir no laço.

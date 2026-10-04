@@ -764,3 +764,24 @@ class RegistroAcesso(Base):
     usuario_id: Mapped[int | None] = mapped_column(BigInteger)
     item_id: Mapped[int | None] = mapped_column(BigInteger)  # a resposta ou a indicação
     ip: Mapped[str | None] = mapped_column(Text)
+
+
+# ---- etapa 5g: parâmetros da plataforma -----------------------------------------------------
+
+class Parametro(Base):
+    """Valor que difere do padrão (core.parametros). Sem conta: RLS só em modo sistema, salvo a leitura dos limites de
+    contatos (`planos.%.contatos`), que o gatilho do limite faz no contexto da conta. Só a chave e o valor: quem alterou
+    e quando ficam em `parametros_historico` (a conta não lê)."""
+    __tablename__ = "parametros"
+    chave: Mapped[str] = mapped_column(Text, primary_key=True)
+    valor: Mapped[object] = mapped_column(JSONB(none_as_null=False))  # texto "149.00", inteiro, null ou texto
+
+
+class ParametroHistorico(Base):
+    """Cada alteração salva em Plataforma › Parâmetros (imutável: o papel da aplicação só lê e insere)."""
+    __tablename__ = "parametros_historico"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    grupo: Mapped[str] = mapped_column(Text)  # planos | ia | whatsapp | teste
+    por: Mapped[str] = mapped_column(Text)  # e-mail de quem salvou
+    mudancas: Mapped[list] = mapped_column(JSONB)  # [{chave, de, para}], valores efetivos

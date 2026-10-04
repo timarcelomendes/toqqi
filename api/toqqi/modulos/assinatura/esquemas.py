@@ -1,10 +1,15 @@
 """Entradas da assinatura. Dados de cobrança validados como em Dados da empresa (CPF/CNPJ pelos dígitos
 verificadores, inclusive o CNPJ alfanumérico; e-mail; telefone com DDD), mas todos obrigatórios. O telefone segue a
 regra brasileira, mais estrita que a dos Dados da empresa (o Asaas pede DDD + número, sem o 55): DDD de 11 a 99 e
-celular com 9 dígitos começando com 9 ou fixo com 8 dígitos começando com 2 a 5."""
+celular com 9 dígitos começando com 9 ou fixo com 8 dígitos começando com 2 a 5.
+
+Etapa 5g: assinar e trocar de plano mandam `preco`, o preço que a tela mostrou; diferente do atual → 409 `preco_mudou`
+(assinatura.servico.conferir_preco). Obrigatório desde a revisão: sem ele (ou null), 422 no campo `preco` ("Recarregue
+a página para ver o preço atual do plano.")."""
+from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, BeforeValidator
+from pydantic import BaseModel, BeforeValidator, Field
 from pydantic_core import PydanticCustomError
 
 from toqqi.core.texto import normalizar_documento
@@ -63,9 +68,26 @@ class DadosCobrancaIn(BaseModel):
     telefone: Annotated[str, BeforeValidator(_telefone)]
 
 
+MSG_PRECO = "Recarregue a página para ver o preço atual do plano."
+
+
+def _preco(v):
+    """Obrigatório: sem ele (ou com null), quem assina ou troca não confere o `preco_mudou`."""
+    if _vazio(v):
+        raise _erro("preco", MSG_PRECO)
+    return v
+
+
+# O preço que a tela mostrou. Obrigatório (revisão da 5g): ausente ou null → 422 no campo `preco` (o padrão None só
+# existe para a mensagem ser a nossa, e não o "Preencha este campo." do Pydantic).
+PrecoMostrado = Annotated[Decimal, BeforeValidator(_preco), Field(ge=0, le=Decimal("99999.99"))]
+
+
 class AssinarIn(DadosCobrancaIn):
     plano: Plano
+    preco: PrecoMostrado = Field(default=None, validate_default=True)
 
 
 class PlanoIn(BaseModel):
     plano: Plano
+    preco: PrecoMostrado = Field(default=None, validate_default=True)

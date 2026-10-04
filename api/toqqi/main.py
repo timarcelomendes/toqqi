@@ -1,7 +1,7 @@
 """Aplicação FastAPI do Toqqi (etapas 1 a 5f: acesso, equipe, cadastros, formulários, páginas públicas, envios,
 integrações, WhatsApp automático, respostas, planos de ação, painel, IA por resposta, relatórios, assinatura, Ajuda,
 assistente, crescimento, IA sob demanda, e-mails: banco de imagens e e-mails enviados, e dados da conta: exportação,
-zona de risco, registros de acesso e exclusão automática)."""
+zona de risco, registros de acesso e exclusão automática; 5g: parâmetros da plataforma)."""
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -41,6 +41,8 @@ from toqqi.modulos.importacao.rotas import router as importacao
 from toqqi.modulos.integracoes.rotas import router as integracoes
 from toqqi.modulos.integracoes.rotas import router_chave as integracao
 from toqqi.modulos.painel.rotas import router as painel
+from toqqi.modulos.plataforma.parametros import router as parametros
+from toqqi.modulos.plataforma.parametros import router_publico as planos_publicos
 from toqqi.modulos.plataforma.rotas import router as plataforma
 from toqqi.modulos.publico.rotas import router as publico
 from toqqi.modulos.relatorios.rotas import router as relatorios
@@ -67,12 +69,14 @@ logs.configurar()  # mensagens da aplicação (inclusive INFO) aparecem no log d
 
 @asynccontextmanager
 async def _ciclo(app: FastAPI):
+    from toqqi.core import parametros
     from toqqi.core.implantacao import garantir_admin_inicial, garantir_papel_app
     garantir_papel_app()          # antes das migrações: os GRANTs precisam do papel existindo
     if config().AUTO_MIGRATE:
         log.info("Aplicando migrações (AUTO_MIGRATE=1)...")
         migrar()
     garantir_admin_inicial()
+    parametros.aquecer()          # etapa 5g: o cache dos parâmetros já lido (a primeira rota não espera o banco)
     yield
 
 
@@ -111,11 +115,11 @@ def create_app() -> FastAPI:
     # o mais externo (adicionado por último): todos os de dentro já recebem o IP do cliente em scope["client"]
     app.add_middleware(IpDoCliente, cabecalho=config().IP_CLIENTE_CABECALHO)
 
-    for r in (acesso, equipe, conta, auditoria, plataforma, cadastros, empresas_csv, empresas, contatos_csv, contatos,
-              importacao,
+    for r in (acesso, equipe, conta, auditoria, parametros, plataforma, cadastros, empresas_csv, empresas,
+              contatos_csv, contatos, importacao,
               formularios, imagens, publico, envios, interno, integracoes, whatsapp, integracao, whatsapp_publico,
               respostas, acoes, crescimento, painel, relatorios, assinatura, asaas_webhook, ajuda, assistente,
-              dados):
+              dados, planos_publicos):
         app.include_router(r, prefix=PREFIXO)
 
     @app.get(f"{PREFIXO}/saude", tags=["infra"])

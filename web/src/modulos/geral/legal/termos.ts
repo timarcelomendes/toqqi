@@ -65,7 +65,7 @@ export const TERMOS: DocumentoLegal = {
         {
           tipo: 'p',
           texto: [
-            'A análise de comentários e os passos das ações já vêm ligados, e a Empresa pode desligá-los em Configurações › IA. O resumo do painel, o parecer dos relatórios e o ToqqiAI só rodam quando alguém da conta pede, e cada resumo, parecer ou pergunta usa 1 análise da cota de IA do plano (2 no nível Mais detalhado, que a Empresa escolhe em Configurações › IA). Todos funcionam enquanto a IA estiver disponível e a assinatura estiver em dia. O que cada recurso envia à IA está na ',
+            'A análise de comentários e os passos das ações já vêm ligados, e a Empresa pode desligá-los em Configurações › IA. O resumo do painel, o parecer dos relatórios e o ToqqiAI só rodam quando alguém da conta pede, e cada resumo, parecer ou pergunta usa análises da cota de IA do plano, conforme o nível de modelo escolhido em Configurações › IA (a tela mostra quantas). Todos funcionam enquanto a IA estiver disponível e a assinatura estiver em dia. O que cada recurso envia à IA está na ',
             { texto: 'Política de privacidade', href: '/privacidade#inteligencia-artificial' },
             '.',
           ],
@@ -105,7 +105,7 @@ export const TERMOS: DocumentoLegal = {
         {
           tipo: 'p',
           texto:
-            'O Toqqi tem os planos Essencial, Profissional e Empresa. Cada plano tem limites e recursos próprios, mostrados na tela de assinatura. Os preços e limites vigentes são os que aparecem lá no momento da contratação.',
+            'O Toqqi tem os planos Essencial, Profissional e Empresa. Cada plano tem limites e recursos próprios, mostrados na tela de assinatura. O preço é o mostrado na contratação e só muda por reajuste, como abaixo. Limites e cotas dos planos podem mudar; se diminuírem, avisamos com antecedência razoável.',
         },
         {
           tipo: 'lista',

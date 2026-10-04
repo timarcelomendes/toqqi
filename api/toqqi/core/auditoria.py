@@ -11,7 +11,8 @@ o filtro da tela de Auditoria e a exportação:
   exportacao_*;
 - `exclusoes` "Exclusões definitivas": todo *_excluido(a) menos os globais conta_excluida*, e zona_risco;
 - `integracoes` "Integrações": chave_*, webhook_* (menos webhook_excluido), whatsapp_*;
-- `assinatura` "Assinatura e conta": o resto (inclusive exclusao_avisada e os globais da plataforma).
+- `assinatura` "Assinatura e conta": o resto (inclusive exclusao_avisada e os globais da plataforma, como
+  parametros_alterados, da 5g).
 """
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
@@ -97,6 +98,8 @@ ROTULOS = {
     "exclusao_avisada": "Aviso de exclusão da conta enviado",
     "conta_excluida_automatica": "Conta excluída automaticamente",
     "exclusao_automatica": "Rotina de exclusão de contas encerradas",
+    # etapa 5g (global, sem conta)
+    "parametros_alterados": "Parâmetros da plataforma alterados",
 }
 
 GRUPOS = {

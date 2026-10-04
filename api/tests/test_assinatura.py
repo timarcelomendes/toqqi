@@ -22,6 +22,7 @@ from util import (
     membro,
     situacao_conta,
     sql,
+    trocar_plano,
 )
 
 from toqqi import tarefas
@@ -118,7 +119,7 @@ def test_sem_asaas_configurado(client, admin, dono):
         "codigo": "cobranca_indisponivel",
         "mensagem": "A cobrança online ainda não está disponível. Fale com a equipe Toqqi.", "campos": {}}
     assert sql(dono, "select count(*) from assinaturas")[0][0] == 0
-    assert client.put(f"{API}/assinatura/plano", headers=h, json={"plano": "empresa"}).json()["erro"]["codigo"] == \
+    assert trocar_plano(client, h, "empresa").json()["erro"]["codigo"] == \
         "sem_assinatura"
 
 
@@ -313,24 +314,24 @@ def test_gravacao_falha_depois_de_criar_no_asaas_remove_la(client, admin, dono, 
 
 def test_trocar_de_plano(client, admin, dono, asaas_falso):
     h, conta = admin["h"], admin["conta"]["id"]
-    r = client.put(f"{API}/assinatura/plano", headers=h, json={"plano": "essencial"})
+    r = trocar_plano(client, h, "essencial")
     assert r.status_code == 409 and r.json()["erro"]["codigo"] == "sem_assinatura"
     assinar(client, h, "profissional")
     sid = asaas_falso.assinatura()["id"]
     # o mesmo plano: nada muda (nem chama o Asaas)
     antes = len(asaas_falso.pedidos)
-    assert client.put(f"{API}/assinatura/plano", headers=h, json={"plano": "profissional"}).status_code == 200
+    assert trocar_plano(client, h, "profissional").status_code == 200
     assert len(asaas_falso.pedidos) == antes
     # plano menor com contatos demais: recusado antes de chamar o Asaas
     encher_contatos(dono, conta, 301)
-    r = client.put(f"{API}/assinatura/plano", headers=h, json={"plano": "essencial"})
+    r = trocar_plano(client, h, "essencial")
     assert r.status_code == 422 and r.json()["erro"] == {
         "codigo": "limite_do_plano",
         "mensagem": "Você tem 301 contatos ativos; o plano Essencial permite até 300. Desative contatos antes de "
                     "trocar.", "campos": {"limite": "300"}}
     assert len(asaas_falso.pedidos) == antes
     # maior: muda o valor também da fatura em aberto, o plano da conta e o limite na hora
-    r = client.put(f"{API}/assinatura/plano", headers=h, json={"plano": "empresa"})
+    r = trocar_plano(client, h, "empresa")
     assert r.status_code == 200, r.text
     d = r.json()
     assert (d["assinatura"]["plano"], d["assinatura"]["valor"], d["conta"]["plano"]) == ("empresa", 799.0, "empresa")
@@ -345,7 +346,7 @@ def test_trocar_de_plano(client, admin, dono, asaas_falso):
     # menor e cabe: o limite vale na hora
     sql(dono, "update contatos set ativo = false where conta_id = :c", c=conta)
     encher_contatos(dono, conta, 0)
-    assert client.put(f"{API}/assinatura/plano", headers=h, json={"plano": "essencial"}).status_code == 200
+    assert trocar_plano(client, h, "essencial").status_code == 200
     assert sql(dono, "select limite_contatos(plano, situacao) from contas where id = :c", c=conta) == [(300,)]
 
 
@@ -353,7 +354,7 @@ def test_trocar_de_plano_com_asaas_fora_nao_muda_nada(client, admin, dono, asaas
     h = admin["h"]
     assinar(client, h, "profissional")
     asaas_falso.falhar(httpx.Response(502), "PUT", "/subscriptions")
-    r = client.put(f"{API}/assinatura/plano", headers=h, json={"plano": "empresa"})
+    r = trocar_plano(client, h, "empresa")
     assert r.status_code == 503
     assert sql(dono, "select a.plano, a.valor, c.plano from assinaturas a join contas c on c.id = a.conta_id") == [
         ("profissional", 349, "profissional")]
@@ -368,7 +369,7 @@ def test_trocar_de_plano_falha_ao_gravar_volta_o_valor_no_asaas(client, admin, a
 
     monkeypatch.setattr(servico, "recalcular", quebrar)
     with pytest.raises(RuntimeError):  # o TestClient repassa o erro (a API responde 500)
-        client.put(f"{API}/assinatura/plano", headers=admin["h"], json={"plano": "empresa"})
+        trocar_plano(client, admin["h"], "empresa")
     assert asaas_falso.assinatura()["value"] == 349.0
     assert asaas_falso.assinatura()["description"] == "Toqqi – plano Profissional"
 
@@ -672,7 +673,7 @@ def test_trocar_de_plano_com_tempo_esgotado_e_o_valor_ja_mudado_la(client, admin
     h = admin["h"]
     assinar(client, h, "profissional")
     asaas_falso.falhar(httpx.ReadTimeout("lento"), "PUT", "/subscriptions", depois=True)
-    r = client.put(f"{API}/assinatura/plano", headers=h, json={"plano": "empresa"})
+    r = trocar_plano(client, h, "empresa")
     assert r.status_code == 200, r.text  # o GET mostrou o valor novo: conclui aqui
     assert (r.json()["assinatura"]["plano"], r.json()["conta"]["plano"]) == ("empresa", "empresa")
     assert asaas_falso.assinatura()["value"] == 799.0
@@ -684,7 +685,7 @@ def test_trocar_de_plano_com_tempo_esgotado_sem_mudar_la_responde_503(client, ad
     h = admin["h"]
     assinar(client, h, "profissional")
     asaas_falso.falhar(httpx.ReadTimeout("lento"), "PUT", "/subscriptions")
-    r = client.put(f"{API}/assinatura/plano", headers=h, json={"plano": "empresa"})
+    r = trocar_plano(client, h, "empresa")
     assert r.status_code == 503
     assert asaas_falso.assinatura()["value"] == 349.0
     assert sql(dono, "select a.plano, c.plano from assinaturas a join contas c on c.id = a.conta_id") == [

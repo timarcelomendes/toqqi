@@ -1,15 +1,17 @@
 """Etapa 5a: todas as transições de `recalcular` (situação da conta pela assinatura e pelas cobranças), com a conta e
-as cobranças montadas direto no banco e o relógio de São Paulo fixo; o plano do teste para quem sai da assinatura sem
-nunca pagar; pagamentos de outro ambiente do Asaas não contam."""
+as cobranças montadas direto no banco e o relógio de São Paulo fixo; o plano do teste para quem perde a assinatura sem
+nunca pagar (só nessa hora: o teste em andamento fica no plano dele); pagamentos de outro ambiente do Asaas não
+contam."""
 from datetime import date, datetime, time
 
 import pytest
+from sqlalchemy import select
 from util import FUSO, conta_pronta, fixar_relogio, sql
 
 from toqqi.core.db import em_conta
-from toqqi.modelos import Conta
+from toqqi.modelos import Assinatura, Conta
 from toqqi.modulos.assinatura import regras
-from toqqi.modulos.assinatura.servico import recalcular
+from toqqi.modulos.assinatura.servico import encerrar, recalcular
 
 FIM_DO_TESTE = "2026-10-15 14:30-03"  # último dia do teste: 15/10
 
@@ -149,19 +151,35 @@ def test_transicoes(client, dono, monkeypatch, nome):
     assert resultado == (esperado[0], d(esperado[1]), d(esperado[2]))
 
 
+def _perder(conta_id: int) -> Conta:
+    """A conta perde a assinatura ativa: `encerrar` e `recalcular` na mesma transação (como cancelar, a conferência e o
+    descarte do sandbox fazem)."""
+    with em_conta(conta_id) as s:
+        c = s.get(Conta, conta_id, with_for_update=True)
+        encerrar(s, s.scalar(select(Assinatura).where(Assinatura.situacao == "ativa")), None)
+        recalcular(s, c)
+        return c
+
+
 @pytest.mark.parametrize("pagou,plano", [(False, "profissional"), (True, "empresa")])
-def test_sem_assinatura_e_sem_nunca_pagar_volta_ao_plano_do_teste(client, dono, monkeypatch, pagou, plano):
+def test_quem_perde_a_assinatura_sem_nunca_pagar_volta_ao_plano_do_teste(client, dono, monkeypatch, pagou, plano):
+    """Regra da 5a: quem perde a assinatura sem nunca ter pago volta ao plano do teste. Depois disso a conta é um teste
+    como outro: recalcular de novo, sem perder nada, não muda o plano (revisão da 5g: o teste em andamento fica no
+    plano dele mesmo que `teste.plano` mude)."""
     fixar_relogio(monkeypatch, momento("2026-10-12"))
     cid = conta_pronta(client, "ana@alfa.com.br", empresa="Alfa")["conta"]["id"]
     sql(dono, "update contas set plano = 'empresa', teste_ate = :t where id = :c", t=FIM_DO_TESTE, c=cid)
-    _assinatura(dono, cid, "sub_antiga", "2026-10-15", situacao="cancelada", plano="empresa")
+    _assinatura(dono, cid, "sub_antiga", "2026-10-15", plano="empresa")
     if pagou:
         _cobranca(dono, cid, "pay_1", "sub_antiga", "2026-10-15", "paga")
-    c = _recalcular(cid)
+    c = _perder(cid)
     assert (c.situacao, c.plano) == ("cancelada" if pagou else "teste", plano)
+    sql(dono, "update contas set plano = 'essencial' where id = :c", c=cid)
+    assert _recalcular(cid).plano == "essencial"
     # cortesia não muda
     sql(dono, "update contas set plano = 'empresa', situacao = 'cortesia' where id = :c", c=cid)
-    assert _recalcular(cid).plano == "empresa"
+    _assinatura(dono, cid, "sub_nova", "2026-11-15", plano="empresa")
+    assert _perder(cid).plano == "empresa"
 
 
 def test_pagamento_de_outro_ambiente_nao_conta(client, dono, monkeypatch):

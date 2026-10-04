@@ -90,15 +90,16 @@ export function lerCusto(v: unknown): number {
 }
 
 /**
- * Restam análises, mas menos que o custo do nível (só o Mais detalhado gasta mais de 1), com o mesmo texto do 409 da API:
- * "Resta 1 análise e o nível Mais detalhado gasta 2. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo
- * mês." (no plural a partir de 2). O custo nunca fica igual ou abaixo do que resta (a frase se contradiria).
+ * Restam análises, mas menos que o custo do nível. Só quando a API não mandou a frase dela (que já sugere o nível mais
+ * barato que cabe no que resta): como as análises de cada nível mudam em Plataforma › Parâmetros, o texto não cita nível
+ * nenhum. "O nível escolhido gasta 3 análises e restam 2. Troque o nível em Configurações › IA ou aguarde o próximo mês."
+ * ("e resta 1" no singular). O custo nunca fica igual ou abaixo do que resta (a frase se contradiria).
  */
 export function mensagemCotaInsuficiente(restantes: number, custo: number): string {
   const resta = Math.max(1, Math.floor(restantes))
   const gasta = Math.max(lerCusto(custo), resta + 1)
-  const frase = resta === 1 ? 'Resta 1 análise' : `Restam ${formatarNumero(resta)} análises`
-  return `${frase} e o nível Mais detalhado gasta ${formatarNumero(gasta)}. Troque para o Equilibrado em Configurações › IA ou aguarde o próximo mês.`
+  const sobra = resta === 1 ? 'resta 1' : `restam ${formatarNumero(resta)}`
+  return `O nível escolhido gasta ${formatarNumero(gasta)} análises e ${sobra}. Troque o nível em Configurações › IA ou aguarde o próximo mês.`
 }
 
 /** Por que a caixa (ou o botão de gerar) desliga: a cota acabou, não dá para o custo do nível ou a conta está pausada. */

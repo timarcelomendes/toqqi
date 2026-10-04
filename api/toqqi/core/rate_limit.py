@@ -53,3 +53,4 @@ LIMITE_INTEGRACAO = "120/minute"       # rotas da chave de integração (por cha
 LIMITE_IMAGEM = "600/minute"           # imagens públicas (logo): os e-mails abrem pelo proxy de imagens do Gmail
 LIMITE_ASAAS_WEBHOOK = "300/minute"    # avisos do Asaas (poucos IPs, rajadas na madrugada)
 LIMITE_ACEITE = "20/minute"          # POST /eu/aceite (por usuário)
+LIMITE_PLANOS_PUBLICOS = "60/minute"  # GET /publico/planos (site da raiz, etapa 5g)

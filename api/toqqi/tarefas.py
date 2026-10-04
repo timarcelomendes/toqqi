@@ -13,8 +13,8 @@ pendentes (etapa 5d): {analisadas, falharam, limite, passos: {prontas, falharam,
 A tarefa `limpeza` (etapa 5e) apaga o que passou do prazo de guarda: os e-mails enviados com mais de 90 dias, em
 lotes ({emails_apagados}). Etapa 5f: também os registros de acesso com mais de 184 dias ({acessos_apagados},
 `core.acessos`) e, a partir das 9h, uma vez por dia, a exclusão automática das contas encerradas ({encerradas}: o
-resumo da rodada, ou null quando ela pulou; `assinatura.exclusao`, com `EXCLUSAO_AUTOMATICA` = ligada para agir,
-qualquer outro valor só simula).
+resumo da rodada, ou null quando ela pulou; `assinatura.exclusao`, com o parâmetro `teste.exclusao_automatica`
+(etapa 5g, Plataforma › Parâmetros; padrão: `EXCLUSAO_AUTOMATICA`) = ligada para agir; simular só conta).
 
 Pela linha de comando, o log da aplicação sai como na API (`core.logs.configurar`: INFO, "INFO:     toqqi - ...").
 """

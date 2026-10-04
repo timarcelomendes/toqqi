@@ -368,8 +368,8 @@ def processar(conta_id: int, acao_id: int, tempo_limite: float = ia_texto.TEMPO_
 
 
 def _avisar_configuracao(falha: ia.FalhaIA) -> None:
-    log.error("IA: a OpenAI recusou a chamada dos passos (%s). Confira OPENAI_API_KEY e os modelos dos níveis "
-              "(IA_MODELO_*); as ações continuam pendentes.", falha.detalhe)
+    log.error("IA: a OpenAI recusou a chamada dos passos (%s). Confira OPENAI_API_KEY e os modelos em Plataforma › "
+              "Parâmetros; as ações continuam pendentes.", falha.detalhe)
 
 
 def sugerir_passos(pares: Iterable[tuple[int, int]]) -> None:

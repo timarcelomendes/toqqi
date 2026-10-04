@@ -22,6 +22,7 @@ from util import (
     fixar_relogio,
     form_padrao,
     gerar_ia,
+    gravar_parametro,
     inserir_resposta,
     perguntar,
     sql,
@@ -83,10 +84,16 @@ def com_respostas(client, admin, dono):
 # ---- níveis -------------------------------------------------------------------------------------------------
 
 def test_niveis_com_rotulo_descricao_e_custo():
+    """Etapa 5g: o custo é parâmetro da plataforma (`ia.analises.*`, padrões de `MODELOS`) e a frase do custo é
+    montada na descrição que a tela recebe."""
     assert [(o.valor, o.rotulo, o.descricao, o.analises) for o in ia_texto.MODELOS] == [
-        ("rapido", "Rápido", "Respostas curtas e rápidas. Gasta 1 análise da cota.", 1),
-        ("equilibrado", "Equilibrado", "O padrão: bom para o dia a dia. Gasta 1 análise da cota.", 1),
-        ("detalhado", "Mais detalhado", "Análises mais cuidadosas; pode demorar mais. Gasta 2 análises da cota.", 2)]
+        ("rapido", "Rápido", "Respostas curtas e rápidas.", 1),
+        ("equilibrado", "Equilibrado", "O padrão: bom para o dia a dia.", 1),
+        ("detalhado", "Mais detalhado", "Análises mais cuidadosas; pode demorar mais.", 2)]
+    assert [(o["valor"], o["descricao"], o["analises"]) for o in ia_texto.opcoes_json(ia_texto.MODELOS)] == [
+        ("rapido", "Respostas curtas e rápidas. Gasta 1 análise da cota.", 1),
+        ("equilibrado", "O padrão: bom para o dia a dia. Gasta 1 análise da cota.", 1),
+        ("detalhado", "Análises mais cuidadosas; pode demorar mais. Gasta 2 análises da cota.", 2)]
     assert [ia_texto.analises_do_nivel(n) for n in ("rapido", "equilibrado", "detalhado", None, "turbo")] == [
         1, 1, 2, 1, 1]  # desconhecido vale como equilibrado
     assert ia_texto.rotulo_do_nivel("rapido") == "Rápido"
@@ -283,6 +290,33 @@ def test_mensagem_de_cota_insuficiente_no_plural(client, admin, dono, monkeypatc
     assert r.status_code == 409 and r.json()["erro"]["mensagem"].startswith(
         "Restam 2 análises e o nível Mais detalhado gasta 3.")
     assert cota_do_mes(dono, c)[0] == 498
+
+
+def test_cota_insuficiente_sugere_o_nivel_mais_barato_que_cabe(client, admin, dono):
+    """A mensagem sugere o nível mais barato que cabe no que resta (entre os de mesmo custo, o mais completo); se
+    nenhum cabe, diz que a cota renova no próximo mês."""
+    h, c = admin["h"], admin["conta"]["id"]
+    sufixo = " em Configurações › IA ou aguarde o próximo mês."
+    # padrão (1, 1, 2): o Rápido e o Equilibrado custam 1; sugere o Equilibrado
+    assert cota.mensagem_insuficiente(1, "detalhado") == INSUFICIENTE["mensagem"]
+    for analises, restantes, do_nivel, esperado in [
+        ((1, 2, 3), 2, "detalhado", "Restam 2 análises e o nível Mais detalhado gasta 3. Troque para o Rápido" + sufixo),
+        ((1, 2, 3), 1, "equilibrado", "Resta 1 análise e o nível Equilibrado gasta 2. Troque para o Rápido" + sufixo),
+        ((2, 2, 4), 3, "detalhado", "Restam 3 análises e o nível Mais detalhado gasta 4. Troque para o Equilibrado"
+                                    + sufixo),
+        ((2, 3, 4), 1, "equilibrado", "Resta 1 análise e o nível Equilibrado gasta 3. Nenhum nível gasta tão pouco: "
+                                      "a cota renova no dia 1º do próximo mês."),
+    ]:
+        for n, v in zip(ia_texto.NIVEIS, analises):
+            gravar_parametro(dono, f"ia.analises.{n}", v)
+        assert cota.mensagem_insuficiente(restantes, do_nivel) == esperado
+    # pela API (pergunta ao ToqqiAI), com os custos de agora (2, 3, 4): restam 2 no Mais detalhado → o Rápido
+    nivel(dono, c, "detalhado")
+    usar_cota(dono, c, 498)
+    r = perguntar(client, h)
+    assert r.status_code == 409 and r.json()["erro"] == {
+        "codigo": "cota_insuficiente", "campos": {},
+        "mensagem": "Restam 2 análises e o nível Mais detalhado gasta 4. Troque para o Rápido" + sufixo}
 
 
 def test_perguntas_ao_mesmo_tempo_no_mais_detalhado(client, admin, dono):
