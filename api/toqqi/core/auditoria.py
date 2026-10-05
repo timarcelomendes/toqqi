@@ -100,6 +100,8 @@ ROTULOS = {
     "exclusao_avisada": "Aviso de exclusão da conta enviado",
     "conta_excluida_automatica": "Conta excluída automaticamente",
     "exclusao_automatica": "Rotina de exclusão de contas encerradas",
+    # etapa 5h (global, sem conta): marca o e-mail diário de erros aos superadmins (tarefa `erros`)
+    "erros_avisados": "Aviso diário de erros enviado à equipe Toqqi",
     # etapa 5g (global, sem conta)
     "parametros_alterados": "Parâmetros da plataforma alterados",
 }

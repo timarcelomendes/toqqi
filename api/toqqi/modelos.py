@@ -785,3 +785,26 @@ class ParametroHistorico(Base):
     grupo: Mapped[str] = mapped_column(Text)  # planos | ia | whatsapp | teste
     por: Mapped[str] = mapped_column(Text)  # e-mail de quem salvou
     mudancas: Mapped[list] = mapped_column(JSONB)  # [{chave, de, para}], valores efetivos
+
+
+# ---- etapa 5h: aviso de erros ---------------------------------------------------------------
+
+class Erro(Base):
+    """Uma falha diferente (pela `impressao`) da API, do site ou de uma tarefa, com a contagem de ocorrências
+    (`core.erros`). Só o que diagnostica, sem dados pessoais; guardada por 30 dias depois da última ocorrência (tarefa
+    `limpeza`). Sem conta na RLS: só o modo sistema lê e grava; `conta_id` sem FK. `resolvido_em` nulo = aberto."""
+    __tablename__ = "erros"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    impressao: Mapped[str] = mapped_column(Text)  # sha256 (64 hex) de origem + tipo + local + linha útil da pilha
+    origem: Mapped[str] = mapped_column(Text)  # api | site | tarefa
+    tipo: Mapped[str] = mapped_column(Text)
+    mensagem: Mapped[str] = mapped_column(Text, server_default="")
+    local: Mapped[str] = mapped_column(Text, server_default="")
+    pilha: Mapped[str] = mapped_column(Text, server_default="")
+    versao: Mapped[str] = mapped_column(Text)
+    ocorrencias: Mapped[int] = mapped_column(Integer, server_default="1")
+    primeira_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    ultima_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    ultimo_request_id: Mapped[str | None] = mapped_column(Text)
+    conta_id: Mapped[int | None] = mapped_column(BigInteger)
+    resolvido_em: Mapped[datetime | None] = mapped_column(TZ)

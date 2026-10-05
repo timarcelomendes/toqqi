@@ -137,7 +137,7 @@ async function abrir(caminho: string, componente: Component = PlataformaView): P
   router = createRouter({
     history: createMemoryHistory(),
     routes: [
-      { path: '/plataforma/:aba(contas|parametros)?', name: 'plataforma', component: PlataformaView },
+      { path: '/plataforma/:aba(contas|parametros|erros)?', name: 'plataforma', component: PlataformaView },
       { path: '/assinatura', component: AssinaturaView },
       { path: '/cadastro', component: CadastroView },
       { path: '/:qualquer(.*)*', component: { render: () => h('div', 'outra página') } },
@@ -601,21 +601,23 @@ describe('Plataforma › Parâmetros', () => {
 describe('Plataforma: abas e acesso', () => {
   const CONTA: ContaPlataforma = { id: 2, nome: 'Alfa', plano: 'profissional', situacao: 'teste', teste_ate: '2026-09-20T10:00:00-03:00', usuarios: 2, criada_em: '2026-09-01T12:00:00Z' }
 
-  it('"Contas" em /plataforma; "Parâmetros" muda o endereço e carrega os grupos; o menu continua com um item', async () => {
+  // Etapa 5h: as abas passaram a ser Visão geral (/plataforma), Contas (/plataforma/contas), Parâmetros e Erros; Contas
+  // saiu de /plataforma para /plataforma/contas (os testes abrem Contas pelo endereço novo e a aba 1).
+  it('"Contas" em /plataforma/contas; "Parâmetros" muda o endereço e carrega os grupos; o menu continua com um item', async () => {
     entrar()
     const api = apiParametros({ 'GET /plataforma/contas': () => [CONTA] })
-    await abrir('/plataforma')
+    await abrir('/plataforma/contas')
     const abas = $$('[role="tab"]')
-    expect(abas.map((a) => t(a.textContent))).toEqual(['Contas', 'Parâmetros'])
-    expect(abas[0]!.getAttribute('aria-selected')).toBe('true')
+    expect(abas.map((a) => t(a.textContent))).toEqual(['Visão geral', 'Contas', 'Parâmetros', 'Erros'])
+    expect(abas[1]!.getAttribute('aria-selected')).toBe('true')
     expect(chamadasDe(api, 'GET', '/plataforma/parametros')).toHaveLength(0)
-    await clicar(abas[1]!)
+    await clicar(abas[2]!)
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/plataforma/parametros')
     expect($$('section[data-grupo]')).toHaveLength(4)
     // Voltar para Contas mantém a tabela (sem buscar de novo).
-    await clicar($$('[role="tab"]')[0]!)
-    expect(router.currentRoute.value.path).toBe('/plataforma')
+    await clicar($$('[role="tab"]')[1]!)
+    expect(router.currentRoute.value.path).toBe('/plataforma/contas')
     expect(chamadasDe(api, 'GET', '/plataforma/contas')).toHaveLength(1)
     expect(rotasDoApp.resolve('/plataforma/parametros').meta).toMatchObject({ titulo: 'Plataforma', superadmin: true })
     expect(rotasDoApp.resolve('/plataforma/parametros').name).toBe('plataforma')
@@ -626,20 +628,20 @@ describe('Plataforma: abas e acesso', () => {
     try {
       entrar()
       apiParametros({ 'GET /plataforma/contas': () => [CONTA] })
-      await abrir('/plataforma')
+      await abrir('/plataforma/contas')
       const busca = () => $<HTMLInputElement>('input[type="search"]')
       const novaConta = () => $$('button').find((b) => t(b.textContent) === 'Nova conta') ?? null
       expect([visivel(busca()), visivel(novaConta()), visivel($('table'))]).toEqual([true, true, true])
-      await clicar($$('[role="tab"]')[1]!)
+      await clicar($$('[role="tab"]')[2]!)
       expect([visivel(busca()), visivel(novaConta()), visivel($('table'))]).toEqual([false, false, false])
       expect(visivel($('[data-aba-parametros]'))).toBe(true)
-      await clicar($$('[role="tab"]')[0]!)
+      await clicar($$('[role="tab"]')[1]!)
       expect([visivel(busca()), visivel(novaConta()), visivel($('table'))]).toEqual([true, true, true])
       expect(visivel($('[data-aba-parametros]'))).toBe(false)
       // A busca digitada continua lá (a aba guarda o que tem enquanto a pessoa alterna).
       await digitar(busca(), 'alf')
+      await clicar($$('[role="tab"]')[2]!)
       await clicar($$('[role="tab"]')[1]!)
-      await clicar($$('[role="tab"]')[0]!)
       expect(busca()!.value).toBe('alf')
       expect(avisosVue.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('[Vue warn]'))).toEqual([])
     } finally {
@@ -667,20 +669,20 @@ describe('Plataforma: abas e acesso', () => {
       },
       'POST /plataforma/contas/:id/estender-teste': () => ({ ...CONTA, teste_ate: '2026-10-10T23:59:59-03:00' }),
     })
-    await abrir('/plataforma')
+    await abrir('/plataforma/contas')
     const estender = () => $$('tbody button').find((b) => t(b.textContent).startsWith('+'))!
     expect(t(estender().textContent)).toBe('+14 dias para Alfa')
     // Abrir Parâmetros lê o banco (10): Contas passa a mostrar esse número.
-    await clicar($$('[role="tab"]')[1]!)
+    await clicar($$('[role="tab"]')[2]!)
     expect(campo('teste.dias')!.value).toBe('10')
-    await clicar($$('[role="tab"]')[0]!)
+    await clicar($$('[role="tab"]')[1]!)
     expect(t(estender().textContent)).toBe('+10 dias para Alfa')
     // Salvar 7 e voltar para Contas sem recarregar a página.
-    await clicar($$('[role="tab"]')[1]!)
+    await clicar($$('[role="tab"]')[2]!)
     await digitar(campo('teste.dias'), '7')
     await salvar('teste')
     expect(t(cartao('teste').querySelector('[data-status]')!.textContent)).toBe('Parâmetros salvos.')
-    await clicar($$('[role="tab"]')[0]!)
+    await clicar($$('[role="tab"]')[1]!)
     expect(t(estender().textContent)).toBe('+7 dias para Alfa')
     estender().click()
     await flushPromises()
@@ -709,7 +711,7 @@ describe('Plataforma: abas e acesso', () => {
       'GET /publico/planos': () => ({ planos: [], teste: { dias: 7, plano: 'essencial', whatsapp: 20, ia_teto: 1000 }, ia_analises: { rapido: 1, equilibrado: 1, detalhado: 2 } }),
       'POST /plataforma/contas/:id/estender-teste': () => ({ ...CONTA, teste_ate: '2026-10-10T23:59:59-03:00' }),
     })
-    await abrir('/plataforma')
+    await abrir('/plataforma/contas')
     const estender = $$('tbody button').find((b) => t(b.textContent).startsWith('+'))!
     expect(t(estender.textContent)).toBe('+7 dias para Alfa')
     estender.click()
@@ -728,7 +730,7 @@ describe('Plataforma: abas e acesso', () => {
   it('sem /publico/planos, "+14 dias" (o padrão)', async () => {
     entrar()
     apiFalsa({ 'GET /plataforma/contas': () => [CONTA], 'GET /publico/planos': () => erroApi(503, 'erro_servidor', 'Fora do ar.') })
-    await abrir('/plataforma')
+    await abrir('/plataforma/contas')
     expect(t($$('tbody button').find((b) => t(b.textContent).startsWith('+'))!.textContent)).toBe('+14 dias para Alfa')
   })
 })

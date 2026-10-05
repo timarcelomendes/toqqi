@@ -214,6 +214,108 @@ export interface AdminPlataforma {
   email_confirmado: boolean
 }
 
+// ── Etapa 5h (docs/api-etapa-5h.md §4 e §5): Plataforma › Visão geral e Erros ──
+
+/** Os 4 passos da ativação (os mesmos de `primeiros_passos` do painel). */
+export interface AtivacaoConta {
+  contatos: boolean
+  envios_ligados: boolean
+  primeiro_envio: boolean
+  primeira_resposta: boolean
+}
+
+/** Situação na visão geral: a da conta, com `pausada` para a atrasada que passou dos 7 dias de carência. */
+export type SituacaoVisao = 'teste' | 'teste_expirado' | 'ativa' | 'atrasada' | 'pausada' | 'cancelada' | 'cortesia'
+
+export interface TotaisVisao {
+  contas: number
+  /** Cada conta numa situação só. */
+  por_situacao: Partial<Record<SituacaoVisao | (string & {}), number>>
+  /** Contas com assinatura ativa no ambiente atual do Asaas. */
+  pagantes: number
+  /** Soma do valor dessas assinaturas. */
+  receita_mensal: ValorDecimal
+  ambiente: 'sandbox' | 'producao' | null
+  novas_7d: number
+  novas_30d: number
+}
+
+/** Das contas com teste criadas entre 60 e 15 dias atrás (`de` e `ate`, AAAA-MM-DD), quantas criaram assinatura. */
+export interface ConversaoVisao {
+  de: string
+  ate: string
+  contas: number
+  assinaram: number
+  /** De 0 a 1; null sem contas no período. */
+  taxa: number | null
+}
+
+export interface TesteAcabando {
+  id: Id
+  nome: string
+  /** E-mail do administrador mais antigo. */
+  email: string | null
+  teste_ate: string
+  /** Dias até o último dia do teste (0 = hoje). */
+  dias: number
+  ultimo_acesso: string | null
+  ativacao: AtivacaoConta
+}
+
+export interface ContaVisao {
+  id: Id
+  nome: string
+  situacao: SituacaoVisao | (string & {})
+  plano: string | null
+  criada_em: string
+  teste_ate: string | null
+  /** A última entrada de algum usuário. */
+  ultimo_acesso: string | null
+  usuarios: number
+  admin_email: string | null
+  contatos_ativos: number
+  convites_30d: number
+  respostas_30d: number
+  respostas_total: number
+  ativacao: AtivacaoConta
+  /** Teto de segurança de IA usado no mês. */
+  ia_analises_mes: number
+  assinatura: { plano: string; valor: ValorDecimal } | null
+}
+
+/** GET /plataforma/visao. */
+export interface VisaoPlataforma {
+  gerado_em: string
+  totais: TotaisVisao
+  conversao: ConversaoVisao
+  testes_acabando: TesteAcabando[]
+  contas: ContaVisao[]
+}
+
+export type OrigemErro = 'api' | 'site' | 'tarefa'
+export type SituacaoErros = 'abertos' | 'resolvidos' | 'todos'
+
+/** Item de GET /plataforma/erros (a última ocorrência mais recente primeiro). */
+export interface ErroPlataforma {
+  id: Id
+  origem: OrigemErro | (string & {})
+  tipo: string
+  mensagem: string
+  /** A rota (com o modelo do caminho), a tela ou o nome da tarefa. */
+  local: string
+  /** Uma linha por quadro, a chamada mais recente primeiro. */
+  pilha: string
+  versao: string
+  ocorrencias: number
+  primeira_em: string
+  ultima_em: string
+  ultimo_request_id: string | null
+  conta_id: Id | null
+  /** Null sem conta ou com a conta já excluída. */
+  conta_nome: string | null
+  resolvido_em: string | null
+}
+
 // ───────────────────────── Etapa 2 (docs/api-etapa-2.md) ─────────────────────────
 
 export type {

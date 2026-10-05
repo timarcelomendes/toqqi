@@ -615,7 +615,7 @@ describe('Plataforma (etapa 5a)', () => {
   it('selos das situações novas, assinatura com valor, "pago até" e "+14 dias" travado com assinatura ou cortesia', async () => {
     entrar([], { superadmin: true })
     apiFalsa({ 'GET /plataforma/contas': () => CONTAS })
-    const w = await abrir('/plataforma', PlataformaView)
+    const w = await abrir('/plataforma/contas', PlataformaView)
     expect(t(linha(w, 'Assinante').text())).toContain('Ativa')
     expect(t(linha(w, 'Assinante').text())).toContain('Profissional · R$ 349,00/mês')
     expect(t(linha(w, 'Assinante').find('td:nth-child(3)').text())).toBe('ProfissionalR$ 349,00/mês')
@@ -648,7 +648,7 @@ describe('Plataforma (etapa 5a)', () => {
         conta({ id: 8, nome: 'Sem admin', admins: [] }),
       ],
     })
-    const w = await abrir('/plataforma', PlataformaView)
+    const w = await abrir('/plataforma/contas', PlataformaView)
     const sua = linha(w, 'admin@toqqi.com')
     expect(t(sua.get('[data-sua-conta]').text())).toBe('Sua conta')
     expect(sua.findAll('button').some((b) => b.text().includes('Excluir'))).toBe(false)
@@ -669,7 +669,7 @@ describe('Plataforma (etapa 5a)', () => {
   it('cortesia numa conta com assinatura avisa que a assinatura no Asaas será cancelada', async () => {
     entrar([], { superadmin: true })
     apiFalsa({ 'GET /plataforma/contas': () => CONTAS })
-    const w = await abrir('/plataforma', PlataformaView)
+    const w = await abrir('/plataforma/contas', PlataformaView)
     await linha(w, 'Assinante').findAll('button').find((b) => b.text().includes('Cortesia'))!.trigger('click')
     expect(t(estadoConfirmacao.mensagem ?? '')).toBe(
       'A conta passa a usar o Toqqi sem cobrança, sem data para acabar. A assinatura no Asaas (Profissional · R$ 349,00/mês) será cancelada, com as faturas em aberto.',

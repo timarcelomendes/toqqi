@@ -1,21 +1,24 @@
 """Aplicação FastAPI do Toqqi (etapas 1 a 5f: acesso, equipe, cadastros, formulários, páginas públicas, envios,
 integrações, WhatsApp automático, respostas, planos de ação, painel, IA por resposta, relatórios, assinatura, Ajuda,
 assistente, crescimento, IA sob demanda, e-mails: banco de imagens e e-mails enviados, e dados da conta: exportação,
-zona de risco, registros de acesso e exclusão automática; 5g: parâmetros da plataforma)."""
+zona de risco, registros de acesso e exclusão automática; 5g: parâmetros da plataforma; 5h: aviso de erros e
+`GET /saude` com o banco, para o monitor externo)."""
 import logging
 import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
 
-from toqqi.core import logs
+from toqqi.core import erros, log_seguro, logs
 from toqqi.core.config import config
-from toqqi.core.db import migrar
-from toqqi.core.errors import registrar_handlers
+from toqqi.core.db import engine, migrar
+from toqqi.core.errors import modelo_da_rota, registrar_handlers
 from toqqi.core.limite_corpo import LimiteDeCorpo
-from toqqi.core.rate_limit import ao_exceder, limiter
+from toqqi.core.rate_limit import LIMITE_SAUDE, ao_exceder, limiter
 from toqqi.core.requisicao import IpDoCliente, ip_cliente, request_id
 from toqqi.modulos.acesso.rotas import router as acesso
 from toqqi.modulos.acoes.rotas import router as acoes
@@ -62,6 +65,7 @@ LIMITES_DE_CORPO = [
     ("PUT", rf"{PREFIXO}/conta/logo", 300 * 1024 + _FOLGA_MULTIPART),
     ("POST", rf"{PREFIXO}/formularios/[^/]+/logo", 300 * 1024 + _FOLGA_MULTIPART),
     ("POST", rf"{PREFIXO}/importacao/analisar", 5 * 1024 * 1024 + _FOLGA_MULTIPART),
+    ("POST", rf"{PREFIXO}/publico/erros", 4 * 1024),  # etapa 5h: erros do site (tipo, mensagem, local, pilha, versão)
 ]
 log = logging.getLogger("toqqi")
 logs.configurar()  # mensagens da aplicação (inclusive INFO) aparecem no log do Render
@@ -93,10 +97,15 @@ def create_app() -> FastAPI:
     async def _id_da_requisicao(request: Request, call_next):
         rid = request.headers.get("x-request-id") or uuid.uuid4().hex
         rid = rid[:64]
+        request.state.request_id = rid  # etapa 5h: o tratador de 500 roda fora deste middleware (core.errors)
         t1 = request_id.set(rid)
         t2 = ip_cliente.set(request.client.host if request.client else None)
         try:
             resposta = await call_next(request)
+        except Exception:
+            # etapa 5h: o roteador escreveu a rota neste scope; o tratador de 500, fora daqui, só vê o state
+            request.state.rota_modelo = modelo_da_rota(request.scope)
+            raise
         finally:
             request_id.reset(t1)
             ip_cliente.reset(t2)
@@ -123,8 +132,21 @@ def create_app() -> FastAPI:
         app.include_router(r, prefix=PREFIXO)
 
     @app.get(f"{PREFIXO}/saude", tags=["infra"])
-    def saude():
-        return {"ok": True}
+    @limiter.limit(LIMITE_SAUDE)
+    def saude(request: Request):
+        """Para o monitor externo (etapa 5h, README "Monitor externo"), sem login: a API respondeu e o banco também
+        (`SELECT 1`, até 3 s). {ok, banco, versao}; com o banco fora, 503 com ok e banco false. Sem cache."""
+        sem_cache = {"Cache-Control": "no-store"}
+        versao = erros.versao_api()
+        try:
+            with engine().begin() as c:
+                c.execute(text("SET LOCAL statement_timeout = '3s'"))
+                c.execute(text("SELECT 1"))
+        except Exception as e:  # noqa: BLE001 - qualquer falha do banco vira 503 para o monitor
+            log.warning("Saúde: o banco não respondeu (%s).", log_seguro.descrever_erro(e) if log_seguro.do_banco(e)
+                        else type(e).__name__)
+            return JSONResponse({"ok": False, "banco": False, "versao": versao}, status_code=503, headers=sem_cache)
+        return JSONResponse({"ok": True, "banco": True, "versao": versao}, headers=sem_cache)
 
     return app
 

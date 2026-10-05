@@ -505,17 +505,4 @@ export function textoConfirmacao(rotulo: string, previa: Pick<PreviaParametros, 
   }
 }
 
-// ── Abas da Plataforma ──────────────────────────────────────────────────────
-
-export type AbaPlataforma = 'contas' | 'parametros'
-
-export const ABAS_PLATAFORMA: { valor: AbaPlataforma; rotulo: string }[] = [
-  { valor: 'contas', rotulo: 'Contas' },
-  { valor: 'parametros', rotulo: 'Parâmetros' },
-]
-
-/** /plataforma/parametros abre "Parâmetros"; o resto (/plataforma, /plataforma/contas), "Contas". */
-export function abaPlataformaDaRota(param: unknown): AbaPlataforma {
-  const v = Array.isArray(param) ? param[0] : param
-  return v === 'parametros' ? 'parametros' : 'contas'
-}
+// As abas da Plataforma ficam em `abas.ts` (etapa 5h: Visão geral, Contas, Parâmetros e Erros).

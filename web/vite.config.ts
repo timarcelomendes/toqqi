@@ -29,8 +29,15 @@ function paginasPublicas(): Plugin {
   }
 }
 
+/**
+ * Etapa 5h (aviso de erros): a versão do site vai junto de cada erro mandado à API (`src/utils/erros.ts`). No Render, o
+ * commit do build (`RENDER_GIT_COMMIT`, curto, como a da API em GET /saude); fora dele, "local".
+ */
+const versaoSite = (process.env.RENDER_GIT_COMMIT ?? '').replace(/[^0-9A-Za-z]/g, '').slice(0, 7) || 'local'
+
 export default defineConfig({
   plugins: [paginasPublicas(), vue(), tailwindcss()],
+  define: { __TOQQI_VERSAO__: JSON.stringify(versaoSite) },
   resolve: {
     alias: { '@': raiz('./src') },
   },

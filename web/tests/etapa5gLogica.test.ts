@@ -12,7 +12,6 @@ import {
   AVISO_DIMINUI,
   CAMPOS,
   LAYOUT_GRUPOS,
-  abaPlataformaDaRota,
   aplicarPadrao,
   campoMudou,
   camposDoGrupo,
@@ -35,6 +34,7 @@ import {
   textoDoCampo,
   textoPadrao,
 } from '@/modulos/plataforma/parametros'
+import { abaPlataformaDaRota } from '@/modulos/plataforma/abas'
 
 /** Troca o espaço sem quebra do "R$ 149,00" (Intl) por espaço comum. */
 const t = (s: string | null | undefined) => (s ?? '').replace(/ /g, ' ')
@@ -320,11 +320,12 @@ describe('diálogo de confirmação e histórico', () => {
 })
 
 describe('abas da Plataforma', () => {
-  it('/plataforma/parametros abre Parâmetros; o resto, Contas', () => {
+  // Etapa 5h: /plataforma abre a Visão geral (antes, Contas); /plataforma/contas é o endereço de Contas.
+  it('/plataforma/parametros abre Parâmetros; /plataforma/contas, Contas; /plataforma, a Visão geral', () => {
     expect(abaPlataformaDaRota('parametros')).toBe('parametros')
     expect(abaPlataformaDaRota(['parametros'])).toBe('parametros')
     expect(abaPlataformaDaRota('contas')).toBe('contas')
-    expect(abaPlataformaDaRota(undefined)).toBe('contas')
+    expect(abaPlataformaDaRota(undefined)).toBe('visao')
   })
 })
 

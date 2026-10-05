@@ -82,6 +82,31 @@ Variáveis com `value:` no `render.yaml` são reaplicadas a cada sincronização
 `EMAIL_PROVIDER` (ex.: ZeptoMail), altere o arquivo, não o painel do Render, e acrescente `EMAIL_FROM` e
 `ZEPTOMAIL_TOKEN` na toqqi-api (e no toqqi-tarefas, se o Cron Job estiver ligado).
 
+## Monitor externo
+`GET /api/v1/saude` (sem login) responde `{"ok": true, "banco": true, "versao": "a1b2c3d"}` quando a API e o banco
+respondem (um `SELECT 1` de até 3 s); com o banco fora, **503** com `ok` e `banco` em `false`. `versao` é o commit
+publicado (`RENDER_GIT_COMMIT`, curto; "local" fora do Render): mostra se o deploy subiu. Ligue um monitor grátis que
+confira a cada 5 minutos e mande e-mail quando cair (ação do Marcelo; escolha um dos dois):
+- **UptimeRobot** (uptimerobot.com, plano grátis): *New monitor* › tipo *HTTP(s)*, URL
+  `https://toqqi-api.onrender.com/api/v1/saude`, intervalo de 5 minutos e tempo limite de 30 s; em *Alert contacts*, o
+  seu e-mail. Para o site, outro monitor do tipo *Keyword* em `https://toqqi-web.onrender.com/` (ou no domínio do site)
+  com a palavra `Toqqi`, alertando quando ela **não** aparecer (assim uma página de erro do Render também conta como
+  fora do ar).
+- **Better Stack Uptime** (betterstack.com, plano grátis): *Monitors* › *Create monitor* › "Alert us when the URL
+  becomes unavailable", a mesma URL da API, verificação a cada 3 minutos; outro para o site com "URL doesn't contain
+  keyword" e `Toqqi`. O e-mail vai em *On-call* (ou no próprio monitor).
+
+Observações:
+- A API no plano grátis do Render dorme depois de 15 minutos sem uso; com o monitor a cada 3 ou 5 minutos ela fica
+  acordada (as 750 horas grátis por mês dão para uma instância o mês todo). Se ela dormir, a primeira resposta leva uns
+  30 s: por isso o tempo limite de 30 s.
+- O *health check* do Render continua em `/api/v1/auth/regras-senha`, que não depende do banco: com o banco fora, o
+  Render não reinicia a API à toa (quem avisa é o monitor).
+- Os erros da própria aplicação (API, site e tarefas) ficam em Plataforma › Erros, e os superadmins recebem um e-mail por
+  dia, a partir das 8h, quando há erro aberto nas últimas 24 h. O monitor externo cobre o que eles não alcançam: a API
+  ou o site inteiros fora do ar.
+- `GET /api/v1/saude` aceita até 60 pedidos por minuto de cada IP.
+
 ## Backup
 Todo dia às 03:23 (Brasília), a rotina do GitHub `.github/workflows/backup.yml` copia o banco de produção, criptografa e guarda no
 Cloudflare R2 por 30 dias (sempre ficam pelo menos 7 cópias). Em cada execução a cópia é baixada, decifrada e restaurada num banco

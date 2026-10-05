@@ -635,7 +635,7 @@ describe('Plataforma: selo da exclusão', () => {
   it('"Exclusão em dd/mm/aaaa" na conta com o dia marcado; as outras, sem selo', async () => {
     entrar([], { superadmin: true })
     apiFalsa({ 'GET /plataforma/contas': () => [conta({ exclusao_em: '2027-01-15' }), conta({ id: 3, nome: 'Outra', exclusao_em: null })] })
-    const w = await abrir('/plataforma', PlataformaView)
+    const w = await abrir('/plataforma/contas', PlataformaView)
     const linhas = w.findAll('tbody tr')
     expect(linhas).toHaveLength(2)
     expect(linhas[0]!.findAll('[data-selo-exclusao]').map((s) => t(s.text()))).toContain('Exclusão em 15/01/2027')

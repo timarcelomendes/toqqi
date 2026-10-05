@@ -37,6 +37,7 @@ def usar_url_app(url: str) -> None:
     engine.cache_clear()
     _fabrica.cache_clear()
     engine_parametros.cache_clear()
+    engine_erros.cache_clear()
 
 
 @lru_cache
@@ -53,6 +54,16 @@ def engine_parametros() -> Engine:
     1 conexão (+1 de folga), no máximo 3 s de espera por ela e 3 s para conectar. Mesma URL do modo sistema."""
     return create_engine(_url_app_forcada or config().url_app, pool_size=1, max_overflow=1, pool_timeout=3,
                          pool_pre_ping=True, future=True, hide_parameters=True, connect_args={"connect_timeout": 3})
+
+
+@lru_cache
+def engine_erros() -> Engine:
+    """Engine pequeno e separado, só para o registro de erros (`core.erros`, etapa 5h): o erro pode ser justamente o
+    pool principal esgotado ou a transação do pedido quebrada, e registrar não pode esperar o `pool_timeout` dele (30 s)
+    nem disputar conexão com os pedidos. 1 conexão (+1 de folga), 2 s de espera por ela e 2 s para conectar. Mesma URL
+    do modo sistema."""
+    return create_engine(_url_app_forcada or config().url_app, pool_size=1, max_overflow=1, pool_timeout=2,
+                         pool_pre_ping=True, future=True, hide_parameters=True, connect_args={"connect_timeout": 2})
 
 
 @lru_cache

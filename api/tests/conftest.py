@@ -32,13 +32,13 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
 
 from alembic import command  # noqa: E402
-from toqqi.core import parametros  # noqa: E402
+from toqqi.core import erros, parametros  # noqa: E402
 from toqqi.core.db import RAIZ_API  # noqa: E402
 from toqqi.core.email import caixa_memoria  # noqa: E402
 from toqqi.core.rate_limit import limiter  # noqa: E402
 from toqqi.main import create_app  # noqa: E402
 
-TABELAS = ("parametros_historico, parametros, registros_acesso, emails_enviados, ia_pareceres, aceites_termos, asaas_remocoes, asaas_eventos, cobrancas, assinaturas, ia_uso_mensal, alertas_pico, resumos_semanais, imagens, acoes, config_acoes, envios, descadastros, config_envios, importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
+TABELAS = ("erros, parametros_historico, parametros, registros_acesso, emails_enviados, ia_pareceres, aceites_termos, asaas_remocoes, asaas_eventos, cobrancas, assinaturas, ia_uso_mensal, alertas_pico, resumos_semanais, imagens, acoes, config_acoes, envios, descadastros, config_envios, importacoes, respostas, convites, formularios, contatos, empresas, responsaveis, grupos, segmentos, "
            "perfis_contato, cargos, auditoria, dominios_liberados, perfil_permissoes, tokens_uso_unico, sessoes, usuarios, contas")
 
 
@@ -63,6 +63,7 @@ def limpar(dono):
     caixa_memoria.clear()
     limiter.reset()
     parametros.limpar()  # etapa 5g: o cache das linhas de `parametros` (a tabela acabou de ser esvaziada)
+    erros.limpar_estado()  # etapa 5h: o limite por minuto e o descanso do registro de erros
     yield
 
 

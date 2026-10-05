@@ -3,10 +3,18 @@
 Valor que o banco recusa por ser inválido para a coluna (id fora do bigint, texto que não vira número, caractere
 inválido, texto longo demais) é dado de quem chamou, não erro nosso: vira 422 `dados_invalidos` em qualquer rota (as
 rotas validam antes; isto é a rede de proteção das que esqueceram). O log registra o erro pelo `core.log_seguro`
-(classe e SQLSTATE, sem os dados)."""
+(classe e SQLSTATE, sem os dados).
+
+Etapa 5h (aviso de erros): os dois tratadores de 500 (`_inesperado` e o do banco) registram a falha em `erros`
+(`core.erros`, origem `api`) antes de responder (numa thread; o registro nunca lança): o local é o método e o **modelo**
+da rota (`GET /api/v1/acoes/{acao_id}`, nunca o caminho de verdade, que pode ter um token), a conta sai do token de
+acesso, quando há um válido (sem ir ao banco), e o request id e o modelo da rota vêm do `request.state` quando o
+tratador roda fora do middleware que os conhece (o de `Exception` roda fora de todos). Os 4xx não registram. A
+resposta do 500 leva o `X-Request-ID`."""
 import logging
 
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DataError, DBAPIError
@@ -77,6 +85,65 @@ def _campos_de_validacao(exc: RequestValidationError) -> dict[str, str]:
     return campos
 
 
+MSG_INTERNO = "Algo deu errado do nosso lado. Tente de novo em instantes."
+
+
+def id_do_pedido(request: Request) -> str | None:
+    """O request id do pedido: o do contexto (dentro do middleware) ou o guardado no `request.state` (fora dele)."""
+    return request_id.get() or getattr(request.state, "request_id", None)
+
+
+def modelo_da_rota(scope) -> str | None:
+    """O caminho do pedido com cada parâmetro da rota trocado pelo nome ("/api/v1/acoes/{acao_id}"), quando o roteador
+    já achou a rota (`scope["route"]` e `scope["path_params"]`); senão None. Monta a partir do caminho de verdade
+    porque, com os roteadores incluídos, o `path` da rota não traz o prefixo `/api/v1`."""
+    if scope.get("route") is None:
+        return None
+    nomes = {str(v): k for k, v in (scope.get("path_params") or {}).items()}
+    return "/".join(f"{{{nomes[p]}}}" if p in nomes else p for p in str(scope.get("path") or "").split("/"))
+
+
+def local_do_pedido(request: Request) -> str:
+    """Método e modelo da rota ("GET /api/v1/acoes/{acao_id}"); sem rota conhecida, "GET (rota desconhecida)". Nunca o
+    caminho de verdade (pode trazer um token, como o do link da pesquisa). O tratador de 500 roda fora do roteador: o
+    modelo vem do `request.state`, guardado pelo middleware do request id quando a exceção passou por ele."""
+    try:
+        modelo = modelo_da_rota(request.scope) or getattr(request.state, "rota_modelo", None)
+    except Exception:  # noqa: BLE001 - só para o registro: na dúvida, sem rota
+        modelo = None
+    return f"{request.method} {modelo or '(rota desconhecida)'}"
+
+
+def conta_do_pedido(request: Request) -> int | None:
+    """A conta do token de acesso, quando há um válido (sem ir ao banco); senão None."""
+    from toqqi.core.security import ler_token_acesso
+
+    esquema, _, token = (request.headers.get("authorization") or "").partition(" ")
+    if esquema.lower() != "bearer" or not token.strip():
+        return None
+    dados = ler_token_acesso(token.strip())
+    return dados["conta_id"] if dados else None
+
+
+def _registrar_500(request: Request, exc: BaseException, rid: str | None) -> None:
+    """Registra o 500 em `erros` (nunca lança: o registro não muda a resposta)."""
+    from toqqi.core import erros
+
+    try:
+        local, conta_id = local_do_pedido(request), conta_do_pedido(request)
+    except Exception:  # noqa: BLE001
+        local, conta_id = f"{request.method} (rota desconhecida)", None
+    erros.registrar_excecao(exc, "api", local, conta_id=conta_id, request_id=rid)
+
+
+async def resposta_500(request: Request, exc: BaseException, rid: str | None) -> JSONResponse:
+    """O 500 de sempre, com o `X-Request-ID`, depois de registrar o erro (numa thread: o registro vai ao banco). Antes
+    da resposta e não numa tarefa de fundo dela: um erro depois de a resposta começar a sair (numa tarefa de fundo do
+    pedido) chega aqui sem a resposta ser mandada, e a tarefa de fundo dela nunca rodaria."""
+    await run_in_threadpool(_registrar_500, request, exc, rid)
+    return resposta_erro(500, "erro_interno", MSG_INTERNO, headers={"X-Request-ID": rid} if rid else None)
+
+
 def registrar_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError):
@@ -97,24 +164,21 @@ def registrar_handlers(app: FastAPI) -> None:
         return resposta_erro(exc.status_code, codigo, msg, headers=getattr(exc, "headers", None))
 
     @app.exception_handler(DBAPIError)
-    async def _banco(_: Request, exc: DBAPIError):
+    async def _banco(request: Request, exc: DBAPIError):
         erro = erro_do_banco(exc)
+        rid = id_do_pedido(request)
         if erro is not None:
             if dado_invalido(exc):  # o log_seguro troca a mensagem do banco (que traz o valor) pelo resumo sem dados
-                log.warning("Dado recusado pelo banco, respondido com 422 (request_id=%s)", request_id.get(),
-                            exc_info=exc)
+                log.warning("Dado recusado pelo banco, respondido com 422 (request_id=%s)", rid, exc_info=exc)
             return resposta_erro(erro.status, erro.codigo, erro.mensagem, erro.campos)
-        log.exception("Erro de banco (request_id=%s)", request_id.get())
-        return resposta_erro(
-            500, "erro_interno", "Algo deu errado do nosso lado. Tente de novo em instantes."
-        )
+        log.exception("Erro de banco (request_id=%s)", rid)
+        return await resposta_500(request, exc, rid)
 
     @app.exception_handler(Exception)
-    async def _inesperado(_: Request, exc: Exception):
-        log.exception("Erro inesperado (request_id=%s)", request_id.get())
-        return resposta_erro(
-            500, "erro_interno", "Algo deu errado do nosso lado. Tente de novo em instantes."
-        )
+    async def _inesperado(request: Request, exc: Exception):
+        rid = id_do_pedido(request)
+        log.exception("Erro inesperado (request_id=%s)", rid)
+        return await resposta_500(request, exc, rid)
 
 
 def _tem_nul(valor) -> bool:

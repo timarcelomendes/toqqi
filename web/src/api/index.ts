@@ -16,6 +16,8 @@ import type {
   SituacaoUsuario,
   Usuario,
 } from './tipos'
+// Etapa 5h: Plataforma › Visão geral e Erros (em `plataformaApi`, abaixo).
+import type { ErroPlataforma, OrigemErro, SituacaoErros, VisaoPlataforma } from './tipos'
 
 export * from './tipos'
 export { ApiError, mensagemDoErro } from './erros'
@@ -114,7 +116,23 @@ export const auditoriaApi = {
     api.get<PaginaAuditoria>('/auditoria', { query: { ...filtros }, sinal }),
 }
 
+export interface FiltrosErros {
+  /** Vazio = todas as origens. */
+  origem?: OrigemErro | ''
+  situacao?: SituacaoErros
+  dias?: 7 | 30
+}
+
 export const plataformaApi = {
+  /** Etapa 5h: a visão geral do negócio (totais, conversão, testes acabando e as contas). */
+  visao: (sinal?: AbortSignal) => api.get<VisaoPlataforma>('/plataforma/visao', { sinal }),
+  /** Etapa 5h: os erros da API, do site e das tarefas (até 500), a última ocorrência mais recente primeiro. */
+  erros: (filtros: FiltrosErros = {}, sinal?: AbortSignal) =>
+    api.get<ErroPlataforma[]>('/plataforma/erros', { query: { ...filtros }, sinal }),
+  resolverErro: (id: ErroPlataforma['id']) =>
+    api.post<ErroPlataforma>(`/plataforma/erros/${encodeURIComponent(String(id))}/resolver`),
+  reabrirErro: (id: ErroPlataforma['id']) =>
+    api.post<ErroPlataforma>(`/plataforma/erros/${encodeURIComponent(String(id))}/reabrir`),
   contas: () => api.get<ContaPlataforma[]>('/plataforma/contas'),
   criarConta: (dados: {
     empresa: string

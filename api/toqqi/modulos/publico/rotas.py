@@ -5,9 +5,11 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 
-from toqqi.core.errors import AppError
+from toqqi.core import erros
+from toqqi.core.errors import AppError, conta_do_pedido
 from toqqi.core.rate_limit import (
     LIMITE_DESCADASTRO,
+    LIMITE_ERROS_SITE,
     LIMITE_IMAGEM,
     LIMITE_PUBLICO_ABRIR,
     LIMITE_RESPONDER_CONVITE,
@@ -27,7 +29,7 @@ from toqqi.modulos.ia.servico import coletar_analises
 from toqqi.modulos.imagens import servico as imagens
 from toqqi.modulos.integracoes.webhooks import coletar_entregas, entregar_lista
 from toqqi.modulos.publico import servico
-from toqqi.modulos.publico.esquemas import ResponderIn, ResponderLinkIn
+from toqqi.modulos.publico.esquemas import ErroSiteIn, ResponderIn, ResponderLinkIn
 
 router = APIRouter(prefix="/publico", tags=["publico"])
 
@@ -120,6 +122,20 @@ async def descadastrar(request: Request, token: str, tarefas: BackgroundTasks):
         resultado = await run_in_threadpool(descadastro.descadastrar, token, motivo, origem)
     tarefas.add_task(entregar_lista, entregas)  # webhooks de saída (contato.descadastrado)
     return resultado
+
+
+# ---- erros do site (etapa 5h) ------------------------------------------------
+
+@router.post("/erros", status_code=204)
+@limiter.limit(LIMITE_ERROS_SITE)
+def erro_do_site(request: Request, dados: ErroSiteIn):
+    """Erro do site (`web/src/utils/erros.ts`), sem login: vai para `erros` com a origem `site`, limpo (`core.erros`).
+    Com um token de acesso válido no pedido (o app manda o da sessão), guarda a conta; nada do pedido em si (corpo
+    além dos campos, query, cabeçalhos, IP). 10 por minuto por IP; corpo até 4 KB. Sempre 204 (o registro pode ficar
+    de fora pelo limite por minuto ou por uma falha do banco, que só vão ao log)."""
+    erros.registrar("site", dados.tipo, dados.mensagem, dados.local, dados.pilha, dados.versao or None,
+                    conta_id=conta_do_pedido(request))
+    return Response(status_code=204)
 
 
 # ---- imagens (logo da conta e dos formulários) --------------------------------

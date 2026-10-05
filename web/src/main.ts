@@ -5,6 +5,7 @@ import { configurarCliente } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { router } from '@/router'
 import { useSessaoStore } from '@/stores/sessao'
+import { instalarAvisoDeErros } from '@/utils/erros'
 // Fonte servida pelo próprio site (sem Google Fonts: o navegador não manda o IP a terceiros). Só latin, pesos 400–800.
 import '@fontsource/plus-jakarta-sans/latin-400.css'
 import '@fontsource/plus-jakarta-sans/latin-500.css'
@@ -18,6 +19,9 @@ const pinia = createPinia()
 app.use(pinia)
 
 const sessao = useSessaoStore(pinia)
+
+// Etapa 5h: erros do app vão para Plataforma › Erros (com a conta da sessão, quando há uma).
+instalarAvisoDeErros(app, { obterToken: () => sessao.token })
 
 configurarCliente({
   obterToken: () => sessao.token,
