@@ -13,6 +13,10 @@ import Campo from '@/components/ui/Campo.vue'
 import Interruptor from '@/components/ui/Interruptor.vue'
 import LogoParceiro from './LogoParceiro.vue'
 
+/** Dentro do painel lateral do catálogo: sem a moldura do cartão e sem o cabeçalho (o painel já tem). */
+const props = defineProps<{ embutido?: boolean }>()
+const emit = defineEmits<{ mudou: [] }>()
+
 const estado = ref<ConectorRd | null>(null)
 const erroCarga = ref<string | null>(null)
 const token = ref('')
@@ -37,6 +41,7 @@ async function conectar() {
   try {
     estado.value = await conectoresApi.conectarRd(token.value.trim(), pesquisar.value)
     token.value = ''
+    emit('mudou')
     avisar.sucesso('RD Station CRM conectado. Agora traga as empresas e os contatos com “Sincronizar agora”.')
   } catch (e) {
     erroToken.value = mensagemDoErro(e)
@@ -54,6 +59,7 @@ async function sincronizar() {
   } catch (e) {
     avisar.erro(mensagemDoErro(e))
     await carregar()
+    emit('mudou')
   } finally {
     ocupado.value = null
   }
@@ -83,6 +89,7 @@ async function desconectar() {
   try {
     await conectoresApi.desconectarRd()
     estado.value = { conectado: false }
+    emit('mudou')
     avisar.sucesso('RD Station CRM desconectado.')
   } catch (e) {
     avisar.erro(mensagemDoErro(e))
@@ -95,8 +102,8 @@ onMounted(carregar)
 </script>
 
 <template>
-  <section class="cartao flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="t-rd" data-secao-rd>
-    <header class="flex items-start gap-3">
+  <section class="flex flex-col gap-4" :class="props.embutido ? '' : 'cartao p-5 sm:p-6'" aria-labelledby="t-rd" data-secao-rd>
+    <header v-if="!props.embutido" class="flex items-start gap-3">
       <LogoParceiro chave="rdstation" nome="RD Station CRM" iniciais="RD" />
       <div class="min-w-0">
         <h2 id="t-rd" class="text-base font-bold text-texto">RD Station CRM</h2>

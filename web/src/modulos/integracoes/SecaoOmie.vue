@@ -15,6 +15,10 @@ import Campo from '@/components/ui/Campo.vue'
 import Interruptor from '@/components/ui/Interruptor.vue'
 import LogoParceiro from './LogoParceiro.vue'
 
+/** Dentro do painel lateral do catálogo: sem a moldura do cartão e sem o cabeçalho (o painel já tem). */
+const props = defineProps<{ embutido?: boolean }>()
+const emit = defineEmits<{ mudou: [] }>()
+
 const estado = ref<ConectorOmie | null>(null)
 const erroCarga = ref<string | null>(null)
 const appKey = ref('')
@@ -40,6 +44,7 @@ async function conectar() {
   try {
     estado.value = await conectoresApi.conectarOmie(appKey.value.trim(), appSecret.value.trim(), pesquisar.value)
     appKey.value = ''
+    emit('mudou')
     appSecret.value = ''
     avisar.sucesso('Omie conectado. Traga os clientes com “Sincronizar agora”.')
   } catch (e) {
@@ -59,6 +64,7 @@ async function sincronizar() {
   } finally {
     ocupado.value = null
     await carregar()
+    emit('mudou')
   }
 }
 
@@ -83,6 +89,7 @@ async function desconectar() {
   try {
     await conectoresApi.desconectarOmie()
     estado.value = { conectado: false }
+    emit('mudou')
     avisar.sucesso('Omie desconectado.')
   } catch (e) {
     avisar.erro(mensagemDoErro(e))
@@ -95,8 +102,8 @@ onMounted(carregar)
 </script>
 
 <template>
-  <section class="cartao flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="t-omie" data-secao-omie>
-    <header class="flex items-start gap-3">
+  <section class="flex flex-col gap-4" :class="props.embutido ? '' : 'cartao p-5 sm:p-6'" aria-labelledby="t-omie" data-secao-omie>
+    <header v-if="!props.embutido" class="flex items-start gap-3">
       <LogoParceiro chave="omie" nome="Omie" iniciais="OM" />
       <div class="min-w-0">
         <h2 id="t-omie" class="text-base font-bold text-texto">Omie (ERP)</h2>
