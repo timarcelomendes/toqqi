@@ -136,6 +136,7 @@ CAMPOS = [
     ("responsavel", "Responsável", False),
     ("valor_mensal", "Valor mensal (R$)", False),
     ("cliente_desde", "Cliente desde", False),
+    ("renovacao_em", "Renovação do contrato", False),
     ("codigo_externo", "Código no ERP", False),
     ("ativo", "Ativo", False),
 ]
@@ -160,6 +161,8 @@ _ALIASES = {
                     "executivo_de_contas", "carteira"],
     "valor_mensal": ["valor_mensal", "faturamento_mensal", "mensalidade", "valor", "ticket_medio", "mrr"],
     "cliente_desde": ["cliente_desde", "data_inicio", "inicio", "desde", "data_de_inicio", "data_cadastro"],
+    "renovacao_em": ["renovacao_em", "renovacao", "data_renovacao", "renovacao_do_contrato", "fim_do_contrato",
+                     "vencimento_do_contrato", "fim_contrato"],
     "codigo_externo": ["codigo_externo", "codigo", "cod", "id_erp", "codigo_erp", "codigo_cliente", "cod_cliente",
                        "id_externo", "id_cliente"],
     "ativo": ["ativo", "situacao", "status", "ativa"],

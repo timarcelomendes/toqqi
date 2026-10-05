@@ -22,6 +22,7 @@ from toqqi.core.texto import (
 )
 from toqqi.modelos import Cargo, Contato, Empresa, Grupo, Importacao, PerfilContato, Responsavel, Segmento
 from toqqi.modulos.contatos.servico import novo_codigo
+from toqqi.modulos.empresas.desfecho import marcar
 from toqqi.modulos.importacao import planilha
 from toqqi.modulos.importacao import respostas as importacao_respostas
 from toqqi.modulos.importacao.planilha import CAMPOS, CAMPOS_RESPOSTAS, CHAVES_CAMPOS, ROTULOS
@@ -166,6 +167,7 @@ def _ler_linha(bruta: dict) -> tuple[dict, list[str]]:
         ("documento_empresa", normalizar_documento, "CNPJ/CPF inválido."),
         ("valor_mensal", interpretar_valor, "Valor mensal inválido."),
         ("cliente_desde", interpretar_data, "Data inválida em cliente desde (use dd/mm/aaaa)."),
+        ("renovacao_em", interpretar_data, "Data inválida em renovação do contrato (use dd/mm/aaaa)."),
     ):
         try:
             v[campo] = funcao(bruta.get(campo) or "")
@@ -326,6 +328,7 @@ def _mapa_nomes(s: Session, modelo) -> dict[str, int]:
 
 def importar(ctx: Contexto, imp_id: uuid.UUID, corpo) -> dict:
     with em_conta(ctx.conta_id) as s:
+        marcar(s, "importacao", ctx.usuario_id)  # etapa 5i: o histórico do valor mensal sabe de onde veio
         # uma importação por vez em cada conta: duas ao mesmo tempo (ex.: a mesma planilha enviada duas vezes)
         # planejariam sobre o mesmo estado e gravariam as mesmas linhas duas vezes
         travar(s, f"importacao:{ctx.conta_id}")
@@ -386,6 +389,7 @@ def importar(ctx: Contexto, imp_id: uuid.UUID, corpo) -> dict:
                 ("responsavel_id", ids["responsavel"].get((v.get("responsavel") or "").lower())),
                 ("valor_mensal", v.get("valor_mensal")),
                 ("cliente_desde", v.get("cliente_desde")),
+                ("renovacao_em", v.get("renovacao_em")),
             ):
                 if valor is not None and campo_emp not in definidos[chave]:
                     setattr(e, campo_emp, valor)
@@ -395,6 +399,10 @@ def importar(ctx: Contexto, imp_id: uuid.UUID, corpo) -> dict:
         s.flush()
         if empresas_novas:
             criados["empresas"] = empresas_novas
+
+        def perdida(v: dict) -> bool:
+            e = empresas.get((v.get("empresa") or "").lower())
+            return e is not None and e.perdida_em is not None
 
         def referencias(v: dict) -> dict:
             r = {}
@@ -415,6 +423,8 @@ def importar(ctx: Contexto, imp_id: uuid.UUID, corpo) -> dict:
                     m[campo] = v[campo]
             if v["ativo"] is not None:
                 m["ativo"] = v["ativo"]
+            if perdida(v):
+                m["ativo"] = False  # etapa 5i: empresa perdida não volta a pesquisar pela planilha
             mudancas.append(m)
         mudancas.sort(key=lambda m: 0 if m.get("ativo") is False else 1)
         for m in mudancas:
@@ -425,7 +435,7 @@ def importar(ctx: Contexto, imp_id: uuid.UUID, corpo) -> dict:
             s.execute(insert(Contato), [
                 {"conta_id": ctx.conta_id, "codigo": novo_codigo(usados_cod), "nome": v["nome"],
                  "email": v["email"], "telefone": v["telefone"], "codigo_externo": v["codigo_externo"],
-                 "ativo": v["ativo"] is not False, "empresa_id": None, "cargo_id": None, "perfil_id": None,
+                 "ativo": v["ativo"] is not False and not perdida(v), "empresa_id": None, "cargo_id": None, "perfil_id": None,
                  **referencias(v)}
                 for v in (linha.valores for linha in plano.novos)
             ])

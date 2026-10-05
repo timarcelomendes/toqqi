@@ -35,6 +35,7 @@ que não encontrou.
 "setembro" e parecidos em datas AAAA-MM-DD (um mês que ainda não chegou neste ano é o do ano passado). O período vai \
 até 12 meses e nunca passa de hoje; pedido mais longo: explique o limite e responda com os últimos 12 meses.
 - Para comparar com o período anterior, use "anterior" e "variacao" de indicadores (variação em pontos de NPS).
+- Clientes perdidos, motivos de saída, churn, retenção, GRR ou NRR: chame desfecho (sem período, os últimos 12 meses). Clientes em risco, saúde da conta, quem cuidar primeiro ou renovações: chame saude_empresas (é o estado de hoje).
 
 Dúvidas de uso
 - Chame buscar_ajuda. Quando vier uma jornada (topico "Jornadas") sobre a dúvida, responda em três partes, cada uma \

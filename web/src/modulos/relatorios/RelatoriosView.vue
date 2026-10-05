@@ -33,6 +33,7 @@ import {
   ABAS_RELATORIO,
   ABA_PADRAO,
   comunsParaApi,
+  desfechoParaApi,
   consultaDaAba,
   ehAba,
   empresasParaApi,
@@ -187,7 +188,7 @@ const descricaoParecer = computed(() => {
 const baixando = ref(false)
 const csv = computed<{ rotulo: string } | null>(() => {
   if (!sessao.pode('painel.exportar')) return null
-  if (aba.value === 'empresas' || aba.value === 'entregas' || aba.value === 'responsaveis') return { rotulo: 'Exportar CSV' }
+  if (aba.value === 'empresas' || aba.value === 'entregas' || aba.value === 'responsaveis' || aba.value === 'desfecho') return { rotulo: 'Exportar CSV' }
   if (aba.value === 'operacao') return { rotulo: 'Exportar contatos sem resposta (CSV)' }
   if (aba.value === 'historico' && filtros.value.empresa_id !== '') return { rotulo: 'Exportar CSV' }
   return null
@@ -200,6 +201,7 @@ async function exportar() {
     if (aba.value === 'empresas') await relatoriosApi.baixarEmpresas(empresasParaApi(filtros.value, hoje))
     else if (aba.value === 'entregas') await relatoriosApi.baixarEntregas(entregasParaApi(filtros.value, hoje))
     else if (aba.value === 'responsaveis') await relatoriosApi.baixarResponsaveis(comunsParaApi(filtros.value, hoje))
+    else if (aba.value === 'desfecho') await relatoriosApi.baixarDesfecho(desfechoParaApi(filtros.value, hoje))
     else if (aba.value === 'operacao') await relatoriosApi.baixarSemResposta(comunsParaApi(filtros.value, hoje))
     else if (aba.value === 'historico' && filtros.value.empresa_id !== '') await relatoriosApi.baixarHistorico(filtros.value.empresa_id, periodoParaApi(filtros.value, hoje))
   } catch (e) {

@@ -78,6 +78,12 @@ def perder(empresa_id: int, dados: PerdaIn, ctx: Contexto = Depends(requer("cont
     return desfecho.perder(ctx, empresa_id, dados)
 
 
+@router.get("/{empresa_id}/historico")
+def historico(empresa_id: int, ctx: Contexto = Depends(requer("contatos.ver"))):
+    """Linha do tempo da empresa (entrada, valor mensal, perda e retorno)."""
+    return desfecho.historico(ctx, empresa_id)
+
+
 @router.post("/{empresa_id}/retorno")
 def voltar(empresa_id: int, dados: RetornoIn, ctx: Contexto = Depends(requer("contatos.editar"))):
     """Voltou a ser cliente: tira a perda e reativa os contatos que ela desativou."""

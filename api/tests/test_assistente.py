@@ -609,7 +609,8 @@ def test_corpo_da_chamada_e_laco_com_o_raciocinio_cifrado(client, admin, dono, o
                            {"role": "user", "content": "Como importo meus contatos?"}]
     # ferramentas em modo estrito: todo campo em required, sem campos extras, opcionais aceitando null
     assert [t["name"] for t in c1["tools"]] == ["buscar_empresas", "indicadores", "ranking_empresas", "comentarios",
-                                                "temas", "evolucao_mensal", "buscar_ajuda"]
+                                                "temas", "evolucao_mensal", "desfecho", "saude_empresas",
+                                                "buscar_ajuda"]
     for t in c1["tools"]:
         assert set(t) == {"type", "name", "description", "parameters", "strict"}
         assert t["type"] == "function" and t["strict"] is True and t["description"]
@@ -619,7 +620,8 @@ def test_corpo_da_chamada_e_laco_com_o_raciocinio_cifrado(client, admin, dono, o
                  if isinstance(v["type"], list) and "null" in v["type"]}
     assert opcionais == {(f, "empresa_id") for f in ("indicadores", "comentarios", "temas", "evolucao_mensal")} | {
         (f, d) for f in ("indicadores", "ranking_empresas", "comentarios", "temas") for d in ("de", "ate")} | {
-        ("ranking_empresas", "limite"), ("comentarios", "limite"), ("evolucao_mensal", "meses")}
+        ("ranking_empresas", "limite"), ("comentarios", "limite"), ("evolucao_mensal", "meses")} | {
+        ("desfecho", "de"), ("desfecho", "ate"), ("saude_empresas", "empresa_id")}
     formato = c1["text"]["format"]
     assert (formato["type"], formato["name"], formato["strict"]) == ("json_schema", "resposta_assistente", True)
     esquema = formato["schema"]

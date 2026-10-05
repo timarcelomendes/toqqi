@@ -16,6 +16,7 @@ import type {
   Formulario,
   FormularioResumo,
   Id,
+  MarcoEmpresa,
   ItemCadastro,
   LinkPesquisa,
   Mensagem,
@@ -75,6 +76,8 @@ export const empresasApi = {
   /** Etapa 5i: "Voltou a ser cliente" (reativa os contatos que a perda desativou). */
   voltar: (id: Id, dados: { valor_mensal?: number | null; renovacao_em?: string | null; reativar_contatos?: boolean }) =>
     api.post<Empresa & { contatos_reativados: number }>(`/empresas/${seg(id)}/retorno`, dados),
+  /** Etapa 5i: linha do tempo (entrada, valor mensal, perda e retorno). */
+  historico: (id: Id) => api.get<{ itens: MarcoEmpresa[] }>(`/empresas/${seg(id)}/historico`),
 }
 
 export interface FiltrosContatos {

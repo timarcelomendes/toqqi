@@ -50,6 +50,7 @@ const rotas: RouteRecordRaw[] = [
       { path: 'inicio', name: 'inicio', component: () => import('@/modulos/inicio/InicioView.vue'), meta: { titulo: 'Início' } },
       { path: 'contatos', name: 'contatos', component: () => import('@/modulos/contatos/ContatosView.vue'), meta: { titulo: 'Contatos', permissao: 'contatos.ver' } },
       { path: 'contatos/importar', name: 'importar', component: () => import('@/modulos/importacao/ImportacaoView.vue'), meta: { titulo: 'Importar planilha', permissao: 'importacao.usar' } },
+      { path: 'contatos/empresas/:id', name: 'empresa', component: () => import('@/modulos/contatos/EmpresaView.vue'), meta: { titulo: 'Empresa', permissao: 'contatos.ver' } },
       { path: 'contatos/:id', name: 'contato', component: () => import('@/modulos/contatos/ContatoView.vue'), meta: { titulo: 'Contato', permissao: 'contatos.ver' } },
       { path: 'envios', name: 'envios', component: () => import('@/modulos/envios/EnviosView.vue'), meta: { titulo: 'Envios', permissao: 'envios.ver' } },
       { path: 'formularios', name: 'formularios', component: () => import('@/modulos/formularios/FormulariosView.vue'), meta: { titulo: 'Formulários', permissao: 'formularios.ver' } },

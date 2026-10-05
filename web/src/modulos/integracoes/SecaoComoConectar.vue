@@ -10,6 +10,12 @@ const urlPesquisas = computed(() => urlApi(API_URL, '/integracao/pesquisas'))
 const curl = computed(() => exemploCurl(API_URL))
 const curlTeste = computed(() => exemploCurlTeste(API_URL))
 const corpo = JSON.stringify(EXEMPLO_PESQUISA, null, 2)
+const urlEmpresas = computed(() => urlApi(API_URL, '/integracao/empresas'))
+const corpoEmpresa = JSON.stringify(
+  { codigo_externo: 'CLI-1020', nome: 'Mercado Azul', valor_mensal: 1500, renovacao_em: '2027-03-01', situacao: 'perdida', motivo_perda: 'preco' },
+  null,
+  2,
+)
 
 const ferramentas = computed(() => [
   {
@@ -96,6 +102,20 @@ const ferramentas = computed(() => [
             <summary class="cursor-pointer px-4 py-2.5 text-sm font-semibold text-texto">Só o corpo (JSON), para colar no Zapier, Make ou n8n</summary>
             <div class="px-4 pb-4"><BlocoCodigo :texto="corpo" rotulo="Copiar JSON"><template #titulo>JSON</template></BlocoCodigo></div>
           </details>
+        </div>
+
+        <div class="flex flex-col gap-2" data-integracao-empresas>
+          <h3 class="text-sm font-bold text-texto">Atualizar a empresa: valor, renovação, perda e retorno</h3>
+          <p class="text-sm text-texto-suave">
+            <code class="rounded bg-superficie-2 px-1.5 py-0.5 font-mono text-xs">POST {{ urlEmpresas }}</code> cria ou atualiza a empresa (achada pelo
+            <code class="font-mono text-xs">codigo_externo</code>, pelo <code class="font-mono text-xs">documento</code> ou pelo nome). Com
+            <code class="font-mono text-xs">"situacao": "perdida"</code> e o <code class="font-mono text-xs">motivo_perda</code>
+            (<code class="font-mono text-xs">preco</code>, <code class="font-mono text-xs">concorrente</code>, <code class="font-mono text-xs">atendimento</code>,
+            <code class="font-mono text-xs">produto</code>, <code class="font-mono text-xs">encerrou</code> ou <code class="font-mono text-xs">outro</code> com
+            <code class="font-mono text-xs">motivo_detalhe</code>), ela vira perdida e os contatos param de receber pesquisas; com
+            <code class="font-mono text-xs">"situacao": "ativa"</code>, volta a ser cliente.
+          </p>
+          <BlocoCodigo :texto="corpoEmpresa" rotulo="Copiar JSON"><template #titulo>JSON</template></BlocoCodigo>
         </div>
 
         <div class="flex flex-col gap-2">

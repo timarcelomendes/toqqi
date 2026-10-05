@@ -150,6 +150,9 @@ export const EVENTOS_WEBHOOK: Record<EventoWebhook, { rotulo: string; descricao:
     rotulo: 'Indicação mudou de situação',
     descricao: 'Quando a equipe marca uma indicação como em contato, virou cliente ou não avançou.',
   },
+  // Desfecho (etapa 5i)
+  'empresa.perdida': { rotulo: 'Empresa perdida', descricao: 'Quando a equipe marca uma empresa como perdida (com o motivo).' },
+  'empresa.reativada': { rotulo: 'Empresa voltou a ser cliente', descricao: 'Quando uma empresa perdida volta a ser cliente.' },
 }
 
 export function rotuloEventoWebhook(v: string | null | undefined): string {

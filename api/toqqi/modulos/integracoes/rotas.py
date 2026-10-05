@@ -5,7 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Respons
 from toqqi.core.deps import Contexto, requer_admin
 from toqqi.core.rate_limit import LIMITE_INTEGRACAO, limiter
 from toqqi.modulos.envios.processamento import processar_lista
-from toqqi.modulos.integracoes import chave, pesquisas, webhooks
+from toqqi.modulos.integracoes import chave, empresas, pesquisas, webhooks
 from toqqi.modulos.integracoes.chave import ContextoIntegracao, contexto_integracao, limite_por_chave
 from toqqi.modulos.integracoes.esquemas import CsatIn, PesquisaIn, WebhookAlterarIn, WebhookIn
 
@@ -94,6 +94,16 @@ def csat(request: Request, response: Response, dados: CsatIn, tarefas: Backgroun
     if dados.enviar_email is not None:
         dados.enviar = dados.enviar_email
     return _responder(response, tarefas, pesquisas.disparar(ci, dados, "csat", dados.assunto))
+
+
+@router_chave.post("/empresas")
+@limiter.limit(LIMITE_INTEGRACAO, key_func=limite_por_chave)
+def empresa(request: Request, response: Response, dados: empresas.EmpresaIntegracaoIn,
+            ci: ContextoIntegracao = Depends(contexto_integracao)):
+    """Etapa 5i: cria ou atualiza a empresa (valor, renovação) e marca a perda ou o retorno."""
+    corpo, nova = empresas.salvar(ci, dados)
+    response.status_code = 201 if nova else 200
+    return corpo
 
 
 @router_chave.get("/teste")

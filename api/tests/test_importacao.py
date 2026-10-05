@@ -40,7 +40,7 @@ def test_modelo_csv(client, admin):
     assert r.status_code == 200 and r.content.startswith(b"\xef\xbb\xbf")
     assert r.content.decode("utf-8-sig").strip() == (
         "nome;email;telefone;empresa;documento_empresa;cargo;perfil;grupo;segmento;responsavel;"
-        "valor_mensal;cliente_desde;codigo_externo;ativo")
+        "valor_mensal;cliente_desde;renovacao_em;codigo_externo;ativo")
 
 
 def test_analisar_sugere_mapeamento_por_nomes_equivalentes(client, admin):

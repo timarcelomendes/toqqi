@@ -692,3 +692,13 @@ dentro de J o contato conta como convidado, 46) e `calculo.py` (consultas agrupa
 `?aba=empresas&saude=risco`, o selo abre a saúde com "Como a nota é calculada"; seção na Ajuda (Contatos).
 Ficou para depois: a regra no "O que mudou", a saúde no ToqqiAI, o CSV com a saúde e as renovações, os filtros de
 segmento/responsável nas renovações, o Crescimento excluir empresas em Risco e o cartão no modo exemplo.
+
+## 16. Notas da construção (desfecho, segunda parte, 05/10)
+Entrou: `GET /empresas/{id}/historico` e a tela da empresa (`/contatos/empresas/:id`: dados, saúde com os porquês,
+contatos e a linha do tempo; o nome na lista de Empresas leva a ela); `GET /relatorios/desfecho.csv` ("Exportar CSV" na
+aba); a coluna "Renovação do contrato" na importação (contato novo ou atualizado de empresa perdida entra inativo, em vez
+do 409); `POST /integracao/empresas` (chave; cria ou atualiza pelo código externo, documento ou nome; `situacao`
+`perdida` com motivo ou `ativa`; origem `api` no histórico; 201 ao criar); webhooks `empresa.perdida` e
+`empresa.reativada` (dados da empresa, sem contatos); ferramentas `desfecho` (sem período: 12 meses) e
+`saude_empresas` no ToqqiAI.
+Fora: marcar a perda pela planilha (a planilha só traz a renovação; perda pela tela ou pela API) e `PATCH /perda`.

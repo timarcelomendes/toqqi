@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { Building2, Download, History, MoreHorizontal, Pencil, RotateCcw, Search, Trash2, UserX } from 'lucide-vue-next'
 import { empresasApi, exportacaoListasApi, mensagemDoErro, type Empresa, type FaixaSaude, type Id } from '@/api'
 import { avisar } from '@/composables/avisos'
@@ -254,7 +254,7 @@ defineExpose({ novo })
 
     <Tabela v-else :colunas="colunas" :linhas="empresas" :chave="(e) => e.id" :carregando="carregando" legenda="Empresas">
       <template #cel-nome="{ linha: e }">
-        <p class="font-semibold text-texto">{{ e.nome }}</p>
+        <RouterLink :to="`/contatos/empresas/${e.id}`" class="font-semibold text-texto hover:underline" data-link-empresa>{{ e.nome }}</RouterLink>
         <p v-if="e.documento" class="text-xs text-texto-fraco">{{ formatarDocumento(e.documento) }}</p>
         <p v-if="e.responsavel" class="text-xs text-texto-suave md:hidden">{{ e.responsavel.nome }}</p>
       </template>

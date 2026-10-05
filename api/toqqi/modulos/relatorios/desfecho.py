@@ -188,3 +188,23 @@ def _filtro(f):
     filtro = _filtro_empresas(f)
     filtro.so_ativos = False
     return filtro
+
+
+ROTULO_ANTES = {"detrator": "Detrator", "neutro": "Neutro", "promotor": "Promotor", "sem_resposta": "Sem resposta"}
+CABECALHO_CSV = ["Empresa", "Perdida em", "Motivo", "Detalhe", "Valor mensal", "Responsável", "Antes de sair",
+                 "Última nota", "Data da última nota", "Plano de ação antes"]
+
+
+def relatorio_csv(ctx: Contexto, f) -> str:
+    """As empresas perdidas do período, com os mesmos filtros da aba."""
+    from toqqi.core.auditoria import registrar
+    from toqqi.modulos.relatorios.regras import data_br, gerar_csv, num, sim_nao
+
+    itens = relatorio(ctx, f)["perdidas"]["itens"]
+    linhas = [[i["empresa"]["nome"], data_br(i["perdida_em"]), i["motivo_rotulo"] or "", i["motivo_detalhe"] or "",
+               num(i["valor_mensal"]), (i["responsavel"] or {}).get("nome") or "", ROTULO_ANTES[i["antes"]],
+               str(i["ultima_nota"]["nota"]) if i["ultima_nota"] else "",
+               data_br(i["ultima_nota"]["data"]) if i["ultima_nota"] else "", sim_nao(i["plano_antes"])] for i in itens]
+    with em_conta(ctx.conta_id) as s:
+        registrar(s, "exportacao_csv", "info", {"lista": "desfecho", "linhas": len(linhas)}, usuario_id=ctx.usuario_id)
+    return gerar_csv(CABECALHO_CSV, linhas)

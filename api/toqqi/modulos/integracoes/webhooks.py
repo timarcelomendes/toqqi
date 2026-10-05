@@ -41,7 +41,8 @@ from toqqi.modulos.respostas.eventos import GANCHOS
 
 log = logging.getLogger("toqqi.webhooks")
 
-EVENTOS = ("resposta.criada", "contato.descadastrado", "indicacao.criada", "indicacao.atualizada")
+EVENTOS = ("resposta.criada", "contato.descadastrado", "indicacao.criada", "indicacao.atualizada", "empresa.perdida",
+           "empresa.reativada")
 MAX_POR_CONTA = 5
 ESPERAS = (timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=30), timedelta(hours=2), timedelta(hours=6))
 MAX_FALHAS_SEGUIDAS = 10

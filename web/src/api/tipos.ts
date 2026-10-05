@@ -403,6 +403,23 @@ export interface Empresa {
   saude?: import('./etapa5iSaude').SaudeResumo | null
 }
 
+/** Etapa 5i: um marco da linha do tempo da empresa (GET /empresas/{id}/historico). */
+export interface MarcoEmpresa {
+  id: Id
+  tipo: 'entrada' | 'valor' | 'perdida' | 'reativada'
+  data: string
+  valor_antes: ValorDecimal | null
+  valor_depois: ValorDecimal | null
+  motivo: MotivoPerda | null
+  motivo_rotulo: string | null
+  motivo_detalhe: string | null
+  contatos: number | null
+  origem: string
+  origem_rotulo: string
+  usuario: Referencia | null
+  criado_em: string
+}
+
 export type SituacaoEmpresa = 'ativa' | 'pausada' | 'perdida'
 export type MotivoPerda = 'preco' | 'concorrente' | 'atendimento' | 'produto' | 'encerrou' | 'outro'
 
@@ -803,7 +820,13 @@ export interface ChaveGerada {
 }
 
 /** Etapa 5c: `indicacao.criada` e `indicacao.atualizada` (situação mudou). */
-export type EventoWebhook = 'resposta.criada' | 'contato.descadastrado' | 'indicacao.criada' | 'indicacao.atualizada'
+export type EventoWebhook =
+  | 'resposta.criada'
+  | 'contato.descadastrado'
+  | 'indicacao.criada'
+  | 'indicacao.atualizada'
+  | 'empresa.perdida'
+  | 'empresa.reativada'
 
 export interface Webhook {
   id: Id

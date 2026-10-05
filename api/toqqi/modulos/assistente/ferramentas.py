@@ -98,6 +98,12 @@ DEFINICOES: list[dict] = [
     _funcao("evolucao_mensal", "NPS de cada um dos últimos meses do calendário, inclusive o atual.",
             {"empresa_id": _EMPRESA_ID,
              "meses": {"type": ["integer", "null"], "description": "quantos meses, de 1 a 12; null = 6"}}),
+    _funcao("desfecho", "(Sem de: os últimos 12 meses.) Empresas perdidas (que deixaram de ser clientes) no período: quantas, receita mensal perdida, "
+            "motivos, o que diziam antes de sair (pior nota nos 90 dias antes) comparado com a carteira ativa, e a "
+            "retenção da receita (GRR e NRR).", {"de": _DE, "ate": _ATE}),
+    _funcao("saude_empresas", "Saúde da conta das empresas ativas hoje (nota de 0 a 100: Saudável, Atenção, Risco, "
+            "Sem dados) com os porquês. Com empresa_id, a saúde dessa empresa; sem, a carteira por faixa, as "
+            "empresas em Risco e as renovações dos próximos 60 dias.", {"empresa_id": _EMPRESA_ID}),
     _funcao("buscar_ajuda", "Procura na Ajuda do Toqqi como usar o sistema (passos, telas e atalhos).",
             {"termo": {"type": "string", "description": "o assunto, em poucas palavras"}}),
 ]
@@ -325,9 +331,58 @@ def buscar_ajuda(ctx: Contexto, a: dict) -> dict:
     return {"secoes": ajuda.buscar(termo[:300])}
 
 
+def desfecho(ctx: Contexto, a: dict) -> dict:
+    """Etapa 5i: o resumo da aba Relatórios › Desfecho (até 10 perdidas, sem contatos)."""
+    from types import SimpleNamespace
+
+    from toqqi.modulos.relatorios import desfecho as rel
+
+    _exigir(ctx, ("relatorios.ver",))
+    de, ate = periodo(a.get("de"), a.get("ate"))
+    if not a.get("de"):
+        de = ate - timedelta(days=364)  # perdas são raras: sem período, os últimos 12 meses
+    r = rel.relatorio(ctx, SimpleNamespace(de=de, ate=ate, grupo_id=None, so_ativos=None, segmento_id=None,
+                                           responsavel_id=None, faixa_valor=None, tempo_cliente=None))
+    return {"periodo": _periodo_json(de, ate),
+            "perdidas": {"empresas": r["perdidas"]["empresas"], "receita_mensal": r["perdidas"]["receita_mensal"],
+                         "itens": [{"empresa": i["empresa"]["nome"], "perdida_em": i["perdida_em"],
+                                    "motivo": i["motivo_rotulo"], "valor_mensal": i["valor_mensal"],
+                                    "antes": i["antes"]} for i in r["perdidas"]["itens"][:10]]},
+            "motivos": [m for m in r["motivos"] if m["empresas"]],
+            "antes_de_sair": r["antes_de_sair"],
+            "retencao": r["retencao"] and {k: r["retencao"][k] for k in ("grr", "nrr", "perdida", "reducao", "aumento")}}
+
+
+def saude_empresas(ctx: Contexto, a: dict) -> dict:
+    """Etapa 5i: saúde da conta (a mesma nota de Contatos › Empresas)."""
+    from toqqi.modulos.saude.calculo import saude_das_empresas
+
+    _exigir(ctx, VER_NUMEROS)
+    with _sessao(ctx) as s:
+        empresa = _empresa(s, ctx, a.get("empresa_id"))
+        if empresa is not None:
+            sd = saude_das_empresas(s, empresa_ids=[empresa.id]).get(empresa.id)
+            return {"empresa": _ref(empresa), "saude": sd and {k: sd[k] for k in ("faixa", "nota", "porques",
+                                                                                     "renovacao")},
+                    "observacao": None if sd else "Empresa pausada ou perdida: sem saúde."}
+        todas = saude_das_empresas(s)
+        nomes = dict(s.execute(select(Empresa.id, Empresa.nome).where(Empresa.id.in_(list(todas)))).all())
+    faixas = {f: 0 for f in ("saudavel", "atencao", "risco", "sem_dados")}
+    for sd in todas.values():
+        faixas[sd["faixa"]] += 1
+    risco = sorted((x for x in todas.items() if x[1]["faixa"] == "risco"), key=lambda x: x[1]["nota"] or 0)[:10]
+    renovam = sorted((x for x in todas.items() if x[1]["renovacao"]), key=lambda x: x[1]["renovacao"]["dias"])[:10]
+    return {"faixas": faixas,
+            "em_risco": [{"empresa": nomes.get(e), "nota": sd["nota"], "porques": [p["texto"] for p in sd["porques"]]}
+                         for e, sd in risco],
+            "renovacoes_60_dias": [{"empresa": nomes.get(e), "dias": sd["renovacao"]["dias"], "faixa": sd["faixa"]}
+                                   for e, sd in renovam]}
+
+
 FERRAMENTAS: dict[str, Callable[[Contexto, dict], dict]] = {
     "buscar_empresas": buscar_empresas, "indicadores": indicadores, "ranking_empresas": ranking_empresas,
     "comentarios": comentarios, "temas": temas, "evolucao_mensal": evolucao_mensal, "buscar_ajuda": buscar_ajuda,
+    "desfecho": desfecho, "saude_empresas": saude_empresas,
 }
 assert set(FERRAMENTAS) == {d["name"] for d in DEFINICOES}
 

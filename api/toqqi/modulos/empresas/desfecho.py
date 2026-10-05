@@ -32,6 +32,17 @@ def marcar(s: Session, origem: str, usuario_id: int | None, contatos: list[int] 
                "c": ",".join(map(str, contatos or []))})
 
 
+def _avisar(s: Session, evento: str, e: Empresa) -> None:
+    """Webhook `empresa.perdida` / `empresa.reativada` (só os dados da empresa, sem contatos)."""
+    from toqqi.modulos.integracoes.webhooks import enfileirar
+
+    enfileirar(s, evento, {"empresa": {"id": e.id, "nome": e.nome, "documento": e.documento,
+                                       "codigo_externo": e.codigo_externo, "valor_mensal": e.valor_mensal},
+                           "perdida_em": e.perdida_em, "motivo": e.motivo_perda,
+                           "motivo_rotulo": MOTIVOS.get(e.motivo_perda), "motivo_detalhe": e.motivo_detalhe,
+                           "renovacao_em": e.renovacao_em})
+
+
 def situacao(e: Empresa) -> str:
     return "perdida" if e.perdida_em else ("ativa" if e.ativa else "pausada")
 
@@ -47,7 +58,7 @@ def _invalido(campos: dict) -> AppError:
     return AppError(422, "dados_invalidos", "Confira os campos destacados.", campos)
 
 
-def perder(ctx: Contexto, empresa_id: int, dados) -> dict:
+def perder(ctx: Contexto, empresa_id: int, dados, origem: str = "tela") -> dict:
     from toqqi.modulos.empresas.servico import _uma
 
     hoje = relogio.hoje()
@@ -71,18 +82,19 @@ def perder(ctx: Contexto, empresa_id: int, dados) -> dict:
         if campos:
             raise _invalido(campos)
         ativos = list(s.scalars(select(Contato.id).where(Contato.empresa_id == e.id, Contato.ativo.is_(True))))
-        marcar(s, "tela", ctx.usuario_id, ativos)
+        marcar(s, origem, ctx.usuario_id, ativos)
         if ativos:
             s.execute(update(Contato).where(Contato.id.in_(ativos)).values(ativo=False))
         e.ativa, e.perdida_em, e.motivo_perda, e.motivo_detalhe = False, data, dados.motivo_perda, detalhe
         s.flush()
+        _avisar(s, "empresa.perdida", e)
         registrar(s, "empresa_perdida", "info",
                   {"empresa": {"id": e.id, "nome": e.nome}, "motivo": dados.motivo_perda, "contatos": len(ativos)},
                   usuario_id=ctx.usuario_id)
         return _uma(s, e.id) | {"contatos_desativados": len(ativos)}
 
 
-def voltar(ctx: Contexto, empresa_id: int, dados) -> dict:
+def voltar(ctx: Contexto, empresa_id: int, dados, origem: str = "tela") -> dict:
     from toqqi.modulos.empresas.servico import _uma
 
     enviados = dados.model_fields_set
@@ -102,7 +114,7 @@ def voltar(ctx: Contexto, empresa_id: int, dados) -> dict:
             limite = planos.limite_da_conta(s, ctx.conta_id)
             if limite is not None and planos.contatos_ativos(s) + len(reativar) > limite:
                 raise planos.erro_limite(limite)
-        marcar(s, "tela", ctx.usuario_id)
+        marcar(s, origem, ctx.usuario_id)
         if "valor_mensal" in enviados:
             e.valor_mensal = dados.valor_mensal
         if "renovacao_em" in enviados:
@@ -111,6 +123,31 @@ def voltar(ctx: Contexto, empresa_id: int, dados) -> dict:
         s.flush()
         if reativar:
             s.execute(update(Contato).where(Contato.id.in_(reativar)).values(ativo=True))
+        _avisar(s, "empresa.reativada", e)
         registrar(s, "empresa_reativada", "info",
                   {"empresa": {"id": e.id, "nome": e.nome}, "contatos": len(reativar)}, usuario_id=ctx.usuario_id)
         return _uma(s, e.id) | {"contatos_reativados": len(reativar)}
+
+
+ORIGENS = {"tela": "pela tela", "importacao": "pela importação", "api": "pela integração", "migracao": "no início do histórico",
+           "sistema": "pelo sistema"}
+
+
+def historico(ctx: Contexto, empresa_id: int) -> dict:
+    """A linha do tempo da empresa (até 200, do mais recente ao mais antigo): entrada, mudanças de valor, perdas e
+    retornos, com quem fez e por onde."""
+    from toqqi.modelos import Usuario
+
+    with em_conta(ctx.conta_id) as s:
+        if s.get(Empresa, empresa_id) is None:
+            raise nao_encontrado("Empresa não encontrada.")
+        linhas = s.execute(select(EmpresaHistorico, Usuario.nome).outerjoin(Usuario, Usuario.id == EmpresaHistorico.usuario_id)
+                           .where(EmpresaHistorico.empresa_id == empresa_id)
+                           .order_by(EmpresaHistorico.data.desc(), EmpresaHistorico.id.desc()).limit(200)).all()
+    return {"itens": [{
+        "id": h.id, "tipo": h.tipo, "data": h.data, "valor_antes": h.valor_antes, "valor_depois": h.valor_depois,
+        "motivo": h.motivo, "motivo_rotulo": MOTIVOS.get(h.motivo), "motivo_detalhe": h.motivo_detalhe,
+        "contatos": len(h.contatos) if h.contatos is not None else None, "origem": h.origem,
+        "origem_rotulo": ORIGENS.get(h.origem, h.origem),
+        "usuario": {"id": h.usuario_id, "nome": nome} if h.usuario_id else None, "criado_em": h.criado_em,
+    } for h, nome in linhas]}

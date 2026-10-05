@@ -117,6 +117,11 @@ def desfecho(filtros: Annotated[FiltrosEmpresa, Query()], ctx: Contexto = Depend
     return relatorio_desfecho.relatorio(ctx, filtros)
 
 
+@router.get("/desfecho.csv")
+def desfecho_csv(filtros: Annotated[FiltrosEmpresa, Query()], ctx: Contexto = Depends(EXPORTAR)):
+    return csv_resposta(relatorio_desfecho.relatorio_csv(ctx, filtros), servico.nome_csv("relatorio-desfecho"))
+
+
 @router.get("/operacao")
 def operacao(filtros: Annotated[FiltrosComuns, Query()], ctx: Contexto = Depends(VER)):
     return servico.operacao(ctx, filtros)

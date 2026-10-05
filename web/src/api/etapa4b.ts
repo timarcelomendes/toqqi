@@ -58,6 +58,8 @@ export const relatoriosApi = {
   /** Etapa 5i: perdidas, motivos, o que diziam antes de sair e a retenção da receita. */
   desfecho: (f: FiltrosRelatorio & { segmento_id?: Id; responsavel_id?: Id; faixa_valor?: string; tempo_cliente?: string } = {}, sinal?: AbortSignal) =>
     api.get<RelatorioDesfecho>('/relatorios/desfecho', { query: { ...f }, sinal }),
+  baixarDesfecho: (f: FiltrosRelatorio & { segmento_id?: Id; responsavel_id?: Id; faixa_valor?: string; tempo_cliente?: string } = {}) =>
+    baixarArquivo('/relatorios/desfecho.csv', 'relatorio-desfecho.csv', { ...f }),
   operacao: (f: FiltrosRelatorio = {}, sinal?: AbortSignal) => api.get<RelatorioOperacao>('/relatorios/operacao', { query: { ...f }, sinal }),
   baixarSemResposta: (f: FiltrosRelatorio = {}) =>
     baixarArquivo('/relatorios/operacao/sem-resposta.csv', 'contatos-sem-resposta.csv', { ...f }),
