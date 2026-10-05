@@ -41,8 +41,8 @@ const HOJE = '2026-10-01'
 const f = (aba: Parameters<typeof filtrosPadrao>[0], extra: Partial<FiltrosRelatorioTela> = {}): FiltrosRelatorioTela => ({ ...filtrosPadrao(aba), ...extra })
 
 describe('abas', () => {
-  it('são 7, na ordem do contrato, com Empresas como padrão', () => {
-    expect(ABAS_RELATORIO.map((a) => a.valor)).toEqual(['empresas', 'grupos', 'temas', 'entregas', 'responsaveis', 'operacao', 'historico'])
+  it('são 8 (Desfecho desde a 5i), na ordem do contrato, com Empresas como padrão', () => {
+    expect(ABAS_RELATORIO.map((a) => a.valor)).toEqual(['empresas', 'grupos', 'temas', 'entregas', 'responsaveis', 'operacao', 'desfecho', 'historico'])
     expect(ABA_PADRAO).toBe('empresas')
     expect(ehAba('temas')).toBe(true)
     expect(ehAba('vendas')).toBe(false)

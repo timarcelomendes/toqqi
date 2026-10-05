@@ -11,6 +11,7 @@ import type {
   FiltrosRelatorioGrupos,
   HistoricoEmpresa,
   Id,
+  RelatorioDesfecho,
   RelatorioEmpresas,
   RelatorioEntregas,
   RelatorioGrupos,
@@ -54,6 +55,9 @@ export const relatoriosApi = {
     api.get<EmpresaDaCarteira[]>(`/relatorios/responsaveis/${seg(responsavelId)}/empresas`, { query: { ...f }, sinal }),
   baixarResponsaveis: (f: FiltrosRelatorio = {}) => baixarArquivo('/relatorios/responsaveis.csv', 'relatorio-responsaveis.csv', { ...f }),
 
+  /** Etapa 5i: perdidas, motivos, o que diziam antes de sair e a retenção da receita. */
+  desfecho: (f: FiltrosRelatorio & { segmento_id?: Id; responsavel_id?: Id; faixa_valor?: string; tempo_cliente?: string } = {}, sinal?: AbortSignal) =>
+    api.get<RelatorioDesfecho>('/relatorios/desfecho', { query: { ...f }, sinal }),
   operacao: (f: FiltrosRelatorio = {}, sinal?: AbortSignal) => api.get<RelatorioOperacao>('/relatorios/operacao', { query: { ...f }, sinal }),
   baixarSemResposta: (f: FiltrosRelatorio = {}) =>
     baixarArquivo('/relatorios/operacao/sem-resposta.csv', 'contatos-sem-resposta.csv', { ...f }),

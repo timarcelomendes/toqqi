@@ -22,6 +22,7 @@ import AbaEmpresas from './AbaEmpresas.vue'
 import AbaEntregas from './AbaEntregas.vue'
 import AbaGrupos from './AbaGrupos.vue'
 import AbaHistorico from './AbaHistorico.vue'
+import AbaDesfecho from './AbaDesfecho.vue'
 import AbaOperacao from './AbaOperacao.vue'
 import AbaResponsaveis from './AbaResponsaveis.vue'
 import AbaTemas from './AbaTemas.vue'
@@ -243,7 +244,7 @@ onMounted(() => {
           vazio="Todos os grupos"
           class="sm:w-56"
         />
-        <div class="flex min-h-11 items-center sm:mt-7">
+        <div v-if="aba !== 'desfecho'" class="flex min-h-11 items-center sm:mt-7">
           <Interruptor v-model="filtros.so_ativos" rotulo="Só empresas ativas" class="w-full sm:w-auto sm:gap-3" />
         </div>
       </template>
@@ -255,6 +256,7 @@ onMounted(() => {
     <AbaEntregas v-else-if="aba === 'entregas'" v-model:filtros="filtros" :hoje="hoje" :pronto="!erroDatas" />
     <AbaResponsaveis v-else-if="aba === 'responsaveis'" v-model:filtros="filtros" :hoje="hoje" :pronto="!erroDatas" @navegar="navegar" />
     <AbaOperacao v-else-if="aba === 'operacao'" v-model:filtros="filtros" :hoje="hoje" :pronto="!erroDatas" />
+    <AbaDesfecho v-else-if="aba === 'desfecho'" v-model:filtros="filtros" :hoje="hoje" :pronto="!erroDatas" />
     <AbaHistorico v-else v-model:filtros="filtros" :hoje="hoje" :pronto="!erroDatas" :alvo-filtros="alvoFiltrosAba" />
   </Abas>
 </template>

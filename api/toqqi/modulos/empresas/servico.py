@@ -10,6 +10,7 @@ from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.paginacao import Pagina
 from toqqi.modelos import Contato, Empresa, Grupo, Responsavel, Segmento
+from toqqi.modulos.empresas import desfecho
 from toqqi.modulos.relatorios.regras import data_br, gerar_csv, num, sim_nao
 
 REFERENCIAS = {
@@ -43,6 +44,10 @@ def _json(linha) -> dict:
         "responsavel": ref(e.responsavel_id, responsavel),
         "valor_mensal": e.valor_mensal, "cliente_desde": e.cliente_desde, "codigo_externo": e.codigo_externo,
         "ativa": e.ativa, "contatos": contatos, "criada_em": e.criada_em,
+        # etapa 5i: desfecho
+        "renovacao_em": e.renovacao_em, "situacao": desfecho.situacao(e), "perdida_em": e.perdida_em,
+        "motivo_perda": e.motivo_perda, "motivo_perda_rotulo": desfecho.MOTIVOS.get(e.motivo_perda),
+        "motivo_detalhe": e.motivo_detalhe,
     }
 
 
@@ -142,6 +147,7 @@ def criar(ctx: Contexto, dados) -> dict:
     valores = dados.model_dump()
     with em_conta(ctx.conta_id) as s:
         conferir_referencias(s, valores, REFERENCIAS)
+        desfecho.marcar(s, "tela", ctx.usuario_id)
         e = Empresa(conta_id=ctx.conta_id, **valores)
         s.add(e)
         _salvar(s)
@@ -159,6 +165,9 @@ def alterar(ctx: Contexto, empresa_id: int, dados) -> dict:
         if e is None:
             raise nao_encontrado("Empresa não encontrada.")
         conferir_referencias(s, valores, REFERENCIAS)
+        if e.perdida_em and valores.get("ativa") is True:
+            raise AppError(409, "empresa_perdida", "Esta empresa foi marcada como perdida. Use “Voltou a ser cliente”.")
+        desfecho.marcar(s, "tela", ctx.usuario_id)
         for campo, valor in valores.items():
             setattr(e, campo, valor)
         _salvar(s)

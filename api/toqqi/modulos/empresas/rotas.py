@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Query, Response
 from toqqi.core.deps import Contexto, requer
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.modulos.empresas import servico
-from toqqi.modulos.empresas.esquemas import EmpresaAlterarIn, EmpresaIn
+from toqqi.modulos.empresas import desfecho
+from toqqi.modulos.empresas.esquemas import EmpresaAlterarIn, EmpresaIn, PerdaIn, RetornoIn
 from toqqi.modulos.respostas.rotas import csv_resposta
 
 router = APIRouter(prefix="/empresas", tags=["empresas"])
@@ -58,3 +59,17 @@ def alterar(empresa_id: int, dados: EmpresaAlterarIn, ctx: Contexto = Depends(re
 def excluir(empresa_id: int, ctx: Contexto = Depends(requer("contatos.excluir"))):
     servico.excluir(ctx, empresa_id)
     return Response(status_code=204)
+
+
+# ---- etapa 5i: desfecho -------------------------------------------------------------------
+
+@router.post("/{empresa_id}/perda")
+def perder(empresa_id: int, dados: PerdaIn, ctx: Contexto = Depends(requer("contatos.editar"))):
+    """Marca a empresa como perdida (motivo e data) e desativa os contatos ativos dela."""
+    return desfecho.perder(ctx, empresa_id, dados)
+
+
+@router.post("/{empresa_id}/retorno")
+def voltar(empresa_id: int, dados: RetornoIn, ctx: Contexto = Depends(requer("contatos.editar"))):
+    """Voltou a ser cliente: tira a perda e reativa os contatos que ela desativou."""
+    return desfecho.voltar(ctx, empresa_id, dados)

@@ -2615,6 +2615,49 @@
           ]
         },
         {
+          "id": "desfecho-quem-saiu-e-a-retencao",
+          "titulo": "Desfecho: quem saiu e quanto da receita ficou",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "desfecho",
+            "churn",
+            "cancelamento",
+            "cliente perdido",
+            "empresa perdida",
+            "retenção",
+            "GRR",
+            "NRR",
+            "motivo da perda",
+            "renovação",
+            "voltou a ser cliente"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Quando um cliente deixar de comprar, abra Contatos › Empresas, clique nos três pontos da empresa e escolha “Marcar como perdida”. Informe o motivo e a data. Os contatos ativos dela ficam inativos e param de receber pesquisas. Se ela voltar, use “Voltou a ser cliente” no mesmo menu: os contatos voltam a receber pesquisas."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A aba Desfecho de Relatórios mostra:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Empresas perdidas no período e quanto elas pagavam por mês.",
+                "O que diziam antes de sair: a pior nota de cada uma nos 90 dias antes da saída, comparada com a carteira ativa. É a prova de que o NPS avisa antes.",
+                "Receita mantida (GRR): da receita das empresas que já eram clientes no início, quanto ficou, tirando perdas e reduções de valor.",
+                "Receita líquida (NRR): o mesmo, somando os aumentos de valor.",
+                "Motivos das perdas e a lista das empresas."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Para a retenção sair certa, mantenha o valor mensal das empresas atualizado: o Toqqi guarda cada mudança. Em Editar empresa, “Renovação do contrato” registra a data da renovação."
+            }
+          ]
+        },
+        {
           "id": "historico-de-uma-empresa",
           "titulo": "Histórico de uma empresa",
           "somente_admin": false,

@@ -41,6 +41,8 @@ ROTULOS = {
     "cadastro_excluido": "Item de cadastro excluído",
     "responsavel_excluido": "Responsável excluído",
     "empresa_excluida": "Empresa excluída",
+    "empresa_perdida": "Empresa marcada como perdida",
+    "empresa_reativada": "Empresa voltou a ser cliente",
     "contato_excluido": "Contato excluído",
     "importacao": "Planilha de contatos importada",
     "formulario_excluido": "Formulário excluído",
@@ -136,7 +138,8 @@ def _grupo(evento: str) -> str:
     if evento.startswith(("envio_", "descadastro")) or evento == "lembretes_automaticos":
         return "envios"
     if evento.startswith(("importacao", "exportacao_")) or evento in (
-            "resposta_editada", "indicacao_registrada", "indicacao_atualizada", "acoes_detratores_criadas"):
+            "resposta_editada", "indicacao_registrada", "indicacao_atualizada", "acoes_detratores_criadas",
+            "empresa_perdida", "empresa_reativada"):
         return "dados"
     if evento.startswith(("chave_", "webhook_", "whatsapp_")):
         return "integracoes"

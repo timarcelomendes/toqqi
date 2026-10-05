@@ -35,6 +35,7 @@ const dados = reactive({
   cliente_desde: '',
   codigo_externo: '',
   ativa: true,
+  renovacao_em: '',
 })
 const locais = reactive<Record<string, string | undefined>>({})
 const opcoesResponsaveis = computed(() => cadastros.listas.responsaveis.map((r) => ({ valor: r.id, rotulo: r.nome })))
@@ -56,6 +57,7 @@ watch(aberto, (v) => {
     cliente_desde: e?.cliente_desde?.slice(0, 10) ?? '',
     codigo_externo: e?.codigo_externo ?? '',
     ativa: e?.ativa ?? true,
+    renovacao_em: e?.renovacao_em?.slice(0, 10) ?? '',
   })
 })
 
@@ -96,6 +98,7 @@ async function salvar() {
     cliente_desde: dados.cliente_desde || null,
     codigo_externo: dados.codigo_externo.trim() || null,
     ativa: dados.ativa,
+    renovacao_em: dados.renovacao_em || null,
   }
   const e = await executar(() => (novo.value ? empresasApi.criar(corpo) : empresasApi.atualizar(props.empresa!.id, corpo)))
   if (!e) return
@@ -144,8 +147,21 @@ onMounted(() => cadastros.garantir(['responsaveis']))
         </Campo>
         <Campo v-model="dados.cliente_desde" rotulo="Cliente desde" tipo="date" opcional :erro="erro('cliente_desde')" />
       </div>
+      <Campo
+        v-model="dados.renovacao_em"
+        rotulo="Renovação do contrato"
+        tipo="date"
+        opcional
+        dica="Data da renovação ou do fim do contrato. Aparece em Relatórios › Desfecho."
+        :erro="erro('renovacao_em')"
+      />
       <div class="rounded-xl border border-borda p-4">
-        <Interruptor v-model="dados.ativa" rotulo="Empresa ativa" descricao="Empresas inativas continuam no histórico, mas saem dos filtros do dia a dia." />
+        <Interruptor
+          v-model="dados.ativa"
+          rotulo="Empresa ativa"
+          :desabilitado="!!empresa?.perdida_em"
+          :descricao="empresa?.perdida_em ? 'Marcada como perdida. Para reativar, use “Voltou a ser cliente” no menu da empresa.' : 'Empresas inativas continuam no histórico, mas saem dos filtros do dia a dia.'"
+        />
       </div>
     </form>
     <template #rodape>

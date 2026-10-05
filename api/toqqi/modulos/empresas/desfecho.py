@@ -1,0 +1,116 @@
+"""Etapa 5i, desfecho das empresas (docs/api-etapa-5i.md §2): "Marcar como perdida" e "Voltou a ser cliente".
+
+O banco faz o resto: o gatilho `empresas_historico` grava a linha do tempo (perda, retorno e cada mudança do valor
+mensal, com a origem e quem fez, lidos de `app.*` desta transação) e o `contatos_empresa_perdida` recusa contato ativo
+em empresa perdida (409 `empresa_perdida`). Perder desativa os contatos ativos da empresa (param as pesquisas e saem
+do limite do plano); voltar reativa os que a perda desativou (402 se passar do limite do plano, sem mudar nada)."""
+from sqlalchemy import func, select, text, update
+from sqlalchemy.orm import Session
+
+from toqqi.core import planos, relogio
+from toqqi.core.auditoria import registrar
+from toqqi.core.db import em_conta
+from toqqi.core.deps import Contexto
+from toqqi.core.errors import AppError, nao_encontrado
+from toqqi.modelos import Contato, Empresa, EmpresaHistorico
+
+MOTIVOS = {
+    "preco": "Preço",
+    "concorrente": "Foi para um concorrente",
+    "atendimento": "Atendimento ou qualidade",
+    "produto": "O produto não atendeu",
+    "encerrou": "Encerrou a atividade",
+    "outro": "Outro",
+}
+
+
+def marcar(s: Session, origem: str, usuario_id: int | None, contatos: list[int] | None = None) -> None:
+    """Diz ao gatilho do histórico de onde vem a escrita (só nesta transação)."""
+    s.execute(text("select set_config('app.empresa_origem', :o, true), set_config('app.usuario_id', :u, true), "
+                   "set_config('app.hoje', :h, true), set_config('app.contatos_desativados', :c, true)"),
+              {"o": origem, "u": str(usuario_id or ""), "h": relogio.hoje().isoformat(),
+               "c": ",".join(map(str, contatos or []))})
+
+
+def situacao(e: Empresa) -> str:
+    return "perdida" if e.perdida_em else ("ativa" if e.ativa else "pausada")
+
+
+def _empresa(s: Session, empresa_id: int) -> Empresa:
+    e = s.get(Empresa, empresa_id, with_for_update=True)
+    if e is None:
+        raise nao_encontrado("Empresa não encontrada.")
+    return e
+
+
+def _invalido(campos: dict) -> AppError:
+    return AppError(422, "dados_invalidos", "Confira os campos destacados.", campos)
+
+
+def perder(ctx: Contexto, empresa_id: int, dados) -> dict:
+    from toqqi.modulos.empresas.servico import _uma
+
+    hoje = relogio.hoje()
+    data = dados.perdida_em or hoje
+    detalhe = (dados.motivo_detalhe or "").strip() or None
+    with em_conta(ctx.conta_id) as s:
+        e = _empresa(s, empresa_id)
+        if e.perdida_em:
+            raise AppError(409, "ja_perdida", "Esta empresa já está marcada como perdida.")
+        campos = {}
+        if data > hoje:
+            campos["perdida_em"] = "A data não pode ser no futuro."
+        elif e.cliente_desde and data < e.cliente_desde:
+            campos["perdida_em"] = "A data não pode ser antes de “Cliente desde”."
+        else:
+            ultima = s.scalar(select(func.max(EmpresaHistorico.data)).where(EmpresaHistorico.empresa_id == e.id))
+            if ultima and data < ultima:
+                campos["perdida_em"] = f"A data não pode ser antes de {ultima.strftime('%d/%m/%Y')}, a última mudança da empresa."
+        if dados.motivo_perda == "outro" and len(detalhe or "") < 3:
+            campos["motivo_detalhe"] = "Conte em poucas palavras o motivo."
+        if campos:
+            raise _invalido(campos)
+        ativos = list(s.scalars(select(Contato.id).where(Contato.empresa_id == e.id, Contato.ativo.is_(True))))
+        marcar(s, "tela", ctx.usuario_id, ativos)
+        if ativos:
+            s.execute(update(Contato).where(Contato.id.in_(ativos)).values(ativo=False))
+        e.ativa, e.perdida_em, e.motivo_perda, e.motivo_detalhe = False, data, dados.motivo_perda, detalhe
+        s.flush()
+        registrar(s, "empresa_perdida", "info",
+                  {"empresa": {"id": e.id, "nome": e.nome}, "motivo": dados.motivo_perda, "contatos": len(ativos)},
+                  usuario_id=ctx.usuario_id)
+        return _uma(s, e.id) | {"contatos_desativados": len(ativos)}
+
+
+def voltar(ctx: Contexto, empresa_id: int, dados) -> dict:
+    from toqqi.modulos.empresas.servico import _uma
+
+    enviados = dados.model_fields_set
+    with em_conta(ctx.conta_id) as s:
+        e = _empresa(s, empresa_id)
+        if not e.perdida_em:
+            raise AppError(409, "nao_perdida", "Esta empresa não está marcada como perdida.")
+        guardados = s.scalar(select(EmpresaHistorico.contatos).where(
+            EmpresaHistorico.empresa_id == e.id, EmpresaHistorico.tipo == "perdida")
+            .order_by(EmpresaHistorico.data.desc(), EmpresaHistorico.id.desc()).limit(1)) or []
+        reativar = []
+        if dados.reativar_contatos and guardados:
+            reativar = list(s.scalars(select(Contato.id).where(
+                Contato.id.in_(guardados), Contato.empresa_id == e.id, Contato.ativo.is_(False))))
+        if reativar:
+            planos.travar_contatos(s, ctx.conta_id)
+            limite = planos.limite_da_conta(s, ctx.conta_id)
+            if limite is not None and planos.contatos_ativos(s) + len(reativar) > limite:
+                raise planos.erro_limite(limite)
+        marcar(s, "tela", ctx.usuario_id)
+        if "valor_mensal" in enviados:
+            e.valor_mensal = dados.valor_mensal
+        if "renovacao_em" in enviados:
+            e.renovacao_em = dados.renovacao_em
+        e.ativa, e.perdida_em, e.motivo_perda, e.motivo_detalhe = True, None, None, None
+        s.flush()
+        if reativar:
+            s.execute(update(Contato).where(Contato.id.in_(reativar)).values(ativo=True))
+        registrar(s, "empresa_reativada", "info",
+                  {"empresa": {"id": e.id, "nome": e.nome}, "contatos": len(reativar)}, usuario_id=ctx.usuario_id)
+        return _uma(s, e.id) | {"contatos_reativados": len(reativar)}

@@ -669,3 +669,15 @@ Feito na própria sessão, sem agentes, por custo (pedido do Marcelo). Diferenç
   o cadastro grava `NULL` de SQL.
 - A e B (desfecho e saúde) ficam para depois; a migração 0018 já sobe com as colunas e o histórico do valor mensal começa a
   ser gravado desde o deploy (útil para o desfecho).
+
+## 14. Notas da construção (A, versão enxuta, 05/10)
+Feito na sessão, sem agentes. Entrou: `renovacao_em` na empresa; `POST /empresas/{id}/perda` e `/retorno` (com os
+contatos, o limite do plano, a auditoria e as validações do §2.2); `situacao`, perda e motivo no JSON da empresa; 409 ao
+reativar pela edição; `GET /relatorios/desfecho` com as regras do §2.6 (o exemplo do contrato virou teste: GRR 45,5% e
+NRR 56,8%); no site, "Marcar como perdida"/"Voltou a ser cliente" no menu de cada empresa (Contatos › Empresas), a
+renovação no "Editar empresa", o selo "Perdida em …" e a aba Relatórios › Desfecho (período padrão de 12 meses); uma
+seção na Ajuda (Relatórios).
+Ficou para depois: `PATCH /perda` (corrigir), `GET /historico` e a tela própria da empresa com a linha do tempo; o CSV
+do Desfecho; importação e API de integração com renovação/perda e os webhooks `empresa.*`; o ToqqiAI e a jornada na
+Ajuda; a regra nova do "O que mudou". Importar um contato ativo de uma empresa perdida hoje para a importação com o 409
+`empresa_perdida` (a mensagem explica o que fazer).

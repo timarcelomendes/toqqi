@@ -349,12 +349,12 @@ afterEach(() => {
 })
 
 describe('Relatórios: abas e filtros no endereço', () => {
-  it('abre na aba do endereço, com as 7 abas e os filtros comuns (90 dias, só ativas)', async () => {
+  it('abre na aba do endereço, com as 8 abas e os filtros comuns (90 dias, só ativas)', async () => {
     entrar()
     const { chamadas } = api()
     const w = await abrir('/relatorios/empresas')
     const abas = w.findAll('[role="tab"]')
-    expect(abas.map((a) => a.text())).toEqual(['Empresas', 'Grupos de clientes', 'Temas', 'Entregas', 'Responsáveis', 'Operação', 'Histórico de uma empresa'])
+    expect(abas.map((a) => a.text())).toEqual(['Empresas', 'Grupos de clientes', 'Temas', 'Entregas', 'Responsáveis', 'Operação', 'Desfecho', 'Histórico de uma empresa'])
     expect(abas[0]!.attributes('aria-selected')).toBe('true')
     expect(consulta(pedidos(chamadas, '/relatorios/empresas')[0])).toEqual({
       de: somarDias(HOJE, -89),

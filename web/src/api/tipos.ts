@@ -392,7 +392,17 @@ export interface Empresa {
   ativa: boolean
   contatos: number
   criada_em: string
+  /** Etapa 5i: desfecho. */
+  renovacao_em?: string | null
+  situacao?: SituacaoEmpresa
+  perdida_em?: string | null
+  motivo_perda?: MotivoPerda | null
+  motivo_perda_rotulo?: string | null
+  motivo_detalhe?: string | null
 }
+
+export type SituacaoEmpresa = 'ativa' | 'pausada' | 'perdida'
+export type MotivoPerda = 'preco' | 'concorrente' | 'atendimento' | 'produto' | 'encerrou' | 'outro'
 
 export interface DadosEmpresa {
   nome: string
@@ -404,6 +414,7 @@ export interface DadosEmpresa {
   cliente_desde?: string | null
   codigo_externo?: string | null
   ativa?: boolean
+  renovacao_em?: string | null
 }
 
 /** Etapa 3: `nunca_enviado` deixou de existir (vira `na_fila`). */
@@ -2309,4 +2320,48 @@ export interface PlanosPublicos {
   planos: PlanoPublico[]
   teste: { dias: number; plano: ChavePlano | (string & {}); whatsapp: number; ia_teto: number }
   ia_analises: { rapido: number; equilibrado: number; detalhado: number }
+}
+
+// ---- etapa 5i: Relatórios › Desfecho ----------------------------------------------------
+
+export type GrupoAntesDeSair = 'detrator' | 'neutro' | 'promotor' | 'sem_resposta'
+
+export interface BlocoAntesDeSair {
+  total: number
+  detrator: number
+  neutro: number
+  promotor: number
+  sem_resposta: number
+  percentuais: Record<GrupoAntesDeSair, number | null>
+}
+
+export interface EmpresaPerdida {
+  empresa: Referencia
+  perdida_em: string
+  motivo: MotivoPerda
+  motivo_rotulo: string
+  motivo_detalhe: string | null
+  valor_mensal: ValorDecimal | null
+  responsavel: Referencia | null
+  antes: GrupoAntesDeSair
+  ultima_nota: { nota: number; data: string } | null
+  plano_antes: boolean
+}
+
+export interface RelatorioDesfecho {
+  periodo: { de: string; ate: string }
+  perdidas: { empresas: number; receita_mensal: ValorDecimal; sem_valor: number; itens: EmpresaPerdida[] }
+  motivos: { motivo: MotivoPerda; rotulo: string; empresas: number; receita_mensal: ValorDecimal }[]
+  antes_de_sair: { perdidas: BlocoAntesDeSair; carteira: BlocoAntesDeSair; amostra_pequena: boolean }
+  retencao: {
+    inicio: { data: string; empresas: number; receita: ValorDecimal; sem_valor: number }
+    perdida: ValorDecimal
+    reducao: ValorDecimal
+    aumento: ValorDecimal
+    fim: ValorDecimal
+    novas: { empresas: number; receita: ValorDecimal }
+    grr: number | null
+    nrr: number | null
+    historico_parcial: boolean
+  } | null
 }

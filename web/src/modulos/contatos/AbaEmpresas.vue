@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { Building2, Download, History, MoreHorizontal, Pencil, Search, Trash2 } from 'lucide-vue-next'
+import { Building2, Download, History, MoreHorizontal, Pencil, RotateCcw, Search, Trash2, UserX } from 'lucide-vue-next'
 import { empresasApi, exportacaoListasApi, mensagemDoErro, type Empresa, type Id } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
@@ -18,7 +18,9 @@ import MenuSuspenso from '@/components/ui/MenuSuspenso.vue'
 import Paginacao from '@/components/ui/Paginacao.vue'
 import Selecao from '@/components/ui/Selecao.vue'
 import Tabela, { type Coluna } from '@/components/ui/Tabela.vue'
+import ModalDesfecho from './ModalDesfecho.vue'
 import ModalEmpresa from './ModalEmpresa.vue'
+import { seloSituacao, situacaoEmpresa } from './desfecho'
 import { consultaEmpresas, type FiltrosEmpresasTela } from './exportacao'
 
 const sessao = useSessaoStore()
@@ -123,6 +125,11 @@ function novo() {
 function editar(e: Empresa) {
   emEdicao.value = e
   modalAberto.value = true
+}
+// Etapa 5i: desfecho ("Marcar como perdida" / "Voltou a ser cliente").
+const desfecho = reactive<{ aberto: boolean; modo: 'perda' | 'retorno'; empresa: Empresa | null }>({ aberto: false, modo: 'perda', empresa: null })
+function abrirDesfecho(e: Empresa, modo: 'perda' | 'retorno') {
+  Object.assign(desfecho, { aberto: true, modo, empresa: e })
 }
 function aoSalvar(e: Empresa) {
   const i = empresas.value.findIndex((x) => String(x.id) === String(e.id))
@@ -237,7 +244,7 @@ defineExpose({ novo })
         <span class="tabular-nums text-texto-suave">{{ formatarNumero(e.contatos) }}</span>
       </template>
       <template #cel-ativa="{ linha: e }">
-        <Etiqueta :tom="e.ativa ? 'sucesso' : 'neutro'" ponto>{{ e.ativa ? 'Ativa' : 'Inativa' }}</Etiqueta>
+        <Etiqueta :tom="seloSituacao(e).tom" ponto>{{ seloSituacao(e).texto }}</Etiqueta>
       </template>
       <template #cel-acoes="{ linha: e }">
         <MenuSuspenso v-if="podeEditar || podeExcluir || podeVerHistorico" :rotulo="`Ações para ${e.nome}`" fixo>
@@ -248,6 +255,8 @@ defineExpose({ novo })
           </template>
           <ItemMenu v-if="podeVerHistorico" :icone="History" :para="{ path: '/relatorios/historico', query: { empresa_id: String(e.id) } }">Ver histórico</ItemMenu>
           <ItemMenu v-if="podeEditar" :icone="Pencil" @click="editar(e)">Editar</ItemMenu>
+          <ItemMenu v-if="podeEditar && situacaoEmpresa(e) === 'perdida'" :icone="RotateCcw" @click="abrirDesfecho(e, 'retorno')">Voltou a ser cliente</ItemMenu>
+          <ItemMenu v-else-if="podeEditar" :icone="UserX" @click="abrirDesfecho(e, 'perda')">Marcar como perdida</ItemMenu>
           <ItemMenu v-if="podeExcluir" :icone="Trash2" perigo @click="excluir(e)">Excluir</ItemMenu>
         </MenuSuspenso>
       </template>
@@ -260,5 +269,6 @@ defineExpose({ novo })
     </Tabela>
     <Paginacao v-if="!erro" v-model="pagina" :total="total" :por-pagina="porPagina" :carregando="carregando" :nome-itens="total === 1 ? 'empresa' : 'empresas'" />
     <ModalEmpresa v-model:aberto="modalAberto" :empresa="emEdicao" @salvo="aoSalvar" />
+    <ModalDesfecho v-model:aberto="desfecho.aberto" :empresa="desfecho.empresa" :modo="desfecho.modo" @salvo="aoSalvar" />
   </div>
 </template>

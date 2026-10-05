@@ -21,7 +21,7 @@ import type { Tom } from '@/utils/rotulos'
 
 // ── Abas ────────────────────────────────────────────────────────────────────
 
-export type AbaRelatorio = 'empresas' | 'grupos' | 'temas' | 'entregas' | 'responsaveis' | 'operacao' | 'historico'
+export type AbaRelatorio = 'empresas' | 'grupos' | 'temas' | 'entregas' | 'responsaveis' | 'operacao' | 'desfecho' | 'historico'
 
 export const ABAS_RELATORIO: { valor: AbaRelatorio; rotulo: string; descricao: string }[] = [
   { valor: 'empresas', rotulo: 'Empresas', descricao: 'NPS, cobertura e receita em risco de cada empresa, com a matriz NPS × valor.' },
@@ -30,6 +30,7 @@ export const ABAS_RELATORIO: { valor: AbaRelatorio; rotulo: string; descricao: s
   { valor: 'entregas', rotulo: 'Entregas', descricao: 'NPS, CSAT e reclamações por motorista, rota, filial e transportadora.' },
   { valor: 'responsaveis', rotulo: 'Responsáveis', descricao: 'A carteira de cada responsável: NPS, receita em risco e ações.' },
   { valor: 'operacao', rotulo: 'Operação', descricao: 'Taxa de resposta, convites por canal, ações concluídas e quem ainda não respondeu.' },
+  { valor: 'desfecho', rotulo: 'Desfecho', descricao: 'Quem saiu, por quê, o que dizia antes de sair e quanto da receita ficou.' },
   { valor: 'historico', rotulo: 'Histórico de uma empresa', descricao: 'Tudo o que uma empresa respondeu, mês a mês, com as ações.' },
 ]
 
@@ -216,12 +217,13 @@ export const CAMPOS_DA_ABA: Record<AbaRelatorio, Campo[]> = {
   entregas: ['dimensao', 'busca', 'ordem', 'pagina'],
   responsaveis: [],
   operacao: [],
+  desfecho: [],
   historico: ['empresa_id'],
 }
 
-/** Período padrão: 90 dias; no histórico de uma empresa, todo o período. */
+/** Período padrão: 90 dias; no Desfecho, 12 meses; no histórico de uma empresa, todo o período. */
 export function periodoPadrao(aba: AbaRelatorio): PresetPeriodo {
-  return aba === 'historico' ? 'tudo' : '90'
+  return aba === 'historico' ? 'tudo' : aba === 'desfecho' ? '365' : '90'
 }
 
 export function ordemPadrao(aba: AbaRelatorio): string {
@@ -392,6 +394,13 @@ export function empresasParaApi(f: FiltrosRelatorioTela, hoje: string = hojeIso(
   if (f.busca.trim()) r.busca = f.busca.trim().slice(0, LIMITE_BUSCA)
   if (f.respostas) r.respostas = f.respostas
   if (f.quadrante) r.quadrante = f.quadrante
+  return r
+}
+
+/** Etapa 5i: Relatórios › Desfecho (os filtros de empresa; as perdidas são inativas, então sem "só ativas"). */
+export function desfechoParaApi(f: FiltrosRelatorioTela, hoje: string = hojeIso()): FiltrosRelatorioGrupos & { responsavel_id?: Id } {
+  const { so_ativos: _ignorado, ...r }: FiltrosRelatorioGrupos & { responsavel_id?: Id } = gruposParaApi(f, hoje)
+  if (f.responsavel_id !== '') r.responsavel_id = f.responsavel_id
   return r
 }
 

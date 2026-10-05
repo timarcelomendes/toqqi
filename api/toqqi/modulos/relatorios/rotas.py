@@ -7,6 +7,7 @@ from toqqi.core.deps import Contexto, requer
 from toqqi.core.filtros import DataFiltro
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.modulos.ia import pareceres
+from toqqi.modulos.relatorios import desfecho as relatorio_desfecho
 from toqqi.modulos.relatorios import servico
 from toqqi.modulos.relatorios.parecer_ia import TIPO as PARECER_IA
 from toqqi.modulos.relatorios.regras import FAIXAS_TEMPO, FAIXAS_VALOR, QUADRANTES, ROTULOS_DIMENSAO
@@ -108,6 +109,12 @@ def responsaveis_csv(filtros: Annotated[FiltrosComuns, Query()], ctx: Contexto =
 def empresas_do_responsavel(responsavel_id: int, filtros: Annotated[FiltrosComuns, Query()],
                             ctx: Contexto = Depends(VER)):
     return servico.empresas_do_responsavel(ctx, responsavel_id, filtros)
+
+
+@router.get("/desfecho")
+def desfecho(filtros: Annotated[FiltrosEmpresa, Query()], ctx: Contexto = Depends(VER)):
+    """Etapa 5i: perdidas, motivos, o que diziam antes de sair e a retenção da receita (`desfecho.py`)."""
+    return relatorio_desfecho.relatorio(ctx, filtros)
 
 
 @router.get("/operacao")
