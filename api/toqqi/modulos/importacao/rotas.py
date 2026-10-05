@@ -1,9 +1,10 @@
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Response, UploadFile
 
 from toqqi.core.deps import Contexto, requer
+from toqqi.modulos.ia.servico import processar_conta
 from toqqi.modulos.importacao import servico
 from toqqi.modulos.importacao.esquemas import ConferirIn, ImportarIn
 from toqqi.modulos.importacao.planilha import MAX_BYTES
@@ -31,5 +32,8 @@ def conferir(imp_id: uuid.UUID, dados: ConferirIn, ctx: Contexto = Depends(USAR)
 
 
 @router.post("/{imp_id}/importar")
-def importar(imp_id: uuid.UUID, dados: ImportarIn, ctx: Contexto = Depends(USAR)):
-    return servico.importar(ctx, imp_id, dados)
+def importar(imp_id: uuid.UUID, dados: ImportarIn, tarefas: BackgroundTasks, ctx: Contexto = Depends(USAR)):
+    resultado = servico.importar(ctx, imp_id, dados)
+    if resultado.get("ia_marcadas"):  # etapa 5h: a fila da IA desta conta já, depois do commit
+        tarefas.add_task(processar_conta, ctx.conta_id)
+    return resultado

@@ -1820,7 +1820,8 @@
                 "O contato precisa já estar cadastrado. Se não está, importe os contatos antes.",
                 "Datas como 31/12/2025 ou 2025-12-31, de 2000 até hoje. A nota precisa ser inteira: 9,0 vale 9, mas 8,7 não é aceita.",
                 "Mesmo contato na mesma data é a mesma resposta. “Atualizar as que já existem” decide se a planilha substitui a que já foi importada.",
-                "As respostas entram no histórico e nos números, mas não criam ação e ninguém recebe e-mail."
+                "As respostas entram no histórico e nos números, mas não criam ação e ninguém recebe e-mail.",
+                "Com a análise por IA ligada, a IA lê os comentários importados dos últimos 90 dias: o tom e os temas aparecem no Início em alguns minutos. Se alguma empresa teve detrator nesses 90 dias e não tem plano aberto, o fim da importação oferece “Criar planos para N empresas”."
               ]
             },
             {
@@ -1948,7 +1949,9 @@
             "kpi",
             "métricas",
             "cartões",
-            "como estamos"
+            "como estamos",
+            "comece por aqui",
+            "dados de exemplo"
           ],
           "blocos": [
             {
@@ -1972,6 +1975,10 @@
             {
               "tipo": "paragrafo",
               "texto": "No teste grátis, quem cuida da assinatura vê também, no alto, um cartão com os dias que faltam. Quem não tem a permissão de ver o painel encontra no Início apenas uma tela de boas-vindas."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Enquanto a conta não tem nenhuma resposta (uma importada já conta), o Início mostra “Comece por aqui”: os 4 passos até a primeira resposta, com o próximo em destaque; “Sua marca nas pesquisas”, para quem administra a conta enviar o logo e escolher a cor dos e-mails e dos formulários que ainda usam a cor dos modelos; e “Ver com dados de exemplo”, que mostra o Início com números de exemplo, sem gravar nada, até você clicar em “Voltar para os meus dados”."
             }
           ]
         },
@@ -2195,7 +2202,8 @@
             "crise",
             "faixa de picos",
             "ver as reclamações",
-            "ver os detratores"
+            "ver os detratores",
+            "criar planos"
           ],
           "blocos": [
             {
@@ -2213,7 +2221,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "A linha de baixo traz a situação seguinte. Os botões, conforme o seu perfil: “Ver as N reclamações” do tema nos 7 dias; “Ver os detratores”, se não há plano de ação aberto, ou os planos, como “Ver os 2 planos vencidos”; e “Perguntar ao ToqqiAI”, que abre o chat com a pergunta “O que explica a variação do NPS no período?” já escrita."
+              "texto": "A linha de baixo traz a situação seguinte. Os botões, conforme o seu perfil: “Ver as N reclamações” do tema nos 7 dias; “Criar planos para N empresas”, que cria um plano para cada empresa com detrator no período e sem plano aberto; “Ver os detratores”, se não há plano de ação aberto, ou os planos, como “Ver os 2 planos vencidos”; e “Perguntar ao ToqqiAI”, que abre o chat com a pergunta “O que explica a variação do NPS no período?” já escrita."
             },
             {
               "tipo": "paragrafo",
@@ -2261,7 +2269,7 @@
                 "“NPS nos últimos 12 meses”: o NPS mês a mês nos 12 meses que terminam no fim do período, com os meses do período marcados. Segue o grupo e “Só ativas”. “Ver em tabela” mostra os números.",
                 "“Quem mudou de lado”: a última nota de cada contato comparada com a anterior. Resgatados eram detratores e deram 9 ou 10; os que deixaram de ser promotores davam 9 ou 10 e deram 8 ou menos. “Ver as N pessoas” mostra quem.",
                 "“Do que estão falando”: os temas mais citados nos comentários de NPS, com as reclamações à esquerda da barra e as outras menções à direita; ao lado, ▲ ou ▼ (menções a mais ou a menos que no período anterior) e a nota média. Clique num tema para ver as respostas.",
-                "“Tom dos comentários”: pela análise da IA, a porcentagem de comentários negativos, com a diferença em pontos para o período anterior, e a barra de negativos, mistos, neutros e positivos. Sem análise, o bloco avisa se os comentários estão na fila ou se a análise por IA está desligada (Configurações › IA).",
+                "“Tom dos comentários”: pela análise da IA, a porcentagem de comentários negativos, com a diferença em pontos para o período anterior, e a barra de negativos, mistos, neutros e positivos. Sem análise, o bloco avisa se os comentários estão na fila, se a IA ainda não leu os do período (quem administra a conta vê “Analisar agora”), se eles são curtos demais para ela ou se a análise por IA está desligada (Configurações › IA).",
                 "“Palavras que mais aparecem”: quanto maior a palavra, em mais comentários ela aparece. Clique numa palavra para ver as respostas.",
                 "“O que os clientes disseram por último”: os comentários mais recentes, com a nota e quem disse. Clique num deles para abrir a resposta; “Ver todas” abre Respostas.",
                 "“Empresas: onde cuidar e onde crescer”: “Cuidar primeiro” traz as de menor NPS e “Mais satisfeitas”, as de maior, cada uma com uma régua de −100 a 100. Só entram empresas com 3 ou mais respostas de NPS no período."
@@ -2871,7 +2879,8 @@
             "adicionar ação",
             "ação manual",
             "lembrete interno",
-            "combinar com cliente"
+            "combinar com cliente",
+            "criar planos para detratores"
           ],
           "blocos": [
             {
@@ -2886,7 +2895,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "O botão “Nova ação” aparece para quem tem a permissão “Tratar planos de ação”. Também dá para criar a ação de uma resposta: em Respostas, abra “Analisar” e clique em “Criar ação”. Se a resposta já tem ação, o botão é “Abrir ação”. A ação criada a partir de uma resposta também pode ganhar passos sugeridos pela IA."
+              "texto": "O botão “Nova ação” aparece para quem tem a permissão “Tratar planos de ação”. Também dá para criar a ação de uma resposta: em Respostas, abra “Analisar” e clique em “Criar ação”. Se a resposta já tem ação, o botão é “Abrir ação”. A ação criada a partir de uma resposta também pode ganhar passos sugeridos pela IA. No Início, “Criar planos para N empresas”, em “O que mudou”, cria de uma vez (até 100) um plano para cada empresa com detrator no período e sem plano aberto, igual ao da ação automática."
             }
           ]
         },

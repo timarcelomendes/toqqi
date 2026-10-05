@@ -30,6 +30,23 @@ class SegurancaIn(BaseModel):
     dominios: list[Annotated[str, Field(max_length=253)]] = Field(default_factory=list, max_length=50)
 
 
+# ---- sua marca nas pesquisas (etapa 5h) -------------------------------------------
+
+MSG_COR = "Use uma cor no formato #RRGGBB, como #D63A18."  # a mesma de Configurações › Envios
+
+
+def _cor(v):
+    """#RRGGBB (maiúsculas ou minúsculas, espaços nas pontas ignorados), guardada em maiúsculas."""
+    if not isinstance(v, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", v.strip()):
+        raise PydanticCustomError("toqqi_cor", MSG_COR)
+    return v.strip().upper()
+
+
+class MarcaIn(BaseModel):
+    """PUT /conta/marca: a cor da marca (obrigatória)."""
+    cor: Annotated[str, BeforeValidator(_cor)]
+
+
 # ---- dados da empresa -----------------------------------------------------------
 
 UFS = ("AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI",

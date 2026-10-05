@@ -8,6 +8,10 @@ sem o período (só com os filtros de empresa).
 Desempenho: além do RLS, as consultas filtram `conta_id` de forma explícita (a política tem `OR app_sistema()`,
 que impede o planejador de usar os índices `(conta_id, ...)`), e o JIT do PostgreSQL fica desligado na transação
 do painel (compilar as consultas custava mais que executá-las).
+
+Etapa 5h: `tom.ia_ligada` e `tom.sem_analise` (o bloco do tom sabe se oferece "Analisar agora") e
+`atencao.detratores_sem_plano` (quantos planos `POST /acoes/detratores` criaria com os mesmos filtros; a mesma
+consulta, `alvos_sem_plano`).
 """
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -15,7 +19,7 @@ from datetime import date, timedelta
 from sqlalchemy import String, and_, any_, case, cast, func, or_, select
 from sqlalchemy.orm import Session
 
-from toqqi.core import relogio
+from toqqi.core import ia, relogio
 from toqqi.core.db import em_conta, sem_jit
 from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError
@@ -24,6 +28,7 @@ from toqqi.core.relogio import FUSO_NOME
 from toqqi.modelos import (
     Acao,
     ConfigEnvios,
+    Conta,
     Contato,
     Convite,
     Empresa,
@@ -34,6 +39,7 @@ from toqqi.modelos import (
 )
 from toqqi.modulos.acoes.regras import aberta, ordem_urgencia
 from toqqi.modulos.empresas.servico import ref
+from toqqi.modulos.ia.servico import texto_qualifica_no_banco
 from toqqi.modulos.painel.palavras import contar
 from toqqi.modulos.relatorios import picos as picos_mod
 from toqqi.modulos.respostas import indicadores as ind
@@ -102,12 +108,16 @@ def _grupos(condicao=None) -> list:
 # ---- blocos -----------------------------------------------------------------
 
 def _contagens_tom() -> list:
-    """Colunas do tom (respostas NPS e CSAT): total, com comentário, analisadas, pendentes e uma por sentimento."""
+    """Colunas do tom (respostas NPS e CSAT): total, com comentário, analisadas, pendentes, sem análise (etapa 5h) e
+    uma por sentimento. Sem análise = com texto que a IA leria (3+ letras), nunca analisada, falhou ou limite (nem
+    analisada nem na fila: o que "Analisar os últimos 90 dias" marcaria, sem o limite de 90 dias)."""
     texto = Resposta.comentario_cliente != ""
     analisada = and_(texto, Resposta.ia_situacao == "analisada", Resposta.ia_sentimento.in_(SENTIMENTOS))
+    sem_analise = or_(Resposta.ia_situacao.is_(None), Resposta.ia_situacao.in_(("falhou", "limite")))
     return [func.count().filter(COM_NOTA), func.count().filter(COM_NOTA, texto),
             func.count().filter(COM_NOTA, analisada),
             func.count().filter(COM_NOTA, texto, Resposta.ia_situacao == "pendente"),
+            func.count().filter(COM_NOTA, texto, sem_analise, texto_qualifica_no_banco()),
             *[func.count().filter(COM_NOTA, analisada, Resposta.ia_sentimento == x) for x in SENTIMENTOS]]
 
 
@@ -256,6 +266,36 @@ def _atencao(s: Session, f: Filtro, conds: list, hoje: date) -> dict:
     }
 
 
+def _detratores_sem_plano(f: Filtro):
+    """Etapa 5h: as respostas NPS de detrator do filtro de quem não tem plano aberto, numeradas (`n` = 1 na mais
+    recente) por alvo: a empresa da resposta ou, sem empresa, o contato. Sem plano = nenhuma ação a fazer ou em
+    andamento da empresa (ou do contato, quando é o alvo). Respostas sem empresa e sem contato ficam de fora."""
+    da_empresa = select(Acao.id).where(Acao.conta_id == f.conta_id, aberta(),
+                                       Acao.empresa_id == Resposta.empresa_id).exists()
+    do_contato = select(Acao.id).where(Acao.conta_id == f.conta_id, aberta(),
+                                       Acao.contato_id == Resposta.contato_id).exists()
+    sem_plano = or_(and_(Resposta.empresa_id.is_not(None), ~da_empresa),
+                    and_(Resposta.empresa_id.is_(None), Resposta.contato_id.is_not(None), ~do_contato))
+    n = func.row_number().over(
+        partition_by=(Resposta.empresa_id, case((Resposta.empresa_id.is_(None), Resposta.contato_id))),
+        order_by=(Resposta.data_resposta.desc(), Resposta.id.desc()))
+    return (_com_empresa(select(Resposta.id, Resposta.nota, Resposta.data_resposta, n.label("n")).select_from(Resposta))
+            .where(*f.respostas(), NPS, Resposta.grupo == "detrator", sem_plano).subquery("detratores"))
+
+
+def alvos_sem_plano(f: Filtro):
+    """Uma resposta por alvo sem plano (a de detrator mais recente), da mais urgente para a menos: menor nota, depois
+    a mais recente (`POST /acoes/detratores`)."""
+    sq = _detratores_sem_plano(f)
+    return select(sq.c.id).where(sq.c.n == 1).order_by(sq.c.nota, sq.c.data_resposta.desc(), sq.c.id.desc())
+
+
+def contar_sem_plano(s: Session, f: Filtro) -> int:
+    """Quantos planos `POST /acoes/detratores` criaria agora com estes filtros (sem o limite por chamada)."""
+    sq = _detratores_sem_plano(f)
+    return s.scalar(select(func.count()).select_from(sq).where(sq.c.n == 1)) or 0
+
+
 def _mencoes(s: Session, conds: list):
     """(tema, menções, soma das notas, reclamações) das respostas NPS das condições."""
     sq = (_com_empresa(select(func.unnest(Resposta.temas).label("tema"), Resposta.nota.label("nota"),
@@ -332,15 +372,19 @@ def _tom(s: Session, f: Filtro, contagens: tuple, anterior: tuple[date, date] | 
     """Tom (sentimento da IA) dos comentários do cliente nas respostas NPS e CSAT do filtro (a contagem do relatório
     de temas). `contagens` = as colunas de `_contagens_tom` do período (vêm da consulta de `_nps_csat`);
     `analisados` = analisadas pela IA com sentimento; `pendentes` = com comentário e análise na fila;
-    `anterior` só com período completo."""
-    total, com_comentario, analisados, pendentes, *sentimentos = contagens
+    `anterior` só com período completo. Etapa 5h: `ia_ligada` = IA disponível na plataforma e análise ligada na conta
+    (sem olhar a assinatura); `sem_analise` = comentários do período que a IA leria e que não estão analisados nem na
+    fila (`_contagens_tom`)."""
+    total, com_comentario, analisados, pendentes, sem_analise, *sentimentos = contagens
     antes = None
     if anterior is not None:
-        _, _, a_analisados, _, a_negativo, *_ = s.execute(_com_empresa(
+        _, _, a_analisados, _, _, a_negativo, *_ = s.execute(_com_empresa(
             select(*_contagens_tom()).select_from(Resposta)).where(*f.respostas(*anterior))).one()
         antes = {"analisados": a_analisados, "negativo": a_negativo}
+    ligada = ia.disponivel() and bool(s.scalar(select(Conta.ia_analise_respostas).where(Conta.id == f.conta_id)))
     return {"analisados": analisados, "com_comentario": com_comentario, "total_respostas": total,
-            "pendentes": pendentes, **dict(zip(SENTIMENTOS, sentimentos, strict=True)), "anterior": antes}
+            "pendentes": pendentes, **dict(zip(SENTIMENTOS, sentimentos, strict=True)), "anterior": antes,
+            "ia_ligada": ligada, "sem_analise": sem_analise}
 
 
 def _empresas(s: Session, conds: list) -> dict:
@@ -407,6 +451,8 @@ def painel(ctx: Contexto, de: date | None, ate: date | None, grupo_id: int | Non
             valor_anterior = _nps_de(s, f.respostas(*anterior))
             if valor_anterior is not None:
                 variacao = {"valor": nps["valor"] - valor_anterior, "anterior": valor_anterior}
+        atencao = _atencao(s, f, conds, hoje)
+        atencao["detratores_sem_plano"] = contar_sem_plano(s, f)  # etapa 5h
         return {
             "periodo": {"de": de, "ate": ate,
                         "anterior": {"de": anterior[0], "ate": anterior[1]} if anterior else None},
@@ -415,7 +461,7 @@ def painel(ctx: Contexto, de: date | None, ate: date | None, grupo_id: int | Non
             "csat": csat,
             "taxa_resposta": _taxa_resposta(s, f),
             "movimentacao": _movimentacao(s, f),
-            "atencao": _atencao(s, f, conds, hoje),
+            "atencao": atencao,
             "temas": _temas(s, conds, f.respostas(*anterior) if anterior else None),
             "comentarios": _comentarios(s, conds),
             "evolucao": _evolucao(s, f, conds),

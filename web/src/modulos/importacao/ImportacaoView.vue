@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
-import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, MessageSquareText, RefreshCw, Upload, UsersRound, X } from 'lucide-vue-next'
+import { AlertTriangle, ArrowLeft, CheckCircle2, ClipboardList, Download, FileSpreadsheet, MessageSquareText, RefreshCw, Sparkles, Upload, UsersRound, X } from 'lucide-vue-next'
 import {
   ApiError,
+  acoesApi,
   importacaoApi,
   mensagemDoErro,
+  painelApi,
   type AnaliseImportacao,
   type ChaveImportacao,
   type ConferenciaImportacao,
@@ -13,10 +15,13 @@ import {
   type ResultadoImportacao,
   type TipoImportacao,
 } from '@/api'
+import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
 import { useCadastrosStore } from '@/stores/cadastros'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarNumero, plural } from '@/utils/formatos'
+import { intervaloDoPeriodo } from '@/utils/periodo'
+import { rotuloCriarPlanos, textoPlanosCriados } from '@/modulos/painel/logica'
 import AlertaLimitePlano from '@/components/app/AlertaLimitePlano.vue'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Alerta from '@/components/ui/Alerta.vue'
@@ -34,6 +39,7 @@ import {
   mapeamentoInicial,
   obrigatoriosFaltando,
   pendenciasMapeamento,
+  textoIaImportados,
   tipoDaQuery,
   validarArquivo,
   type Mapeamento,
@@ -204,10 +210,48 @@ async function importar() {
   try {
     resultado.value = await importacaoApi.importar(analise.value.id, { ...corpo.value, ignorar_com_problema: ignorarComProblema.value })
     passo.value = 4
+    if (tipo.value === 'respostas') buscarDetratores()
   } catch (e) {
     tratarErro(e)
   } finally {
     importando.value = false
+  }
+}
+
+// ── Etapa 5h: depois de importar respostas, o convite para criar os planos dos detratores sem plano (últimos 90 dias,
+// os mesmos filtros do Início: só empresas ativas). A contagem vem do painel (quem não vê o painel não vê o convite).
+const ULTIMOS_90 = { ...intervaloDoPeriodo('90'), so_ativos: true }
+const semPlano = ref(0)
+const criandoPlanos = ref(false)
+const podeCriarPlanos = computed(() => sessao.pode('acoes.tratar') && sessao.pode('painel.ver'))
+const iaMarcadas = computed(() => Number(resultado.value?.ia_marcadas) || 0)
+
+async function buscarDetratores() {
+  semPlano.value = 0
+  if (!podeCriarPlanos.value) return
+  try {
+    semPlano.value = Number((await painelApi.obter(ULTIMOS_90)).atencao.detratores_sem_plano) || 0
+  } catch {
+    semPlano.value = 0 // sem a contagem, sem o convite (a importação já deu certo)
+  }
+}
+
+async function criarPlanos() {
+  if (criandoPlanos.value) return
+  criandoPlanos.value = true
+  try {
+    const r = await acoesApi.criarParaDetratores(ULTIMOS_90)
+    if (r.criadas > 0) {
+      avisar.sucesso(textoPlanosCriados(r))
+      router.push('/planos-de-acao').catch(() => undefined)
+    } else {
+      avisar.info(textoPlanosCriados(r))
+      semPlano.value = 0
+    }
+  } catch (e) {
+    avisar.erro(mensagemDoErro(e))
+  } finally {
+    criandoPlanos.value = false
   }
 }
 
@@ -216,6 +260,7 @@ function recomecar() {
   analise.value = null
   conferencia.value = null
   resultado.value = null
+  semPlano.value = 0
   limparErros()
   passo.value = 2
 }
@@ -549,8 +594,24 @@ onMounted(() => {
       <p v-if="tipo === 'respostas'" class="mx-auto mt-2 max-w-md text-sm text-texto-suave">
         As respostas entraram no histórico de cada contato e já contam no painel. Nenhuma ação foi criada e ninguém recebeu e-mail.
       </p>
+      <div v-if="tipo === 'respostas' && (iaMarcadas > 0 || semPlano > 0)" class="mx-auto mt-6 flex max-w-xl flex-col gap-3 text-left">
+        <p v-if="iaMarcadas > 0" class="flex items-start gap-3 rounded-xl bg-marca-suave p-4 text-sm text-texto" data-ia-importados>
+          <Sparkles class="mt-0.5 size-5 shrink-0 text-marca-texto" aria-hidden="true" />
+          <span>{{ textoIaImportados(iaMarcadas) }}</span>
+        </p>
+        <div v-if="semPlano > 0" class="flex flex-col gap-3 rounded-xl border border-borda bg-superficie-2 p-4 sm:flex-row sm:items-center" data-convite-planos>
+          <ClipboardList class="hidden size-5 shrink-0 text-texto-suave sm:block" aria-hidden="true" />
+          <p class="min-w-0 flex-1 text-sm text-texto">
+            <strong class="font-semibold">{{ semPlano === 1 ? '1 empresa teve' : `${formatarNumero(semPlano)} empresas tiveram` }} detrator nos últimos 90 dias</strong>
+            <span class="text-texto-suave"> e {{ semPlano === 1 ? 'ainda não tem' : 'ainda não têm' }} plano de ação.</span>
+          </p>
+          <Botao class="shrink-0 self-start sm:self-auto" :carregando="criandoPlanos" data-criar-planos @click="criarPlanos">
+            <ClipboardList v-if="!criandoPlanos" class="size-4" aria-hidden="true" /> {{ rotuloCriarPlanos(semPlano) }}
+          </Botao>
+        </div>
+      </div>
       <div class="mt-8 flex flex-wrap justify-center gap-2">
-        <Botao v-if="tipo === 'respostas' && sessao.pode('respostas.ver')" para="/respostas">Ver respostas</Botao>
+        <Botao v-if="tipo === 'respostas' && sessao.pode('respostas.ver')" :variante="semPlano > 0 ? 'secundario' : 'primario'" para="/respostas">Ver respostas</Botao>
         <Botao v-else para="/contatos">Ver contatos</Botao>
         <Botao variante="secundario" @click="recomecar">Importar outra planilha</Botao>
       </div>

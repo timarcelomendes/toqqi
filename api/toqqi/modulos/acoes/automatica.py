@@ -141,11 +141,19 @@ def _alerta(acao: Acao, r: Resposta, alvo: str, contato: Contato | None, para: s
     )
 
 
-def criar_acao_automatica(s: Session, r: Resposta) -> Acao | None:
-    """Cria a ação automática da resposta (se a nota pede) e coleta o alerta. Roda na transação da resposta."""
-    if r.origem not in ("pesquisa", "manual") or r.nota is None:
-        return None
-    prioridade_prazo = regra(obter(s, criar=False), r.tipo_nota, r.grupo)
+@dataclass
+class AcaoMontada:
+    acao: Acao  # ainda não gravada
+    alvo: str
+    contato: Contato | None
+
+
+def montar_acao(s: Session, r: Resposta, cfg=None, origem: str = "automatica",
+                criado_por: int | None = None) -> AcaoMontada | None:
+    """A ação de uma resposta pelas regras da automática (título, prioridade, prazo, responsável e descrição), sem
+    gravar; None se a nota não pede ação. `cfg` = a configuração das ações (padrão: a da conta). Etapa 5h: também a
+    dos planos para os detratores sem plano (`acoes.detratores`, origem `manual` e quem pediu)."""
+    prioridade_prazo = regra(cfg if cfg is not None else obter(s, criar=False), r.tipo_nota, r.grupo)
     if prioridade_prazo is None:
         return None
     prioridade, dias = prioridade_prazo
@@ -164,16 +172,27 @@ def criar_acao_automatica(s: Session, r: Resposta) -> Acao | None:
     acao = Acao(resposta_id=r.id, empresa_id=r.empresa_id, contato_id=r.contato_id,
                 responsavel_id=empresa.responsavel_id if empresa else None, titulo=_cortar(titulo, MAX_TITULO),
                 descricao=_descricao(r, escolhas, contato), prioridade=prioridade,
-                prazo=relogio.hoje() + timedelta(days=dias), situacao="a_fazer", origem="automatica", grupo=r.grupo,
-                tipo_nota=r.tipo_nota, nota=r.nota, criada_em=agora, atualizada_em=agora)
+                prazo=relogio.hoje() + timedelta(days=dias), situacao="a_fazer", origem=origem, grupo=r.grupo,
+                tipo_nota=r.tipo_nota, nota=r.nota, criado_por=criado_por, criada_em=agora, atualizada_em=agora)
+    return AcaoMontada(acao, alvo, contato)
+
+
+def criar_acao_automatica(s: Session, r: Resposta) -> Acao | None:
+    """Cria a ação automática da resposta (se a nota pede) e coleta o alerta. Roda na transação da resposta."""
+    if r.origem not in ("pesquisa", "manual") or r.nota is None:
+        return None
+    montada = montar_acao(s, r)
+    if montada is None:
+        return None
+    acao = montada.acao
     s.add(acao)
     s.flush()
     passos.marcar(s, r.conta_id, acao, r)  # etapa 5d: passos sugeridos pela IA, depois do commit
-    if prioridade == "alta" and acao.responsavel_id is not None:
+    if acao.prioridade == "alta" and acao.responsavel_id is not None:
         responsavel = s.get(Responsavel, acao.responsavel_id)
         lista = _coletados.get()
         if responsavel is not None and responsavel.email and lista is not None:
-            lista.append(_alerta(acao, r, alvo, contato, responsavel.email))
+            lista.append(_alerta(acao, r, montada.alvo, montada.contato, responsavel.email))
     return acao
 
 

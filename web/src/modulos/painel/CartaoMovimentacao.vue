@@ -8,7 +8,7 @@ import { formatarNumero } from '@/utils/formatos'
 import { tomNotaNps } from '@/utils/rotulos'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
 
-const props = defineProps<{ movimentacao: Painel['movimentacao'] }>()
+const props = defineProps<{ movimentacao: Painel['movimentacao']; /** Etapa 5h, modo exemplo: sem botão nem links. */ desativado?: boolean }>()
 const sessao = useSessaoStore()
 const aberto = ref(false)
 const id = useId()
@@ -53,7 +53,8 @@ function corNota(n: number) {
     <template v-if="itens.length">
       <button
         type="button"
-        class="-ml-3 inline-flex min-h-11 w-fit items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-marca-texto hover:bg-marca-suave"
+        class="-ml-3 inline-flex min-h-11 w-fit items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-marca-texto hover:bg-marca-suave disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:bg-transparent"
+        :disabled="desativado"
         :aria-expanded="aberto"
         :aria-controls="`${id}-lista`"
         @click="aberto = !aberto"
@@ -67,7 +68,7 @@ function corNota(n: number) {
             <p class="flex items-center gap-1.5 text-sm font-semibold text-texto">
               <TrendingUp v-if="m.tipo === 'resgatado'" class="size-4 shrink-0 text-sucesso" aria-hidden="true" />
               <TrendingDown v-else class="size-4 shrink-0 text-erro" aria-hidden="true" />
-              <RouterLink v-if="sessao.pode('contatos.ver')" :to="`/contatos/${m.contato.id}`" class="truncate hover:underline">{{ m.contato.nome }}</RouterLink>
+              <RouterLink v-if="!desativado && sessao.pode('contatos.ver')" :to="`/contatos/${m.contato.id}`" class="truncate hover:underline">{{ m.contato.nome }}</RouterLink>
               <span v-else class="truncate">{{ m.contato.nome }}</span>
             </p>
             <p class="truncate text-xs text-texto-fraco">

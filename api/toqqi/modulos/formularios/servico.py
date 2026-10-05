@@ -17,8 +17,8 @@ from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.filtros import FUSO, limites, periodo
 from toqqi.core.paginacao import Pagina
 from toqqi.core.texto import sem_acento
-from toqqi.modelos import Conta, Contato, Empresa, Formulario, Resposta
-from toqqi.modulos.formularios.modelos import MODELOS, perguntas_do_modelo, tema_do_modelo
+from toqqi.modelos import ConfigEnvios, Conta, Contato, Empresa, Formulario, Resposta
+from toqqi.modulos.formularios.modelos import MODELOS, TEMA_PADRAO, perguntas_do_modelo, tema_do_modelo
 from toqqi.modulos.formularios.semear import codigo_publico_livre
 from toqqi.modulos.formularios.validacao import (
     TIPOS_NOTA,
@@ -83,10 +83,26 @@ def listar(ctx: Contexto) -> list[dict]:
     return [_json(f, n, completo=False) for f, n in linhas]
 
 
-def modelos() -> list[dict]:
+def _cor_da_marca(s: Session) -> str | None:
+    """Etapa 5h: a cor da marca da conta (`config_envios.email_cor`), em minúsculas como no tema, ou None."""
+    cor = s.scalar(select(ConfigEnvios.email_cor))
+    return cor.lower() if cor else None
+
+
+def _com_a_marca(tema: dict, cor: str | None) -> dict:
+    """Formulário novo nasce com a cor da marca: troca a cor dos modelos (`TEMA_PADRAO`) pela da conta, se houver."""
+    if cor and str(tema.get("cor") or "").lower() == TEMA_PADRAO["cor"].lower():
+        return {**tema, "cor": cor}
+    return tema
+
+
+def modelos(ctx: Contexto) -> list[dict]:
+    """Os modelos, com a cor da marca da conta no tema (a prévia mostra a cor que o formulário vai ter)."""
+    with em_conta(ctx.conta_id) as s:
+        cor = _cor_da_marca(s)
     return [
         {"chave": chave, "nome": m["nome"], "descricao": m["descricao"],
-         "perguntas": normalizar_perguntas(perguntas_do_modelo(chave)), "tema": tema_do_modelo(chave)}
+         "perguntas": normalizar_perguntas(perguntas_do_modelo(chave)), "tema": _com_a_marca(tema_do_modelo(chave), cor)}
         for chave, m in MODELOS.items()
     ]
 
@@ -116,6 +132,8 @@ def criar(ctx: Contexto, dados) -> dict:
     tema = normalizar_tema(dados.tema, base_tema)
     descricao = dados.descricao if dados.descricao is not None else (MODELOS[chave]["descricao"] if chave else "")
     with em_conta(ctx.conta_id) as s:
+        if "cor" not in (dados.tema or {}):  # etapa 5h: sem cor pedida, nasce com a cor da marca (se houver)
+            tema = _com_a_marca(tema, _cor_da_marca(s))
         f = Formulario(conta_id=ctx.conta_id, nome=dados.nome, descricao=descricao, perguntas=perguntas, tema=tema)
         _inserir(s, f)
         return _json(f, 0)

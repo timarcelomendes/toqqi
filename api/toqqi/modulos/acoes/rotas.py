@@ -4,9 +4,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response
 
 from toqqi.core.deps import Contexto, requer
 from toqqi.core.paginacao import Pagina, pagina
-from toqqi.modulos.acoes import servico
+from toqqi.modulos.acoes import detratores, servico
 from toqqi.modulos.acoes.esquemas import AcaoAlterarIn, AcaoIn, ConfigAcoesIn, FiltrosAcoes, FiltrosListaAcoes
 from toqqi.modulos.acoes.passos import coletar_passos, sugerir_passos
+from toqqi.modulos.painel.rotas import FiltrosPainel
 
 router = APIRouter(prefix="/acoes", tags=["acoes"])
 VER = requer("acoes.ver")
@@ -39,6 +40,17 @@ def criar(dados: AcaoIn, tarefas: BackgroundTasks, ctx: Contexto = Depends(TRATA
     with coletar_passos() as passos:
         resultado = servico.criar(ctx, dados)
     tarefas.add_task(sugerir_passos, passos)  # passos sugeridos pela IA (ação de uma resposta), depois do commit
+    return resultado
+
+
+@router.post("/detratores")
+def criar_para_detratores(tarefas: BackgroundTasks, dados: FiltrosPainel | None = None,
+                          ctx: Contexto = Depends(TRATAR)):
+    """Etapa 5h: um plano para cada empresa (ou contato sem empresa) com detrator no filtro do painel e sem plano
+    aberto; corpo com os filtros do painel (de, ate, grupo_id, so_ativos; vazio = todo o histórico, só ativas)."""
+    with coletar_passos() as passos:
+        resultado = detratores.criar(ctx, *(dados or FiltrosPainel()).args())
+    tarefas.add_task(sugerir_passos, passos)  # passos sugeridos pela IA, depois do commit
     return resultado
 
 

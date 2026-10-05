@@ -105,6 +105,18 @@ export interface DadosEmpresaConta {
 /** Corpo de PUT /conta/dados: todos os campos de texto (os opcionais vazios vão como null). */
 export type DadosEmpresaContaIn = Omit<DadosEmpresaConta, 'logo_url' | 'atualizado_em'>
 
+/** Etapa 5h: GET /conta/marca (para quem vê o Início). `cor` = a cor dos e-mails (#RRGGBB) ou null. */
+export interface MarcaConta {
+  cor: string | null
+  tem_logo: boolean
+}
+
+/** Etapa 5h: PUT /conta/marca. `formularios_atualizados` = os que estavam na cor dos modelos e passaram para a nova. */
+export interface ResultadoMarca {
+  cor: string
+  formularios_atualizados: number
+}
+
 export interface DadosSessao {
   usuario: Usuario
   conta: Conta
@@ -405,6 +417,11 @@ export interface ResultadoImportacao {
   ignorados: number
   /** O contrato não fixa: pode vir a lista ou só a quantidade. */
   problemas: ProblemaImportacao[] | number
+  /**
+   * Etapa 5h (só na de respostas): quantos comentários importados dos últimos 90 dias foram para a fila da IA (a análise
+   * começa logo depois). Pode faltar no servidor antigo.
+   */
+  ia_marcadas?: number
 }
 
 // Formulários
@@ -962,6 +979,12 @@ export interface ConfigAcoes {
   acao_promotor: boolean
 }
 
+/** Etapa 5h: POST /acoes/detratores. Até 100 por chamada; `restantes` = os que ficaram para a próxima. */
+export interface ResultadoDetratores {
+  criadas: number
+  restantes: number
+}
+
 export interface FiltrosPainel {
   de?: string
   ate?: string
@@ -1019,6 +1042,10 @@ export interface TomComentarios {
   total_respostas: number
   /** Com comentário e análise da IA na fila (`ia_situacao = pendente`); pode faltar em servidor antigo. */
   pendentes?: number
+  /** Etapa 5h: IA disponível na plataforma e análise ligada na conta (pode faltar no servidor antigo). */
+  ia_ligada?: boolean
+  /** Etapa 5h: comentários do período que a IA leria, nem analisados nem na fila (pode faltar no servidor antigo). */
+  sem_analise?: number
   negativo: number
   misto: number
   neutro: number
@@ -1045,6 +1072,11 @@ export interface Painel {
     empresas: EmpresaAtencao[]
     /** `carteira` (painel v2): soma do valor mensal das empresas no filtro; null se nenhuma tem valor (pode faltar). */
     receita_em_risco: { valor: number | string; empresas: number; sem_valor: number; carteira?: ValorDecimal | null }
+    /**
+     * Etapa 5h: empresas (ou contatos sem empresa) com detrator no filtro e sem plano aberto, quantos planos
+     * POST /acoes/detratores criaria agora (pode faltar no servidor antigo).
+     */
+    detratores_sem_plano?: number
   }
   /**
    * Etapa 4b: `reclamacoes` (menções que contam como reclamação) e `variacao` (menções no período − no período

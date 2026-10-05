@@ -15,6 +15,7 @@ import type {
   PaginaRespostas,
   Painel,
   QuadroAcoes,
+  ResultadoDetratores,
   RespostaDetalhe,
   RespostaItem,
   SituacaoAcao,
@@ -60,6 +61,11 @@ export const acoesApi = {
   excluir: (id: Id) => api.delete(`/acoes/${seg(id)}`),
   configuracao: () => api.get<ConfigAcoes>('/acoes/configuracao'),
   salvarConfiguracao: (dados: Partial<ConfigAcoes>) => api.put<ConfigAcoes>('/acoes/configuracao', dados),
+  /**
+   * Etapa 5h: um plano para cada empresa (ou contato sem empresa) com detrator no filtro do painel e sem plano aberto
+   * (acoes.tratar). Até 100 por chamada, os mais urgentes primeiro.
+   */
+  criarParaDetratores: (filtros: FiltrosPainel = {}) => api.post<ResultadoDetratores>('/acoes/detratores', filtros),
 }
 
 export const painelApi = {

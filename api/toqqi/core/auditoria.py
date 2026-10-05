@@ -5,10 +5,10 @@ o filtro da tela de Auditoria e a exportação:
 - `acesso` "Acesso e segurança": login_*, cadastro_conta, senha_*, sessao_encerrada, seguranca_alterada, termos_*;
 - `equipe` "Equipe e permissões": usuario_criado/alterado/bloqueado, permissoes_alteradas;
 - `configuracoes` "Configurações": config_*, dados_empresa_alterados, logo_*, formulario_padrao/arquivado,
-  imagem_enviada, ia_analisar_recentes;
+  imagem_enviada, ia_analisar_recentes, marca_alterada (5h);
 - `envios` "Envios e descadastros": envio_*, lembretes_automaticos, descadastro*;
 - `dados` "Importações, edições e exportações": importacao*, resposta_editada, indicacao_registrada/atualizada,
-  exportacao_*;
+  exportacao_*, acoes_detratores_criadas (5h);
 - `exclusoes` "Exclusões definitivas": todo *_excluido(a) menos os globais conta_excluida*, e zona_risco;
 - `integracoes` "Integrações": chave_*, webhook_* (menos webhook_excluido), whatsapp_*;
 - `assinatura` "Assinatura e conta": o resto (inclusive exclusao_avisada e os globais da plataforma, como
@@ -60,10 +60,12 @@ ROTULOS = {
     "resposta_excluida": "Resposta excluída",
     "importacao_respostas": "Planilha de respostas antigas importada",
     "acao_excluida": "Plano de ação excluído",
+    "acoes_detratores_criadas": "Planos de ação criados para os detratores sem plano",  # etapa 5h
     "config_acoes": "Configurações dos planos de ação alteradas",
     "dados_empresa_alterados": "Dados da empresa alterados",
     "logo_alterado": "Logo da empresa alterado",
     "logo_removido": "Logo da empresa removido",
+    "marca_alterada": "Cor da marca nas pesquisas alterada",  # etapa 5h
     "config_ia": "Configurações de IA alteradas",
     "ia_analisar_recentes": "Comentários dos últimos 90 dias enviados para análise da IA",
     "assinatura_criada": "Assinatura criada",
@@ -127,12 +129,12 @@ def _grupo(evento: str) -> str:
         return "equipe"
     if evento.startswith(("config_", "logo_")) or evento in (
             "dados_empresa_alterados", "formulario_padrao", "formulario_arquivado", "imagem_enviada",
-            "ia_analisar_recentes"):
+            "ia_analisar_recentes", "marca_alterada"):
         return "configuracoes"
     if evento.startswith(("envio_", "descadastro")) or evento == "lembretes_automaticos":
         return "envios"
     if evento.startswith(("importacao", "exportacao_")) or evento in (
-            "resposta_editada", "indicacao_registrada", "indicacao_atualizada"):
+            "resposta_editada", "indicacao_registrada", "indicacao_atualizada", "acoes_detratores_criadas"):
         return "dados"
     if evento.startswith(("chave_", "webhook_", "whatsapp_")):
         return "integracoes"

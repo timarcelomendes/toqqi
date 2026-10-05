@@ -184,13 +184,13 @@ def test_atualizar_ou_manter_existentes(client, admin):
     assert (c2["novos"], c2["atualizados"], c2["avisos"]) == (2, 1, [])
     # manter: conta em ignorados
     r = client.post(f"{API}/importacao/{d['id']}/importar", headers=h, json=_corpo(d)).json()
-    assert r == {"novos": 2, "atualizados": 0, "ignorados": 1, "problemas": []}
+    assert r == {"novos": 2, "atualizados": 0, "ignorados": 1, "problemas": [], "ia_marcadas": 0}  # 5h: de 2025
     dia10 = next(x for x in lista_respostas(client, h)["itens"] if x["comentario"] == "Ótimo")
     assert dia10["nota"] == 9
     # atualizar: nota, comentário, grupo e temas
     d = _ok(client, h, segunda[:2])
     r = client.post(f"{API}/importacao/{d['id']}/importar", headers=h, json=_corpo(d, atualizar_existentes=True))
-    assert r.json() == {"novos": 0, "atualizados": 1, "ignorados": 0, "problemas": []}
+    assert r.json() == {"novos": 0, "atualizados": 1, "ignorados": 0, "problemas": [], "ia_marcadas": 0}
     x = client.get(f"{API}/respostas/{dia10['id']}", headers=h).json()
     assert (x["nota"], x["grupo"], x["comentario"], x["temas"]) == (2, "detrator", "Frete atrasou",
                                                                    ["prazo_entrega"])
@@ -398,10 +398,10 @@ def test_reimportar_com_comentario_novo_refaz_a_analise_da_ia(client, admin):
     criar_contato(client, h, nome="Paula", email="paula@x.com.br")
     cab = ["email", "data", "nota", "comentario"]
     dia = (relogio.hoje() - timedelta(days=5)).strftime("%d/%m/%Y")
-    _importar(client, h, [cab, ["paula@x.com.br", dia, "2", "O frete ficou caro demais"]])
+    # etapa 5h: a importada dos últimos 90 dias com comentário já vai para a IA, analisada logo depois do commit
+    assert _importar(client, h, [cab, ["paula@x.com.br", dia, "2", "O frete ficou caro demais"]])["ia_marcadas"] == 1
     rid = lista_respostas(client, h)["itens"][0]["id"]
-    assert client.post(f"{API}/conta/ia/analisar-recentes", headers=h).json()["marcadas"] == 1
-    assert tarefas.executar("ia")["ia"]["analisadas"] == 1
+    assert client.post(f"{API}/conta/ia/analisar-recentes", headers=h).json()["marcadas"] == 0
 
     def ver() -> dict:
         return client.get(f"{API}/respostas/{rid}", headers=h).json()

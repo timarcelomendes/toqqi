@@ -120,7 +120,8 @@ def test_tom_com_periodo_e_anterior(client, cenario, dono):
     # base do painel (só ativas, não arquivadas): 9 NPS + 4 CSAT; 8 com comentário (7 NPS + "Motorista grosseiro");
     # analisados: os 8 com comentário menos o pendente ("Atrasou de novo") → 7; a sem comentário não conta
     assert t == {"analisados": 7, "com_comentario": 8, "total_respostas": 13, "pendentes": 1, "negativo": 3, "misto": 1,
-                 "neutro": 1, "positivo": 1 + 1, "anterior": {"analisados": 1, "negativo": 1}}  # "Demorou"
+                 "neutro": 1, "positivo": 1 + 1, "anterior": {"analisados": 1, "negativo": 1},  # "Demorou"
+                 "ia_ligada": True, "sem_analise": 0}  # etapa 5h: todos os comentários analisados ou na fila
 
 
 def test_tom_filtros_de_empresa_e_sem_periodo(client, cenario, dono):
@@ -132,7 +133,8 @@ def test_tom_filtros_de_empresa_e_sem_periodo(client, cenario, dono):
     # Rede Leste: Carla, Caio e Cris (6 NPS + 2 CSAT); no anterior, sem comentários
     t = _painel(client, h, grupo_id=cenario["g1"]["id"], **MARCO)["tom"]
     assert t == {"analisados": 4, "com_comentario": 5, "total_respostas": 8, "pendentes": 1, "negativo": 2, "misto": 1,
-                 "neutro": 0, "positivo": 1, "anterior": {"analisados": 0, "negativo": 0}}
+                 "neutro": 0, "positivo": 1, "anterior": {"analisados": 0, "negativo": 0}, "ia_ligada": True,
+                 "sem_analise": 0}
     # sem período: todo o histórico ("Demorou" entra) e sem anterior; só `de` também não tem anterior
     t = _painel(client, h)["tom"]
     assert (t["analisados"], t["negativo"], t["com_comentario"], t["total_respostas"], t["pendentes"], t["anterior"]) == (
@@ -142,11 +144,14 @@ def test_tom_filtros_de_empresa_e_sem_periodo(client, cenario, dono):
 
 def test_tom_sem_ia_e_periodo_vazio(client, cenario):
     t = _painel(client, cenario["h"], **MARCO)["tom"]
+    # etapa 5h: os 8 comentários (todos com 3+ letras) estão sem análise e fora da fila; a IA está ligada na conta
     assert t == {"analisados": 0, "com_comentario": 8, "total_respostas": 13, "pendentes": 0, "negativo": 0, "misto": 0,
-                 "neutro": 0, "positivo": 0, "anterior": {"analisados": 0, "negativo": 0}}
+                 "neutro": 0, "positivo": 0, "anterior": {"analisados": 0, "negativo": 0}, "ia_ligada": True,
+                 "sem_analise": 8}
     t = _painel(client, cenario["h"], de="2025-12-01", ate="2025-12-31")["tom"]
     assert t == {"analisados": 0, "com_comentario": 0, "total_respostas": 0, "pendentes": 0, "negativo": 0, "misto": 0,
-                 "neutro": 0, "positivo": 0, "anterior": {"analisados": 0, "negativo": 0}}
+                 "neutro": 0, "positivo": 0, "anterior": {"analisados": 0, "negativo": 0}, "ia_ligada": True,
+                 "sem_analise": 0}
 
 
 # ---- carteira e valor mensal no ranking -------------------------------------------
@@ -193,7 +198,8 @@ def test_acrescimos_respeitam_rls(client, cenario, dono):
     pb = _painel(client, hb, **MARCO)
     assert pb["atencao"]["receita_em_risco"]["carteira"] == 900.0
     assert pb["tom"] == {"analisados": 3, "com_comentario": 3, "total_respostas": 3, "pendentes": 0, "negativo": 3, "misto": 0,
-                         "neutro": 0, "positivo": 0, "anterior": {"analisados": 0, "negativo": 0}}
+                         "neutro": 0, "positivo": 0, "anterior": {"analisados": 0, "negativo": 0}, "ia_ligada": True,
+                         "sem_analise": 0}
     assert sum(x["total"] for x in pb["evolucao_12m"]) == 3
     assert pb["empresas"]["menor"] == [{"empresa": {"id": eb["id"], "nome": "Empresa B"}, "nps": -100,
                                         "respostas": 3, "valor_mensal": 900.0}]

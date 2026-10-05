@@ -1,6 +1,6 @@
 // Regras puras do Painel (sem Vue): faixas e cores do NPS, números com sinal, meses, primeiros passos (com "ocultar"
 // guardado no navegador), as escalas dos gráficos (evolução, medidor, régua, barras divergentes) e a manchete "O que mudou".
-import type { FaixaNps, Id, Painel, Permissao, Pico, TomComentarios } from '@/api/tipos'
+import type { FaixaNps, Id, Painel, Permissao, Pico, ResultadoDetratores, TomComentarios } from '@/api/tipos'
 import { dataIsoValida, ehPreset, type PresetPeriodo } from '@/utils/periodo'
 import type { Tom } from '@/utils/rotulos'
 
@@ -475,17 +475,26 @@ export function resumoTom(tom: TomComentarios | null | undefined): ResumoTom | n
   }
 }
 
+export type EstadoTom = 'dados' | 'sem_comentarios' | 'analisando' | 'nao_lidos' | 'curtos' | 'ligar'
+
 /**
  * O que o bloco mostra, só pelo que o painel devolveu para os filtros: os números ('dados'); sem comentários no período
  * ('sem_comentarios'); nada analisado mas comentários na fila da IA ('analisando', `pendentes` > 0); ou nada analisado
- * nem na fila ('ligar': a análise está desligada ou não chegou a estes comentários).
+ * nem na fila. Aí, etapa 5h: com a IA ligada (`ia_ligada`), 'nao_lidos' quando há comentários que a IA ainda não leu
+ * (`sem_analise` > 0: "Analisar agora") ou 'curtos' quando os que há são curtos demais para ela; desligada (ou servidor
+ * sem o campo), 'ligar'.
  */
 export function estadoTom(
-  tom: Pick<TomComentarios, 'analisados' | 'com_comentario'> & { pendentes?: number | null },
-): 'dados' | 'sem_comentarios' | 'analisando' | 'ligar' {
+  tom: Pick<TomComentarios, 'analisados' | 'com_comentario'> & {
+    pendentes?: number | null
+    ia_ligada?: boolean | null
+    sem_analise?: number | null
+  },
+): EstadoTom {
   if (numero(tom.analisados) > 0) return 'dados'
   if (numero(tom.com_comentario) <= 0) return 'sem_comentarios'
   if (numero(tom.pendentes) > 0) return 'analisando'
+  if (tom.ia_ligada === true) return numero(tom.sem_analise) > 0 ? 'nao_lidos' : 'curtos'
   return 'ligar'
 }
 
@@ -532,7 +541,11 @@ export interface EntradaManchete {
    * (o período termina hoje e não há grupo filtrado; veja `picosValemParaFiltros`). Sem o campo, valem.
    */
   picosValem?: boolean
-  atencao: Pick<Painel['atencao'], 'acoes_abertas' | 'acoes_vencidas'> & { receita_em_risco: Pick<Painel['atencao']['receita_em_risco'], 'valor' | 'empresas'> }
+  atencao: Pick<Painel['atencao'], 'acoes_abertas' | 'acoes_vencidas'> & {
+    receita_em_risco: Pick<Painel['atencao']['receita_em_risco'], 'valor' | 'empresas'>
+    /** Etapa 5h: empresas com detrator e sem plano aberto (o botão "Criar planos"). */
+    detratores_sem_plano?: number | null
+  }
 }
 
 export interface Manchete {
@@ -652,7 +665,8 @@ export function montarManchete(e: EntradaManchete): Manchete {
 }
 
 export interface AcaoManchete {
-  tipo: 'pico' | 'detratores' | 'planos' | 'toqqiai'
+  /** 'criar_planos' (etapa 5h): chama POST /acoes/detratores; os outros levam a uma tela ou abrem o ToqqiAI. */
+  tipo: 'pico' | 'criar_planos' | 'detratores' | 'planos' | 'toqqiai'
   rotulo: string
   para?: { path: string; query?: Record<string, string> }
 }
@@ -661,19 +675,22 @@ export interface AcaoManchete {
 export const PERGUNTA_TOQQIAI = 'O que explica a variação do NPS no período?'
 
 /**
- * Até 3 botões da manchete: as reclamações do pico; os detratores (sem plano aberto) ou os planos; e o ToqqiAI.
+ * Até 3 botões da manchete: as reclamações do pico; "Criar planos para N empresas" (etapa 5h: empresas com detrator
+ * e sem plano aberto, para quem trata planos de ação); os detratores (sem plano aberto) ou os planos; e o ToqqiAI.
  * Cada um só para quem pode abrir o destino.
  */
 export function acoesManchete(
   e: EntradaManchete,
   m: Pick<Manchete, 'pico'>,
-  o: { podeVerRespostas: boolean; podeVerAcoes: boolean; toqqiAI: boolean; consultaNps: Record<string, string> },
+  o: { podeVerRespostas: boolean; podeVerAcoes: boolean; toqqiAI: boolean; consultaNps: Record<string, string>; podeTratarAcoes?: boolean },
 ): AcaoManchete[] {
   const acoes: AcaoManchete[] = []
   if (m.pico && o.podeVerRespostas) {
     const n = m.pico.reclamacoes
     acoes.push({ tipo: 'pico', rotulo: n === 1 ? 'Ver a reclamação' : `Ver as ${fmtNumeroInt(n)} reclamações`, para: { path: '/respostas', query: consultaPico(m.pico) } })
   }
+  const semPlano = numero(e.atencao?.detratores_sem_plano)
+  if (semPlano > 0 && o.podeTratarAcoes) acoes.push({ tipo: 'criar_planos', rotulo: rotuloCriarPlanos(semPlano) })
   const comDetrator = numero(e.nps?.detratores) > 0 || numero(e.atencao?.receita_em_risco?.empresas) > 0
   const abertas = numero(e.atencao?.acoes_abertas)
   const vencidas = numero(e.atencao?.acoes_vencidas)
@@ -688,6 +705,25 @@ export function acoesManchete(
   }
   if (o.toqqiAI) acoes.push({ tipo: 'toqqiai', rotulo: 'Perguntar ao ToqqiAI' })
   return acoes.slice(0, 3)
+}
+
+/** Etapa 5h (tom): "12 comentários ainda não foram lidos pela IA." */
+export function textoNaoLidos(n: number): string {
+  return n === 1 ? '1 comentário ainda não foi lido pela IA.' : `${fmtNumeroInt(n)} comentários ainda não foram lidos pela IA.`
+}
+
+/** Etapa 5h: "Criar planos para 4 empresas" / "Criar planos para 1 empresa". */
+export function rotuloCriarPlanos(n: number): string {
+  return `Criar planos para ${n === 1 ? '1 empresa' : `${fmtNumeroInt(n)} empresas`}`
+}
+
+/** Etapa 5h: o aviso depois de criar, "4 planos criados." (e quantos ficaram para a próxima, se passou de 100). */
+export function textoPlanosCriados(r: Pick<ResultadoDetratores, 'criadas' | 'restantes'>): string {
+  if (!r.criadas) return 'Nenhum plano novo: as empresas com detrator já têm plano aberto.'
+  const criados = r.criadas === 1 ? '1 plano criado.' : `${fmtNumeroInt(r.criadas)} planos criados.`
+  if (!r.restantes) return criados
+  const faltam = r.restantes === 1 ? 'Falta 1 empresa' : `Faltam ${fmtNumeroInt(r.restantes)} empresas`
+  return `${criados} ${faltam}: use o botão de novo para criar os próximos.`
 }
 
 /** Texto corrido de partes (para leitor de tela e testes). */

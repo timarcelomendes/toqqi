@@ -10,8 +10,16 @@ import { useSessaoStore } from '@/stores/sessao'
 import { formatarNumero, plural } from '@/utils/formatos'
 import { formatarMedia2, formatarMoedaCurta, pctCarteira, tomCsat } from './logica'
 
-const props = defineProps<{ atencao: Painel['atencao']; csat: Painel['csat']; taxa: Painel['taxa_resposta'] }>()
+const props = defineProps<{
+  atencao: Painel['atencao']
+  csat: Painel['csat']
+  taxa: Painel['taxa_resposta']
+  /** Etapa 5h, modo exemplo: sem links (os atalhos viram texto). */
+  desativado?: boolean
+}>()
 const sessao = useSessaoStore()
+/** O perfil abre o destino (e não é o modo exemplo). */
+const pode = (permissao: Parameters<typeof sessao.pode>[0]) => !props.desativado && sessao.pode(permissao)
 
 const COR = { sucesso: 'text-sucesso', atencao: 'text-atencao', erro: 'text-erro', neutro: 'text-texto', marca: 'text-texto', info: 'text-texto' } as const
 
@@ -22,7 +30,7 @@ const abertas = computed(() => props.atencao?.acoes_abertas ?? 0)
 const vencidas = computed(() => props.atencao?.acoes_vencidas ?? 0)
 /** A empresa com a ação mais urgente (a API manda em ordem de urgência). */
 const urgente = computed(() => (props.atencao?.empresas ?? []).find((e) => e.acao_id !== null && e.acao_id !== undefined) ?? null)
-const podeVerAcoes = computed(() => sessao.pode('acoes.ver'))
+const podeVerAcoes = computed(() => pode('acoes.ver'))
 /** Nenhuma empresa do filtro tem valor mensal (carteira nula) e nada em risco: o número não diria nada. */
 const semValores = computed(() => receita.value.carteira === null && valorReceita.value === 0)
 const temCsat = computed(() => !!props.csat && props.csat.total > 0 && props.csat.percentual !== null)
@@ -39,7 +47,7 @@ const APAGADO = 'border border-dashed border-borda-forte bg-superficie-2'
     <div v-if="semValores" :class="[CARTAO, APAGADO]" data-indicador="receita" data-apagado>
       <h2 class="text-sm font-semibold text-texto-suave">Receita em risco</h2>
       <p class="font-bold text-texto-suave">Cadastre o valor mensal das empresas</p>
-      <RouterLink v-if="sessao.pode('contatos.editar')" to="/contatos?aba=empresas" class="link inline-flex min-h-11 items-center text-sm sm:min-h-0">
+      <RouterLink v-if="pode('contatos.editar')" to="/contatos?aba=empresas" class="link inline-flex min-h-11 items-center text-sm sm:min-h-0">
         Ir para Contatos › Empresas
       </RouterLink>
       <p v-else class="text-xs text-texto-fraco">Com o valor do contrato, o painel mostra quanto está em risco.</p>
@@ -57,7 +65,7 @@ const APAGADO = 'border border-dashed border-borda-forte bg-superficie-2'
       </p>
       <p v-if="receita.sem_valor" class="text-xs text-atencao">
         {{ receita.sem_valor === 1 ? '1 delas não tem' : `${formatarNumero(receita.sem_valor)} delas não têm` }} o valor do contrato.
-        <RouterLink v-if="sessao.pode('contatos.ver')" to="/contatos?aba=empresas" class="link inline-flex min-h-11 items-center sm:min-h-0">Completar em Empresas</RouterLink>
+        <RouterLink v-if="pode('contatos.ver')" to="/contatos?aba=empresas" class="link inline-flex min-h-11 items-center sm:min-h-0">Completar em Empresas</RouterLink>
       </p>
     </div>
 
@@ -80,6 +88,9 @@ const APAGADO = 'border border-dashed border-borda-forte bg-superficie-2'
           Tratar {{ urgente.empresa.nome }}<span class="sr-only">: a ação mais urgente</span>
         </RouterLink>
       </p>
+      <p v-else-if="urgente && desativado" class="text-xs font-semibold text-texto-suave" data-tratar>
+        Tratar {{ urgente.empresa.nome }}<span class="sr-only">: a ação mais urgente</span>
+      </p>
     </div>
 
     <!-- CSAT -->
@@ -91,7 +102,7 @@ const APAGADO = 'border border-dashed border-borda-forte bg-superficie-2'
     <div v-else :class="[CARTAO, APAGADO]" data-indicador="csat" data-apagado>
       <h2 class="text-sm font-semibold text-texto-suave">Satisfação (CSAT)</h2>
       <p class="font-bold text-texto-suave">Ainda sem respostas</p>
-      <RouterLink v-if="sessao.pode('formularios.ver')" to="/formularios" class="link inline-flex min-h-11 items-center text-sm sm:min-h-0">
+      <RouterLink v-if="pode('formularios.ver')" to="/formularios" class="link inline-flex min-h-11 items-center text-sm sm:min-h-0">
         Incluir a pergunta 1–5 num formulário
       </RouterLink>
       <p v-else class="text-xs text-texto-fraco">Nenhuma resposta de nota 1 a 5 no período.</p>
@@ -112,7 +123,7 @@ const APAGADO = 'border border-dashed border-borda-forte bg-superficie-2'
     <div v-else :class="[CARTAO, APAGADO]" data-indicador="taxa" data-apagado>
       <h2 class="text-sm font-semibold text-texto-suave">Taxa de resposta</h2>
       <p class="font-bold text-texto-suave">Nenhum envio no período</p>
-      <RouterLink v-if="sessao.pode('envios.ver')" to="/envios" class="link inline-flex min-h-11 items-center text-sm sm:min-h-0">Ir para Envios</RouterLink>
+      <RouterLink v-if="pode('envios.ver')" to="/envios" class="link inline-flex min-h-11 items-center text-sm sm:min-h-0">Ir para Envios</RouterLink>
       <p v-else class="text-xs text-texto-fraco">Sem pesquisas enviadas, não dá para calcular.</p>
     </div>
   </section>

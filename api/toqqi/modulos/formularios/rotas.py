@@ -21,7 +21,7 @@ def listar(ctx: Contexto = Depends(VER)):
 
 @router.get("/modelos")
 def modelos(ctx: Contexto = Depends(VER)):
-    return servico.modelos()
+    return servico.modelos(ctx)
 
 
 @router.post("", status_code=201)

@@ -72,7 +72,9 @@ function painel(extra: Partial<Painel> = {}): Painel {
     ],
     empresas: { menor: [], maior: [] },
     palavras: [{ palavra: 'entrega', total: 31 }],
-    primeiros_passos: { contatos: true, envios_ligados: true, primeiro_envio: false, primeira_resposta: false },
+    // Etapa 5h: com respostas (a conta importou o histórico), mas sem enviar a pesquisa ainda. Sem nenhuma resposta, o
+    // Início é o "Comece por aqui" (tests/etapa5hInicio.test.ts).
+    primeiros_passos: { contatos: true, envios_ligados: true, primeiro_envio: false, primeira_resposta: true },
     ...extra,
   }
 }
@@ -185,7 +187,7 @@ describe('painel', () => {
     apiFalsa({ 'GET /painel': () => painel(), 'GET /cadastros/grupos': () => [] })
     let w = await abrir(PainelView)
     expect(w.text()).toContain('Primeiros passos')
-    expect(w.text()).toContain('Primeiros passos: 2 de 4.')
+    expect(w.text()).toContain('Primeiros passos: 3 de 4.')
     // O próximo passo, com o atalho (o perfil pode abrir Envios).
     expect(w.text()).toContain('Próximo: mande a primeira pesquisa')
     expect(w.get('[data-proximo-passo]').attributes('href')).toBe('/envios')

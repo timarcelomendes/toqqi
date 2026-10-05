@@ -30,18 +30,24 @@ Configurações › IA (etapa 5d): o estado ganha o nível do modelo e o estilo 
 interruptor dos passos das ações. O PUT é parcial (só os campos enviados mudam); desligar a análise
 cancela as respostas pendentes e desligar os passos cancela as ações pendentes; a auditoria `config_ia` leva só os
 campos que mudaram (nada mudou, nada vai).
+
+Etapa 5h (IA nos importados): "analisar os últimos 90 dias" tem um núcleo sem erros (`marcar_recentes`, a mesma regra
+e o mesmo saldo), usado também ao concluir a importação de respostas (`marcar_importadas`: só as importadas agora, e só
+com a IA ativa na conta). Depois do commit, `processar_conta` analisa a fila daquela conta já (até 100 análises ou
+120 s, no máximo 4 ao mesmo tempo no processo, cada uma por `processar`); o resto fica para a tarefa `ia`.
 """
 import logging
 import threading
 import time as relogio_real
 from collections.abc import Iterable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import func, or_, select, update
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import BigInteger, any_, bindparam, func, or_, select, update
+from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.orm import Session
 
 from toqqi.core import ia, ia_texto, relogio
@@ -69,6 +75,10 @@ DIAS_RECENTES = 90
 MAX_SEGUNDO_PLANO = 4  # análises logo depois de gravar, ao mesmo tempo, por processo
 TEMPO_SEGUNDO_PLANO = 15  # segundos por chamada nesse caminho (a tarefa usa ia.TEMPO_LIMITE)
 _vagas = threading.BoundedSemaphore(MAX_SEGUNDO_PLANO)
+# etapa 5h: a fila de uma conta logo depois de importar respostas (vagas próprias, também 4 por processo)
+MAX_FILA_CONTA = 100  # análises por importação
+TEMPO_FILA_CONTA = 120  # segundos
+_vagas_fila_conta = threading.BoundedSemaphore(MAX_SEGUNDO_PLANO)
 
 
 # ---- regras -------------------------------------------------------------------
@@ -341,6 +351,61 @@ def executar() -> dict:
     return resumo
 
 
+CHAVES_RESUMO = {"analisada": "analisadas", "falhou": "falharam", "limite": "limite"}
+
+
+def processar_conta(conta_id: int) -> dict:
+    """Etapa 5h, depois de importar respostas (BackgroundTasks, depois do commit): a fila desta conta já, das respostas
+    mais recentes para as mais antigas, até 100 análises ou 120 s, no máximo 4 ao mesmo tempo no processo (sem vaga,
+    espera até o fim do tempo). Cada uma como na tarefa (`processar`: reserva, teto e tentativas), com o tempo limite
+    do segundo plano; falha de configuração para a rodada. O resto fica pendente para a tarefa `ia`. Não levanta
+    exceção. Devolve {analisadas, falharam, limite}."""
+    resumo = {"analisadas": 0, "falharam": 0, "limite": 0}
+    try:
+        if not ia.disponivel():
+            return resumo
+        inicio = relogio_real.monotonic()
+        agora = relogio.agora()
+        with em_conta(conta_id) as s:
+            conta = s.get(Conta, conta_id)
+            if conta is None or not ia_ativa(conta):
+                return resumo
+            ids = s.scalars(
+                select(Resposta.id)
+                .where(Resposta.conta_id == conta_id, Resposta.ia_situacao == "pendente",
+                       or_(Resposta.ia_reservada_em.is_(None), Resposta.ia_reservada_em < agora - RESERVA))
+                .order_by(Resposta.data_resposta.desc(), Resposta.id.desc()).limit(MAX_FILA_CONTA)).all()
+        parar = threading.Event()
+        trava = threading.Lock()
+
+        def uma(resposta_id: int) -> None:
+            restante = TEMPO_FILA_CONTA - (relogio_real.monotonic() - inicio)
+            if parar.is_set() or restante <= 0 or not _vagas_fila_conta.acquire(timeout=restante):
+                return
+            try:
+                if parar.is_set():
+                    return
+                resultado = processar(conta_id, resposta_id, TEMPO_SEGUNDO_PLANO)
+            except ia.FalhaIA as falha:
+                parar.set()
+                _avisar_configuracao(falha)
+                return
+            except Exception:  # noqa: BLE001 - uma resposta não derruba as outras
+                log.exception("IA: erro ao analisar a resposta %s da conta %s", resposta_id, conta_id)
+                resultado = "falhou"
+            finally:
+                _vagas_fila_conta.release()
+            if resultado in CHAVES_RESUMO:
+                with trava:
+                    resumo[CHAVES_RESUMO[resultado]] += 1
+
+        with ThreadPoolExecutor(max_workers=MAX_SEGUNDO_PLANO, thread_name_prefix="ia-fila-conta") as executor:
+            list(executor.map(uma, ids))
+    except Exception:  # noqa: BLE001 - segundo plano: registra e segue; a tarefa retoma
+        log.exception("IA: erro ao analisar a fila da conta %s", conta_id)
+    return resumo
+
+
 # ---- configuração da conta (Configurações › IA) --------------------------------
 
 def _estado(s: Session, conta: Conta) -> dict:
@@ -397,10 +462,63 @@ def _indisponivel(msg: str) -> AppError:
     return AppError(409, "ia_indisponivel", msg)
 
 
+def texto_qualifica_no_banco(coluna=None):
+    """A regra de `texto_qualifica` (texto com 3+ letras) numa consulta (padrão: o texto do cliente da resposta)."""
+    coluna = Resposta.comentario_cliente if coluna is None else coluna
+    return func.length(func.regexp_replace(coluna, "[^[:alpha:]]", "", "g")) >= MIN_LETRAS
+
+
+def saldo_do_teto(s: Session, conta: Conta) -> int:
+    """O que cabe no teto do mês: o limite menos as análises do mês, as respostas pendentes e os passos de ações
+    pendentes (que vão consumir o mesmo teto, etapa 5d). Pode ser zero ou negativo."""
+    uso = s.get(IaUsoMensal, (conta.id, mes_atual()))
+    pendentes = s.scalar(select(func.count()).select_from(Resposta).where(
+        Resposta.conta_id == conta.id, Resposta.ia_situacao == "pendente")) or 0
+    passos_pendentes = s.scalar(select(func.count()).select_from(Acao).where(
+        Acao.conta_id == conta.id, Acao.ia_passos_situacao == "pendente")) or 0
+    return teto_mensal(conta) - (uso.analises if uso else 0) - pendentes - passos_pendentes
+
+
+def marcar_recentes(s: Session, conta: Conta, ids: Iterable[int] | None = None) -> tuple[int, int]:
+    """Núcleo de "analisar os últimos 90 dias", sem erros (quem chama confere a IA da conta): marca como pendentes as
+    respostas dos últimos 90 dias (todas as origens, inclusive importadas) com texto do cliente de 3+ letras, não
+    arquivadas e sem análise (nunca analisadas, falhou ou limite), das mais recentes para as mais antigas, até o saldo
+    do teto (`saldo_do_teto`). `ids`: só entre estas respostas. Devolve (marcadas, saldo antes de marcar)."""
+    saldo = saldo_do_teto(s, conta)
+    ids = None if ids is None else list(ids)
+    if saldo <= 0 or (ids is not None and not ids):
+        return 0, saldo
+    conds = [Resposta.conta_id == conta.id, Resposta.arquivada.is_(False),
+             Resposta.data_resposta >= inicio_do_dia(relogio.hoje() - timedelta(days=DIAS_RECENTES - 1)),
+             or_(Resposta.ia_situacao.is_(None), Resposta.ia_situacao.in_(("falhou", "limite"))),
+             texto_qualifica_no_banco()]
+    if ids is not None:
+        conds.append(Resposta.id == any_(bindparam("ids_marcar", ids, type_=ARRAY(BigInteger))))
+    escolhidas = (select(Resposta.id).where(*conds)
+                  .order_by(Resposta.data_resposta.desc(), Resposta.id.desc()).limit(saldo))
+    marcadas = s.execute(
+        update(Resposta).where(Resposta.id.in_(escolhidas))
+        .values(ia_situacao="pendente", ia_tentativas=0, ia_temas=None,
+                ia_sentimento=None, ia_resumo=None, ia_modelo=None, ia_em=None)
+        .execution_options(synchronize_session=False)).rowcount
+    return marcadas, saldo
+
+
+def marcar_importadas(s: Session, conta_id: int, ids: Iterable[int]) -> int:
+    """Etapa 5h, ao concluir a importação de respostas (na transação dela): as importadas agora entram na fila pela
+    regra e com o saldo de `marcar_recentes`. Só com a IA ativa na conta (disponível na plataforma, `ia_analise_respostas`
+    e conta liberada); senão, nenhuma. Devolve quantas foram marcadas."""
+    ids = list(ids)
+    if not ids or not ia.disponivel():
+        return 0
+    conta = s.get(Conta, conta_id, with_for_update=True)  # uma marcação por vez (como em analisar_recentes)
+    if conta is None or not ia_ativa(conta):
+        return 0
+    return marcar_recentes(s, conta, ids)[0]
+
+
 def analisar_recentes(ctx: Contexto) -> dict:
-    """Marca como pendentes as respostas dos últimos 90 dias (todas as origens, inclusive importadas) com texto do
-    cliente de 3+ letras, não arquivadas e sem análise (nunca analisadas, falhou ou limite), das mais recentes para
-    as mais antigas, até o saldo do teto do mês menos as pendentes."""
+    """POST /conta/ia/analisar-recentes: `marcar_recentes` na conta, com os erros de quando a IA não está ativa."""
     with em_conta(ctx.conta_id) as s:
         conta = s.get(Conta, ctx.conta_id, with_for_update=True)  # uma marcação por vez
         if not ia.disponivel():
@@ -409,25 +527,7 @@ def analisar_recentes(ctx: Contexto) -> dict:
             raise _indisponivel("Ligue \"Analisar comentários com IA\" antes.")
         if not liberada(conta):
             raise _indisponivel("A análise com IA volta a funcionar quando a assinatura estiver em dia.")
-        estado = _estado(s, conta)
-        # os passos das ações pendentes também vão consumir o teto (etapa 5d)
-        passos_pendentes = s.scalar(select(func.count()).select_from(Acao).where(
-            Acao.conta_id == ctx.conta_id, Acao.ia_passos_situacao == "pendente")) or 0
-        saldo = estado["limite"] - estado["analises"] - estado["pendentes"] - passos_pendentes
-        marcadas = 0
-        if saldo > 0:
-            letras = func.length(func.regexp_replace(Resposta.comentario_cliente, "[^[:alpha:]]", "", "g"))
-            ids = (select(Resposta.id)
-                   .where(Resposta.conta_id == ctx.conta_id, Resposta.arquivada.is_(False),
-                          Resposta.data_resposta >= inicio_do_dia(relogio.hoje() - timedelta(days=DIAS_RECENTES - 1)),
-                          or_(Resposta.ia_situacao.is_(None), Resposta.ia_situacao.in_(("falhou", "limite"))),
-                          letras >= MIN_LETRAS)
-                   .order_by(Resposta.data_resposta.desc(), Resposta.id.desc()).limit(saldo))
-            marcadas = s.execute(
-                update(Resposta).where(Resposta.id.in_(ids))
-                .values(ia_situacao="pendente", ia_tentativas=0, ia_temas=None,
-                        ia_sentimento=None, ia_resumo=None, ia_modelo=None, ia_em=None)
-                .execution_options(synchronize_session=False)).rowcount
+        marcadas, saldo = marcar_recentes(s, conta)
         registrar(s, "ia_analisar_recentes", "info", {"marcadas": marcadas}, usuario_id=ctx.usuario_id)
         restantes = max(0, saldo - marcadas)
         return {"marcadas": marcadas, "restantes_no_mes": restantes}

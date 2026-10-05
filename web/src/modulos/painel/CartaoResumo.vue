@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // Resumo do período (um cartão, duas áreas): à esquerda o medidor do NPS, a faixa e a variação; à direita "O que mudou"
-// (manchete por regras, sem IA), até 3 botões e a distribuição detratores/neutros/promotores.
+// (manchete por regras, sem IA), até 3 botões e a distribuição detratores/neutros/promotores. Etapa 5h: o botão
+// "Criar planos para N empresas" avisa quem chama (`criarPlanos`); no modo exemplo, todos os botões ficam desligados.
 import { computed } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
-import { Gauge } from 'lucide-vue-next'
+import { ClipboardList, Gauge } from 'lucide-vue-next'
 import type { GrupoNota, Painel } from '@/api/tipos'
 import { plural } from '@/utils/formatos'
 import BarraGrupos from '@/components/app/BarraGrupos.vue'
@@ -23,8 +24,12 @@ const props = defineProps<{
   manchete: Manchete
   acoes: AcaoManchete[]
   linkGrupo?: (g: GrupoNota) => RouteLocationRaw | undefined
+  /** Etapa 5h: criando os planos dos detratores (o botão mostra que está carregando). */
+  criandoPlanos?: boolean
+  /** Etapa 5h, modo exemplo: os botões aparecem, desligados. */
+  desativado?: boolean
 }>()
-const emit = defineEmits<{ perguntar: [] }>()
+const emit = defineEmits<{ perguntar: []; criarPlanos: [] }>()
 
 const faixa = computed(() => faixaNps(props.nps.faixa, props.nps.valor))
 const temNps = computed(() => props.nps.total > 0 && typeof props.nps.valor === 'number')
@@ -101,10 +106,28 @@ function variante(i: number): 'primario' | 'secundario' {
 
         <div v-if="acoes.length" class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <template v-for="(a, i) in acoes" :key="a.tipo">
-            <Botao v-if="a.tipo === 'toqqiai'" variante="fantasma" class="!h-11 bg-marca-suave !text-marca-texto hover:!bg-marca-suave/70" data-toqqiai @click="emit('perguntar')">
+            <Botao
+              v-if="a.tipo === 'toqqiai'"
+              variante="fantasma"
+              class="!h-11 bg-marca-suave !text-marca-texto hover:!bg-marca-suave/70"
+              :desabilitado="desativado"
+              data-toqqiai
+              @click="emit('perguntar')"
+            >
               <IconeToqqiAI class="size-4" /> {{ a.rotulo }}
             </Botao>
-            <Botao v-else :variante="variante(i)" :para="a.para" class="!h-11">{{ a.rotulo }}</Botao>
+            <Botao
+              v-else-if="a.tipo === 'criar_planos'"
+              :variante="variante(i)"
+              class="!h-11"
+              :carregando="criandoPlanos"
+              :desabilitado="desativado"
+              data-criar-planos
+              @click="emit('criarPlanos')"
+            >
+              <ClipboardList v-if="!criandoPlanos" class="size-4" aria-hidden="true" /> {{ a.rotulo }}
+            </Botao>
+            <Botao v-else :variante="variante(i)" :para="a.para" :desabilitado="desativado" class="!h-11">{{ a.rotulo }}</Botao>
           </template>
         </div>
 

@@ -2,22 +2,51 @@
 // Tom dos comentários (análise da IA): % de negativos em destaque com a variação em pontos sobre o período anterior,
 // barra empilhada negativo/misto/neutro/positivo (cores do sentimento do design-system, sempre com o nome e o número
 // escritos) e quantas respostas vieram com comentário. Sem nada analisado: avisa que a análise está na fila (`pendentes`
-// do próprio painel, que segue os filtros) ou convida a ligar a IA (link só para quem administra). Tudo sai das props:
-// trocar o filtro troca o bloco.
-import { computed } from 'vue'
+// do próprio painel, que segue os filtros) ou convida a ligar a IA (link só para quem administra). Etapa 5h: com a IA
+// ligada, "N comentários ainda não foram lidos pela IA." e, para quem administra, "Analisar agora" (os últimos 90 dias,
+// POST /conta/ia/analisar-recentes; depois, o bloco passa a "analisando"). Tudo sai das props: trocar o filtro troca o
+// bloco.
+import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Sparkles } from 'lucide-vue-next'
-import type { TomComentarios } from '@/api'
+import { iaApi, mensagemDoErro, type TomComentarios } from '@/api'
+import { avisar } from '@/composables/avisos'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarNumero } from '@/utils/formatos'
-import { estadoTom, resumoTom } from './logica'
+import Botao from '@/components/ui/Botao.vue'
+import { estadoTom, resumoTom, textoNaoLidos } from './logica'
 
-const props = defineProps<{ tom: TomComentarios; textoAnterior: string }>()
+const props = defineProps<{ tom: TomComentarios; textoAnterior: string; /** Modo exemplo: sem botões. */ desativado?: boolean }>()
 const sessao = useSessaoStore()
 const podeConfigurarIa = computed(() => sessao.pode('configuracoes.gerenciar'))
 
+/** Pediu "Analisar agora" e marcou algum: mostra "analisando" até o painel trazer números novos. */
+const analisandoAgora = ref(false)
+const pedindo = ref(false)
+watch(
+  () => props.tom,
+  () => (analisandoAgora.value = false),
+)
 const resumo = computed(() => resumoTom(props.tom))
-const estado = computed(() => estadoTom(props.tom))
+const estado = computed(() => (analisandoAgora.value ? 'analisando' : estadoTom(props.tom)))
+
+async function analisarAgora() {
+  if (pedindo.value || props.desativado) return
+  pedindo.value = true
+  try {
+    const r = await iaApi.analisarRecentes()
+    if (r.marcadas > 0) {
+      analisandoAgora.value = true
+      avisar.sucesso(r.marcadas === 1 ? '1 comentário foi para a análise da IA.' : `${formatarNumero(r.marcadas)} comentários foram para a análise da IA.`)
+    } else {
+      avisar.info('Nenhum comentário foi para a análise: só entram os dos últimos 90 dias, até o limite de análises do mês.')
+    }
+  } catch (e) {
+    avisar.erro(mensagemDoErro(e))
+  } finally {
+    pedindo.value = false
+  }
+}
 const variacao = computed(() => {
   const v = resumo.value?.variacao
   if (v === null || v === undefined) return null
@@ -79,6 +108,27 @@ const rotuloBarra = computed(() =>
     <p v-else-if="estado === 'sem_comentarios'" class="rounded-xl bg-superficie-2 p-4 text-sm text-texto-suave">Nenhum comentário neste período.</p>
     <p v-else-if="estado === 'analisando'" class="rounded-xl bg-superficie-2 p-4 text-sm text-texto-suave" data-tom-analisando>
       Os comentários ainda estão sendo analisados. O tom aparece aqui assim que a IA terminar.
+    </p>
+    <div v-else-if="estado === 'nao_lidos'" class="flex flex-col gap-3 rounded-xl bg-superficie-2 p-4 text-sm" data-tom-nao-lidos>
+      <p class="flex min-w-0 items-start gap-3 text-texto-suave">
+        <Sparkles class="mt-0.5 size-5 shrink-0 text-marca-texto" aria-hidden="true" />
+        <span>{{ textoNaoLidos(tom.sem_analise ?? 0) }}</span>
+      </p>
+      <Botao
+        v-if="podeConfigurarIa"
+        variante="secundario"
+        tamanho="sm"
+        class="!h-10 ml-8 self-start"
+        :carregando="pedindo"
+        :desabilitado="desativado"
+        data-analisar-agora
+        @click="analisarAgora"
+      >
+        Analisar agora
+      </Botao>
+    </div>
+    <p v-else-if="estado === 'curtos'" class="rounded-xl bg-superficie-2 p-4 text-sm text-texto-suave" data-tom-curtos>
+      Os comentários deste período são curtos demais para a IA ler o tom.
     </p>
     <div v-else class="flex items-start gap-3 rounded-xl bg-superficie-2 p-4 text-sm" data-tom-ligar>
       <Sparkles class="mt-0.5 size-5 shrink-0 text-texto-fraco" aria-hidden="true" />

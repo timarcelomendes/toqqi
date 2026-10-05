@@ -5,6 +5,8 @@ nota inteira de 0 a 10 ("9,0" vale 9; "8,7" é recusada). Empresa diferente da d
 contato). Já existe resposta importada do mesmo contato na mesma data → atualiza (com "atualizar quem já existe")
 ou mantém. Tudo ou nada, em lote: origem e canal `importacao`, formulário padrão de NPS, grupo pela nota, temas,
 `respondida_em` = data às 12:00. Não cria ação, alerta, agradecimento nem webhook e não mexe na fila de envios.
+Etapa 5h: com a IA ativa na conta, as importadas agora dos últimos 90 dias com comentário vão para a fila da IA
+(`ia.servico.marcar_importadas`, com o saldo do teto); a resposta traz `ia_marcadas` e a rota agenda a análise.
 """
 from dataclasses import dataclass, field
 from datetime import date
@@ -23,6 +25,7 @@ from toqqi.core.texto import interpretar_data
 from toqqi.modelos import Conta, Contato, Empresa, Formulario, Importacao, Resposta
 from toqqi.modulos.formularios.validacao import grupo_da_nota, pergunta_principal
 from toqqi.modulos.ia.regras import ia_ativa, texto_qualifica
+from toqqi.modulos.ia.servico import marcar_importadas
 from toqqi.modulos.importacao.planilha import (
     CHAVES_RESPOSTAS,
     OBRIGATORIOS_RESPOSTAS,
@@ -216,10 +219,11 @@ def resumo(plano: Plano) -> dict:
     }
 
 
-def _inserir(s: Session, conta_id: int, formulario_id: int, pergunta_id: str, linhas: list[LinhaResposta]) -> None:
+def _inserir(s: Session, conta_id: int, formulario_id: int, pergunta_id: str,
+             linhas: list[LinhaResposta]) -> list[int]:
     """Um INSERT só para todas as linhas: um vetor por coluna, desfeito com unnest (COPY não funciona em tabela com
-    RLS, e montar milhares de VALUES custa caro)."""
-    s.execute(text("""
+    RLS, e montar milhares de VALUES custa caro). Devolve os ids das respostas criadas."""
+    return s.execute(text("""
         INSERT INTO respostas (conta_id, formulario_id, contato_id, empresa_id, canal, origem, nota, tipo_nota, grupo,
                                comentario, comentario_cliente, respostas, contexto, temas, respondida_em)
         SELECT CAST(:conta AS bigint), CAST(:formulario AS bigint), x.contato_id, x.empresa_id, 'importacao',
@@ -230,6 +234,7 @@ def _inserir(s: Session, conta_id: int, formulario_id: int, pergunta_id: str, li
                       CAST(:grupos AS text[]), CAST(:comentarios AS text[]), CAST(:temas AS text[]),
                       CAST(:datas AS timestamptz[]))
                AS x(contato_id, empresa_id, nota, grupo, comentario, temas, respondida_em)
+        RETURNING id
     """), {
         "conta": conta_id, "formulario": formulario_id, "pergunta": pergunta_id,
         "contatos": [x.contato_id for x in linhas], "empresas": [x.empresa_id for x in linhas],
@@ -237,7 +242,7 @@ def _inserir(s: Session, conta_id: int, formulario_id: int, pergunta_id: str, li
         "comentarios": [x.comentario or "" for x in linhas],
         "temas": [",".join(temas_da_resposta(x.comentario)) for x in linhas],
         "datas": [data_informada(x.data) for x in linhas],
-    })
+    }).scalars().all()
 
 
 def _atualizar(s: Session, linhas: list[LinhaResposta], pergunta_id: str, ia_ligada: bool) -> None:
@@ -279,8 +284,7 @@ def importar(s: Session, ctx: Contexto, imp: Importacao, corpo) -> dict:
     if principal is None or principal["tipo"] != "nps":
         raise AppError(409, "sem_formulario_nps",
                        "Escolha um formulário padrão de NPS em Formulários antes de importar respostas.")
-    if plano.novos:
-        _inserir(s, ctx.conta_id, f.id, principal["id"], plano.novos)
+    novos_ids = _inserir(s, ctx.conta_id, f.id, principal["id"], plano.novos) if plano.novos else []
     if plano.atualizar:
         _atualizar(s, plano.atualizar, principal["id"], ia_ativa(s.get(Conta, ctx.conta_id)))
     contatos = sorted({x.contato_id for x in plano.novos + plano.atualizar})
@@ -292,6 +296,9 @@ def importar(s: Session, ctx: Contexto, imp: Importacao, corpo) -> dict:
                      ORDER BY contato_id, data_resposta DESC, id DESC) x
              WHERE c.conta_id = :conta AND c.id = x.contato_id
         """), {"conta": ctx.conta_id, "ids": contatos})
+    # etapa 5h: as importadas agora dos últimos 90 dias com comentário vão para a fila da IA (se ativa na conta); quem
+    # chama agenda `ia.servico.processar_conta` depois do commit
+    ia_marcadas = marcar_importadas(s, ctx.conta_id, [*novos_ids, *(x.existente_id for x in plano.atualizar)])
     ignorados = len(plano.problemas) + len(plano.mantidos)
     registrar(s, "importacao_respostas", "sucesso", {
         "arquivo": imp.arquivo_nome, "novos": len(plano.novos), "atualizados": len(plano.atualizar),
@@ -299,4 +306,4 @@ def importar(s: Session, ctx: Contexto, imp: Importacao, corpo) -> dict:
     }, usuario_id=ctx.usuario_id)
     s.delete(imp)
     return {"novos": len(plano.novos), "atualizados": len(plano.atualizar), "ignorados": ignorados,
-            "problemas": [p for p in plano.problemas if p is not None]}
+            "problemas": [p for p in plano.problemas if p is not None], "ia_marcadas": ia_marcadas}

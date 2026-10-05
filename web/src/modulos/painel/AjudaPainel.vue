@@ -17,7 +17,7 @@ const itens: { termo: string; explicacao: string }[] = [
   {
     termo: 'O que mudou',
     explicacao:
-      'Uma frase montada por regras, sem IA: primeiro um pico de reclamações num tema; senão, uma queda ou alta de 5 pontos ou mais; senão, a receita das empresas com detrator; senão, "tudo estável". A linha de baixo traz o assunto seguinte. Os botões levam às respostas ou aos planos (se o seu perfil abre essas telas).',
+      'Uma frase montada por regras, sem IA: primeiro um pico de reclamações num tema; senão, uma queda ou alta de 5 pontos ou mais; senão, a receita das empresas com detrator; senão, "tudo estável". A linha de baixo traz o assunto seguinte. Os botões levam às respostas ou aos planos, ou criam de uma vez os planos das empresas com detrator e sem plano aberto (conforme o seu perfil).',
   },
   { termo: 'NPS dos decisores', explicacao: 'A mesma conta, só com os contatos que têm o perfil "Decisor" no cadastro, ou seja, quem decide a compra.' },
   {
@@ -49,7 +49,7 @@ const itens: { termo: string; explicacao: string }[] = [
   {
     termo: 'Tom dos comentários',
     explicacao:
-      'Pela análise da IA de cada comentário: negativo, misto (elogio e reclamação), neutro ou positivo. O número grande é a porcentagem de negativos entre os analisados, com a diferença em pontos para o período anterior. Só aparece com a análise por IA ligada.',
+      'Pela análise da IA de cada comentário: negativo, misto (elogio e reclamação), neutro ou positivo. O número grande é a porcentagem de negativos entre os analisados, com a diferença em pontos para o período anterior. Só aparece com a análise por IA ligada; se a IA ainda não leu os comentários do período, o bloco avisa.',
   },
   { termo: 'Palavras que mais aparecem', explicacao: 'Quanto maior a palavra, em mais comentários ela aparece (contando uma vez por resposta).' },
   { termo: 'Empresas', explicacao: 'Só entram empresas com 3 ou mais respostas de NPS no período. A régua vai de −100 a 100: a barra sai do zero até o NPS da empresa.' },

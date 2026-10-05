@@ -379,7 +379,8 @@ def test_primeiros_passos_conta_nova(client, dono):
     assert p["primeiros_passos"] == {"contatos": False, "envios_ligados": False, "primeiro_envio": False,
                                      "primeira_resposta": False}
     assert p["atencao"] == {"acoes_abertas": 0, "acoes_vencidas": 0, "tudo_em_dia": True, "empresas": [],
-                            "receita_em_risco": {"valor": 0, "empresas": 0, "sem_valor": 0, "carteira": None}}
+                            "receita_em_risco": {"valor": 0, "empresas": 0, "sem_valor": 0, "carteira": None},
+                            "detratores_sem_plano": 0}  # etapa 5h
     assert p["nps"]["decisores"] == {"valor": None, "total": 0}
     assert p["movimentacao"] == {"resgatados": 0, "deixaram_de_ser_promotores": 0, "itens": []}
     criar_contato(client, h)

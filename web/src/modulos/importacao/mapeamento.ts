@@ -161,3 +161,9 @@ export function exemplosDaColuna(analise: Pick<AnaliseImportacao, 'colunas' | 'a
   }
   return saida
 }
+
+/** Etapa 5h, na tela final da importação de respostas: "A IA vai ler os 12 comentários dos últimos 90 dias: …". */
+export function textoIaImportados(n: number): string {
+  const quais = n === 1 ? 'o comentário' : `os ${n.toLocaleString('pt-BR')} comentários`
+  return `A IA vai ler ${quais} dos últimos 90 dias: o tom e os temas aparecem no Início em alguns minutos.`
+}
