@@ -445,8 +445,8 @@
       ],
       "atalho": "integracoes",
       "como": [
-        "Em Integrações, na aba “Chave de integração”, clique em “Gerar chave” e em “Copiar chave”, marque “Já copiei e guardei em um lugar seguro” e clique em “Concluir”.",
-        "Na aba “Como conectar”, entregue a chave e os exemplos prontos a quem cuida do sistema da empresa. Vale também para Zapier, Make e n8n.",
+        "Em Integrações, na aba “API e avisos”, parte “Chave”, clique em “Gerar chave” e em “Copiar chave”, marque “Já copiei e guardei em um lugar seguro” e clique em “Concluir”.",
+        "Em “Como usar”, entregue a chave e os exemplos prontos a quem cuida do sistema da empresa. Vale também para Zapier, Make e n8n.",
         "Para o WhatsApp automático, abra a aba “WhatsApp automático” e siga as etapas na sua conta da Meta. Leva cerca de 30 minutos.",
         "Na última etapa, preencha o formulário com os dados do número e o token e clique em “Conectar WhatsApp”: o Toqqi confere tudo com a Meta.",
         "Em Configurações › Envios, em “Por onde a pesquisa sai”, escolha “WhatsApp com e-mail de reserva” e clique em “Salvar alterações”.",
@@ -3333,7 +3333,7 @@
             {
               "tipo": "passos",
               "itens": [
-                "Gere a chave em Integrações › Chave de integração.",
+                "Gere a chave em Integrações › API e avisos › Chave.",
                 "Abra a aba “Como conectar”: ela traz o endereço e os exemplos prontos para copiar.",
                 "Entregue a chave e o link dessa aba para quem cuida do sistema da sua empresa.",
                 "A cada entrega, o sistema avisa o Toqqi. O cliente recebe a pesquisa e a resposta aparece em Respostas."
@@ -3372,7 +3372,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Em Integrações › CRM, o administrador conecta o RD Station CRM. No RD, abra seu perfil, copie o Token de instância e cole no Toqqi. O token fica guardado cifrado."
+              "texto": "Em Integrações › Sistemas, o administrador conecta o RD Station CRM. No RD, abra seu perfil, copie o Token de instância e cole no Toqqi. O token fica guardado cifrado."
             },
             {
               "tipo": "lista",
@@ -3403,7 +3403,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Em Integrações › CRM e ERP, o administrador conecta o Omie com o App Key e o App Secret de um aplicativo do Omie. As chaves ficam guardadas cifradas."
+              "texto": "Em Integrações › Sistemas, o administrador conecta o Omie com o App Key e o App Secret de um aplicativo do Omie. As chaves ficam guardadas cifradas."
             },
             {
               "tipo": "lista",
@@ -3432,7 +3432,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Em Integrações › CRM e ERP, clique em Bling e em “Conectar com o Bling”. Você entra no Bling com o seu usuário, autoriza o Toqqi e volta para cá."
+              "texto": "Em Integrações › Sistemas, clique em Bling e em “Conectar com o Bling”. Você entra no Bling com o seu usuário, autoriza o Toqqi e volta para cá."
             },
             {
               "tipo": "lista",
@@ -3515,7 +3515,7 @@
             {
               "tipo": "passos",
               "itens": [
-                "Em Integrações › Avisos (webhooks), clique em “Novo aviso”.",
+                "Em Integrações › API e avisos › Avisos (webhooks), clique em “Novo aviso”.",
                 "Em “Endereço que recebe os avisos”, cole o endereço do seu sistema. Ele precisa ser seguro (com cadeado) e público.",
                 "Em “Avisar quando”, marque os eventos que interessam (como “Nova resposta” e “Cliente saiu da lista”) e clique em “Criar aviso”.",
                 "Entregue o “Segredo do aviso” ao técnico: ele aparece só uma vez e serve para conferir que o aviso veio do Toqqi."

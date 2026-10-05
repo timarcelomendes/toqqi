@@ -31,6 +31,7 @@ const ITENS: Item[] = [
   { chave: 'bling', nome: 'Bling', tipo: 'ERP', iniciais: 'BL', resumo: 'Clientes do ERP; pesquisa na nota emitida.', componente: SecaoBling },
 ]
 
+const emit = defineEmits<{ irParaApi: [] }>()
 const conectados = ref<Record<string, boolean>>({})
 /** Conectores que dependem de configuração do Toqqi ainda ausente (ex.: o aplicativo no Bling). */
 const indisponiveis = ref<Set<string>>(new Set())
@@ -104,6 +105,10 @@ onMounted(() => {
         </button>
       </li>
     </ul>
+    <p class="text-sm text-texto-suave" data-outro-sistema>
+      Usa outro sistema? Ligue pela API do Toqqi ou sem programar, com Zapier, Make ou n8n.
+      <button type="button" class="link" @click="emit('irParaApi')">Ver como</button>
+    </p>
     <PainelLateral v-model:aberto="aberto" :titulo="atual?.nome ?? ''" :descricao="atual ? `${atual.tipo} · ${atual.resumo}` : undefined" largura="lg">
       <component :is="atual.componente" v-if="atual?.componente" embutido @mudou="carregar" />
     </PainelLateral>
