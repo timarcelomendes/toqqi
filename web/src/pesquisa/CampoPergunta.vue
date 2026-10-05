@@ -67,6 +67,49 @@ function classeNps(n: number, marcado: boolean) {
   return marcado ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
 }
 
+/** Escala numérica: a nota marcada na cor da pesquisa. */
+function classeEscala(marcado: boolean) {
+  return marcado ? 'border-[var(--cor)] bg-[var(--cor)] text-[var(--cor-texto)]' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+}
+
+/**
+ * Régua de notas (NPS e escala numérica). Etapa 5h: com o cartão da pesquisa estreito (menos de 420 px, o container
+ * `pesquisa` do Pesquisa.vue), o NPS vai em duas linhas — 0–5 e 6–10, a segunda no meio da primeira — com cada nota de
+ * pelo menos 44 × 44 px; "Nada provável" fica embaixo do 0 e "Muito provável" embaixo do 10. Cartão largo: uma linha,
+ * como antes. A escala com mais de 7 notas (até 0–10) faz o mesmo; a de até 7 fica sempre numa linha. A ordem no DOM
+ * não muda (0, 1, … 10): as setas do teclado e o avanço automático seguem iguais.
+ * Grade estreita: cada nota ocupa 2 de 2 × (notas da 1ª linha) colunas; a 2ª linha começa na coluna 2 quando tem uma
+ * nota a menos (fica no meio). Linhas: 1 e 3 as notas, 2 e 4 os rótulos.
+ */
+const regua = computed(() => {
+  const total = notas.value.length
+  const duasLinhas = props.pergunta.tipo === 'nps' || total > 7
+  const primeiraLinha = Math.ceil(total / 2)
+  const noMeio = total - primeiraLinha < primeiraLinha
+  return {
+    duasLinhas,
+    primeiraLinha,
+    noMeio,
+    // --fim: a linha da grade onde termina a última nota (o rótulo máximo termina junto dela)
+    estilo: { '--colunas': String(2 * primeiraLinha), '--total': String(total), '--fim': String(noMeio ? 2 * primeiraLinha : 2 * primeiraLinha + 1) },
+  }
+})
+const CLASSE_REGUA_DUAS_LINHAS =
+  'grid-cols-[repeat(var(--colunas),minmax(0,1fr))] gap-x-1 gap-y-1 @min-[420px]/pesquisa:grid-cols-[repeat(var(--total),minmax(0,1fr))] @min-[420px]/pesquisa:gap-x-1.5'
+const CLASSE_REGUA_UMA_LINHA = 'grid-cols-[repeat(var(--total),minmax(0,1fr))] gap-1.5'
+function classeLugarNota(i: number) {
+  const r = regua.value
+  if (!r.duasLinhas) return ''
+  const linha = i < r.primeiraLinha ? 'row-start-1' : 'row-start-3'
+  const inicio = i === r.primeiraLinha && r.noMeio ? 'col-start-2 @min-[420px]/pesquisa:col-start-auto' : ''
+  return `${linha} ${inicio} col-span-2 @min-[420px]/pesquisa:col-span-1 @min-[420px]/pesquisa:row-start-1`
+}
+/** Nome da nota para o leitor de tela: a primeira e a última levam os rótulos ("0 (Nada provável)"). */
+function rotuloNota(n: number) {
+  const { min, max } = faixa(props.pergunta)
+  return `${n}${n === min && rotuloMin.value ? ` (${rotuloMin.value})` : ''}${n === max && rotuloMax.value ? ` (${rotuloMax.value})` : ''}`
+}
+
 const ROSTOS = [
   { valor: 1, rotulo: 'Muito insatisfeito', cor: '#dc2626', boca: 'M8 17c2-2.5 6-2.5 8 0' },
   { valor: 2, rotulo: 'Insatisfeito', cor: '#ea580c', boca: 'M8.5 16.5c1.8-1.2 5.2-1.2 7 0' },
@@ -118,27 +161,41 @@ const classeOpcao =
     <p v-if="descricao" :id="idDesc" class="mt-1 text-sm text-slate-600">{{ descricao }}</p>
 
     <div class="mt-4">
-      <!-- NPS 0–10 -->
-      <template v-if="pergunta.tipo === 'nps'">
-        <div role="radiogroup" :aria-labelledby="idTitulo" class="grid grid-cols-11 gap-[3px] sm:gap-1.5">
-          <label v-for="n in notas" :key="n" class="relative">
-            <input
-              type="radio"
-              :name="id"
-              :value="n"
-              :checked="modelValue === n"
-              class="peer sr-only"
-              :aria-label="`${n}${n === 0 && rotuloMin ? ` (${rotuloMin})` : ''}${n === 10 && rotuloMax ? ` (${rotuloMax})` : ''}`"
-              @change="escolher(n)"
-            />
+      <!-- NPS 0–10 e escala numérica: a régua de notas (em duas linhas no cartão estreito) -->
+      <template v-if="pergunta.tipo === 'nps' || pergunta.tipo === 'escala'">
+        <div
+          role="radiogroup"
+          :aria-labelledby="idTitulo"
+          class="grid"
+          :class="regua.duasLinhas ? CLASSE_REGUA_DUAS_LINHAS : CLASSE_REGUA_UMA_LINHA"
+          :style="regua.estilo"
+          :data-regua="regua.duasLinhas ? 'duas-linhas' : 'uma-linha'"
+        >
+          <label v-for="(n, i) in notas" :key="n" class="relative" :class="classeLugarNota(i)" :data-nota="n">
+            <input type="radio" :name="id" :value="n" :checked="modelValue === n" class="peer sr-only" :aria-label="rotuloNota(n)" @change="escolher(n)" />
             <span
-              class="flex h-11 cursor-pointer items-center justify-center rounded-lg border-2 text-sm font-bold transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-slate-900 sm:h-12 sm:text-base"
-              :class="classeNps(n, modelValue === n)"
+              class="flex cursor-pointer items-center justify-center rounded-lg border-2 font-bold transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-slate-900"
+              :class="pergunta.tipo === 'nps' ? ['h-12 text-base', classeNps(n, modelValue === n)] : ['h-11 text-sm', classeEscala(modelValue === n)]"
               aria-hidden="true"
             >{{ n }}</span>
           </label>
+          <!-- Duas linhas: o rótulo mínimo embaixo da primeira nota e o máximo embaixo da última -->
+          <template v-if="regua.duasLinhas">
+            <span v-if="rotuloMin" class="col-span-full row-start-2 pb-1.5 text-xs text-slate-500 @min-[420px]/pesquisa:hidden" aria-hidden="true" data-rotulo-min>
+              {{ rotuloMin }}
+            </span>
+            <span v-if="rotuloMax" class="row-start-4 text-right text-xs text-slate-500 [grid-column:1/var(--fim)] @min-[420px]/pesquisa:hidden" aria-hidden="true" data-rotulo-max>
+              {{ rotuloMax }}
+            </span>
+          </template>
         </div>
-        <div v-if="rotuloMin || rotuloMax" class="mt-2 flex justify-between gap-4 text-xs text-slate-500" aria-hidden="true">
+        <div
+          v-if="rotuloMin || rotuloMax"
+          class="mt-2 justify-between gap-4 text-xs text-slate-500"
+          :class="regua.duasLinhas ? 'hidden @min-[420px]/pesquisa:flex' : 'flex'"
+          aria-hidden="true"
+          data-rotulos-linha
+        >
           <span>{{ rotuloMin }}</span><span class="text-right">{{ rotuloMax }}</span>
         </div>
       </template>
@@ -178,23 +235,6 @@ const classeOpcao =
           </span>
         </label>
       </div>
-
-      <!-- Escala -->
-      <template v-else-if="pergunta.tipo === 'escala'">
-        <div role="radiogroup" :aria-labelledby="idTitulo" class="grid gap-1.5" :style="{ gridTemplateColumns: `repeat(${notas.length}, minmax(0, 1fr))` }">
-          <label v-for="n in notas" :key="n" class="relative">
-            <input type="radio" :name="id" :value="n" :checked="modelValue === n" class="peer sr-only" :aria-label="String(n)" @change="escolher(n)" />
-            <span
-              class="flex h-11 cursor-pointer items-center justify-center rounded-lg border-2 text-sm font-bold transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-slate-900"
-              :class="modelValue === n ? 'border-[var(--cor)] bg-[var(--cor)] text-[var(--cor-texto)]' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'"
-              aria-hidden="true"
-            >{{ n }}</span>
-          </label>
-        </div>
-        <div v-if="pergunta.rotulo_min || pergunta.rotulo_max" class="mt-2 flex justify-between gap-4 text-xs text-slate-500" aria-hidden="true">
-          <span>{{ pergunta.rotulo_min }}</span><span class="text-right">{{ pergunta.rotulo_max }}</span>
-        </div>
-      </template>
 
       <!-- Texto curto -->
       <div v-else-if="pergunta.tipo === 'texto_curto'">

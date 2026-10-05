@@ -64,7 +64,8 @@ const v = (t: string | null | undefined) => renderizarVariaveis(t, props.variave
 
 const respostas = reactive<Respostas>({})
 const erros = reactive<Record<string, string>>({})
-const etapa = ref<'abertura' | 'perguntas' | 'final'>('perguntas')
+// Etapa 5h: não há mais a tela "Começar"; a abertura vai no alto da primeira pergunta.
+const etapa = ref<'perguntas' | 'final'>('perguntas')
 const indice = ref(0)
 const enviando = ref(false)
 const erroEnvio = ref<string | null>(null)
@@ -88,7 +89,11 @@ const atuais = computed<Pergunta[]>(() => {
 })
 const ultima = computed(() => indice.value >= total.value - 1)
 const progresso = computed(() => (total.value ? Math.round(((indice.value + (etapa.value === 'final' ? 1 : 0)) / total.value) * 100) : 0))
-const temAbertura = computed(() => !!(tema.value.titulo_abertura?.trim() || tema.value.texto_abertura?.trim()))
+// Abertura (título e texto de boas-vindas): no alto da primeira pergunta (ou da primeira página), na mesma tela.
+// Sem título de abertura, só o texto (o nome do formulário é interno: não vira título).
+const tituloAbertura = computed(() => v(tema.value.titulo_abertura))
+const textoAbertura = computed(() => v(tema.value.texto_abertura))
+const mostrarAbertura = computed(() => indice.value === 0 && !!(tituloAbertura.value || textoAbertura.value))
 
 function limparObjeto(o: Record<string, unknown>) {
   for (const k of Object.keys(o)) delete o[k]
@@ -102,7 +107,8 @@ function iniciar() {
   indicacao.value = null
   pedidoExemplo++
   indice.value = 0
-  etapa.value = temAbertura.value && props.notaInicial === null ? 'abertura' : 'perguntas'
+  etapa.value = 'perguntas'
+  anuncio.value = ''
   const p = principal.value
   const n = props.notaInicial
   if (p && typeof n === 'number') {
@@ -136,9 +142,10 @@ function atualizar(p: Pergunta, valor: ValorResposta | undefined) {
 
 async function focarTopo(idPergunta?: string) {
   await nextTick()
+  // A pergunta antes do título da tela: na primeira pergunta, o título da abertura fica acima dela.
   const alvo = idPergunta
     ? raiz.value?.querySelector<HTMLElement>(`[data-pergunta="${idPergunta}"] [data-titulo-pergunta]`)
-    : raiz.value?.querySelector<HTMLElement>('[data-titulo-pergunta], [data-titulo-tela]')
+    : (raiz.value?.querySelector<HTMLElement>('[data-titulo-pergunta]') ?? raiz.value?.querySelector<HTMLElement>('[data-titulo-tela]'))
   alvo?.focus({ preventScroll: true })
   if (!props.previa) (alvo ?? raiz.value)?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
 }
@@ -175,9 +182,6 @@ function voltar() {
   if (indice.value > 0) {
     indice.value--
     limparObjeto(erros)
-    focarTopo()
-  } else if (temAbertura.value) {
-    etapa.value = 'abertura'
     focarTopo()
   }
 }
@@ -230,9 +234,7 @@ async function enviarTudo() {
   }
   erroEnvio.value = null
   if (!props.enviar) {
-    telaFinal.value = { titulo_final: tema.value.titulo_final, texto_final: tema.value.texto_final }
-    etapa.value = 'final'
-    focarTopo()
+    mostrarFinal({ titulo_final: tema.value.titulo_final, texto_final: tema.value.texto_final })
     void mostrarIndicacaoExemplo()
     return
   }
@@ -240,13 +242,11 @@ async function enviarTudo() {
   try {
     const r = await props.enviar(respostasParaEnvio(perguntas.value, respostas))
     if (r === null) return
-    telaFinal.value = {
+    indicacao.value = lerConviteIndicacao(r?.indicacao)
+    mostrarFinal({
       titulo_final: r?.titulo_final || tema.value.titulo_final,
       texto_final: r?.texto_final ?? tema.value.texto_final,
-    }
-    indicacao.value = lerConviteIndicacao(r?.indicacao)
-    etapa.value = 'final'
-    focarTopo()
+    })
   } catch (err) {
     const erro = (err ?? {}) as ErroEnvio
     const porPergunta = erro.campos ? lerCamposServidor(erro.campos) : {}
@@ -263,6 +263,14 @@ async function enviarTudo() {
   }
 }
 
+/** Tela final. Etapa 5h: o leitor de tela anuncia o título dela (antes ficava o "Pergunta N de N" da última troca). */
+function mostrarFinal(tela: TelaFinal) {
+  telaFinal.value = tela
+  etapa.value = 'final'
+  anuncio.value = v(tela.titulo_final)
+  focarTopo()
+}
+
 /** Pré-visualização: com nota de promotor na pergunta principal, mostra o cartão de indicação de exemplo. */
 async function mostrarIndicacaoExemplo() {
   const p = principal.value
@@ -274,11 +282,6 @@ async function mostrarIndicacaoExemplo() {
   } catch {
     /* sem o exemplo, a tela final fica como está */
   }
-}
-
-function comecar() {
-  etapa.value = 'perguntas'
-  focarTopo()
 }
 
 // Teclado: 0–9 no NPS (1 e depois 0 rápido = 10); Enter avança.
@@ -324,16 +327,17 @@ defineExpose({ recomecar: iniciar, irParaPergunta })
 </script>
 
 <template>
+  <!-- @container/pesquisa: a largura de dentro da raiz é a do cartão (a régua de notas muda em menos de 420 px) -->
   <div
     ref="raiz"
-    class="pesquisa w-full text-slate-900"
+    class="pesquisa @container/pesquisa w-full text-slate-900"
     :class="compacto ? '' : 'mx-auto max-w-xl px-4 py-6 sm:py-10'"
     :style="estiloCor"
   >
     <div class="overflow-hidden bg-white" :class="compacto ? '' : 'rounded-2xl border border-slate-200 shadow-sm'">
       <!-- Barra de progresso -->
       <div
-        v-if="umaPorVez && etapa !== 'abertura' && total > 1"
+        v-if="umaPorVez && total > 1"
         class="h-1.5 bg-slate-100"
         role="progressbar"
         :aria-valuenow="progresso"
@@ -349,23 +353,8 @@ defineExpose({ recomecar: iniciar, irParaPergunta })
           <img :src="tema.logo_url" alt="" class="max-h-12 max-w-[60%] object-contain" />
         </header>
 
-        <!-- Abertura -->
-        <section v-if="etapa === 'abertura'" class="flex flex-col items-start gap-3">
-          <h1 tabindex="-1" data-titulo-tela class="text-2xl font-extrabold leading-tight text-slate-900 focus:outline-none">
-            {{ v(tema.titulo_abertura) || v(formulario.nome) }}
-          </h1>
-          <p v-if="tema.texto_abertura" class="whitespace-pre-line text-base text-slate-600">{{ v(tema.texto_abertura) }}</p>
-          <button
-            type="button"
-            class="mt-3 inline-flex h-12 items-center justify-center rounded-xl bg-[var(--cor)] px-6 text-base font-bold text-[var(--cor-texto)] shadow-sm transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
-            @click="comecar"
-          >
-            Começar
-          </button>
-        </section>
-
         <!-- Final -->
-        <section v-else-if="etapa === 'final'" class="flex flex-col items-center gap-3 py-6 text-center">
+        <section v-if="etapa === 'final'" class="flex flex-col items-center gap-3 py-6 text-center">
           <span class="flex size-16 items-center justify-center rounded-full bg-[var(--cor-suave)] text-[var(--cor)]" aria-hidden="true">
             <svg viewBox="0 0 24 24" class="size-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
           </span>
@@ -379,6 +368,13 @@ defineExpose({ recomecar: iniciar, irParaPergunta })
 
         <!-- Perguntas -->
         <form v-else novalidate @submit.prevent="avancar">
+          <!-- Abertura: no alto da primeira pergunta, na mesma tela (sem a antiga tela "Começar") -->
+          <div v-if="mostrarAbertura" class="mb-6 border-b border-slate-100 pb-6" data-abertura>
+            <h1 v-if="tituloAbertura" tabindex="-1" data-titulo-tela class="text-2xl font-extrabold leading-tight text-slate-900 focus:outline-none">
+              {{ tituloAbertura }}
+            </h1>
+            <p v-if="textoAbertura" class="whitespace-pre-line text-base text-slate-600" :class="tituloAbertura ? 'mt-2' : ''">{{ textoAbertura }}</p>
+          </div>
           <p v-if="!total" class="py-8 text-center text-slate-500">Esta pesquisa ainda não tem perguntas.</p>
           <template v-else>
             <p v-if="umaPorVez && total > 1" class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -406,7 +402,7 @@ defineExpose({ recomecar: iniciar, irParaPergunta })
 
             <div class="mt-8 flex items-center gap-3">
               <button
-                v-if="indice > 0 || temAbertura"
+                v-if="indice > 0"
                 type="button"
                 class="inline-flex h-12 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-slate-900"
                 :disabled="enviando"

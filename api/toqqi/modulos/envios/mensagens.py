@@ -38,6 +38,9 @@ COR_ASSINATURA = "#4b5563"
 CONTRASTE_MINIMO = 4.5  # WCAG AA para texto normal
 MARGEM = 28  # margem lateral do conteúdo no cartão de 600 px
 LARGURA_IMAGEM = 600 - 2 * MARGEM  # 544: a imagem de topo ocupa a largura do conteúdo
+ALTURA_NOTA, FONTE_NOTA = 40, 15  # régua de notas (px): altura de cada nota e tamanho do número
+ESPACO_NOTAS = 2  # px entre as notas (cellspacing): a 320 px de tela, cada nota do NPS fica com ~20 px de largura
+LARGURA_MAXIMA_CSAT = 320  # px: as 5 notas do CSAT ficam juntas, no meio do cartão
 FONTE = "font-family:Arial,Helvetica,sans-serif"
 _RE_COR = re.compile(r"#[0-9a-fA-F]{6}")
 
@@ -142,23 +145,37 @@ def _cor(tipo: str, n: int) -> str:
 
 
 def _botoes_nota(tipo: str, link: str, rotulo_min: str, rotulo_max: str) -> str:
+    """A régua de notas (etapa 5h): cabe em 320 px sem rolagem lateral e continua boa nos 600 px do cartão.
+
+    Tabela com 100% da largura do conteúdo (no máximo os 544 px do cartão), uma célula de largura percentual por nota
+    (NPS 11, CSAT 5) e nenhuma largura fixa. A cor vai no `bgcolor` da célula (o Outlook só pinta a célula) e no fundo
+    do link, em bloco com 40 px de altura e fonte de 15 px (o toque vale na nota inteira); `table-layout:fixed`
+    segura a largura mesmo com a fonte aumentada no celular. Os rótulos vêm embaixo, nas pontas.
+    O CSAT fica em até 320 px, no meio (5 notas na largura toda do cartão ficariam com 100 px cada; o Outlook ignora o
+    `max-width` e usa os 100%)."""
     notas = range(0, 11) if tipo == "nps" else range(1, 6)
-    largura = 36 if tipo == "nps" else 52
+    fracao = 100 / len(notas)
+    limite = "" if tipo == "nps" else f";max-width:{LARGURA_MAXIMA_CSAT}px;margin:0 auto"
+    centro = "" if tipo == "nps" else ' align="center"'
     celulas = "".join(
-        f'<td align="center" style="padding:2px">'
-        f'<a href="{html.escape(_com_nota(link, n))}" target="_blank" style="display:block;width:{largura}px;'
-        f'height:36px;line-height:36px;background:{_cor(tipo, n)};color:#ffffff;{FONTE};font-size:16px;'
-        f'font-weight:bold;text-decoration:none;border-radius:6px;text-align:center">{n}</a></td>'
+        f'<td width="{int(fracao)}%" height="{ALTURA_NOTA}" align="center" valign="middle" bgcolor="{_cor(tipo, n)}" '
+        f'style="width:{fracao:.2f}%;height:{ALTURA_NOTA}px;padding:0;background:{_cor(tipo, n)};border-radius:6px">'
+        f'<a href="{html.escape(_com_nota(link, n))}" target="_blank" style="display:block;height:{ALTURA_NOTA}px;'
+        f'mso-line-height-rule:exactly;line-height:{ALTURA_NOTA}px;background:{_cor(tipo, n)};color:#ffffff;{FONTE};'
+        f'font-size:{FONTE_NOTA}px;font-weight:bold;text-decoration:none;border-radius:6px;text-align:center">{n}</a></td>'
         for n in notas
     )
+    rotulo = f"{FONTE};font-size:12px;line-height:16px;color:#6b7280;padding:6px {ESPACO_NOTAS}px 0"
     rotulos = (
-        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
-        f'<td align="left" style="{FONTE};font-size:12px;color:#6b7280;padding-top:6px">{html.escape(rotulo_min)}</td>'
-        f'<td align="right" style="{FONTE};font-size:12px;color:#6b7280;padding-top:6px">{html.escape(rotulo_max)}</td>'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"{centro} '
+        f'style="width:100%{limite}"><tr>'
+        f'<td width="50%" align="left" valign="top" style="{rotulo};text-align:left">{html.escape(rotulo_min)}</td>'
+        f'<td width="50%" align="right" valign="top" style="{rotulo};text-align:right">{html.escape(rotulo_max)}</td>'
         f"</tr></table>"
     )
-    return (f'<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" '
-            f'style="margin:0 auto"><tr>{celulas}</tr><tr><td colspan="{len(notas)}">{rotulos}</td></tr></table>')
+    return (f'<table role="presentation" width="100%" cellpadding="0" cellspacing="{ESPACO_NOTAS}" border="0"{centro} '
+            f'style="width:100%{limite};table-layout:fixed;border-collapse:separate"><tr>{celulas}</tr></table>'
+            f"{rotulos}")
 
 
 def _botao(rotulo: str, link: str, cor: str) -> str:

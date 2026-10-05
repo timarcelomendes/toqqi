@@ -215,7 +215,7 @@ async function enviarLogo(f: File | undefined) {
         <h2 id="t-textos" class="font-bold text-texto">Textos</h2>
         <p class="text-sm text-texto-fraco">Use as variáveis para personalizar: {empresa} vira o nome da sua empresa, {nome} o primeiro nome do cliente.</p>
       </div>
-      <CampoVariaveis v-model="tema.titulo_abertura" rotulo="Título de boas-vindas" opcional :maximo="150" :erro="erro('titulo_abertura')" dica="Se preencher, aparece uma tela de abertura antes da primeira pergunta." />
+      <CampoVariaveis v-model="tema.titulo_abertura" rotulo="Título de boas-vindas" opcional :maximo="150" :erro="erro('titulo_abertura')" dica="Se preencher, aparece no alto da primeira pergunta, junto com o texto de boas-vindas." />
       <CampoVariaveis v-model="tema.texto_abertura" rotulo="Texto de boas-vindas" opcional multilinha :maximo="600" :erro="erro('texto_abertura')" />
       <CampoVariaveis v-model="tema.texto_botao" rotulo="Texto do botão de enviar" sem-variaveis :maximo="40" placeholder="Enviar" :erro="erro('texto_botao')" />
       <CampoVariaveis v-model="tema.titulo_final" rotulo="Título do agradecimento" :maximo="150" placeholder="Obrigado!" :erro="erro('titulo_final')" />
