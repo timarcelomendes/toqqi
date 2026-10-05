@@ -33,6 +33,12 @@ class Config(BaseSettings):
     WHATSAPP_GRAPH_VERSION: str = "v23.0"
     WHATSAPP_VERIFY_TOKEN: str = ""
     WHATSAPP_APP_SECRET: str = ""
+    # etapa 5j: aplicativo do Toqqi no Bling (portal do desenvolvedor do Bling). Sem eles, o conector aparece como
+    # "indisponível". Endereços configuráveis para o caso de o Bling mudar.
+    BLING_CLIENT_ID: str = ""
+    BLING_CLIENT_SECRET: str = ""
+    BLING_AUTORIZAR_URL: str = "https://www.bling.com.br/Api/v3/oauth/authorize"
+    BLING_API_URL: str = "https://api.bling.com.br/Api/v3"
     # IA por resposta (OpenAI, Responses API). A chave é da plataforma: só no painel do Render (toqqi-api e
     # toqqi-tarefas). Sem chave, a análise por IA fica desligada e os temas seguem por palavras-chave.
     OPENAI_API_KEY: str = ""

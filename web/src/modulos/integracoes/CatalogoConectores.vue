@@ -3,11 +3,14 @@
 // e o detalhe de cada um (o que faz, conectar, sincronizar) num painel lateral, para a tela não crescer com cada
 // sistema novo. "Em breve" mostra o que vem depois, sem botão.
 import { computed, onMounted, ref, type Component } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { avisar } from '@/composables/avisos'
 import { conectoresApi, mensagemDoErro } from '@/api'
 import Alerta from '@/components/ui/Alerta.vue'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
 import PainelLateral from '@/components/ui/PainelLateral.vue'
 import LogoParceiro from './LogoParceiro.vue'
+import SecaoBling from './SecaoBling.vue'
 import SecaoOmie from './SecaoOmie.vue'
 import SecaoRdStation from './SecaoRdStation.vue'
 
@@ -25,10 +28,13 @@ const ITENS: Item[] = [
   { chave: 'omie', nome: 'Omie', tipo: 'ERP', iniciais: 'OM', resumo: 'Clientes do ERP; pesquisa no pedido faturado.', componente: SecaoOmie },
   { chave: 'pipedrive', nome: 'Pipedrive', tipo: 'CRM', iniciais: 'PD', resumo: '' },
   { chave: 'hubspot', nome: 'HubSpot', tipo: 'CRM', iniciais: 'HS', resumo: '' },
-  { chave: 'bling', nome: 'Bling', tipo: 'ERP', iniciais: 'BL', resumo: '' },
+  { chave: 'bling', nome: 'Bling', tipo: 'ERP', iniciais: 'BL', resumo: 'Clientes do ERP; pesquisa na nota emitida.', componente: SecaoBling },
 ]
 
 const conectados = ref<Record<string, boolean>>({})
+/** Conectores que dependem de configuração do Toqqi ainda ausente (ex.: o aplicativo no Bling). */
+const indisponiveis = ref<Set<string>>(new Set())
+const ativo = (i: Item) => !!i.componente && !indisponiveis.value.has(i.chave)
 const erro = ref<string | null>(null)
 const aberto = ref(false)
 const atual = ref<Item | null>(null)
@@ -36,21 +42,35 @@ const atual = ref<Item | null>(null)
 async function carregar() {
   try {
     const r = await conectoresApi.ver()
-    conectados.value = { rdstation: r.rdstation_crm.conectado, omie: r.omie.conectado }
+    conectados.value = { rdstation: r.rdstation_crm.conectado, omie: r.omie.conectado, bling: r.bling.conectado }
+    indisponiveis.value = new Set(r.bling.disponivel ? [] : ['bling'])
     erro.value = null
   } catch (e) {
     erro.value = mensagemDoErro(e)
   }
 }
 function abrir(i: Item) {
-  if (!i.componente) return
+  if (!ativo(i)) return
   atual.value = i
   aberto.value = true
 }
 const ordenados = computed(() =>
-  [...ITENS].sort((a, b) => Number(!!b.componente) - Number(!!a.componente) || Number(!!conectados.value[b.chave]) - Number(!!conectados.value[a.chave])),
+  [...ITENS].sort((a, b) => Number(ativo(b)) - Number(ativo(a)) || Number(!!conectados.value[b.chave]) - Number(!!conectados.value[a.chave])),
 )
-onMounted(carregar)
+// Volta da autorização do Bling: ?conector=bling&resultado=ok|erro|negado → aviso e o painel aberto.
+const rota = useRoute()
+const router = useRouter()
+onMounted(() => {
+  carregar()
+  const { conector, resultado, ...resto } = rota.query
+  if (conector === 'bling' && resultado) {
+    if (resultado === 'ok') avisar.sucesso('Bling conectado. Traga os clientes com “Sincronizar agora”.')
+    else avisar.erro(resultado === 'negado' ? 'A autorização no Bling foi cancelada.' : 'Não conseguimos conectar o Bling. Tente de novo.')
+    router.replace({ query: resto })
+    const item = ITENS.find((i) => i.chave === 'bling')
+    if (item) abrir(item)
+  }
+})
 </script>
 
 <template>
@@ -65,8 +85,8 @@ onMounted(carregar)
         <button
           type="button"
           class="cartao flex h-full w-full items-center gap-3 p-4 text-left transition-colors enabled:hover:border-borda-forte disabled:cursor-default disabled:opacity-60"
-          :disabled="!i.componente"
-          :aria-label="i.componente ? `${i.nome}: ${conectados[i.chave] ? 'gerenciar' : 'conectar'}` : `${i.nome}: em breve`"
+          :disabled="!ativo(i)"
+          :aria-label="ativo(i) ? `${i.nome}: ${conectados[i.chave] ? 'gerenciar' : 'conectar'}` : `${i.nome}: em breve`"
           :data-conector="i.chave"
           @click="abrir(i)"
         >
@@ -76,9 +96,9 @@ onMounted(carregar)
               <span class="font-semibold text-texto">{{ i.nome }}</span>
               <span class="text-xs text-texto-fraco">{{ i.tipo }}</span>
             </span>
-            <span v-if="i.resumo" class="line-clamp-2 text-sm text-texto-suave">{{ i.resumo }}</span>
+            <span v-if="i.resumo && ativo(i)" class="line-clamp-2 text-sm text-texto-suave">{{ i.resumo }}</span>
           </span>
-          <Etiqueta v-if="!i.componente" tom="neutro">Em breve</Etiqueta>
+          <Etiqueta v-if="!ativo(i)" tom="neutro">Em breve</Etiqueta>
           <Etiqueta v-else-if="conectados[i.chave]" tom="sucesso" ponto>Conectado</Etiqueta>
           <span v-else class="shrink-0 text-sm font-semibold text-marca-texto">Conectar</span>
         </button>

@@ -56,8 +56,8 @@ def _segredo(rd) -> str:
 
 def test_conectar_guarda_cifrado_e_cadastra_o_aviso(client, dono, admin, rd):
     h = admin["h"]
-    assert client.get(f"{API}/integracoes/conectores", headers=h).json() == {
-        "rdstation_crm": {"conectado": False}, "omie": {"conectado": False}}
+    ver = client.get(f"{API}/integracoes/conectores", headers=h).json()
+    assert ver["rdstation_crm"] == {"conectado": False} and ver["omie"] == {"conectado": False}
     r = _conectar(client, h)
     assert r.status_code == 200, r.text
     assert r.json()["conectado"] and r.json()["aviso_cadastrado"] and r.json()["pesquisar_ao_ganhar"]

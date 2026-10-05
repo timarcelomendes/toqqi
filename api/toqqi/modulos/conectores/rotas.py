@@ -3,10 +3,11 @@ sem login, pelo segredo no endereço."""
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from toqqi.core.deps import Contexto, requer_admin
-from toqqi.modulos.conectores import servico, servico_omie
+from toqqi.modulos.conectores import servico, servico_bling, servico_omie
 from toqqi.modulos.envios.processamento import processar_lista
 
 router = APIRouter(prefix="/integracoes/conectores", tags=["conectores"])
@@ -24,7 +25,7 @@ class AlterarIn(BaseModel):
 
 @router.get("")
 def ver(ctx: Contexto = Depends(requer_admin)):
-    return servico.ver(ctx) | {"omie": servico_omie.ver(ctx)}
+    return servico.ver(ctx) | {"omie": servico_omie.ver(ctx), "bling": servico_bling.ver(ctx)}
 
 
 @router.put("/rdstation-crm")
@@ -104,6 +105,51 @@ async def aviso_omie(segredo: str, request: Request, tarefas: BackgroundTasks):
     except ValueError:
         corpo = {}
     envios = servico_omie.receber_aviso(segredo, corpo)
+    if envios:
+        tarefas.add_task(processar_lista, envios)
+    return {"ok": True}
+
+
+# ---- Bling (ERP, OAuth) ------------------------------------------------------------------------
+
+class AlterarBlingIn(BaseModel):
+    pesquisar_ao_faturar: bool
+
+
+@router.post("/bling/autorizar")
+def autorizar_bling(ctx: Contexto = Depends(requer_admin)):
+    """O endereço da tela de autorização do Bling (o site leva o administrador até lá)."""
+    return servico_bling.autorizar(ctx)
+
+
+@router.patch("/bling")
+def alterar_bling(dados: AlterarBlingIn, ctx: Contexto = Depends(requer_admin)):
+    return servico_bling.alterar(ctx, dados.pesquisar_ao_faturar)
+
+
+@router.post("/bling/sincronizar", status_code=202)
+def sincronizar_bling(tarefas: BackgroundTasks, ctx: Contexto = Depends(requer_admin)):
+    """Começa a trazer os clientes do Bling em segundo plano (o site acompanha por GET /integracoes/conectores)."""
+    estado = servico_bling.iniciar_sincronizacao(ctx)
+    tarefas.add_task(servico_bling.sincronizar, ctx.conta_id, ctx.usuario_id)
+    return estado
+
+
+@router.delete("/bling", status_code=204)
+def desconectar_bling(ctx: Contexto = Depends(requer_admin)):
+    servico_bling.desconectar(ctx)
+
+
+@router_publico.get("/bling/retorno")
+def retorno_bling(code: str | None = None, state: str | None = None):
+    """Volta da autorização no Bling: troca o código pelos tokens e devolve o navegador ao site."""
+    return RedirectResponse(servico_bling.retorno(code, state), status_code=303)
+
+
+@router_publico.post("/bling/aviso")
+async def aviso_bling(request: Request, tarefas: BackgroundTasks):
+    """Avisos do aplicativo do Toqqi no Bling (assinados). Sempre 200."""
+    envios = servico_bling.receber_aviso(await request.body(), request.headers.get("X-Bling-Signature-256"))
     if envios:
         tarefas.add_task(processar_lista, envios)
     return {"ok": True}

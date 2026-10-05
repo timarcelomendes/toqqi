@@ -82,6 +82,18 @@ Variáveis com `value:` no `render.yaml` são reaplicadas a cada sincronização
 `EMAIL_PROVIDER` (ex.: ZeptoMail), altere o arquivo, não o painel do Render, e acrescente `EMAIL_FROM` e
 `ZEPTOMAIL_TOKEN` na toqqi-api (e no toqqi-tarefas, se o Cron Job estiver ligado).
 
+## Conector do Bling (aplicativo do Toqqi)
+O Bling exige um aplicativo do Toqqi no portal do desenvolvedor do Bling (developer.bling.com.br › Aplicativos):
+1. Crie o aplicativo (tipo público, se for listar na loja do Bling; privado serve para testar com a sua conta).
+   - **URL de redirecionamento**: `https://<API_PUBLIC_URL>/api/v1/publico/conectores/bling/retorno`
+   - **Escopos**: contatos (leitura), notas fiscais (leitura) e dados básicos da empresa.
+   - **Webhooks**: servidor `https://<API_PUBLIC_URL>/api/v1/publico/conectores/bling/aviso`, recursos `invoice` e
+     `consumer_invoice` com a ação `created`.
+2. No Render (toqqi-api › Environment), ponha `BLING_CLIENT_ID` e `BLING_CLIENT_SECRET` (só no painel, nunca no
+   repositório). Sem eles, o cartão do Bling aparece como "Em breve".
+3. Teste: Integrações › CRM e ERP › Bling › "Conectar com o Bling", autorize, "Sincronizar agora" e emita uma nota de
+   um cliente com o seu e-mail.
+
 ## Monitor externo
 `GET /api/v1/saude` (sem login) responde `{"ok": true, "banco": true, "versao": "a1b2c3d"}` quando a API e o banco
 respondem (um `SELECT 1` de até 3 s); com o banco fora, **503** com `ok` e `banco` em `false`. `versao` é o commit

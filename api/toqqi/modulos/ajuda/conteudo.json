@@ -3416,6 +3416,35 @@
           ]
         },
         {
+          "id": "conectar-o-bling",
+          "titulo": "Conectar o Bling (ERP)",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "bling",
+            "erp",
+            "conector",
+            "nota fiscal",
+            "nota emitida",
+            "sincronizar clientes",
+            "autorizar bling"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Integrações › CRM e ERP, clique em Bling e em “Conectar com o Bling”. Você entra no Bling com o seu usuário, autoriza o Toqqi e volta para cá."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Sincronizar agora: traz os clientes ativos do Bling em segundo plano. Cada um vira uma empresa com um contato (e-mail e telefone do cadastro). A cada vez entram até 600 clientes novos; sincronize de novo para continuar. Nunca apaga nem muda o que já existe no Toqqi.",
+                "Pesquisar quando uma nota for emitida: o cliente da nota recebe a pesquisa NPS, uma vez por nota, pelas regras de envio da conta.",
+                "Desconectar apaga o acesso guardado; o que já foi trazido continua no Toqqi."
+              ]
+            }
+          ]
+        },
+        {
           "id": "campos-e-respostas-da-integracao",
           "titulo": "Campos e respostas da integração (para o técnico)",
           "somente_admin": true,
