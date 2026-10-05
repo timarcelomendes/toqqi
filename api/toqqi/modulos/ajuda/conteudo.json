@@ -2915,6 +2915,30 @@
           ]
         },
         {
+          "id": "avisar-o-cliente",
+          "titulo": "Avisar o cliente do que foi feito",
+          "somente_admin": false,
+          "atalho": "planos_de_acao",
+          "palavras": [
+            "retorno ao cliente",
+            "avisar o cliente",
+            "fechar o ciclo",
+            "você falou nós fizemos",
+            "resposta ao cliente",
+            "e-mail ao cliente"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Depois de concluir um plano de ação de um cliente, abra a ação e use “Avisar o cliente”. O Toqqi sugere uma mensagem com o que o cliente disse e o que foi feito; ajuste e clique em “Enviar ao cliente”. Vai por e-mail, com o visual dos e-mails da sua empresa, uma vez por ação."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Precisa de um contato com e-mail que não tenha saído da lista. Quem vê o problema resolvido costuma responder à próxima pesquisa e pode deixar de ser detrator."
+            }
+          ]
+        },
+        {
           "id": "passos-sugeridos-pela-ia",
           "titulo": "Passos sugeridos pela IA",
           "somente_admin": false,

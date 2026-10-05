@@ -1,12 +1,14 @@
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response
+from pydantic import BaseModel, Field
 
 from toqqi.core.deps import Contexto, requer
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.modulos.acoes import detratores, servico
 from toqqi.modulos.acoes.esquemas import AcaoAlterarIn, AcaoIn, ConfigAcoesIn, FiltrosAcoes, FiltrosListaAcoes
 from toqqi.modulos.acoes.passos import coletar_passos, sugerir_passos
+from toqqi.modulos.envios.processamento import processar_lista
 from toqqi.modulos.painel.rotas import FiltrosPainel
 
 router = APIRouter(prefix="/acoes", tags=["acoes"])
@@ -62,6 +64,18 @@ def obter(acao_id: int, ctx: Contexto = Depends(VER)):
 @router.patch("/{acao_id}")
 def alterar(acao_id: int, dados: AcaoAlterarIn, ctx: Contexto = Depends(TRATAR)):
     return servico.alterar(ctx, acao_id, dados)
+
+
+class RetornoIn(BaseModel):
+    texto: Annotated[str, Field(max_length=1000)]
+
+
+@router.post("/{acao_id}/retorno")
+def retorno(acao_id: int, dados: RetornoIn, tarefas: BackgroundTasks, ctx: Contexto = Depends(TRATAR)):
+    """Melhoria 4: avisa o cliente do que foi feito (e-mail, uma vez por ação concluída)."""
+    acao, envios = servico.enviar_retorno(ctx, acao_id, dados.texto)
+    tarefas.add_task(processar_lista, envios)
+    return acao
 
 
 @router.delete("/{acao_id}", status_code=204)

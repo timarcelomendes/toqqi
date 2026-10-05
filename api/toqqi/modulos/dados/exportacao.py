@@ -90,7 +90,7 @@ ROTULOS_PRIORIDADE = {"alta": "Alta", "media": "Média", "baixa": "Baixa"}
 ROTULOS_SITUACAO_ACAO = {"a_fazer": "A fazer", "em_andamento": "Em andamento", "concluida": "Concluída"}
 ROTULOS_ORIGEM_ACAO = {"automatica": "Automática", "manual": "Manual"}
 ROTULOS_TIPO_FORM = {"nps": "NPS", "csat": "CSAT", "personalizado": "Personalizado"}
-ROTULOS_TIPO_ENVIO = {"convite": "Pesquisa", "lembrete": "Lembrete", "agradecimento": "Agradecimento"}
+ROTULOS_TIPO_ENVIO = {"convite": "Pesquisa", "lembrete": "Lembrete", "agradecimento": "Agradecimento", "retorno": "Retorno ao cliente"}
 ROTULOS_ORIGEM_ENVIO = {"manual": "Enviado por alguém da equipe", "automatico": "Envio automático",
                         "lembrete": "Lembrete automático", "resposta": "Depois da resposta"}
 ROTULOS_SITUACAO_ENVIO = {"pendente": "Enviando...", "enviado": "Enviado", "entregue": "Entregue", "lido": "Lido",

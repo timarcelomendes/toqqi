@@ -60,7 +60,7 @@ from toqqi.modelos import (
 OPCOES = ("respostas", "contatos", "tudo")
 CONFIRMACAO = "APAGAR"
 TEMPO_MAXIMO = "120s"
-TIPOS_EMAIL_CONTATO = ("convite", "lembrete", "agradecimento", "alerta_risco", "indicacao")
+TIPOS_EMAIL_CONTATO = ("convite", "lembrete", "agradecimento", "retorno", "alerta_risco", "indicacao")
 
 MSG_CONFIRMACAO = "Digite APAGAR para confirmar."
 MSG_EM_ANDAMENTO = "Já tem uma exclusão da zona de risco em andamento nesta conta. Aguarde terminar."

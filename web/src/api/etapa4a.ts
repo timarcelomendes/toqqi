@@ -50,6 +50,8 @@ export const respostasApi = {
 export type FiltrosListaAcoes = FiltrosAcoes & { situacao?: SituacaoAcao | ''; pagina?: number; por_pagina?: number }
 
 export const acoesApi = {
+  /** Melhoria 4: avisa o cliente do que foi feito (e-mail, uma vez, com a ação concluída). */
+  avisarCliente: (id: Id, texto: string) => api.post<Acao>(`/acoes/${encodeURIComponent(String(id))}/retorno`, { texto }),
   /** As três colunas (até 300 abertas por coluna; as 15 concluídas mais recentes) e os totais. */
   quadro: (filtros: FiltrosAcoes = {}, sinal?: AbortSignal) => api.get<QuadroAcoes>('/acoes/quadro', { query: { ...filtros }, sinal }),
   /** Lista paginada (ex.: "ver todas as concluídas"). */

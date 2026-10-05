@@ -396,6 +396,7 @@ class Envio(Base):
     contato_id: Mapped[int | None] = mapped_column(BigInteger)
     convite_id: Mapped[int | None] = mapped_column(BigInteger)
     resposta_id: Mapped[int | None] = mapped_column(BigInteger)
+    acao_id: Mapped[int | None] = mapped_column(BigInteger)  # tipo 'retorno' (melhoria 4)
     usuario_id: Mapped[int | None] = mapped_column(BigInteger)
     canal: Mapped[str] = mapped_column(Text)
     tipo: Mapped[str] = mapped_column(Text)
@@ -534,6 +535,9 @@ class Acao(Base):
     ia_passos_em: Mapped[datetime | None] = mapped_column(TZ)
     ia_passos_tentativas: Mapped[int] = mapped_column(SmallInteger, server_default="0")
     ia_passos_reservada_em: Mapped[datetime | None] = mapped_column(TZ)
+    # melhoria 4: retorno ao cliente ("você falou, nós fizemos"), enviado uma vez depois de concluída
+    retorno_texto: Mapped[str | None] = mapped_column(Text)
+    retorno_em: Mapped[datetime | None] = mapped_column(TZ)
 
 
 class ConfigAcoes(Base):

@@ -45,6 +45,7 @@ TIPOS = {
     "convite": "Convite de pesquisa",
     "lembrete": "Lembrete",
     "agradecimento": "Agradecimento",
+    "retorno": "Retorno ao cliente",
     "teste": "E-mail de teste",
     "confirmacao": "Confirmação de e-mail",
     "senha": "Redefinição de senha",

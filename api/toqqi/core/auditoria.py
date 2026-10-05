@@ -50,6 +50,7 @@ ROTULOS = {
     "formulario_padrao": "Formulário padrão alterado",
     "config_envios": "Configurações de envio alteradas",
     "envio_manual": "Pesquisas enviadas manualmente",
+    "envio_retorno": "Cliente avisado do que foi feito (retorno)",
     "descadastro": "Contato saiu da lista de pesquisas",
     "descadastro_desfeito": "Contato voltou a receber pesquisas",
     "conta_excluida": "Conta excluída pela equipe Toqqi",

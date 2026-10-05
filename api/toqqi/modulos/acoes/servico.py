@@ -68,6 +68,8 @@ def acao_json(x, hoje) -> dict:
         "concluida_por": ref(a.concluida_por, x.concluiu_nome),
         # etapa 5d: passos sugeridos pela IA (lista só com 'pronta'; situação nula = a ação não passa pela IA)
         "ia_passos": a.ia_passos, "ia_passos_situacao": a.ia_passos_situacao,
+        # melhoria 4: retorno ao cliente
+        "retorno_em": a.retorno_em, "retorno_texto": a.retorno_texto,
     }
 
 
@@ -260,3 +262,33 @@ def salvar_config(ctx: Contexto, dados) -> dict:
         if mudou:
             registrar(s, "config_acoes", "info", {"campos": mudou}, usuario_id=ctx.usuario_id)
         return depois
+
+
+# ---- melhoria 4: retorno ao cliente ("você falou, nós fizemos") ------------------------------------
+
+def enviar_retorno(ctx: Contexto, acao_id: int, texto: str) -> tuple[dict, list]:
+    """Manda ao contato da ação concluída o texto escrito por quem tratou (uma vez por ação). Devolve a ação e os
+    envios a processar depois do commit."""
+    from toqqi.modulos.envios.descadastro import esta_descadastrado
+    from toqqi.modulos.envios.processamento import novo_envio
+
+    texto = (texto or "").strip()
+    if len(texto) < 10:
+        raise AppError(422, "dados_invalidos", "Confira os campos destacados.",
+                       {"texto": "Escreva o que foi feito (pelo menos uma frase)."})
+    with em_conta(ctx.conta_id) as s:
+        a = _acao(s, acao_id, travar=True)
+        if a.situacao != "concluida":
+            raise AppError(409, "nao_concluida", "Conclua o plano de ação antes de avisar o cliente.")
+        if a.retorno_em:
+            raise AppError(409, "ja_enviado", "O cliente já foi avisado sobre este plano de ação.")
+        contato = s.get(Contato, a.contato_id) if a.contato_id else None
+        if contato is None or not contato.email:
+            raise AppError(409, "sem_email", "O contato deste plano de ação não tem e-mail.")
+        if not contato.recebe_pesquisas or esta_descadastrado(s, contato.email, contato.telefone):
+            raise AppError(409, "descadastrado", "O contato saiu da lista e não recebe e-mails da sua empresa.")
+        a.retorno_texto, a.retorno_em = texto, relogio.agora()
+        e = novo_envio(s, contato, "retorno", "manual", acao_id=a.id, usuario_id=ctx.usuario_id)
+        registrar(s, "envio_retorno", "info", {"acao": a.id, "contato": contato.id}, usuario_id=ctx.usuario_id)
+        s.flush()
+        return _uma(s, a.id), [(e.conta_id, e.id)]

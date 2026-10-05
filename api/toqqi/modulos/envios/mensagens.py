@@ -342,3 +342,20 @@ def whatsapp(telefone: str, texto: str, v: dict) -> tuple[str, str]:
 
 def link_formulario_publico(codigo: str) -> str:
     return f"{config().FRONTEND_URL.rstrip('/')}/f/{codigo}?canal=link"
+
+
+def email_retorno(*, conta_id: int, para: str, empresa: str, texto: str, v: dict, remetente_nome: str | None,
+                  responder_para: str | None, visual: Visual | None = None) -> Mensagem:
+    """Melhoria 4: o retorno ao cliente depois de um plano de ação concluído ("você falou, nós fizemos")."""
+    visual = visual or Visual()
+    sair = link_descadastro(conta_id, para)
+    partes = paragrafos(renderizar(texto, v))
+    texto_puro = "\n\n".join(partes + _extras_texto(visual) + [
+        f"Você recebeu este e-mail porque é cliente de {empresa}.",
+        f"Não quero mais receber pesquisas: {sair}",
+    ] + _mencao_texto(visual))
+    assunto = f"{empresa}: o que fizemos com a sua opinião" if empresa else "O que fizemos com a sua opinião"
+    return Mensagem(para=para, assunto=assunto, texto=texto_puro,
+                    html=_layout("".join(_p(x) for x in partes), empresa, sair, visual),
+                    remetente_nome=remetente_nome or empresa, responder_para=responder_para,
+                    cabecalhos=_cabecalhos(conta_id, para))

@@ -43,6 +43,7 @@ export const TIPOS_EMAIL: { valor: TipoEmailEnviado; rotulo: string }[] = [
   { valor: 'convite', rotulo: 'Convite de pesquisa' },
   { valor: 'lembrete', rotulo: 'Lembrete' },
   { valor: 'agradecimento', rotulo: 'Agradecimento' },
+  { valor: 'retorno', rotulo: 'Retorno ao cliente' },
   { valor: 'teste', rotulo: 'E-mail de teste' },
   { valor: 'confirmacao', rotulo: 'Confirmação de e-mail' },
   { valor: 'senha', rotulo: 'Redefinição de senha' },

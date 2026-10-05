@@ -27,7 +27,7 @@ from toqqi.core.db import em_conta
 from toqqi.core.email import FalhaEnvio, Mensagem, enviar_mensagem
 from toqqi.core.ia import sem_controle
 from toqqi.core.segredos import decifrar
-from toqqi.modelos import ConfigEnvios, Conta, Contato, Convite, Empresa, Envio, Formulario, Resposta, WhatsappConta
+from toqqi.modelos import Acao, ConfigEnvios, Conta, Contato, Convite, Empresa, Envio, Formulario, Resposta, WhatsappConta
 from toqqi.modulos.envios import mensagens
 from toqqi.modulos.envios.configuracao import obter, provedor_ok, visual
 from toqqi.modulos.envios.descadastro import esta_descadastrado
@@ -127,6 +127,11 @@ def _montar(s: Session, e: Envio) -> Mensagem | MensagemWhatsapp:
     v = mensagens.variaveis(empresa, contato.nome, empresa_cliente)
     comum = {"conta_id": e.conta_id, "para": e.para, "empresa": empresa,
              "remetente_nome": cfg.remetente_nome, "responder_para": cfg.responder_para}
+    if e.tipo == "retorno":  # melhoria 4: o texto escrito na ação concluída
+        a = s.get(Acao, e.acao_id) if e.acao_id else None
+        if a is None or not a.retorno_texto:
+            raise NaoEnviar("O plano de ação foi excluído antes do envio.")
+        return mensagens.email_retorno(texto=a.retorno_texto, v=v, visual=visual(s, cfg, e.conta_id, None), **comum)
     if e.tipo == "agradecimento":
         r = s.get(Resposta, e.resposta_id) if e.resposta_id else None
         if r is None or r.grupo is None:

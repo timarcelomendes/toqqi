@@ -291,5 +291,5 @@ def test_tipos_e_rotulos():
         "teste": "E-mail de teste", "confirmacao": "Confirmação de e-mail", "senha": "Redefinição de senha",
         "boas_vindas": "Boas-vindas", "alerta_risco": "Alerta de risco", "resumo_semanal": "Resumo semanal",
         "pico": "Pico de reclamações", "indicacao": "Nova indicação", "aviso": "Aviso aos administradores",
-        "cobranca": "Cobrança",
+        "cobranca": "Cobrança", "retorno": "Retorno ao cliente",  # melhoria 4
     }

@@ -142,7 +142,7 @@ class DispararIn(BaseModel):
 class FiltrosHistorico(BaseModel):
     de: DataFiltro = None
     ate: DataFiltro = None
-    tipo: Annotated[Literal["convite", "lembrete", "agradecimento"] | None, Opcional] = None
+    tipo: Annotated[Literal["convite", "lembrete", "agradecimento", "retorno"] | None, Opcional] = None
     canal: Annotated[Literal["email", "whatsapp"] | None, Opcional] = None
     situacao: Annotated[Literal["pendente", "enviado", "entregue", "lido", "erro", "aberto_no_whatsapp"] | None,
                         Opcional] = None

@@ -739,7 +739,7 @@ export interface ResultadoDisparo {
 }
 
 export type CanalEnvio = 'email' | 'whatsapp'
-export type TipoEnvio = 'convite' | 'lembrete' | 'agradecimento'
+export type TipoEnvio = 'convite' | 'lembrete' | 'agradecimento' | 'retorno'
 export type OrigemEnvio = 'manual' | 'automatico' | 'lembrete' | 'resposta'
 /** `entregue` e `lido` vêm do WhatsApp automático (etapa 3b), atualizados pelo aviso da Meta. */
 export type SituacaoEnvio = 'pendente' | 'enviado' | 'entregue' | 'lido' | 'erro' | 'aberto_no_whatsapp'
@@ -1048,6 +1048,9 @@ export interface Acao {
    */
   ia_passos?: string[] | null
   ia_passos_situacao?: SituacaoPassosIa | null
+  /** Melhoria 4: quando o cliente foi avisado do que foi feito (uma vez) e o texto enviado. */
+  retorno_em?: string | null
+  retorno_texto?: string | null
 }
 
 export interface TotaisQuadro {
@@ -2128,6 +2131,7 @@ export type TipoEmailEnviado =
   | 'convite'
   | 'lembrete'
   | 'agradecimento'
+  | 'retorno'
   | 'teste'
   | 'confirmacao'
   | 'senha'

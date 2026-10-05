@@ -21,6 +21,7 @@ export const TIPOS_ENVIO: Record<TipoEnvio, string> = {
   convite: 'Pesquisa',
   lembrete: 'Lembrete',
   agradecimento: 'Agradecimento',
+  retorno: 'Retorno ao cliente',
 }
 
 export const CANAIS_ENVIO: Record<CanalEnvio, string> = {

@@ -27,6 +27,7 @@ import SeloNota from '@/modulos/respostas/SeloNota.vue'
 import { rotuloCategoria } from '@/modulos/respostas/logica'
 import type { PassosAtualizados } from '@/modulos/ia/logica'
 import PassosIa from './PassosIa.vue'
+import RetornoCliente from './RetornoCliente.vue'
 import SeletorPrioridade from './SeletorPrioridade.vue'
 import {
   COLUNAS,
@@ -350,6 +351,8 @@ const origem = computed(() => {
         </fieldset>
         <p v-if="!podeTratar" class="text-sm text-texto-fraco">Seu perfil pode ver as ações, mas não mudar.</p>
       </form>
+
+      <RetornoCliente :acao="acao" @enviado="(a) => emit('recarregada', a)" />
 
       <PassosIa :acao="acao" @atualizada="emit('passos', $event)" />
 
