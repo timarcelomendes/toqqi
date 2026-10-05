@@ -377,6 +377,33 @@ describe('tom: comentários que a IA ainda não leu', () => {
     w = montarTom({ ...NAO_LIDOS, sem_analise: 0 })
     expect(w.get('[data-tom-curtos]').text()).toContain('curtos demais')
   })
+
+  it('parte lida e parte não (histórico importado): o tom aparece e quem administra manda ler o resto', async () => {
+    const PARCIAL: TomComentarios = { ...NAO_LIDOS, analisados: 1, negativo: 1, sem_analise: 11 }
+    entrar(ADMIN)
+    const { chamadas } = apiFalsa({ 'POST /conta/ia/analisar-recentes': () => ({ marcadas: 11, restantes_no_mes: 900 }) })
+    let w = montarTom(PARCIAL)
+    expect(w.text()).toContain('1 de 12 comentários analisados.')
+    expect(w.get('[data-analisar-resto]').text()).toBe('Analisar os 11 que faltam')
+    await w.get('[data-analisar-resto]').trigger('click')
+    await flushPromises()
+    expect(chamadas.filter((c) => c.metodo === 'POST' && c.caminho === '/conta/ia/analisar-recentes')).toHaveLength(1)
+    expect(w.find('[data-tom-analisando]').exists()).toBe(true)
+    w.unmount()
+    w = montarTom({ ...PARCIAL, sem_analise: 1 })
+    expect(w.get('[data-analisar-resto]').text()).toBe('Analisar o comentário que falta')
+    w.unmount()
+    // sem a permissão, com a IA desligada ou nada faltando: sem o botão
+    w = montarTom({ ...PARCIAL, ia_ligada: false })
+    expect(w.find('[data-analisar-resto]').exists()).toBe(false)
+    w.unmount()
+    w = montarTom({ ...PARCIAL, sem_analise: 0 })
+    expect(w.find('[data-analisar-resto]').exists()).toBe(false)
+    w.unmount()
+    entrar(['painel.ver'])
+    w = montarTom(PARCIAL)
+    expect(w.find('[data-analisar-resto]').exists()).toBe(false)
+  })
 })
 
 // ── Criar planos para N empresas ────────────────────────────────────────────

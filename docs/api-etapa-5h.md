@@ -124,3 +124,34 @@ e §5). Só a C cria migração (`0017_erros`, depois da `0016_parametros`).
   comportamento de propósito → ajustar e explicar).
 - Depois: revisão por quem não escreveu, junção dos três ramos, teste integrado (pilha local, 1280 claro e 390 escuro) e
   entrega no Mac em commits separados por frente.
+
+## 7. Feito (04/10, noite) — decisões tomadas na construção
+- **A (primeiro dia)**: `GET /conta/marca` para qualquer usuário logado (só leitura); o cartão da marca conta como feito com
+  logo ou cor própria; formulário novo e a lista de modelos já vêm com a cor da marca. `ia.servico` ganhou o núcleo
+  `marcar_recentes` (o "analisar os últimos 90 dias" e a importação usam o mesmo), `marcar_importadas` e `processar_conta`
+  (até 100 análises ou 120 s, 4 ao mesmo tempo, pela mesma `processar` com reserva, teto e tentativas). Planos para
+  detratores: um por empresa (contato sem empresa: um por contato), a resposta mais urgente (menor nota; no empate, a mais
+  recente), até 100 por chamada com `restantes`, trava por conta, origem manual, **sem** o e-mail "Alerta de risco" (são
+  respostas antigas) e com os passos da IA depois do commit; corpo vazio = todo o histórico, só empresas ativas. O convite
+  da tela final da importação usa os últimos 90 dias e só aparece para quem trata planos e vê o painel. Tom: com a IA
+  ligada e nada lido por ser tudo curto demais, "Os comentários deste período são curtos demais para a IA ler o tom.";
+  com parte lida e parte não, "Analisar os N que faltam" (quem administra). Modo exemplo: botões desligados e links viram
+  texto, o foco vai à faixa ao entrar e volta ao botão ao sair, `?exemplo=1` liga o modo e sai do endereço; só no Início.
+  Fica para depois: na reimportação, respostas que já tinham análise e mudaram de comentário esperam a tarefa `ia`.
+- **B (taxa de resposta)**: régua do e-mail com células de 9,09% (NPS) ou 20% (CSAT; o CSAT fica limitado a 320 px e
+  centralizado, salvo no Outlook); escalas de 8 a 11 notas também vão para duas linhas no cartão estreito; a abertura só com
+  texto não usa mais o nome do formulário como título (ele é interno); a primeira e a última nota da escala levam os
+  rótulos no nome para leitores de tela. A 320 px as notas da página ficam com 37,7 × 48 px (os 44 px valem a partir de 360).
+- **C (erros e visão)**: impressão = origem + tipo + local + primeiro quadro útil sem número de linha (no site, sem o hash do
+  build); a pilha da API guarda só `funcao (arquivo:linha)` dos quadros do Toqqi e o mais interno; o SQLSTATE fica na
+  mensagem. `/publico/erros` sempre 204 e guarda a conta quando vem token válido; `/saude` 503 no mesmo formato, 60/min (o
+  health check do Render continua em `/auth/regras-senha`). E-mail diário: a marca do dia (`erros_avisados`) só depois de
+  enviar; só superadmin confirmado e ativo; precisa de provedor configurado. Tarefa que falha fica `{erro: "Tipo"}` no
+  resumo e a linha de comando sai com 1 (`/interno/tarefas` continua 200). Visão: "pausada" = atrasada há mais de 7 dias;
+  conversão só de contas com teste criadas de 60 a 15 dias atrás; "testes acabando" sem conta com assinatura ativa; a
+  tabela de contas só a partir de 1280 px (lista abaixo disso). Fica para depois: falha de uma conta dentro de uma tarefa
+  (o robô captura e segue) continua só no log.
+- Junção: os três ramos entraram no `main` sem conflito de código (só dois testes do site com o mesmo nome; o da C virou
+  `etapa5hPlataformaLogica.test.ts`). Teste integrado (pilha local): "Criar planos para 11 empresas" criou os planos e levou
+  ao quadro; Tom parcial com "Analisar os N que faltam"; Plataforma com Visão geral e Erros (mensagem e local limpos);
+  conta nova com "Comece por aqui", modal da marca e modo exemplo; pesquisa no celular em duas linhas e sem "Começar".

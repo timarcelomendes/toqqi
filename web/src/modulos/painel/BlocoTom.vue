@@ -4,8 +4,9 @@
 // escritos) e quantas respostas vieram com comentário. Sem nada analisado: avisa que a análise está na fila (`pendentes`
 // do próprio painel, que segue os filtros) ou convida a ligar a IA (link só para quem administra). Etapa 5h: com a IA
 // ligada, "N comentários ainda não foram lidos pela IA." e, para quem administra, "Analisar agora" (os últimos 90 dias,
-// POST /conta/ia/analisar-recentes; depois, o bloco passa a "analisando"). Tudo sai das props: trocar o filtro troca o
-// bloco.
+// POST /conta/ia/analisar-recentes; depois, o bloco passa a "analisando"). Com parte lida e parte não (o histórico
+// importado, por exemplo), o tom aparece e quem administra vê "Analisar os N que faltam". Tudo sai das props: trocar o
+// filtro troca o bloco.
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Sparkles } from 'lucide-vue-next'
@@ -29,6 +30,8 @@ watch(
 )
 const resumo = computed(() => resumoTom(props.tom))
 const estado = computed(() => (analisandoAgora.value ? 'analisando' : estadoTom(props.tom)))
+/** Com parte já analisada: os comentários do período que a IA ainda não leu (e não estão na fila), com a IA ligada. */
+const faltaLer = computed(() => (props.tom.ia_ligada === true ? Math.max(0, Number(props.tom.sem_analise ?? 0) || 0) : 0))
 
 async function analisarAgora() {
   if (pedindo.value || props.desativado) return
@@ -103,6 +106,17 @@ const rotuloBarra = computed(() =>
         Pela análise da IA<template v-if="resumo.pctNegativoAnterior !== null">. {{ noAnterior }}, {{ resumo.pctNegativoAnterior }}% eram negativos</template>.
         <template v-if="resumo.analisados < resumo.comComentario"> {{ formatarNumero(resumo.analisados) }} de {{ formatarNumero(resumo.comComentario) }} comentários analisados.</template>
       </p>
+      <!-- Parte lida pela IA e parte não (ex.: histórico importado): quem administra manda ler o resto. -->
+      <button
+        v-if="faltaLer > 0 && podeConfigurarIa && !desativado"
+        type="button"
+        class="link self-start text-sm"
+        :disabled="pedindo"
+        data-analisar-resto
+        @click="analisarAgora"
+      >
+        {{ faltaLer === 1 ? 'Analisar o comentário que falta' : `Analisar os ${formatarNumero(faltaLer)} que faltam` }}
+      </button>
     </template>
 
     <p v-else-if="estado === 'sem_comentarios'" class="rounded-xl bg-superficie-2 p-4 text-sm text-texto-suave">Nenhum comentário neste período.</p>
