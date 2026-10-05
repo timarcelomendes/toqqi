@@ -446,6 +446,8 @@ PADROES = {
     "recompensa": None,
     "texto_oferta": "Olá, {nome}! Aqui é {representante}, da {empresa}. Obrigado pela ótima avaliação! Preparei uma "
                     "condição especial para a {empresa_cliente}. Posso te contar?",
+    "depoimentos_ativos": False,  # melhoria 5
+    "link_avaliacao": None,
 }
 
 

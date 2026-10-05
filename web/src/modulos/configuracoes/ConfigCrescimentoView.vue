@@ -4,7 +4,7 @@
 // variáveis (o mesmo campo de Configurações › Envios) e as prévias: o cartão como na pesquisa e o balão do WhatsApp.
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { MessageCircle, Power, UserPlus } from 'lucide-vue-next'
+import { MessageCircle, Power, Quote, UserPlus } from 'lucide-vue-next'
 import { crescimentoApi, mensagemDoErro, type ConfigCrescimento } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
@@ -15,6 +15,7 @@ import { TEMA_PADRAO } from '@/pesquisa/tipos'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
+import Campo from '@/components/ui/Campo.vue'
 import Carregando from '@/components/ui/Carregando.vue'
 import Interruptor from '@/components/ui/Interruptor.vue'
 import CampoMensagem from './CampoMensagem.vue'
@@ -38,7 +39,7 @@ const erroCarga = ref<string | null>(null)
 const original = ref('')
 const { enviando, erroGeral, erros, executar, limpar } = useFormulario()
 
-const f = reactive<ConfigCrescimento & { recompensa: string }>({ ...PADRAO_CRESCIMENTO, recompensa: '' })
+const f = reactive<ConfigCrescimento & { recompensa: string; link_avaliacao: string }>({ ...PADRAO_CRESCIMENTO, recompensa: '', link_avaliacao: '' })
 
 function aplicar(c: ConfigCrescimento) {
   Object.assign(f, {
@@ -47,6 +48,8 @@ function aplicar(c: ConfigCrescimento) {
     texto_convite: c.texto_convite ?? '',
     recompensa: c.recompensa ?? '',
     texto_oferta: c.texto_oferta ?? '',
+    depoimentos_ativos: !!c.depoimentos_ativos,
+    link_avaliacao: c.link_avaliacao ?? '',
   })
   original.value = JSON.stringify(normalizarConfigCrescimento(f))
 }
@@ -206,6 +209,31 @@ onMounted(carregar)
             </div>
             <p class="mt-2 text-xs text-texto-fraco">Exemplo com uma cliente chamada Maria. O cartão segue a cor de cada formulário.</p>
           </div>
+        </div>
+      </section>
+
+      <!-- Prova social (melhoria 5) -->
+      <section class="cartao grid gap-6 p-5 sm:p-6 md:grid-cols-3" aria-labelledby="t-prova-social" data-prova-social>
+        <div>
+          <div class="mb-3 flex size-10 items-center justify-center rounded-xl bg-marca-suave text-marca-texto"><Quote class="size-5" aria-hidden="true" /></div>
+          <h2 id="t-prova-social" class="text-base font-bold text-texto">Depoimentos e avaliações</h2>
+          <p class="mt-1 text-sm text-texto-suave">Transforme a nota alta em prova social: depoimentos para o seu site e avaliações no Google.</p>
+        </div>
+        <div class="flex flex-col gap-4 md:col-span-2">
+          <Interruptor
+            v-model="f.depoimentos_ativos"
+            rotulo="Pedir para publicar o comentário como depoimento"
+            descricao="Quem deu 9 ou 10 (ou 5 no CSAT) e deixou um comentário vê “Podemos publicar seu comentário?”. Os autorizados chegam em Crescimento › Depoimentos para você aprovar."
+            :desabilitado="!podeSalvar"
+          />
+          <Campo
+            v-model="f.link_avaliacao"
+            rotulo="Link para avaliar a sua empresa (opcional)"
+            tipo="url"
+            placeholder="https://g.page/r/sua-empresa/review"
+            :erro="erros.link_avaliacao"
+            dica="O link de avaliação do Google (Perfil da Empresa › Pedir avaliações), do Reclame Aqui ou outro. Aparece como botão para quem deu nota alta. Em branco, não aparece."
+          />
         </div>
       </section>
 

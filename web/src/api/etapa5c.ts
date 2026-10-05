@@ -4,6 +4,7 @@ import { api, baixarArquivo } from './cliente'
 import type {
   ConfigCrescimento,
   DadosEdicaoIndicacao,
+  Depoimento,
   DadosNovaIndicacao,
   DadosNovaOferta,
   DadosResultadoOferta,
@@ -16,6 +17,7 @@ import type {
   Pagina,
   PaginaIndicacoes,
   ResumoCrescimento,
+  SituacaoDepoimento,
 } from './tipos'
 
 const seg = (v: Id) => encodeURIComponent(String(v))
@@ -47,6 +49,14 @@ export const crescimentoApi = {
   /** Registrada quando a oferta abre no WhatsApp (ou no e-mail). 201 com a oferta. */
   registrarOferta: (dados: DadosNovaOferta) => api.post<Oferta>('/crescimento/ofertas', dados),
   registrarResultado: (id: Id, dados: DadosResultadoOferta) => api.patch<Oferta | undefined>(`/crescimento/ofertas/${seg(id)}`, dados),
+
+  /** Melhoria 5: depoimentos autorizados (mais novos primeiro), com o `resumo` por situação. */
+  depoimentos: (f: { situacao?: SituacaoDepoimento | ''; pagina?: number; por_pagina?: number } = {}, sinal?: AbortSignal) =>
+    api.get<Pagina<Depoimento> & { resumo: Record<SituacaoDepoimento, number> }>('/crescimento/depoimentos', {
+      query: { ...f },
+      sinal,
+    }),
+  alterarDepoimento: (id: Id, situacao: SituacaoDepoimento) => api.patch<Depoimento>(`/crescimento/depoimentos/${seg(id)}`, { situacao }),
 
   /** Padrão: últimos 90 dias. */
   resumo: (f: { de?: string; ate?: string } = {}, sinal?: AbortSignal) =>

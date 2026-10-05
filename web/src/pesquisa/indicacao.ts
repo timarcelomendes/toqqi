@@ -1,7 +1,7 @@
 // Etapa 5c: regras puras do convite de indicação (cartão da tela final da pesquisa e registro à mão em Crescimento).
 // As mesmas regras da API, para avisar na hora. Sem dependências do app: a página pública precisa continuar leve.
 import { emailValido } from './validacao'
-import type { ConviteIndicacao, DadosIndicacao, TipoPergunta } from './tipos'
+import type { ConviteIndicacao, DadosIndicacao, TelaFinalDepoimento, TipoPergunta } from './tipos'
 
 export const MINIMO_NOME_INDICACAO = 2
 export const LIMITE_NOME_INDICACAO = 120
@@ -119,4 +119,14 @@ export function camposDoServidor(campos: Record<string, string> | undefined): Re
     if (campo && !saida[campo]) saida[campo] = msg
   }
   return saida
+}
+
+/** Melhoria 5: o bloco `depoimento` da tela final, conferido (link só https; nada a mostrar vira null). */
+export function lerDepoimento(v: unknown): TelaFinalDepoimento | null {
+  if (!v || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  const url = typeof o.avaliar_url === 'string' && /^https:\/\/\S+$/i.test(o.avaliar_url) ? o.avaliar_url : null
+  const pedir = o.pedir === true
+  if (!pedir && !url) return null
+  return { pedir, avaliar_url: url, avaliar_rotulo: typeof o.avaliar_rotulo === 'string' && o.avaliar_rotulo ? o.avaliar_rotulo : 'Deixar uma avaliação' }
 }

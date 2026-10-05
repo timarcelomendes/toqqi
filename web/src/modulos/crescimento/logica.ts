@@ -1,6 +1,8 @@
 // Regras puras do módulo Crescimento (etapa 5c), sem Vue: abas, filtros ↔ endereço ↔ API, rótulos das situações e dos
 // resultados, quem indicou, links de WhatsApp e e-mail, o texto da oferta e a edição de uma indicação.
 import type {
+  Depoimento,
+  SituacaoDepoimento,
   CanalOferta,
   DadosEdicaoIndicacao,
   FiltrosIndicacoes,
@@ -21,17 +23,18 @@ import { renderizarMensagem } from '@/modulos/configuracoes/mensagens'
 
 // ── Abas ────────────────────────────────────────────────────────────────────
 
-export type AbaCrescimento = 'indicacoes' | 'oportunidades'
+export type AbaCrescimento = 'indicacoes' | 'oportunidades' | 'depoimentos'
 
 export const ABAS_CRESCIMENTO: { valor: AbaCrescimento; rotulo: string }[] = [
   { valor: 'indicacoes', rotulo: 'Indicações' },
   { valor: 'oportunidades', rotulo: 'Oportunidades' },
+  { valor: 'depoimentos', rotulo: 'Depoimentos' }, // melhoria 5
 ]
 
 export const ABA_PADRAO: AbaCrescimento = 'indicacoes'
 
 export function ehAbaCrescimento(v: unknown): v is AbaCrescimento {
-  return v === 'indicacoes' || v === 'oportunidades'
+  return v === 'indicacoes' || v === 'oportunidades' || v === 'depoimentos'
 }
 
 export function rotuloAbaCrescimento(a: AbaCrescimento): string {
@@ -424,4 +427,26 @@ export function aplicarMudancas(i: Indicacao, d: DadosEdicaoIndicacao, responsav
     responsavel: d.responsavel_id !== undefined ? (d.responsavel_id === null ? null : responsavel) : i.responsavel,
     atualizada_em: new Date().toISOString(),
   }
+}
+
+// ── Depoimentos (melhoria 5) ────────────────────────────────────────────────
+
+export type FiltroDepoimento = SituacaoDepoimento | 'todos'
+
+export const FILTROS_DEPOIMENTO: { valor: FiltroDepoimento; rotulo: string }[] = [
+  { valor: 'pendente', rotulo: 'Para revisar' },
+  { valor: 'aprovado', rotulo: 'Aprovados' },
+  { valor: 'oculto', rotulo: 'Ocultos' },
+  { valor: 'todos', rotulo: 'Todos' },
+]
+
+export const SITUACOES_DEPOIMENTO: Record<SituacaoDepoimento, { rotulo: string; tom: 'atencao' | 'sucesso' | 'neutro' }> = {
+  pendente: { rotulo: 'Para revisar', tom: 'atencao' },
+  aprovado: { rotulo: 'Aprovado', tom: 'sucesso' },
+  oculto: { rotulo: 'Oculto', tom: 'neutro' },
+}
+
+/** O texto para colar no site: “comentário” — Ana, Mercado Azul. */
+export function textoDepoimento(d: Pick<Depoimento, 'comentario' | 'assinatura'>): string {
+  return `“${d.comentario.trim()}” — ${d.assinatura}`
 }

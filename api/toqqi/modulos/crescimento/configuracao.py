@@ -25,6 +25,8 @@ PADROES = {
     "recompensa": None,
     "texto_oferta": "Olá, {nome}! Aqui é {representante}, da {empresa}. Obrigado pela ótima avaliação! Preparei uma "
                     "condição especial para a {empresa_cliente}. Posso te contar?",
+    "depoimentos_ativos": False,  # melhoria 5
+    "link_avaliacao": None,
 }
 CAMPOS = tuple(PADROES)
 EXEMPLO_RECOMPENSA = "Se a indicação virar cliente, você ganha 10% no próximo pedido."
@@ -59,7 +61,7 @@ def ver(ctx: Contexto) -> dict:
 def salvar(ctx: Contexto, dados) -> dict:
     """Corpo parcial: só os campos enviados mudam (null nos obrigatórios não muda; recompensa vazia ou null limpa)."""
     novos = {c: getattr(dados, c) for c in dados.model_fields_set
-             if getattr(dados, c) is not None or c == "recompensa"}
+             if getattr(dados, c) is not None or c in ("recompensa", "link_avaliacao")}
     with em_conta(ctx.conta_id) as s:
         cfg = obter(s, travar=True)
         antes = config_json(cfg)

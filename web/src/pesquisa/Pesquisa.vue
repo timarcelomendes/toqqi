@@ -3,15 +3,17 @@
 // e da pré-visualização do editor. Não importa Pinia, router nem ícones externos.
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import CampoPergunta from './CampoPergunta.vue'
+import CartaoDepoimento from './CartaoDepoimento.vue'
 import CartaoIndicacao from './CartaoIndicacao.vue'
 import { corDoTexto, corValida } from './cor'
-import { lerConviteIndicacao, notaDaDireitoAIndicacao } from './indicacao'
+import { lerConviteIndicacao, lerDepoimento, notaDaDireitoAIndicacao } from './indicacao'
 import { faixa, paginasVisiveis, perguntaPrincipal, perguntasVisiveis, respostasParaEnvio } from './logica'
 import { renderizarVariaveis } from './variaveis'
 import { validarPerguntas, validarResposta } from './validacao'
 import {
   TEMA_PADRAO,
   type ConviteIndicacao,
+  type TelaFinalDepoimento,
   type DadosIndicacao,
   type FormularioPublico,
   type Pergunta,
@@ -41,13 +43,15 @@ const props = withDefaults(
     previa?: boolean
     /** Etapa 5c: envia uma indicação (convite individual) e devolve a mensagem de obrigado. Sem ela, o cartão é exemplo. */
     indicar?: (dados: DadosIndicacao) => Promise<string | void>
+    /** Melhoria 5: autoriza publicar o comentário como depoimento (convite individual). */
+    autorizarDepoimento?: () => Promise<string | void>
     /**
      * Etapa 5c, pré-visualização: o convite de exemplo, pedido quando a pesquisa termina com nota de promotor (NPS 9–10
      * ou CSAT 5); null não mostra o cartão (ex.: indicações desligadas na conta).
      */
     indicacaoExemplo?: () => Promise<ConviteIndicacao | null>
   }>(),
-  { variaveis: () => ({}), notaInicial: null, compacto: false, previa: false, indicar: undefined, indicacaoExemplo: undefined },
+  { variaveis: () => ({}), notaInicial: null, compacto: false, previa: false, indicar: undefined, indicacaoExemplo: undefined, autorizarDepoimento: undefined },
 )
 
 const tema = computed(() => ({ ...TEMA_PADRAO, ...(props.formulario.tema ?? {}) }))
@@ -72,6 +76,8 @@ const erroEnvio = ref<string | null>(null)
 const telaFinal = ref<TelaFinal | null>(null)
 /** Etapa 5c: o convite de indicação da tela final (da API ou, na pré-visualização, o de exemplo). */
 const indicacao = ref<ConviteIndicacao | null>(null)
+/** Melhoria 5: o pedido de depoimento e o link de avaliação da tela final. */
+const depoimento = ref<TelaFinalDepoimento | null>(null)
 let pedidoExemplo = 0
 const raiz = ref<HTMLElement | null>(null)
 const anuncio = ref('')
@@ -105,6 +111,7 @@ function iniciar() {
   erroEnvio.value = null
   telaFinal.value = null
   indicacao.value = null
+  depoimento.value = null
   pedidoExemplo++
   indice.value = 0
   etapa.value = 'perguntas'
@@ -243,6 +250,7 @@ async function enviarTudo() {
     const r = await props.enviar(respostasParaEnvio(perguntas.value, respostas))
     if (r === null) return
     indicacao.value = lerConviteIndicacao(r?.indicacao)
+    depoimento.value = lerDepoimento(r?.depoimento)
     mostrarFinal({
       titulo_final: r?.titulo_final || tema.value.titulo_final,
       texto_final: r?.texto_final ?? tema.value.texto_final,
@@ -360,6 +368,7 @@ defineExpose({ recomecar: iniciar, irParaPergunta })
           </span>
           <h1 tabindex="-1" data-titulo-tela class="text-2xl font-extrabold text-slate-900 focus:outline-none">{{ v(telaFinal?.titulo_final) }}</h1>
           <p v-if="telaFinal?.texto_final" class="max-w-md whitespace-pre-line text-base text-slate-600">{{ v(telaFinal.texto_final) }}</p>
+          <CartaoDepoimento v-if="depoimento" class="mt-3" :dados="depoimento" :autorizar="autorizarDepoimento" />
           <CartaoIndicacao v-if="indicacao" class="mt-3" :convite="indicacao" :empresa="variaveis.empresa ?? ''" :enviar="indicar" />
           <button v-if="previa" type="button" class="mt-4 text-sm font-semibold text-slate-600 underline underline-offset-4 hover:text-slate-900" @click="iniciar">
             Ver de novo

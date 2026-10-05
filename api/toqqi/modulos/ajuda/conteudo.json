@@ -3209,6 +3209,38 @@
           ]
         },
         {
+          "id": "depoimentos-e-avaliacoes",
+          "titulo": "Depoimentos e avaliações no Google",
+          "somente_admin": false,
+          "atalho": "crescimento",
+          "palavras": [
+            "depoimento",
+            "depoimentos",
+            "prova social",
+            "avaliação",
+            "avaliar no google",
+            "google",
+            "reclame aqui",
+            "publicar comentário",
+            "aprovar depoimento",
+            "ocultar depoimento"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Configurações › Crescimento, ligue “Pedir para publicar o comentário como depoimento” e, se quiser, cole o link para avaliar a sua empresa (o do Google, do Reclame Aqui ou outro endereço seguro). Quem responde pelo convite com nota 9 ou 10, ou 5 no CSAT, vê no fim da pesquisa o botão para avaliar e, se deixou um comentário, a pergunta “Podemos publicar seu comentário?”."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O comentário autorizado chega em Crescimento › Depoimentos como “Para revisar”, assinado com o primeiro nome da pessoa e o nome da empresa dela. Aprove os que podem ir para o seu site, redes ou propostas, oculte os outros e use “Copiar texto” para levar o depoimento pronto."
+            },
+            {
+              "tipo": "dica",
+              "texto": "O Toqqi não publica nada sozinho: você escolhe onde usar cada depoimento aprovado. O link público do formulário não mostra o pedido, só os convites enviados a um contato."
+            }
+          ]
+        },
+        {
           "id": "configurar-o-crescimento",
           "titulo": "Ligar o convite de indicação e ajustar os textos",
           "somente_admin": true,

@@ -58,6 +58,13 @@ def responder_convite(request: Request, token: str, dados: ResponderIn, tarefas:
     return resultado
 
 
+@router.post("/convites/{token}/depoimento")
+@limiter.limit(LIMITE_RESPONDER_CONVITE)
+def autorizar_depoimento(request: Request, token: str):
+    """Melhoria 5: "Pode publicar" — o promotor autoriza o comentário como depoimento (a equipe aprova depois)."""
+    return servico.autorizar_depoimento(token)
+
+
 @router.post("/convites/{token}/indicacoes", status_code=201)
 @limiter.limit(LIMITE_RESPONDER_CONVITE)
 def indicar(request: Request, token: str, dados: IndicacaoPublicaIn, tarefas: BackgroundTasks):

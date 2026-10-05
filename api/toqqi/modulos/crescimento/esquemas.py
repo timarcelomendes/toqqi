@@ -166,6 +166,23 @@ class PeriodoIn(BaseModel):
     ate: DataFiltro = None
 
 
+def _link_avaliacao(v):
+    """Melhoria 5: o link para avaliar a empresa (Google, Reclame Aqui...). Vazio limpa; só https, até 500."""
+    if v is None:
+        return None
+    if not isinstance(v, str):
+        raise PydanticCustomError("toqqi_link", "Informe um endereço que comece com https://.")
+    v = v.strip()
+    if not v:
+        return None
+    if not v.lower().startswith("https://") or len(v) > 500 or any(c.isspace() for c in v) or len(v) < 12:
+        raise PydanticCustomError("toqqi_link", "Informe um endereço que comece com https:// (até 500 caracteres).")
+    return v
+
+
+LinkAvaliacao = Annotated[str | None, BeforeValidator(_link_avaliacao)]
+
+
 class ConfigCrescimentoIn(BaseModel):
     """Corpo parcial: só os campos enviados mudam (null nos textos obrigatórios não muda; recompensa vazia limpa)."""
     indicacoes_ativas: bool | None = None
@@ -173,3 +190,10 @@ class ConfigCrescimentoIn(BaseModel):
     texto_convite: TextoConvite | None = None
     recompensa: Recompensa = None
     texto_oferta: TextoOferta | None = None
+    depoimentos_ativos: bool | None = None  # melhoria 5
+    link_avaliacao: LinkAvaliacao = None
+
+
+class DepoimentoAlterarIn(BaseModel):
+    """Melhoria 5: a equipe aprova (pode publicar) ou oculta o depoimento autorizado pelo cliente."""
+    situacao: Literal["aprovado", "oculto", "pendente"]

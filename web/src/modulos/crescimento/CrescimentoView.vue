@@ -15,6 +15,7 @@ import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Abas from '@/components/ui/Abas.vue'
 import Botao from '@/components/ui/Botao.vue'
 import AbaIndicacoes from './AbaIndicacoes.vue'
+import AbaDepoimentos from './AbaDepoimentos.vue'
 import AbaOportunidades from './AbaOportunidades.vue'
 import ModalNovaIndicacao from './ModalNovaIndicacao.vue'
 import ResumoCrescimento from './ResumoCrescimento.vue'
@@ -58,7 +59,8 @@ const filtrosOp = ref<FiltrosOportunidadesTela>(aba.value === 'oportunidades' ? 
 if (!abaDaRota()) router.replace({ name: 'crescimento', params: { aba: ABA_PADRAO } })
 
 // ── Filtros ↔ endereço ──────────────────────────────────────────────────────
-const queryDaAba = (a: AbaCrescimento) => (a === 'indicacoes' ? queryDosFiltrosIndicacoes(filtrosInd.value) : queryDosFiltrosOportunidades(filtrosOp.value))
+const queryDaAba = (a: AbaCrescimento): Record<string, string> =>
+  a === 'indicacoes' ? queryDosFiltrosIndicacoes(filtrosInd.value) : a === 'oportunidades' ? queryDosFiltrosOportunidades(filtrosOp.value) : {}
 function mesmaQuery(a: Record<string, string>, b: Record<string, string>): boolean {
   const ordenar = (q: Record<string, string>) => JSON.stringify(Object.entries(q).sort(([x], [y]) => x.localeCompare(y)))
   return ordenar(a) === ordenar(b)
@@ -120,7 +122,7 @@ watch(
         vindoDaRota = true
         filtrosInd.value = f
       }
-    } else {
+    } else if (nova === 'oportunidades') {
       const f = filtrosOportunidadesDaQuery(consultaDaRota())
       if (!mesmaQuery(queryDosFiltrosOportunidades(f), queryDosFiltrosOportunidades(filtrosOp.value))) {
         vindoDaRota = true
@@ -222,7 +224,7 @@ onMounted(() => {
     <template #acoes>
       <!-- Como em Planos de ação: o atalho para a configuração do módulo (quem não pode mudar, consulta) -->
       <Botao variante="fantasma" para="/configuracoes/crescimento"><Settings class="size-4" aria-hidden="true" /> Convite e oferta</Botao>
-      <Botao v-if="podeExportar" variante="secundario" :carregando="baixando" :desabilitado="aba === 'indicacoes' && !!erroDatas" @click="exportar">
+      <Botao v-if="podeExportar && aba !== 'depoimentos'" variante="secundario" :carregando="baixando" :desabilitado="aba === 'indicacoes' && !!erroDatas" @click="exportar">
         <Download v-if="!baixando" class="size-4" aria-hidden="true" /> Exportar CSV
       </Botao>
       <Botao v-if="aba === 'indicacoes' && podeTratar" @click="novaAberta = true"><UserPlus class="size-4" aria-hidden="true" /> Registrar indicação</Botao>
@@ -244,7 +246,8 @@ onMounted(() => {
       @mudou="aoMudar"
       @recarregar-config="carregarConfig"
     />
-    <AbaOportunidades v-else v-model:filtros="filtrosOp" :config="config" :erro-config="erroConfig" @mudou="aoMudar" @recarregar-config="carregarConfig" />
+    <AbaOportunidades v-else-if="aba === 'oportunidades'" v-model:filtros="filtrosOp" :config="config" :erro-config="erroConfig" @mudou="aoMudar" @recarregar-config="carregarConfig" />
+    <AbaDepoimentos v-else :config="config" />
   </Abas>
 
   <ModalNovaIndicacao v-model:aberto="novaAberta" @criada="aoCriar" />

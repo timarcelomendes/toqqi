@@ -92,6 +92,12 @@ async function indicar(dados: DadosIndicacao): Promise<string | void> {
   }
 }
 
+/** Melhoria 5: o promotor autoriza publicar o comentário (só no convite individual). */
+async function autorizarDepoimento(): Promise<string | void> {
+  const r = await publicoApi.autorizarDepoimento(rota!.chave)
+  return r && typeof r === 'object' && typeof r.mensagem === 'string' ? r.mensagem : undefined
+}
+
 onMounted(carregar)
 </script>
 
@@ -110,6 +116,7 @@ onMounted(carregar)
       :compacto="params.embed"
       :enviar="enviar"
       :indicar="rota?.tipo === 'r' ? indicar : undefined"
+      :autorizar-depoimento="rota?.tipo === 'r' ? autorizarDepoimento : undefined"
     />
 
     <section v-else class="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 py-16 text-center">

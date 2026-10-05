@@ -323,6 +323,9 @@ class Resposta(Base):
     arquivada_em: Mapped[datetime | None] = mapped_column(TZ)
     # só o que o cliente escreveu (painel, palavras, temas); `comentario` segue sendo o resumo da etapa 2
     comentario_cliente: Mapped[str] = mapped_column(Text, server_default="")
+    # melhoria 5: o cliente autorizou publicar o comentário (pendente → aprovado | oculto pela equipe)
+    depoimento_em: Mapped[datetime | None] = mapped_column(TZ)
+    depoimento_situacao: Mapped[str | None] = mapped_column(Text)
     # etapa 4b: análise pela IA (null = não passa pela IA)
     ia_situacao: Mapped[str | None] = mapped_column(Text)  # pendente | analisada | falhou | limite
     ia_temas: Mapped[list | None] = mapped_column(JSONB(none_as_null=True))  # [{tema, sentimento}]
@@ -723,6 +726,9 @@ class ConfigCrescimento(Base):
     recompensa: Mapped[str | None] = mapped_column(Text)
     texto_oferta: Mapped[str] = mapped_column(Text)
     atualizado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    # melhoria 5: prova social
+    depoimentos_ativos: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    link_avaliacao: Mapped[str | None] = mapped_column(Text)
 
 
 class Indicacao(Base):

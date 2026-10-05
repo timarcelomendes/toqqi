@@ -32,6 +32,9 @@ export const publicoApi = {
    */
   indicar: (token: string, dados: DadosIndicacao) =>
     api.post<{ mensagem?: string } | undefined>(`/publico/convites/${seg(token)}/indicacoes`, dados, publico),
+  /** Melhoria 5: "Pode publicar" o comentário como depoimento (200 `{mensagem}`; 409 `depoimento_indisponivel`). */
+  autorizarDepoimento: (token: string) =>
+    api.post<{ mensagem?: string } | undefined>(`/publico/convites/${seg(token)}/depoimento`, {}, publico),
   formulario: (codigo: string) => api.get<PesquisaPublica>(`/publico/formularios/${seg(codigo)}`, publico),
   responderFormulario: (
     codigo: string,

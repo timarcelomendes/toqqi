@@ -127,6 +127,8 @@ describe('Configurações › Crescimento', () => {
       texto_convite: CONFIG.texto_convite,
       recompensa: null,
       texto_oferta: CONFIG.texto_oferta,
+      depoimentos_ativos: false,
+      link_avaliacao: null,
     })
     expect(avisos.map((a) => a.mensagem)).toContain('Convite de indicação ligado. Ele aparece para quem der nota alta nos próximos convites.')
     expect(w.find('[data-previa-convite] [data-recompensa]').exists()).toBe(false)

@@ -19,6 +19,8 @@ export const PADRAO_CRESCIMENTO: Readonly<ConfigCrescimento> = Object.freeze({
   recompensa: null,
   texto_oferta:
     'Olá, {nome}! Aqui é {representante}, da {empresa}. Obrigado pela ótima avaliação! Preparei uma condição especial para a {empresa_cliente}. Posso te contar?',
+  depoimentos_ativos: false,
+  link_avaliacao: null,
 })
 
 /** Exemplo no campo da recompensa (vazio por padrão). */
@@ -32,6 +34,8 @@ export function normalizarConfigCrescimento(c: ConfigCrescimento): ConfigCrescim
     texto_convite: (c.texto_convite ?? '').trim(),
     recompensa: (c.recompensa ?? '').trim() || null,
     texto_oferta: (c.texto_oferta ?? '').trim(),
+    depoimentos_ativos: !!c.depoimentos_ativos,
+    link_avaliacao: (c.link_avaliacao ?? '').trim() || null,
   }
 }
 
@@ -46,6 +50,8 @@ export function validarConfigCrescimento(c: ConfigCrescimento): Record<string, s
   if ((n.recompensa ?? '').length > LIMITES_CRESCIMENTO.recompensa) e.recompensa = `Use até ${LIMITES_CRESCIMENTO.recompensa} caracteres.`
   if (!n.texto_oferta) e.texto_oferta = 'Escreva o texto da oferta.'
   else if (n.texto_oferta.length > LIMITES_CRESCIMENTO.texto_oferta) e.texto_oferta = `Use até ${LIMITES_CRESCIMENTO.texto_oferta} caracteres.`
+  const link = n.link_avaliacao ?? ''
+  if (link && (!/^https:\/\/\S{4,}$/i.test(link) || link.length > 500)) e.link_avaliacao = 'Informe um endereço que comece com https:// (até 500 caracteres).'
   return e
 }
 

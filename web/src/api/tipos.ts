@@ -2037,6 +2037,26 @@ export interface ConfigCrescimento {
   recompensa: string | null
   /** Até 1.000. Variáveis: {nome}, {empresa}, {empresa_cliente} e {representante}. */
   texto_oferta: string
+  /** Melhoria 5: pedir ao promotor com comentário para publicar como depoimento. */
+  depoimentos_ativos?: boolean
+  /** Melhoria 5: link para avaliar a empresa (Google, Reclame Aqui...), só https. */
+  link_avaliacao?: string | null
+}
+
+/** Melhoria 5: depoimento autorizado pelo cliente (GET /crescimento/depoimentos). */
+export type SituacaoDepoimento = 'pendente' | 'aprovado' | 'oculto'
+export interface Depoimento {
+  resposta_id: Id
+  nota: number | null
+  tipo_nota: 'nps' | 'csat' | null
+  comentario: string
+  autorizado_em: string
+  situacao: SituacaoDepoimento
+  data_resposta: string
+  contato: Referencia | null
+  empresa: Referencia | null
+  /** "Ana, Mercado Azul". */
+  assinatura: string
 }
 
 // ───────────────────────── Etapa 5d (docs/api-etapa-5d.md) ─────────────────────────

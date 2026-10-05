@@ -2,7 +2,7 @@
 
 Ver pede `crescimento.ver`; alterar (indicações e ofertas) pede `crescimento.ver` e `crescimento.tratar`: as rotas que
 alteram devolvem o registro inteiro, então "tratar" sem "ver" leria tudo percorrendo os ids."""
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Path, Query, Response
 
@@ -10,8 +10,9 @@ from toqqi.core.deps import Contexto, contexto_atual, requer
 from toqqi.core.errors import AppError
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.core.validacao import MAX_ID
-from toqqi.modulos.crescimento import configuracao, indicacoes, oportunidades
+from toqqi.modulos.crescimento import configuracao, depoimentos, indicacoes, oportunidades
 from toqqi.modulos.crescimento.esquemas import (
+    DepoimentoAlterarIn,
     ConfigCrescimentoIn,
     FiltrosIndicacoes,
     FiltrosOportunidades,
@@ -97,6 +98,18 @@ def criar_oferta(dados: OfertaIn, ctx: Contexto = Depends(TRATAR)):
 @router.patch("/ofertas/{oferta_id}")
 def alterar_oferta(oferta_id: IdCaminho, dados: OfertaAlterarIn, ctx: Contexto = Depends(TRATAR)):
     return oportunidades.alterar_oferta(ctx, oferta_id, dados)
+
+
+@router.get("/depoimentos")
+def listar_depoimentos(situacao: Literal["pendente", "aprovado", "oculto"] | None = None, pg: Pagina = Depends(pagina),
+                       ctx: Contexto = Depends(VER)):
+    """Melhoria 5: os depoimentos autorizados pelos clientes, com o resumo por situação."""
+    return depoimentos.listar(ctx, situacao, pg)
+
+
+@router.patch("/depoimentos/{resposta_id}")
+def alterar_depoimento(resposta_id: IdCaminho, dados: DepoimentoAlterarIn, ctx: Contexto = Depends(TRATAR)):
+    return depoimentos.alterar(ctx, resposta_id, dados.situacao)
 
 
 @router.get("/resumo")

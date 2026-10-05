@@ -80,6 +80,14 @@ export interface TelaFinal {
    * principal de promotor (NPS 9–10) ou CSAT 5. Textos já com as variáveis trocadas.
    */
   indicacao?: ConviteIndicacao | null
+  /** Melhoria 5: o pedido de depoimento e o link para avaliar a empresa (só para nota alta, no convite individual). */
+  depoimento?: TelaFinalDepoimento | null
+}
+
+export interface TelaFinalDepoimento {
+  pedir: boolean
+  avaliar_url: string | null
+  avaliar_rotulo: string
 }
 
 /** Etapa 5c: o cartão de indicação da tela final (texto puro). */

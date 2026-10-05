@@ -19,7 +19,7 @@ from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.errors import AppError
 from toqqi.core.security import hash_token
 from toqqi.modelos import Conta, Contato, Convite, Formulario, Resposta
-from toqqi.modulos.crescimento import indicacoes
+from toqqi.modulos.crescimento import depoimentos, indicacoes
 from toqqi.modulos.envios import configuracao as config_envios
 from toqqi.modulos.imagens.servico import logo_para_cliente
 from toqqi.modulos.respostas.convites import CANAL_RESPOSTA, limpar_contexto
@@ -108,7 +108,18 @@ def responder_convite(token: str, respostas: dict, ip: str | None) -> dict:
                             convite_id=c.id, contexto=c.contexto, referencia=c.referencia, ip_hash=ip_hash(ip))
         c.respondido_em = func.now()
         acessos.registrar(s, "resposta", conta_id=conta_id, item_id=r.id)
-        return {**texto_final(f, v), "indicacao": indicacoes.convite_de_indicacao(s, r, v)}
+        return {**texto_final(f, v), "indicacao": indicacoes.convite_de_indicacao(s, r, v),
+                "depoimento": depoimentos.tela_final(s, r, v.get("empresa") or "")}
+
+
+def autorizar_depoimento(token: str) -> dict:
+    """Melhoria 5: o cliente autoriza publicar o comentário (só pelo convite, depois de responder)."""
+    conta_id, convite_id = _achar_convite(token)
+    with em_conta(conta_id) as s:
+        c = s.get(Convite, convite_id, with_for_update=True)
+        r = indicacoes.resposta_do_convite(s, c.id)
+        resultado = depoimentos.autorizar(s, r)
+        return resultado
 
 
 def indicar(token: str, dados) -> dict:
