@@ -5,7 +5,7 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { AlertTriangle } from 'lucide-vue-next'
-import type { Painel } from '@/api/tipos'
+import type { Painel, ResumoCrescimento } from '@/api/tipos'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarNumero, plural } from '@/utils/formatos'
 import { formatarMedia2, formatarMoedaCurta, pctCarteira, tomCsat } from './logica'
@@ -14,6 +14,8 @@ const props = defineProps<{
   atencao: Painel['atencao']
   csat: Painel['csat']
   taxa: Painel['taxa_resposta']
+  /** Melhoria 6: receita gerada pelo Toqqi no período (GET /crescimento/resumo); null: sem permissão ou sem dado. */
+  gerada?: ResumoCrescimento | null
   /** Etapa 5h, modo exemplo: sem links (os atalhos viram texto). */
   desativado?: boolean
 }>()
@@ -35,6 +37,18 @@ const podeVerAcoes = computed(() => pode('acoes.ver'))
 const semValores = computed(() => receita.value.carteira === null && valorReceita.value === 0)
 const temCsat = computed(() => !!props.csat && props.csat.total > 0 && props.csat.percentual !== null)
 const temTaxa = computed(() => !!props.taxa && props.taxa.percentual !== null && props.taxa.convidados > 0)
+
+const valorGerado = computed(() =>
+  props.gerada ? (Number(props.gerada.indicacoes.receita_mensal) || 0) + (Number(props.gerada.ofertas.receita) || 0) : 0,
+)
+const textoGerado = computed(() => {
+  const g = props.gerada
+  if (!g) return ''
+  const partes = []
+  if (g.indicacoes.clientes) partes.push(`${plural(g.indicacoes.clientes, 'indicação virou', 'indicações viraram')} cliente`)
+  if (g.ofertas.aceitas) partes.push(plural(g.ofertas.aceitas, 'oferta aceita', 'ofertas aceitas'))
+  return partes.join(' · ')
+})
 
 const CARTAO = 'flex min-w-0 flex-col gap-1 rounded-cartao p-4 sm:p-5'
 const CHEIO = 'border border-borda bg-superficie shadow-cartao'
@@ -67,6 +81,19 @@ const APAGADO = 'border border-dashed border-borda-forte bg-superficie-2'
         {{ receita.sem_valor === 1 ? '1 delas não tem' : `${formatarNumero(receita.sem_valor)} delas não têm` }} o valor do contrato.
         <RouterLink v-if="pode('contatos.ver')" to="/contatos?aba=empresas" class="link inline-flex min-h-11 items-center sm:min-h-0">Completar em Empresas</RouterLink>
       </p>
+    </div>
+
+    <!-- Receita gerada pelo Toqqi (melhoria 6) -->
+    <div v-if="gerada" :class="[CARTAO, valorGerado > 0 || textoGerado ? CHEIO : APAGADO]" data-indicador="gerada">
+      <h2 class="text-sm font-semibold text-texto-suave">Receita gerada pelo Toqqi</h2>
+      <template v-if="valorGerado > 0 || textoGerado">
+        <p class="text-2xl font-extrabold leading-tight" :class="valorGerado > 0 ? 'text-sucesso' : 'text-texto'">
+          {{ formatarMoedaCurta(valorGerado) }}<span class="text-sm font-semibold text-texto-fraco"> /mês</span>
+        </p>
+        <p class="text-xs text-texto-suave">{{ textoGerado }}</p>
+      </template>
+      <p v-else class="font-bold text-texto-suave">Nenhuma indicação ou oferta convertida no período</p>
+      <RouterLink v-if="pode('crescimento.ver')" to="/crescimento" class="link inline-flex min-h-11 items-center text-sm sm:min-h-0">Ver em Crescimento</RouterLink>
     </div>
 
     <!-- Planos de ação -->

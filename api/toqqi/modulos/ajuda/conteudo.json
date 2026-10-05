@@ -250,7 +250,7 @@
         "No Início, escolha o período nos filtros do alto (o padrão é “Últimos 90 dias”) e, se quiser, um grupo de empresas. “Só ativas” já vem ligado.",
         "Leia o cartão do NPS: o número, a faixa, como “Muito bom”, e quanto ele subiu ou caiu sobre o período anterior.",
         "Em “O que mudou”, veja o fato principal do período e use os botões, como “Ver os detratores” ou “Perguntar ao ToqqiAI”.",
-        "Confira os indicadores: Receita em risco, Planos de ação, Satisfação (CSAT) e Taxa de resposta.",
+        "Confira os indicadores: Receita em risco, Receita gerada pelo Toqqi (indicações e ofertas convertidas), Planos de ação, Satisfação (CSAT) e Taxa de resposta.",
         "Desça para ver o NPS mês a mês, “Quem mudou de lado”, “Do que estão falando” e os comentários. Na dúvida, clique em “Como ler os números”."
       ],
       "resultado": "Você vê o NPS do período com a faixa e a variação, o que mais mudou e o que precisa de cuidado, como a receita em risco e os planos vencidos. Com a IA ligada, “Gerar resumo”, no “Resumo da IA”, escreve três frases sobre o período e gasta análises da cota de IA conforme o modelo (veja em Configurações › IA).",
@@ -2009,7 +2009,7 @@
                 "A linha “Primeiros passos: X de 4. Próximo: …”, enquanto faltar algum passo. “Ocultar” esconde a linha neste navegador; “Mostrar primeiros passos”, no fim da página, traz de volta.",
                 "O cartão do NPS, com o título do período, como “NPS dos últimos 90 dias”: o medidor, a faixa e a variação; ao lado, “O que mudou”, com até 3 botões, e a barra de detratores, neutros e promotores.",
                 "“Resumo da IA”: três frases sobre o período, geradas quando você pede (só com a inteligência artificial ligada na plataforma).",
-                "Os indicadores “Receita em risco”, “Planos de ação”, “Satisfação (CSAT)” e “Taxa de resposta”.",
+                "Os indicadores “Receita em risco”, “Receita gerada pelo Toqqi” (indicações que viraram cliente e ofertas aceitas no período, para quem vê o Crescimento), “Planos de ação”, “Satisfação (CSAT)” e “Taxa de resposta”.",
                 "“NPS nos últimos 12 meses” e “Quem mudou de lado”.",
                 "“Do que estão falando” e, ao lado, “Tom dos comentários” e “Palavras que mais aparecem”.",
                 "“O que os clientes disseram por último” e “Empresas: onde cuidar e onde crescer”.",

@@ -503,3 +503,27 @@ describe('Início v2: blocos', () => {
     expect(linhas[0]!.text()).toContain('Não')
   })
 })
+
+describe('receita gerada pelo Toqqi (melhoria 6)', () => {
+  it('soma indicações que viraram cliente e ofertas aceitas, só para quem vê o Crescimento', async () => {
+    entrar(['painel.ver', 'crescimento.ver'])
+    apiFalsa({
+      'GET /painel': () => painel(),
+      'GET /crescimento/resumo': () => ({
+        periodo: { de: HOJE, ate: HOJE },
+        indicacoes: { recebidas: 5, clientes: 2, taxa: 40, receita_mensal: '3000.00' },
+        ofertas: { feitas: 4, aceitas: 1, taxa: 25, receita: '1500.00' },
+      }),
+    })
+    let w = await abrir()
+    const c = w.get('[data-indicador="gerada"]')
+    expect(c.text()).toContain('2 indicações viraram cliente · 1 oferta aceita')
+    expect(c.find('a').attributes('href')).toBe('/crescimento')
+    w.unmount()
+
+    entrar(['painel.ver'])
+    apiFalsa({ 'GET /painel': () => painel() })
+    w = await abrir()
+    expect(w.find('[data-indicador="gerada"]').exists()).toBe(false)
+  })
+})

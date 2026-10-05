@@ -9,7 +9,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Check, ChevronDown, Download, HelpCircle, LineChart, Table2 } from 'lucide-vue-next'
-import { acoesApi, mensagemDoErro, painelApi, type CarteiraSaude, type FiltrosGeracaoIa, type FiltrosPainel, type GrupoNota, type Id, type Painel } from '@/api'
+import { acoesApi, crescimentoApi, mensagemDoErro, painelApi, type CarteiraSaude, type ResumoCrescimento, type FiltrosGeracaoIa, type FiltrosPainel, type GrupoNota, type Id, type Painel } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { useAssistenteStore } from '@/stores/assistente'
 import { useCadastrosStore } from '@/stores/cadastros'
@@ -295,6 +295,25 @@ const temNpsNaEvolucao = computed(() => pontosEvolucao.value.some((p) => typeof 
 const tituloResumo = computed(() => tituloNps(filtrosNaTela.value.periodo, filtrosNaTela.value.rotulo))
 const textoAnterior = computed(() => textoPeriodoAnterior(painelTela.value?.periodo?.anterior))
 const carteiraSaude = ref<CarteiraSaude | null>(null)
+
+// ── Receita gerada pelo Toqqi (melhoria 6): indicações que viraram cliente e ofertas aceitas no período do painel ──
+const gerada = ref<ResumoCrescimento | null>(null)
+let controleGerada: AbortController | null = null
+watch(
+  () => [modoExemplo.value, filtrosNaTela.value.intervalo.de, filtrosNaTela.value.intervalo.ate] as const,
+  async ([exemplo, de, ate]) => {
+    controleGerada?.abort()
+    gerada.value = null
+    if (exemplo || !sessao.pode('crescimento.ver')) return
+    controleGerada = new AbortController()
+    try {
+      gerada.value = await crescimentoApi.resumo({ ...(de ? { de } : {}), ...(ate ? { ate } : {}) }, controleGerada.signal)
+    } catch {
+      gerada.value = null // o cartão só some; o resto do painel segue
+    }
+  },
+  { immediate: true },
+)
 const entradaManchete = computed(() => {
   const d = painelTela.value
   return d
@@ -484,7 +503,7 @@ onBeforeUnmount(() => {
     <CartaoResumoIa v-else :filtros="filtrosResumo" :periodo="filtrosNaTela.rotulo" />
     <CartaoCarteiraSaude v-if="!modoExemplo" :grupo-id="filtros.grupo_id" @carregada="carteiraSaude = $event" />
 
-    <CartoesIndicadores :atencao="painelTela.atencao" :csat="painelTela.csat" :taxa="painelTela.taxa_resposta" :desativado="modoExemplo" />
+    <CartoesIndicadores :atencao="painelTela.atencao" :gerada="gerada" :csat="painelTela.csat" :taxa="painelTela.taxa_resposta" :desativado="modoExemplo" />
 
     <div class="grid grid-cols-1 items-start gap-4 sm:gap-5 @4xl:grid-cols-[minmax(0,1fr)_minmax(19.5rem,0.5fr)]">
       <section class="cartao flex min-w-0 flex-col gap-3 p-5 sm:p-6" aria-labelledby="t-evolucao">
