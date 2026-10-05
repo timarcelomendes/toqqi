@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from toqqi.core import planos
 from toqqi.core.config import config
 from toqqi.core.errors import AppError
 from toqqi.modelos import ConfigEnvios, Conta, Formulario, Imagem
@@ -53,6 +54,8 @@ PADROES = {
     "email_imagem_topo_id": None,
     "email_assinatura": None,
     "email_rodape": None,
+    # etapa 5i: tirar "Pesquisa feita com Toqqi" (só vale onde o plano permite; ver `mencao`)
+    "ocultar_mencao_toqqi": False,
 }
 CAMPOS = list(PADROES) + ["formulario_id"]
 ROTA_CONFIG = "/configuracoes/envios"
@@ -99,6 +102,13 @@ def config_json(cfg: ConfigEnvios, topo: Imagem | None = None) -> dict:
     return dados
 
 
+def mencao(s: Session, cfg: ConfigEnvios) -> dict:
+    """{pode_ocultar, aparece} da menção "Pesquisa feita com Toqqi" para a conta da transação."""
+    plano, situacao = s.execute(select(Conta.plano, Conta.situacao)).one()
+    pode = planos.pode_ocultar_mencao(plano, situacao)
+    return {"pode_ocultar": pode, "aparece": not (cfg.ocultar_mencao_toqqi and pode)}
+
+
 def visual(s: Session, cfg: ConfigEnvios, conta_id: int, tema: dict | None) -> mensagens.Visual:
     """O visual de um e-mail de pesquisa da conta; `tema` = o do formulário do envio (cor e logo)."""
     tema = tema or {}
@@ -107,7 +117,8 @@ def visual(s: Session, cfg: ConfigEnvios, conta_id: int, tema: dict | None) -> m
         cor=mensagens.cor_de_destaque(cfg.email_cor, tema.get("cor")),
         logo_url=logo_para_cliente(s, conta_id, tema.get("logo_url")) if cfg.email_mostrar_logo else None,
         imagem_topo=mensagens.ImagemTopo(url_publica(topo.chave), topo.largura, topo.altura) if topo else None,
-        assinatura=cfg.email_assinatura, rodape=cfg.email_rodape)
+        assinatura=cfg.email_assinatura, rodape=cfg.email_rodape,
+        mencao_url=planos.url_mencao("email") if mencao(s, cfg)["aparece"] else None)
 
 
 def prazo_aguardando(cfg: ConfigEnvios) -> int:

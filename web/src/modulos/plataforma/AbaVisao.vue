@@ -176,6 +176,37 @@ onBeforeUnmount(() => controlador?.abort())
         </ul>
       </section>
 
+      <!-- Etapa 5i: de onde vieram os cadastros (utm, ex. o "Pesquisa feita com Toqqi") -->
+      <section v-if="dados.origens" class="cartao" aria-labelledby="visao-origens" data-origens>
+        <div class="border-b border-borda px-4 py-3.5 sm:px-5">
+          <h2 id="visao-origens" class="font-bold text-texto">Cadastros por origem</h2>
+          <p class="text-sm text-texto-suave">Contas criadas nos últimos {{ dados.origens.dias }} dias. A conversão aparece depois que o teste acaba.</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-left text-xs text-texto-suave">
+              <tr>
+                <th scope="col" class="px-4 py-2 font-semibold sm:px-5">Origem</th>
+                <th scope="col" class="px-3 py-2 text-right font-semibold">Cadastros</th>
+                <th scope="col" class="px-4 py-2 text-right font-semibold sm:px-5">Pagantes</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-borda">
+              <tr v-for="o in dados.origens.itens" :key="o.rotulo" data-origem>
+                <td class="px-4 py-2.5 text-texto [overflow-wrap:anywhere] sm:px-5">{{ o.rotulo }}</td>
+                <td class="px-3 py-2.5 text-right tabular-nums">{{ o.cadastros }}</td>
+                <td class="px-4 py-2.5 text-right tabular-nums sm:px-5">{{ o.pagantes }}</td>
+              </tr>
+              <tr data-origem-sem>
+                <td class="px-4 py-2.5 text-texto-suave sm:px-5">Sem origem (acesso direto)</td>
+                <td class="px-3 py-2.5 text-right tabular-nums">{{ dados.origens.sem_origem.cadastros }}</td>
+                <td class="px-4 py-2.5 text-right tabular-nums sm:px-5">{{ dados.origens.sem_origem.pagantes }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <!-- Contas -->
       <section class="cartao" aria-labelledby="visao-contas" data-contas-visao>
         <div class="flex flex-col gap-3 border-b border-borda p-4 sm:px-5">

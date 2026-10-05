@@ -126,7 +126,8 @@ function montar(): CorpoConfig {
 
 function aplicar(c: ConfigEnvios) {
   salvo.value = c
-  const { email_cor, email_mostrar_logo, email_imagem_topo, email_assinatura, email_rodape, ...resto } = c
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { email_cor, email_mostrar_logo, email_imagem_topo, email_assinatura, email_rodape, mencao_toqqi, ...resto } = c
   Object.assign(f, { ...resto, canal: c.canal ?? 'email', agradecimento: { ...c.agradecimento }, dias_lembretes: [...(c.dias_lembretes ?? [])] })
   num.intervalo = String(c.intervalo_dias)
   num.descanso = String(c.descanso_dias)
@@ -141,6 +142,13 @@ function aplicar(c: ConfigEnvios) {
   })
   original.value = JSON.stringify(montar())
 }
+
+/** Etapa 5i: "Pesquisa feita com Toqqi". Sem o plano Empresa, fica ligado e travado (a API recusa tirar). */
+const podeOcultarMencao = computed(() => salvo.value?.mencao_toqqi?.pode_ocultar === true)
+const mostrarMencao = computed({
+  get: () => !(podeOcultarMencao.value && f.ocultar_mencao_toqqi === true),
+  set: (v: boolean) => (f.ocultar_mencao_toqqi = !v),
+})
 
 const alterado = computed(() => !!original.value && JSON.stringify(montar()) !== original.value)
 
@@ -630,6 +638,18 @@ onMounted(carregar)
             placeholder="Rua das Flores, 100 · São Paulo (SP)"
             dica="Endereço, telefone ou um aviso. Depois dele entram sempre “Você recebeu esta pesquisa porque é cliente de …” e o link para sair da lista."
           />
+          <div class="flex flex-col gap-1" data-mencao-toqqi>
+            <Interruptor
+              v-model="mostrarMencao"
+              :desabilitado="!podeOcultarMencao"
+              rotulo="Mostrar “Pesquisa feita com Toqqi”"
+              descricao="Vale para a página da pesquisa e para os e-mails de pesquisa."
+            />
+            <p v-if="!podeOcultarMencao" class="text-sm text-texto-fraco">
+              Disponível no plano Empresa.
+              <RouterLink v-if="sessao.pode('assinatura.gerenciar')" to="/assinatura" class="link">Ver planos</RouterLink>
+            </p>
+          </div>
         </fieldset>
 
         <div class="min-w-0 lg:sticky lg:top-24 lg:self-start" data-previa-visual>

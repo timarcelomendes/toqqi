@@ -11,6 +11,7 @@ import Campo from '@/components/ui/Campo.vue'
 import CampoSenha from '@/components/ui/CampoSenha.vue'
 import CaixaSelecao from '@/components/ui/CaixaSelecao.vue'
 import CabecalhoAcesso from './CabecalhoAcesso.vue'
+import { apagarOrigem, origemParaCadastro } from '@/site/origem'
 
 const { enviando, erroGeral, erros, executar } = useFormulario()
 const dados = reactive({ empresa: '', nome: '', email: '', telefone: '', senha: '', aceite: false })
@@ -51,8 +52,10 @@ async function enviar() {
       senha: dados.senha,
       ...(tel ? { telefone: tel } : {}),
       aceite_termos: true,
+      origem: origemParaCadastro(),
     }),
   )
+  if (r) apagarOrigem()
   if (r) concluido.value = r.mensagem || 'Enviamos um link de confirmação para o seu e-mail.'
 }
 

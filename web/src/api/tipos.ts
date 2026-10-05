@@ -281,11 +281,21 @@ export interface ContaVisao {
   /** Teto de segurança de IA usado no mês. */
   ia_analises_mes: number
   assinatura: { plano: string; valor: ValorDecimal } | null
+  /** Etapa 5i: "pesquisa · rodape · email" (utm do cadastro) ou null. */
+  origem?: string | null
+}
+
+/** Etapa 5i: cadastros por origem nos últimos `dias` dias e quantos pagam hoje. */
+export interface OrigensVisao {
+  dias: number
+  itens: { rotulo: string; cadastros: number; pagantes: number }[]
+  sem_origem: { cadastros: number; pagantes: number }
 }
 
 /** GET /plataforma/visao. */
 export interface VisaoPlataforma {
   gerado_em: string
+  origens?: OrigensVisao
   totais: TotaisVisao
   conversao: ConversaoVisao
   testes_acabando: TesteAcabando[]
@@ -663,6 +673,10 @@ export interface ConfigEnvios {
   email_assinatura?: string | null
   /** Texto puro, até 500 (null = só as linhas fixas do rodapé). */
   email_rodape?: string | null
+  /** Etapa 5i: a conta pediu para tirar "Pesquisa feita com Toqqi" (só vale onde o plano permite). */
+  ocultar_mencao_toqqi?: boolean
+  /** Etapa 5i: só leitura (GET/PUT devolvem): o plano permite tirar? A menção aparece hoje? */
+  mencao_toqqi?: { pode_ocultar: boolean; aparece: boolean }
 }
 
 /**

@@ -200,9 +200,10 @@ def test_sem_visual_fica_como_antes(client, admin):
     assert _faixa(m.html) == "#1F6FEB"
     assert "<img" not in m.html and "#4b5563" not in m.html
     partes = m.texto.split("\n\n")
-    assert partes[-3].startswith("Responda aqui: ")
-    assert partes[-2] == "Você recebeu esta pesquisa porque é cliente de Alfa & Cia."
-    assert partes[-1].startswith("Não quero mais receber pesquisas: ")
+    assert partes[-4].startswith("Responda aqui: ")
+    assert partes[-3] == "Você recebeu esta pesquisa porque é cliente de Alfa & Cia."
+    assert partes[-2].startswith("Não quero mais receber pesquisas: ")
+    assert partes[-1].startswith("Pesquisa feita com Toqqi: ")  # etapa 5i
 
 
 def test_mostrar_logo(client, admin):

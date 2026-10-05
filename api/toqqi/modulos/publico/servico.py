@@ -13,12 +13,14 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import exists, func, select
 
 from toqqi.core import acessos
+from toqqi.core.planos import url_mencao
 from toqqi.core.config import config
 from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.errors import AppError
 from toqqi.core.security import hash_token
 from toqqi.modelos import Conta, Contato, Convite, Formulario, Resposta
 from toqqi.modulos.crescimento import indicacoes
+from toqqi.modulos.envios import configuracao as config_envios
 from toqqi.modulos.imagens.servico import logo_para_cliente
 from toqqi.modulos.respostas.convites import CANAL_RESPOSTA, limpar_contexto
 from toqqi.modulos.respostas.registro import (
@@ -57,6 +59,9 @@ def _publico(s, conta_id: int, f: Formulario, v: dict) -> dict:
     """Formulário para a página pública; sem logo próprio, o tema leva o logo da conta (se houver)."""
     dados = formulario_publico(f, v)
     dados["tema"]["logo_url"] = logo_para_cliente(s, conta_id, (f.tema or {}).get("logo_url"))
+    # etapa 5i: "Pesquisa feita com Toqqi" (null onde a conta tirou e o plano permite)
+    aparece = config_envios.mencao(s, config_envios.obter(s, criar=False))["aparece"]
+    dados["mencao_toqqi"] = {"texto": "Pesquisa feita com Toqqi", "url": url_mencao("pagina")} if aparece else None
     return dados
 
 

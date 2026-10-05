@@ -26,6 +26,7 @@ import {
   valorContador,
   valorPublico,
 } from './logica'
+import { guardarOrigem } from './origem'
 
 const INTERVALO_PASSOS = 5500
 const RISCO = 262399.99
@@ -281,6 +282,7 @@ function numerosDosPlanos(): void {
     .finally(() => window.clearTimeout(prazo))
 }
 
+guardarOrigem() // etapa 5i: de onde veio a visita (para o cadastro)
 const calmo = reduzirMovimento()
 if (!calmo) document.documentElement.classList.add('movimento')
 sessaoAberta()

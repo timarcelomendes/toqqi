@@ -46,6 +46,8 @@ export const authApi = {
     senha: string
     telefone?: string
     aceite_termos: true
+    /** Etapa 5i: utm da visita (site/origem.ts). */
+    origem?: Partial<Record<'utm_source' | 'utm_medium' | 'utm_campaign', string>> | null
   }) => api.post<Mensagem>('/auth/cadastro', dados, publico),
   entrar: (dados: { email: string; senha: string; lembrar: boolean }) =>
     api.post<Sessao>('/auth/entrar', dados, publico),

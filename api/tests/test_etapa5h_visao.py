@@ -107,7 +107,7 @@ def _visao(client, h) -> dict:
 
 def test_totais_receita_e_novas(client, cenario):
     v = _visao(client, cenario["root"]["h"])
-    assert set(v) == {"gerado_em", "totais", "conversao", "testes_acabando", "contas"}
+    assert set(v) == {"gerado_em", "totais", "conversao", "testes_acabando", "contas", "origens"}  # origens: 5i
     assert v["totais"] == {
         "contas": 10,
         "por_situacao": {"teste": 3, "teste_expirado": 1, "ativa": 2, "atrasada": 1, "pausada": 1, "cancelada": 1,
@@ -172,7 +172,7 @@ def test_lista_das_contas(client, cenario):
     alfa = contas["Alfa"]
     assert set(alfa) == {"id", "nome", "situacao", "plano", "criada_em", "teste_ate", "ultimo_acesso", "usuarios",
                          "admin_email", "contatos_ativos", "convites_30d", "respostas_30d", "respostas_total",
-                         "ativacao", "ia_analises_mes", "assinatura"}
+                         "ativacao", "ia_analises_mes", "assinatura", "origem"}
     assert {k: alfa[k] for k in ("situacao", "plano", "usuarios", "admin_email", "contatos_ativos", "convites_30d",
                                  "respostas_30d", "respostas_total", "ia_analises_mes", "assinatura")} == {
         "situacao": "teste", "plano": "profissional", "usuarios": 2, "admin_email": "ana@alfa.com.br",

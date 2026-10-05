@@ -657,3 +657,15 @@ commits separados por frente.
 restringir por carteira fica para outra etapa. 2) Sim, perder a empresa desativa os contatos. 3) Pesos e faixas valem como
 ponto de partida; ajustar depois com dados reais (o Desfecho mostra se a saúde antecipou as perdas). 4) A raiz do
 `FRONTEND_URL` é o destino do link.
+
+## 13. Notas da construção (C, versão enxuta, 05/10)
+Feito na própria sessão, sem agentes, por custo (pedido do Marcelo). Diferenças do §4/§9:
+- Plataforma › Visão geral: janela fixa de 90 dias (sem `?dias_origem`), sem a coluna de conversão; cada conta traz `origem`.
+- Sem a menção nas prévias do editor de formulários e do e-mail (aparece na pesquisa e nos e-mails de verdade).
+- Textos legais: só a linha `toqqi.origem` na tabela de armazenamento da Política; **sem subir `VERSAO_DOCUMENTOS`**
+  (ninguém precisa aceitar de novo). Se o advogado achar a mudança relevante, subir a versão depois.
+- Sem `conta.mencao_toqqi` no `GET /eu` (só a tela de Envios usa a regra, por `GET /envios/configuracao`).
+- Achado nos testes: `origem=None` no modelo gravava `'null'` em JSONB e o CHECK recusava, o que derrubaria todo cadastro;
+  o cadastro grava `NULL` de SQL.
+- A e B (desfecho e saúde) ficam para depois; a migração 0018 já sobe com as colunas e o histórico do valor mensal começa a
+  ser gravado desde o deploy (útil para o desfecho).

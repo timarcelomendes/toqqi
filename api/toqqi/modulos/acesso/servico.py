@@ -6,11 +6,12 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, exists, func, select, update
+from sqlalchemy import null as sql_null
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from toqqi.apresentacao import conta_json, usuario_json
-from toqqi.core import acessos, parametros, relogio
+from toqqi.core import acessos, parametros, planos, relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.deps import Contexto
@@ -94,7 +95,10 @@ def cadastrar(dados, ip: str | None, agente: str | None = None) -> str:
                 conta = Conta(
                     # o fim do teste segue o relógio das regras que o leem (assinatura.regras); tokens e sessões
                     # seguem no relógio real
-                    nome=dados.empresa, situacao="teste", teste_ate=relogio.agora() + timedelta(days=dias),
+                    nome=dados.empresa,
+                    # sem origem: NULL de SQL (o JSONB gravaria 'null', que o CHECK da coluna recusa)
+                    origem=planos.limpar_origem(dados.origem) or sql_null(),
+                    situacao="teste", teste_ate=relogio.agora() + timedelta(days=dias),
                     plano=parametros.valor("teste.plano"),
                     termos_aceitos_em=agora, termos_ip=ip,
                     # registro da versão aceita no cadastro da conta; a fonte da versão é termos.VERSAO_DOCUMENTOS

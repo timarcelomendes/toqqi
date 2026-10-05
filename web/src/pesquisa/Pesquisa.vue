@@ -426,6 +426,17 @@ defineExpose({ recomecar: iniciar, irParaPergunta })
         </form>
       </div>
     </div>
+    <!-- Etapa 5i: fora do cartão e longe do botão de enviar; o Referer nunca leva o endereço (tem o token) -->
+    <p v-if="formulario.mencao_toqqi" class="text-center text-xs text-slate-600" :class="compacto ? 'mt-3' : 'mt-6'" data-mencao-toqqi>
+      <a
+        :href="formulario.mencao_toqqi.url"
+        target="_blank"
+        rel="noopener noreferrer"
+        referrerpolicy="no-referrer"
+        class="inline-flex min-h-6 items-center rounded hover:underline focus-visible:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+        >{{ formulario.mencao_toqqi.texto }}</a
+      >
+    </p>
     <p class="sr-only" aria-live="polite">{{ anuncio }}</p>
   </div>
 </template>

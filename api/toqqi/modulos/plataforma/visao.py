@@ -42,6 +42,9 @@ CONVERSAO_DE = 60  # dias atrás
 CONVERSAO_ATE = 15
 
 
+DIAS_ORIGEM = 90
+
+
 def situacao_exibida(c: Conta, agora: datetime) -> str:
     """A situação da conta, com `pausada` para a atrasada que passou da carência (envios parados)."""
     if c.situacao == "atrasada" and not regras.liberada(c, agora):
@@ -84,6 +87,11 @@ def visao() -> dict:
         return {"contatos": contatos.get(cid, (0, 0))[0] > 0, "envios_ligados": cid in envios_ligados,
                 "primeiro_envio": cid in primeiro_envio, "primeira_resposta": respostas.get(cid, (0, 0))[0] > 0}
 
+    def rotulo_origem(c: Conta) -> str | None:
+        o = c.origem or {}
+        partes = [o[k] for k in ("utm_source", "utm_medium", "utm_campaign") if o.get(k)]
+        return " · ".join(partes) or None
+
     def ultimo_acesso(cid: int):
         return usuarios.get(cid, (0, None))[1]
 
@@ -99,7 +107,7 @@ def visao() -> dict:
             "admin_email": admins.get(c.id), "contatos_ativos": contatos.get(c.id, (0, 0))[1],
             "convites_30d": convites.get(c.id, 0), "respostas_30d": respostas.get(c.id, (0, 0))[1],
             "respostas_total": respostas.get(c.id, (0, 0))[0], "ativacao": ativacao(c.id),
-            "ia_analises_mes": ia.get(c.id, 0),
+            "ia_analises_mes": ia.get(c.id, 0), "origem": rotulo_origem(c),
             "assinatura": {"plano": a.plano, "valor": a.valor} if a is not None else None,
         })
 
@@ -117,8 +125,25 @@ def visao() -> dict:
     janela = [c for c in contas if c.teste_ate is not None and de <= c.criada_em < ate]
     convertidas = sum(1 for c in janela if c.id in assinaram)
 
+    # etapa 5i: cadastros por origem (utm gravado no cadastro) nos últimos DIAS_ORIGEM dias e quantos pagam hoje
+    desde = agora - timedelta(days=DIAS_ORIGEM)
+    grupos: dict[str | None, list[int]] = {}
+    for c in contas:
+        if c.criada_em >= desde:
+            g = grupos.setdefault(rotulo_origem(c), [0, 0])
+            g[0] += 1
+            g[1] += c.id in ativas
+    sem = grupos.pop(None, [0, 0])
+    origens = {
+        "dias": DIAS_ORIGEM,
+        "itens": [{"rotulo": r, "cadastros": n, "pagantes": p}
+                  for r, (n, p) in sorted(grupos.items(), key=lambda x: (-x[1][0], x[0]))],
+        "sem_origem": {"cadastros": sem[0], "pagantes": sem[1]},
+    }
+
     return {
         "gerado_em": agora,
+        "origens": origens,
         "totais": {
             "contas": len(contas), "por_situacao": por_situacao, "pagantes": len(ativas),
             "receita_mensal": sum((a.valor for a in ativas.values()), Decimal("0.00")),

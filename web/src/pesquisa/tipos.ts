@@ -63,6 +63,8 @@ export interface FormularioPublico {
   nome: string
   perguntas: Pergunta[]
   tema: Tema
+  /** Etapa 5i: "Pesquisa feita com Toqqi" (null quando a conta tirou, onde o plano permite; ausente na prévia). */
+  mencao_toqqi?: { texto: string; url: string } | null
 }
 
 /** Valor de uma resposta: número (notas), texto, lista (múltipla escolha) ou sim/não. */

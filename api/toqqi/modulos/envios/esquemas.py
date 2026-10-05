@@ -78,6 +78,7 @@ class AgradecimentoIn(BaseModel):
 class ConfigIn(BaseModel):
     """Corpo parcial: só os campos enviados mudam."""
     envios_ativos: bool | None = None
+    ocultar_mencao_toqqi: bool | None = None
     envio_automatico: bool | None = None
     formulario_id: int | None = None
     intervalo_dias: Annotated[int, Field(ge=30, le=365)] | None = None

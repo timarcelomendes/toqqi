@@ -298,6 +298,12 @@ export const PRIVACIDADE: DocumentoLegal = {
               'sessionStorage',
               'Até fechar a aba, usar "Nova conversa" ou sair da conta.',
             ],
+            [
+              'toqqi.origem',
+              'Lembrar de onde veio a visita ao site (só os parâmetros utm do link, como "pesquisa" e "rodape", nunca dados pessoais) para registrar a origem da conta no cadastro.',
+              'sessionStorage',
+              'Até concluir o cadastro ou fechar a aba.',
+            ],
           ],
         },
         {

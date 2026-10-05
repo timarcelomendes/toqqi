@@ -60,6 +60,7 @@ class Visual:
     imagem_topo: ImagemTopo | None = None
     assinatura: str | None = None
     rodape: str | None = None
+    mencao_url: str | None = None  # etapa 5i: "Pesquisa feita com Toqqi" (None = a conta tirou, onde o plano permite)
 
 
 # ---- cores ------------------------------------------------------------------------------
@@ -246,6 +247,18 @@ def _imagem_topo(imagem: ImagemTopo | None) -> str:
     )
 
 
+def _mencao(url: str | None) -> str:
+    if not url:
+        return ""
+    return (f'<p style="margin:12px 0 0;{FONTE};font-size:12px;line-height:18px">'
+            f'<a href="{html.escape(url)}" target="_blank" rel="noopener noreferrer" '
+            'style="color:#6b7280;text-decoration:underline">Pesquisa feita com Toqqi</a></p>')
+
+
+def _mencao_texto(visual: "Visual") -> list[str]:
+    return [f"Pesquisa feita com Toqqi: {visual.mencao_url}"] if visual.mencao_url else []
+
+
 def _rodape(empresa: str, sair: str, rodape_da_conta: str | None) -> str:
     proprio = (f'<p style="margin:0 0 12px;{FONTE};font-size:12px;line-height:18px;color:#6b7280">'
                f"{_linhas(rodape_da_conta)}</p>") if rodape_da_conta else ""
@@ -273,7 +286,7 @@ def _layout(conteudo: str, empresa: str, sair: str, visual: Visual) -> str:
         f"{_imagem_topo(visual.imagem_topo)}"
         f'<tr><td style="padding:32px {MARGEM}px">{conteudo}{_assinatura(visual.assinatura)}</td></tr>'
         f'<tr><td style="padding:16px {MARGEM}px {MARGEM}px;border-top:1px solid #e5e7eb">'
-        f"{_rodape(empresa, sair, visual.rodape)}</td></tr>"
+        f"{_rodape(empresa, sair, visual.rodape)}{_mencao(visual.mencao_url)}</td></tr>"
         "</table></td></tr></table></body></html>"
     )
 
@@ -297,7 +310,7 @@ def email_pesquisa(*, conta_id: int, para: str, empresa: str, assunto: str, text
     texto_puro = "\n\n".join(partes + [f"Responda aqui: {link}"] + _extras_texto(visual) + [
         f"Você recebeu esta pesquisa porque é cliente de {empresa}.",
         f"Não quero mais receber pesquisas: {sair}",
-    ])
+    ] + _mencao_texto(visual))
     return Mensagem(para=para, assunto=renderizar(assunto, v), texto=texto_puro,
                     html=_layout(conteudo, empresa, sair, visual), remetente_nome=remetente_nome or empresa,
                     responder_para=responder_para, cabecalhos=_cabecalhos(conta_id, para))
@@ -312,7 +325,7 @@ def email_agradecimento(*, conta_id: int, para: str, empresa: str, texto: str, v
     texto_puro = "\n\n".join(partes + _extras_texto(visual) + [
         f"Você recebeu esta pesquisa porque é cliente de {empresa}.",
         f"Não quero mais receber pesquisas: {sair}",
-    ])
+    ] + _mencao_texto(visual))
     assunto = f"{empresa} agradece a sua resposta" if empresa else "Obrigado pela sua resposta"
     return Mensagem(para=para, assunto=assunto, texto=texto_puro,
                     html=_layout("".join(_p(x) for x in partes), empresa, sair, visual),

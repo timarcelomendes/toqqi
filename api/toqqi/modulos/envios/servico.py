@@ -29,6 +29,7 @@ from toqqi.modulos.envios.configuracao import (
     exigir,
     formulario_ok,
     imagem_topo,
+    mencao,
     obter,
     pre_condicoes,
     visual,
@@ -63,7 +64,7 @@ def ver_pre_condicoes(ctx: Contexto) -> dict:
 def ver_config(ctx: Contexto) -> dict:
     with em_conta(ctx.conta_id) as s:
         cfg = obter(s)
-        return config_json(cfg, imagem_topo(s, cfg))
+        return config_json(cfg, imagem_topo(s, cfg)) | {"mencao_toqqi": mencao(s, cfg)}
 
 
 def _imagem_do_banco(s, conta_id: int, imagem_id: int) -> bool:
@@ -106,6 +107,8 @@ def salvar_config(ctx: Contexto, dados) -> dict:
             atuais = list(cfg.dias_lembretes)
             v["dias_lembretes"] = (atuais if len(atuais) >= v["lembretes"] else DIAS_LEMBRETES_PADRAO)[: v["lembretes"]]
         _validar(s, v, ctx.conta_id)
+        if v["ocultar_mencao_toqqi"] and not cfg.ocultar_mencao_toqqi and not mencao(s, cfg)["pode_ocultar"]:
+            raise AppError(403, "recurso_do_plano", "Só o plano Empresa pode tirar a menção ao Toqqi.")
         antes = config_json(cfg, imagem_topo(s, cfg))
         for c, valor in v.items():
             setattr(cfg, c, valor)
@@ -115,7 +118,7 @@ def salvar_config(ctx: Contexto, dados) -> dict:
         mudou = sorted(c for c in depois if depois[c] != antes[c])
         if mudou:
             registrar(s, "config_envios", "info", {"campos": mudou}, usuario_id=ctx.usuario_id)
-        return depois
+        return depois | {"mencao_toqqi": mencao(s, cfg)}
 
 
 def enviar_teste(ctx: Contexto) -> dict:

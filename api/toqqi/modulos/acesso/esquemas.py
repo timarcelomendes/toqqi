@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, Field, StrictBool
 from pydantic_core import PydanticCustomError
@@ -19,6 +19,7 @@ class CadastroIn(BaseModel):
     senha: SenhaForte
     telefone: Annotated[Texto, Field(max_length=30)] | None = None
     aceite_termos: Annotated[bool, AfterValidator(_aceite_obrigatorio)]
+    origem: Any = None  # etapa 5i: {utm_source, utm_medium, utm_campaign}; limpo no cadastro, nunca dá 422
 
 
 class EntrarIn(BaseModel):
