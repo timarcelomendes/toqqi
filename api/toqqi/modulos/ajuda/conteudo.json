@@ -3354,6 +3354,37 @@
           ]
         },
         {
+          "id": "conectar-o-rd-station-crm",
+          "titulo": "Conectar o RD Station CRM",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "rd station",
+            "rd station crm",
+            "crm",
+            "conector",
+            "token de instância",
+            "negócio ganho",
+            "sincronizar",
+            "importar do crm",
+            "integração crm"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Integrações › CRM, o administrador conecta o RD Station CRM. No RD, abra seu perfil, copie o Token de instância e cole no Toqqi. O token fica guardado cifrado."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Sincronizar agora: traz as empresas e os contatos do RD que ainda não estão no Toqqi (com e-mail ou telefone). Nunca apaga nem muda quem já está cadastrado, e para no limite de contatos do plano.",
+                "Pesquisar quando um negócio for ganho: quando uma negociação vira ganha no RD, os contatos dela recebem a pesquisa NPS, pelas regras de envio da conta (descadastro, descanso e canal). O mesmo negócio não gera pesquisa duas vezes.",
+                "Desconectar apaga o token e o aviso cadastrado no RD; o que já foi trazido continua no Toqqi."
+              ]
+            }
+          ]
+        },
+        {
           "id": "campos-e-respostas-da-integracao",
           "titulo": "Campos e respostas da integração (para o técnico)",
           "somente_admin": true,

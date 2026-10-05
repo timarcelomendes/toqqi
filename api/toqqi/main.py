@@ -49,6 +49,8 @@ from toqqi.modulos.plataforma.parametros import router_publico as planos_publico
 from toqqi.modulos.plataforma.rotas import router as plataforma
 from toqqi.modulos.publico.rotas import router as publico
 from toqqi.modulos.relatorios.rotas import router as relatorios
+from toqqi.modulos.conectores.rotas import router as conectores
+from toqqi.modulos.conectores.rotas import router_publico as conectores_publico
 from toqqi.modulos.saude.rotas import router as saude_conta  # etapa 5i: saúde da conta (não é o /saude)
 from toqqi.modulos.respostas.rotas import router as respostas
 from toqqi.modulos.whatsapp.rotas import router as whatsapp
@@ -127,7 +129,8 @@ def create_app() -> FastAPI:
 
     for r in (acesso, equipe, conta, auditoria, parametros, plataforma, cadastros, empresas_csv, empresas,
               contatos_csv, contatos, importacao,
-              formularios, imagens, publico, envios, interno, integracoes, whatsapp, integracao, whatsapp_publico,
+              formularios, imagens, conectores_publico, publico, envios, interno, conectores, integracoes, whatsapp,
+              integracao, whatsapp_publico,
               respostas, acoes, crescimento, saude_conta, painel, relatorios, assinatura, asaas_webhook, ajuda, assistente,
               dados, planos_publicos):
         app.include_router(r, prefix=PREFIXO)

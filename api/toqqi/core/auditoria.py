@@ -54,6 +54,9 @@ ROTULOS = {
     "descadastro_desfeito": "Contato voltou a receber pesquisas",
     "conta_excluida": "Conta excluída pela equipe Toqqi",
     "chave_gerada": "Chave de integração gerada",
+    "conector_ligado": "Conector ligado (RD Station CRM)",
+    "conector_desligado": "Conector desligado (RD Station CRM)",
+    "conector_sincronizado": "Empresas e contatos sincronizados pelo conector",
     "chave_revogada": "Chave de integração revogada",
     "webhook_desativado": "Webhook desativado após falhas seguidas",
     "whatsapp_conectado": "WhatsApp automático conectado",
@@ -141,7 +144,7 @@ def _grupo(evento: str) -> str:
             "resposta_editada", "indicacao_registrada", "indicacao_atualizada", "acoes_detratores_criadas",
             "empresa_perdida", "empresa_reativada"):
         return "dados"
-    if evento.startswith(("chave_", "webhook_", "whatsapp_")):
+    if evento.startswith(("chave_", "webhook_", "whatsapp_", "conector_")):
         return "integracoes"
     return "assinatura"
 

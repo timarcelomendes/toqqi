@@ -837,3 +837,23 @@ class Erro(Base):
     ultimo_request_id: Mapped[str | None] = mapped_column(Text)
     conta_id: Mapped[int | None] = mapped_column(BigInteger)
     resolvido_em: Mapped[datetime | None] = mapped_column(TZ)
+
+
+# ---- etapa 5j: conectores (RD Station CRM) ----------------------------------------------------
+
+class Conector(Base):
+    """Ligação da conta com um sistema dela (`provedor`): o token cifrado, o hash do segredo do endereço que recebe os
+    avisos do provedor, as opções e o resultado da última sincronização (`modulos/conectores`)."""
+    __tablename__ = "conectores"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    provedor: Mapped[str] = mapped_column(Text)  # rdstation_crm
+    token_cifrado: Mapped[str] = mapped_column(Text)
+    segredo_hash: Mapped[str] = mapped_column(Text)
+    webhook_externo: Mapped[str | None] = mapped_column(Text)  # id do webhook cadastrado no provedor
+    opcoes: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    sincronizado_em: Mapped[datetime | None] = mapped_column(TZ)
+    resumo: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    erro: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    atualizado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
