@@ -453,3 +453,14 @@ describe('Plataforma › Erros', () => {
     expect(primeiro().querySelector('[data-resolvido]')).toBeNull()
   })
 })
+
+describe('tempo do teste (melhoria 9)', () => {
+  it('lê os números para decidir a duração', async () => {
+    const { leituraTeste } = await import('@/modulos/plataforma/visao')
+    const base = { de: '2026-07-07', ate: '2026-09-21', mediana_dias: 4, conversao_com_resposta: 0.5, conversao_sem_resposta: 0.1 }
+    expect(leituraTeste({ ...base, contas: 5, chegaram: 5, ate_7_dias: 5, ate_14_dias: 5 })).toMatch(/poucas contas/)
+    expect(leituraTeste({ ...base, contas: 20, chegaram: 4, ate_7_dias: 4, ate_14_dias: 4 })).toMatch(/até as primeiras respostas/)
+    expect(leituraTeste({ ...base, contas: 20, chegaram: 15, ate_7_dias: 13, ate_14_dias: 15 })).toMatch(/7 dias seria suficiente/)
+    expect(leituraTeste({ ...base, contas: 20, chegaram: 15, ate_7_dias: 8, ate_14_dias: 15 })).toMatch(/manter os 14 dias/)
+  })
+})

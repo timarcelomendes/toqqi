@@ -17,6 +17,9 @@ Forma (decisões desta etapa onde o contrato não diz):
 - `testes_acabando`: contas em `teste` sem assinatura ativa (quem já assinou no teste não precisa de lembrete) com
   `teste_ate` nos próximos 7 dias, do fim mais próximo ao mais distante: {id, nome, email (do administrador mais
   antigo), teste_ate, dias (até o último dia do teste, como no aviso do topo; 0 = hoje), ultimo_acesso, ativacao}.
+- `teste` (melhoria 9): das contas com teste criadas entre 90 e 14 dias atrás, quantas chegaram à primeira resposta de
+  pesquisa (não contam as importadas nem as registradas à mão), quantas em até 7 e 14 dias, a mediana em dias e a
+  conversão de quem chegou × quem não chegou.
 - `contas`: todas, das mais novas às mais antigas: {id, nome, situacao (como em `por_situacao`), plano, criada_em,
   teste_ate, ultimo_acesso (a última entrada de algum usuário), usuarios, admin_email (o administrador mais antigo, para
   a busca), contatos_ativos, convites_30d, respostas_30d (gravadas nos últimos 30 dias, também as importadas: é o uso
@@ -43,6 +46,7 @@ CONVERSAO_ATE = 15
 
 
 DIAS_ORIGEM = 90
+TESTE_DE, TESTE_ATE = 90, 14  # melhoria 9: contas com teste criadas entre 90 e 14 dias atrás (tiveram 14 dias)
 
 
 def situacao_exibida(c: Conta, agora: datetime) -> str:
@@ -82,6 +86,9 @@ def visao() -> dict:
         ativas = {a.conta_id: a for a in s.scalars(select(Assinatura).where(Assinatura.situacao == "ativa",
                                                                             assinaturas.filtro_ambiente()))}
         assinaram = set(s.scalars(select(Assinatura.conta_id).where(assinaturas.filtro_ambiente()).distinct()))
+        # melhoria 9: a primeira resposta de cliente de verdade (pela pesquisa; não as importadas nem as registradas)
+        primeira = dict(s.execute(select(Resposta.conta_id, func.min(Resposta.criada_em))
+                                  .where(Resposta.origem == "pesquisa").group_by(Resposta.conta_id)).all())
 
     def ativacao(cid: int) -> dict:
         return {"contatos": contatos.get(cid, (0, 0))[0] > 0, "envios_ligados": cid in envios_ligados,
@@ -125,6 +132,25 @@ def visao() -> dict:
     janela = [c for c in contas if c.teste_ate is not None and de <= c.criada_em < ate]
     convertidas = sum(1 for c in janela if c.id in assinaram)
 
+    # melhoria 9: quanto tempo o teste leva até a primeira resposta (para decidir entre 7 dias, 14 ou "até responder")
+    t_de, t_ate = agora - timedelta(days=TESTE_DE), agora - timedelta(days=TESTE_ATE)
+    testes = [c for c in contas if c.teste_ate is not None and t_de <= c.criada_em < t_ate]
+    dias = sorted((primeira[c.id] - c.criada_em).total_seconds() / 86400 for c in testes if c.id in primeira)
+    com = [c for c in testes if c.id in primeira]
+    sem = [c for c in testes if c.id not in primeira]
+
+    def taxa(n: int, total: int) -> float | None:
+        return round(n / total, 4) if total else None
+
+    teste = {
+        "de": regras.dia_de(t_de), "ate": regras.dia_de(t_ate), "contas": len(testes),
+        "chegaram": len(dias), "ate_7_dias": sum(1 for d in dias if d <= 7), "ate_14_dias": sum(1 for d in dias if d <= 14),
+        "mediana_dias": round(dias[len(dias) // 2] if len(dias) % 2 else (dias[len(dias) // 2 - 1] + dias[len(dias) // 2]) / 2, 1)
+        if dias else None,
+        "conversao_com_resposta": taxa(sum(1 for c in com if c.id in assinaram), len(com)),
+        "conversao_sem_resposta": taxa(sum(1 for c in sem if c.id in assinaram), len(sem)),
+    }
+
     # etapa 5i: cadastros por origem (utm gravado no cadastro) nos últimos DIAS_ORIGEM dias e quantos pagam hoje
     desde = agora - timedelta(days=DIAS_ORIGEM)
     grupos: dict[str | None, list[int]] = {}
@@ -154,5 +180,6 @@ def visao() -> dict:
         "conversao": {"de": regras.dia_de(de), "ate": regras.dia_de(ate), "contas": len(janela),
                       "assinaram": convertidas, "taxa": round(convertidas / len(janela), 4) if janela else None},
         "testes_acabando": testes_acabando,
+        "teste": teste,
         "contas": lista,
     }

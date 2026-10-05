@@ -27,6 +27,7 @@ import {
   ORDENS_CONTAS,
   contasFiltradas,
   indicadores,
+  leituraTeste,
   opcoesSituacao,
   rotuloSituacao,
   textoDiasRestantes,
@@ -69,6 +70,10 @@ const colunas: Coluna[] = [
 ]
 
 /** "Profissional · R$ 349,00/mês · criada em 01/09/2026" (a lista, abaixo de 1280 px). */
+function pctTeste(v: number | null): string {
+  return v === null ? '—' : `${Math.round(v * 100)}%`
+}
+
 function linhaPlano(c: ContaVisao): string {
   return `${textoPlano(c, nomeDoPlano)} · criada em ${formatarData(c.criada_em)}`
 }
@@ -174,6 +179,24 @@ onBeforeUnmount(() => controlador?.abort())
             </div>
           </li>
         </ul>
+      </section>
+
+      <!-- Melhoria 9: quanto o teste leva até a primeira resposta (para decidir a duração) -->
+      <section v-if="dados.teste" class="cartao p-4 sm:p-5" aria-labelledby="visao-tempo-teste" data-tempo-teste>
+        <h2 id="visao-tempo-teste" class="font-bold text-texto">Teste até a primeira resposta</h2>
+        <p class="text-sm text-texto-suave">
+          Contas com teste criadas de {{ formatarData(dados.teste.de) }} a {{ formatarData(dados.teste.ate) }}. Conta só resposta de cliente pela pesquisa (não as importadas).
+        </p>
+        <dl class="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+          <div><dt class="text-texto-fraco">Chegaram à 1ª resposta</dt><dd class="text-lg font-bold text-texto">{{ dados.teste.chegaram }} de {{ dados.teste.contas }}</dd></div>
+          <div><dt class="text-texto-fraco">Em até 7 dias</dt><dd class="text-lg font-bold text-texto">{{ dados.teste.ate_7_dias }}</dd></div>
+          <div><dt class="text-texto-fraco">Em até 14 dias</dt><dd class="text-lg font-bold text-texto">{{ dados.teste.ate_14_dias }}</dd></div>
+          <div><dt class="text-texto-fraco">Mediana</dt><dd class="text-lg font-bold text-texto">{{ dados.teste.mediana_dias === null ? '—' : `${String(dados.teste.mediana_dias).replace('.', ',')} dias` }}</dd></div>
+        </dl>
+        <p class="mt-3 text-sm text-texto-suave">
+          Assinaram: <strong>{{ pctTeste(dados.teste.conversao_com_resposta) }}</strong> de quem chegou à resposta e <strong>{{ pctTeste(dados.teste.conversao_sem_resposta) }}</strong> de quem não chegou.
+        </p>
+        <p class="mt-2 text-sm font-semibold text-texto" data-leitura-teste>{{ leituraTeste(dados.teste) }}</p>
       </section>
 
       <!-- Etapa 5i: de onde vieram os cadastros (utm, ex. o "Pesquisa feita com Toqqi") -->

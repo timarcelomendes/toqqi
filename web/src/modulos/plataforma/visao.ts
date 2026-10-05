@@ -1,6 +1,6 @@
 // Regras puras de Plataforma › Visão geral (etapa 5h, docs/api-etapa-5h.md §5): indicadores, textos dos testes
 // acabando, ativação, busca, filtro e ordem da tabela de contas.
-import type { AtivacaoConta, ContaVisao, ConversaoVisao, SituacaoVisao, TotaisVisao } from '@/api/tipos'
+import type { AtivacaoConta, ContaVisao, ConversaoVisao, SituacaoVisao, TempoTeste, TotaisVisao } from '@/api/tipos'
 import { diasAte, formatarData, formatarDiaMes } from '@/utils/datas'
 import { formatarMoeda, formatarNumero, plural } from '@/utils/formatos'
 import { situacaoConta, type Tom } from '@/utils/rotulos'
@@ -194,4 +194,18 @@ export function opcoesSituacao(contas: ContaVisao[]): { valor: string; rotulo: s
 export function textoPlano(c: Pick<ContaVisao, 'plano' | 'assinatura'>, nomeDoPlano: (p: string) => string): string {
   if (c.assinatura) return `${nomeDoPlano(c.assinatura.plano)} · ${formatarMoeda(c.assinatura.valor)}/mês`
   return c.plano ? `${nomeDoPlano(c.plano)} · sem assinatura` : 'Sem assinatura'
+}
+
+/**
+ * Melhoria 9: uma leitura do tempo do teste para decidir a duração (7 dias, 14 ou "até as primeiras respostas"). Só
+ * opina com pelo menos 10 contas na janela.
+ */
+export function leituraTeste(t: TempoTeste): string {
+  if (t.contas < 10) return 'Ainda são poucas contas para decidir (precisa de pelo menos 10 testes na janela).'
+  const chegaram = t.chegaram / t.contas
+  if (chegaram < 0.4) {
+    return 'A maioria dos testes não chega à primeira resposta: estender o prazo não resolve sozinho; vale testar "até as primeiras respostas" e ajudar no primeiro envio.'
+  }
+  if (t.chegaram && t.ate_7_dias / t.chegaram >= 0.8) return 'Quase todos que respondem chegam lá em até 7 dias: um teste de 7 dias seria suficiente.'
+  return 'Uma parte boa só chega à primeira resposta entre o 7º e o 14º dia: manter os 14 dias.'
 }

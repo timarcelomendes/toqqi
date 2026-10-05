@@ -107,7 +107,7 @@ def _visao(client, h) -> dict:
 
 def test_totais_receita_e_novas(client, cenario):
     v = _visao(client, cenario["root"]["h"])
-    assert set(v) == {"gerado_em", "totais", "conversao", "testes_acabando", "contas", "origens"}  # origens: 5i
+    assert set(v) == {"gerado_em", "totais", "conversao", "testes_acabando", "contas", "origens", "teste"}  # origens: 5i; teste: melhoria 9
     assert v["totais"] == {
         "contas": 10,
         "por_situacao": {"teste": 3, "teste_expirado": 1, "ativa": 2, "atrasada": 1, "pausada": 1, "cancelada": 1,
@@ -234,3 +234,24 @@ def test_situacao_exibida():
     assert visao_mod.situacao_exibida(na_carencia, agora) == "atrasada"
     assert visao_mod.situacao_exibida(passou, agora) == "pausada"
     assert visao_mod.situacao_exibida(Conta(situacao="ativa"), agora) == "ativa"
+
+
+def test_tempo_do_teste_ate_a_primeira_resposta(client, cenario, dono):
+    """Melhoria 9: janela de 90 a 14 dias — Delta (40), Eta (50), Iota (20), Kapa (30) e Lambda (70). Iota responde
+    no 3º dia, Delta no 10º; a de Eta foi importada (não conta)."""
+    from util import form_padrao, inserir_resposta
+
+    def resposta(conta: dict, dias: int, origem: str = "pesquisa") -> None:
+        f = form_padrao(client, conta["h"])["id"]
+        rid = inserir_resposta(dono, conta["id"], f, None, 9, HOJE)
+        sql(dono, "update respostas set origem = :o, criada_em = (select criada_em from contas where id = :c) "
+                  "+ make_interval(days => :d) where id = :r", o=origem, c=conta["id"], d=dias, r=rid)
+
+    resposta(cenario["iota"], 3)
+    resposta(cenario["delta"], 10)
+    resposta(cenario["eta"], 1, origem="importacao")
+    t = _visao(client, cenario["root"]["h"])["teste"]
+    assert (t["contas"], t["chegaram"], t["ate_7_dias"], t["ate_14_dias"], t["mediana_dias"]) == (5, 2, 1, 2, 6.5)
+    # chegaram: Delta (assinou) e Iota (não) → 50%; sem resposta: Eta e Kapa assinaram, Lambda (outro ambiente) não
+    assert (t["conversao_com_resposta"], t["conversao_sem_resposta"]) == (0.5, 0.6667)
+    assert t["de"] == (HOJE - timedelta(days=90)).isoformat()

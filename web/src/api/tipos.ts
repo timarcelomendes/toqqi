@@ -299,7 +299,22 @@ export interface VisaoPlataforma {
   totais: TotaisVisao
   conversao: ConversaoVisao
   testes_acabando: TesteAcabando[]
+  /** Melhoria 9: o teste até a primeira resposta (contas com teste criadas entre 90 e 14 dias atrás). */
+  teste?: TempoTeste
   contas: ContaVisao[]
+}
+
+export interface TempoTeste {
+  de: string
+  ate: string
+  contas: number
+  chegaram: number
+  ate_7_dias: number
+  ate_14_dias: number
+  mediana_dias: number | null
+  /** De 0 a 1 (null sem base). */
+  conversao_com_resposta: number | null
+  conversao_sem_resposta: number | null
 }
 
 export type OrigemErro = 'api' | 'site' | 'tarefa'
