@@ -346,8 +346,8 @@ def test_tarefa_que_falha_registra_e_as_outras_seguem(dono, monkeypatch, capsys)
     monkeypatch.setattr(automacao, "robo", quebrar)
     r = tarefas.executar("tudo")
     assert r["robo"] == {"erro": "RuntimeError"}
-    assert list(r) == ["assinaturas", "pendentes", "robo", "lembretes", "webhooks", "ia", "picos", "resumo", "erros",
-                       "limpeza"]
+    assert list(r) == ["assinaturas", "pendentes", "robo", "lembretes", "webhooks", "conectores", "ia", "picos", "resumo",
+                       "erros", "limpeza"]
     assert r["lembretes"] == {"contas": 0, "enviados": 0, "ignorados": 0}
     e = unico(dono)
     assert (e["origem"], e["tipo"], e["local"], e["mensagem"], e["conta_id"], e["ultimo_request_id"]) == (
