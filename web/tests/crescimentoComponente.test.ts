@@ -758,7 +758,7 @@ describe('Crescimento › Oportunidades', () => {
     const w = await abrir('/crescimento/oportunidades')
     expect(consulta(pedidos(chamadas, 'GET', '/crescimento/oportunidades')[0])).toEqual({ lista: 'pode_crescer' })
     expect(t(w.get('[data-criterio]').text())).toContain('quadrante “Pode crescer” de Relatórios › Empresas')
-    expect(t(w.get('[data-regra-de-ouro]').text())).toContain('com detrator (nota 0 a 6) nos últimos 90 dias ou com plano de ação aberto')
+    expect(t(w.get('[data-regra-de-ouro]').text())).toContain('com detrator (nota 0 a 6) nos últimos 90 dias, com plano de ação aberto ou com a saúde da conta em Risco')
 
     await w.get('input[type="radio"][value="promotores"]').setValue(true)
     await esperar()

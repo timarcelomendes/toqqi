@@ -335,10 +335,12 @@ def test_empresas_csv_igual_a_lista(client, dono, conta):
         lista = client.get(f"{API}/empresas", headers=h, params={**filtros, "por_pagina": 200}).json()["itens"]
         _, linhas = _csv(client, h, "empresas", **filtros)
         assert linhas[0] == ["Nome", "CPF/CNPJ", "Grupo", "Segmento", "Responsável", "Valor mensal", "Cliente desde",
-                             "Código externo", "Ativa", "Contatos", "Criada em"]
+                             "Código externo", "Ativa", "Contatos", "Criada em", "Renovação", "Situação", "Saúde",
+                             "Nota da saúde"]
         assert [x[0] for x in linhas[1:]] == [x["nome"] for x in lista], filtros
     _, linhas = _csv(client, h, "empresas", busca="mercado")
-    assert dict(zip(linhas[0], linhas[1]))["Contatos"] == "1"
+    linha = dict(zip(linhas[0], linhas[1]))
+    assert linha["Contatos"] == "1" and linha["Situação"] == "Ativa" and linha["Saúde"] in ("Risco", "Atenção", "Saudável", "Sem dados") and linha["Nota da saúde"] != ""
     assert sql(dono, "select detalhe from auditoria where conta_id = :c and evento = 'exportacao_csv' "
                      "order by id desc limit 1", c=conta["c"]) == [({"lista": "empresas", "linhas": 1},)]
 

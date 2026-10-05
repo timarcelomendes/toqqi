@@ -92,9 +92,18 @@ def _com_acao_aberta(conta_id: int, *extra):
         Acao.conta_id == conta_id, aberta(), Acao.empresa_id.is_not(None), *extra)
 
 
+def _em_risco(s: Session, hoje: date, empresa_ids: list[int] | None = None) -> set[int]:
+    """Etapa 5i: empresas com a saúde da conta em Risco."""
+    from toqqi.modulos.saude.calculo import saude_das_empresas
+
+    return {i for i, sd in saude_das_empresas(s, hoje, empresa_ids).items() if sd and sd["faixa"] == "risco"}
+
+
 def _excluidas(s: Session, conta_id: int, hoje: date) -> set[int]:
-    """Regra de ouro: empresas com detrator (NPS 0–6) nos últimos 90 dias ou com plano de ação aberto."""
-    return set(s.scalars(_com_detrator(conta_id, hoje))) | set(s.scalars(_com_acao_aberta(conta_id)))
+    """Regra de ouro: empresas com detrator (NPS 0–6) nos últimos 90 dias, com plano de ação aberto ou (etapa 5i) com
+    a saúde em Risco."""
+    return set(s.scalars(_com_detrator(conta_id, hoje))) | set(s.scalars(_com_acao_aberta(conta_id))) | \
+        _em_risco(s, hoje)
 
 
 def _fora_da_regra(s: Session, conta_id: int, e: Empresa, hoje: date) -> str | None:
@@ -105,6 +114,8 @@ def _fora_da_regra(s: Session, conta_id: int, e: Empresa, hoje: date) -> str | N
         return "ela tem um plano de ação aberto."
     if s.scalar(_com_detrator(conta_id, hoje, Resposta.empresa_id == e.id).limit(1)) is not None:
         return f"ela deu uma nota de detrator (0 a 6) nos últimos {DIAS_DETRATOR} dias."
+    if _em_risco(s, hoje, [e.id]):
+        return "a saúde da conta está em Risco."
     return None
 
 

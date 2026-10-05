@@ -74,7 +74,7 @@ export const LISTAS_OPORTUNIDADE: Record<ListaOportunidade, { rotulo: string; cr
 }
 
 export const REGRA_DE_OURO =
-  'Regra de ouro: nunca entram empresas inativas, com detrator (nota 0 a 6) nos últimos 90 dias ou com plano de ação aberto, nem contatos que saíram da lista.'
+  'Regra de ouro: nunca entram empresas inativas, com detrator (nota 0 a 6) nos últimos 90 dias, com plano de ação aberto ou com a saúde da conta em Risco, nem contatos que saíram da lista.'
 
 export function ehListaOportunidade(v: unknown): v is ListaOportunidade {
   return v === 'pode_crescer' || v === 'promotores'

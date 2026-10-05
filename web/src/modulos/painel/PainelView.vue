@@ -9,7 +9,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Check, ChevronDown, Download, HelpCircle, LineChart, Table2 } from 'lucide-vue-next'
-import { acoesApi, mensagemDoErro, painelApi, type FiltrosGeracaoIa, type FiltrosPainel, type GrupoNota, type Id, type Painel } from '@/api'
+import { acoesApi, mensagemDoErro, painelApi, type CarteiraSaude, type FiltrosGeracaoIa, type FiltrosPainel, type GrupoNota, type Id, type Painel } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { useAssistenteStore } from '@/stores/assistente'
 import { useCadastrosStore } from '@/stores/cadastros'
@@ -294,6 +294,7 @@ const temNpsNaEvolucao = computed(() => pontosEvolucao.value.some((p) => typeof 
 // ── Resumo: título, período anterior e a manchete ──────────────────────────
 const tituloResumo = computed(() => tituloNps(filtrosNaTela.value.periodo, filtrosNaTela.value.rotulo))
 const textoAnterior = computed(() => textoPeriodoAnterior(painelTela.value?.periodo?.anterior))
+const carteiraSaude = ref<CarteiraSaude | null>(null)
 const entradaManchete = computed(() => {
   const d = painelTela.value
   return d
@@ -305,6 +306,7 @@ const entradaManchete = computed(() => {
         // Os picos são da conta inteira nos últimos 7 dias: só valem se o período termina hoje e sem grupo.
         picosValem: picosValemParaFiltros({ ate: filtrosNaTela.value.intervalo.ate, grupo_id: filtrosNaTela.value.grupo_id }, hoje),
         atencao: d.atencao,
+        renovacoes: modoExemplo.value ? null : carteiraSaude.value?.renovacoes_em_risco ?? null,
       }
     : null
 })
@@ -480,7 +482,7 @@ onBeforeUnmount(() => {
     />
     <ResumoIaExemplo v-if="modoExemplo" :periodo="filtrosNaTela.rotulo" />
     <CartaoResumoIa v-else :filtros="filtrosResumo" :periodo="filtrosNaTela.rotulo" />
-    <CartaoCarteiraSaude v-if="!modoExemplo" :grupo-id="filtros.grupo_id" />
+    <CartaoCarteiraSaude v-if="!modoExemplo" :grupo-id="filtros.grupo_id" @carregada="carteiraSaude = $event" />
 
     <CartoesIndicadores :atencao="painelTela.atencao" :csat="painelTela.csat" :taxa="painelTela.taxa_resposta" :desativado="modoExemplo" />
 

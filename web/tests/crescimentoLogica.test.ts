@@ -370,7 +370,7 @@ describe('menu, atalho e webhooks', () => {
   })
 
   it('os eventos de indicação aparecem na escolha do webhook', () => {
-    expect(Object.keys(EVENTOS_WEBHOOK)).toEqual(['resposta.criada', 'contato.descadastrado', 'indicacao.criada', 'indicacao.atualizada'])
+    expect(Object.keys(EVENTOS_WEBHOOK)).toEqual(['resposta.criada', 'contato.descadastrado', 'indicacao.criada', 'indicacao.atualizada', 'empresa.perdida', 'empresa.reativada'])
     expect(rotuloEventoWebhook('indicacao.criada')).toBe('Nova indicação')
     expect(rotuloEventoWebhook('indicacao.atualizada')).toBe('Indicação mudou de situação')
     // A indicação nova também sai quando a equipe registra à mão (não só pela pesquisa)

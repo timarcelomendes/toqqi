@@ -11,6 +11,8 @@ import SeloSaude from './SeloSaude.vue'
 import { FAIXAS_SAUDE, textoRenova } from './logica'
 
 const props = defineProps<{ grupoId: Id | '' }>()
+/** Os dados carregados (o Início usa as renovações em Risco no "O que mudou"). */
+const emit = defineEmits<{ carregada: [CarteiraSaude] }>()
 const sessao = useSessaoStore()
 const podeVerEmpresas = computed(() => sessao.pode('contatos.ver'))
 const dados = ref<CarteiraSaude | null>(null)
@@ -23,6 +25,7 @@ async function carregar() {
   erro.value = null
   try {
     dados.value = await saudeApi.carteira(props.grupoId, controle.signal)
+    emit('carregada', dados.value)
   } catch (e) {
     if (e instanceof DOMException) return
     erro.value = mensagemDoErro(e)

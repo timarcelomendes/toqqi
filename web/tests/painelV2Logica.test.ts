@@ -392,3 +392,17 @@ describe('filtros no endereço', () => {
     expect(consultaDosFiltros(filtrosDaConsulta(q))).toEqual(q)
   })
 })
+
+describe('manchete: renovação em risco (etapa 5i)', () => {
+  const ren = { empresas: 1, receita: 5000, primeira: { empresa: { nome: 'Mercado Azul' }, dias: 20 } }
+  it('entra depois da receita em risco e antes do "tudo estável"', () => {
+    const m = montarManchete(entrada({ renovacoes: ren }))
+    expect(m.regra).toBe(6)
+    expect(textoDasPartes(m.titulo)).toBe('Mercado Azul renova em 20 dias com a saúde em Risco (R$ 5 mil por mês).')
+    expect(titulo(entrada({ renovacoes: { ...ren, empresas: 3 } }))).toMatch(/^3 empresas renovam nos próximos 60 dias/)
+    expect(montarManchete(entrada({ renovacoes: { ...ren, empresas: 0 } })).regra).toBe(5)
+  })
+  it('vira a linha de apoio de uma queda', () => {
+    expect(apoio(entrada({ variacao: { valor: -5, anterior: 30 }, renovacoes: ren }))).toMatch(/^Mercado Azul renova/)
+  })
+})

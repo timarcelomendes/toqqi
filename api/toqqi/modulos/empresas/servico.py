@@ -142,7 +142,8 @@ def saude(ctx: Contexto, empresa_id: int) -> dict:
 # ---- "Exportar CSV" (etapa 5f) --------------------------------------------------------------
 
 CABECALHO_CSV = ["Nome", "CPF/CNPJ", "Grupo", "Segmento", "Responsável", "Valor mensal", "Cliente desde",
-                 "Código externo", "Ativa", "Contatos", "Criada em"]
+                 "Código externo", "Ativa", "Contatos", "Criada em", "Renovação", "Situação", "Saúde", "Nota da saúde"]
+FAIXAS_CSV = {"saudavel": "Saudável", "atencao": "Atenção", "risco": "Risco", "sem_dados": "Sem dados"}
 
 
 def exportar_csv(ctx: Contexto, busca: str | None, grupo_id: int | None, segmento_id: int | None,
@@ -152,11 +153,16 @@ def exportar_csv(ctx: Contexto, busca: str | None, grupo_id: int | None, segment
     filtros = [Empresa.conta_id == ctx.conta_id, *condicoes(busca, grupo_id, segmento_id, responsavel_id, ativa)]
     with em_conta(ctx.conta_id) as s:
         sem_jit(s)
-        saida = [[e.nome, e.documento or "", grupo or "", segmento or "", responsavel or "", num(e.valor_mensal),
-                  data_br(e.cliente_desde), e.codigo_externo or "", sim_nao(e.ativa), num(contatos),
-                  data_br(e.criada_em)]
-                 for e, grupo, segmento, responsavel, contatos in s.execute(
-                     _consulta().where(*filtros).order_by(*ORDEM).execution_options(yield_per=2000))]
+        saudes = saude_das_empresas(s) if ve_numeros(ctx) else {}  # etapa 5i: a saúde só para quem vê os números
+        saida = []
+        for e, grupo, segmento, responsavel, contatos in s.execute(
+                _consulta().where(*filtros).order_by(*ORDEM).execution_options(yield_per=2000)):
+            sd = saudes.get(e.id)
+            saida.append([e.nome, e.documento or "", grupo or "", segmento or "", responsavel or "",
+                          num(e.valor_mensal), data_br(e.cliente_desde), e.codigo_externo or "", sim_nao(e.ativa),
+                          num(contatos), data_br(e.criada_em), data_br(e.renovacao_em),
+                          {"ativa": "Ativa", "pausada": "Inativa", "perdida": "Perdida"}[desfecho.situacao(e)],
+                          FAIXAS_CSV[sd["faixa"]] if sd else "", num(sd["nota"]) if sd and sd["nota"] is not None else ""])
         registrar(s, "exportacao_csv", "info", {"lista": "empresas", "linhas": len(saida)}, usuario_id=ctx.usuario_id)
     return gerar_csv(CABECALHO_CSV, saida)
 

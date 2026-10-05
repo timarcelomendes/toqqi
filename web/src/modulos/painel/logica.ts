@@ -546,10 +546,13 @@ export interface EntradaManchete {
     /** Etapa 5h: empresas com detrator e sem plano aberto (o botão "Criar planos"). */
     detratores_sem_plano?: number | null
   }
+  /** Etapa 5i: renovações dos próximos 60 dias com a saúde em Risco (de GET /painel/saude; sem o campo, não entra). */
+  renovacoes?: { empresas: number; receita: number | string | null; primeira: { empresa: { nome: string }; dias: number } | null } | null
 }
 
 export interface Manchete {
-  regra: 1 | 2 | 3 | 4 | 5
+  /** 1 pico, 2 queda, 3 alta, 4 receita em risco, 6 renovação em risco (etapa 5i), 5 tudo estável. */
+  regra: 1 | 2 | 3 | 4 | 5 | 6
   titulo: ParteTexto[]
   apoio: ParteTexto[] | null
   /** O pico da manchete (regra 1). */
@@ -627,6 +630,24 @@ function regras(e: EntradaManchete): ((comQueda: boolean) => ParteTexto[] | null
         { texto: ` em contrato.${planos}` },
       ]
     },
+    // 6. Renovação em risco (etapa 5i): vem depois da receita em risco e antes do "tudo estável".
+    () => {
+      const r = e.renovacoes
+      const n = numero(r?.empresas)
+      if (!r || n <= 0) return null
+      const quando = (d: number) => (d === 0 ? 'hoje' : d === 1 ? 'amanhã' : `em ${d} dias`)
+      const quem =
+        n === 1 && r.primeira
+          ? [{ texto: `${r.primeira.empresa.nome} renova ${quando(r.primeira.dias)}` }]
+          : [{ texto: `${fmtNumeroInt(n)} empresas renovam nos próximos 60 dias` }]
+      const receita = numero(r.receita)
+      return [
+        ...quem,
+        { texto: ' com a saúde em ' },
+        { texto: 'Risco', enfase: 'alerta' as const },
+        { texto: receita > 0 ? ` (${formatarMoedaCurta(receita)} por mês).` : '.' },
+      ]
+    },
     // 5. Nada disso.
     () => {
       if (v !== null) return [{ texto: v === 0 ? 'Tudo estável: o NPS ficou igual.' : `Tudo estável: o NPS variou ${formatarVariacao(v)} ${pontos(Math.abs(v))}.` }]
@@ -640,23 +661,25 @@ function regras(e: EntradaManchete): ((comQueda: boolean) => ParteTexto[] | null
 export function montarManchete(e: EntradaManchete): Manchete {
   const lista = regras(e)
   const v = e.variacao ? Math.round(e.variacao.valor) : null
-  let regra = 5
+  const NUMEROS = [1, 2, 3, 4, 6, 5] as const  // a posição na lista → o número da regra
+  let indice = lista.length - 1
   let titulo: ParteTexto[] = []
   for (let i = 0; i < lista.length; i++) {
     const t = lista[i]!(false)
     if (t) {
-      regra = i + 1
+      indice = i
       titulo = t
       break
     }
   }
+  const regra = NUMEROS[indice]!
   // A queda já dita junto do pico não volta na linha de apoio.
   const quedaNaManchete = regra === 1 && v !== null && v <= -LIMIAR_VARIACAO
   let apoio: ParteTexto[] | null = null
-  for (let i = regra; i < 4 && !apoio; i++) apoio = lista[i]!(quedaNaManchete)
+  for (let i = indice + 1; i < lista.length - 1 && !apoio; i++) apoio = lista[i]!(quedaNaManchete)
   const pico = regra === 1 ? picoPrincipal(e.picos) : null  // regra 1 só vale com picosValem
   return {
-    regra: regra as Manchete['regra'],
+    regra,
     titulo,
     apoio,
     pico,

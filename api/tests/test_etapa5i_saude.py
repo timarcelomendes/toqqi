@@ -125,3 +125,19 @@ def test_perdida_sem_saude_e_permissao(client, dono, cenario):
     if r.status_code == 200:  # quem vê contatos sem os números: a lista vem sem saúde
         assert all(e["saude"] is None for e in r.json()["itens"])
         assert client.get(f"{API}/empresas", headers=sem["h"], params={"saude": "risco"}).status_code == 403
+
+
+def test_crescimento_tira_empresas_em_risco(client, cenario, monkeypatch):
+    from toqqi.core.db import em_conta
+    from toqqi.modelos import Empresa
+    from toqqi.modulos.crescimento import oportunidades
+    from toqqi.modulos.saude import calculo
+
+    cid, boa = cenario["conta"]["id"], cenario["boa"]["id"]
+    hoje = relogio.hoje()
+    with em_conta(cid) as s:
+        e = s.get(Empresa, boa)
+        assert oportunidades._fora_da_regra(s, cid, e, hoje) is None and boa not in oportunidades._excluidas(s, cid, hoje)
+        monkeypatch.setattr(calculo, "saude_das_empresas", lambda s, hoje=None, ids=None: {boa: {"faixa": "risco"}})
+        assert oportunidades._fora_da_regra(s, cid, e, hoje) == "a saúde da conta está em Risco."
+        assert boa in oportunidades._excluidas(s, cid, hoje)
