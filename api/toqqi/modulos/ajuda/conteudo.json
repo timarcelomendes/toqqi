@@ -3385,6 +3385,37 @@
           ]
         },
         {
+          "id": "conectar-o-omie",
+          "titulo": "Conectar o Omie (ERP)",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "omie",
+            "erp",
+            "conector",
+            "app key",
+            "app secret",
+            "pedido faturado",
+            "nota fiscal",
+            "sincronizar clientes",
+            "webhook omie"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Integrações › CRM e ERP, o administrador conecta o Omie com o App Key e o App Secret de um aplicativo do Omie. As chaves ficam guardadas cifradas."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Sincronizar agora: cada cliente ativo do Omie vira uma empresa (nome fantasia, CNPJ ou CPF) com um contato (o e-mail e o telefone do cadastro). Nunca apaga nem muda quem já está no Toqqi, e para no limite de contatos do plano.",
+                "Pesquisar quando um pedido for faturado: copie o endereço mostrado pelo Toqqi e cadastre-o como webhook do aplicativo no portal do desenvolvedor do Omie, ligando os eventos de pedido faturado e nota autorizada. O cliente do pedido recebe a pesquisa NPS, uma vez por pedido, pelas regras de envio da conta.",
+                "Desconectar apaga as chaves; remova também o webhook no Omie."
+              ]
+            }
+          ]
+        },
+        {
           "id": "campos-e-respostas-da-integracao",
           "titulo": "Campos e respostas da integração (para o técnico)",
           "somente_admin": true,

@@ -7,6 +7,7 @@ import SecaoChave from './SecaoChave.vue'
 import SecaoComoConectar from './SecaoComoConectar.vue'
 import SecaoWebhooks from './SecaoWebhooks.vue'
 import SecaoWhatsapp from './SecaoWhatsapp.vue'
+import SecaoOmie from './SecaoOmie.vue'
 import SecaoRdStation from './SecaoRdStation.vue'
 
 type Aba = 'chave' | 'conectar' | 'webhooks' | 'whatsapp' | 'crm'
@@ -15,7 +16,7 @@ const abas: { valor: Aba; rotulo: string }[] = [
   { valor: 'conectar', rotulo: 'Como conectar' },
   { valor: 'webhooks', rotulo: 'Avisos (webhooks)' },
   { valor: 'whatsapp', rotulo: 'WhatsApp automático' },
-  { valor: 'crm', rotulo: 'CRM' },
+  { valor: 'crm', rotulo: 'CRM e ERP' },
 ]
 
 const rota = useRoute()
@@ -45,6 +46,9 @@ watch(aba, (a) => visitadas.value.add(a))
     <SecaoWebhooks v-if="visitadas.has('webhooks')" v-show="aba === 'webhooks'" />
     <!-- A seção tem mais de uma raiz: o v-show precisa de um elemento em volta (senão ela aparece nas outras abas). -->
     <div v-if="visitadas.has('whatsapp')" v-show="aba === 'whatsapp'"><SecaoWhatsapp /></div>
-    <SecaoRdStation v-if="visitadas.has('crm')" v-show="aba === 'crm'" />
+    <div v-if="visitadas.has('crm')" v-show="aba === 'crm'" class="flex flex-col gap-4">
+      <SecaoRdStation />
+      <SecaoOmie />
+    </div>
   </Abas>
 </template>

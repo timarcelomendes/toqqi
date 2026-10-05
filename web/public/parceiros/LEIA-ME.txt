@@ -1,0 +1,8 @@
+Logos dos sistemas parceiros mostrados em Integrações › CRM e ERP.
+
+Coloque aqui os arquivos oficiais, baixados do kit de marca de cada empresa (respeitando as regras de uso delas):
+  rdstation.svg   (RD Station CRM)
+  omie.svg        (Omie)
+
+Sem o arquivo, a tela mostra um quadrado neutro com as iniciais. Formato SVG (ou troque a extensão em
+src/modulos/integracoes/LogoParceiro.vue). Tamanho exibido: 40 × 40 px.

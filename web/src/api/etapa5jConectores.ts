@@ -21,8 +21,24 @@ export interface ConectorRd {
   conectado_em?: string
 }
 
+export interface ConectorOmie {
+  conectado: boolean
+  pesquisar_ao_faturar?: boolean
+  /** O endereço para cadastrar no Omie (portal do desenvolvedor › aplicativo › webhooks). */
+  url_aviso?: string | null
+  eventos?: string[]
+  sincronizado_em?: string | null
+  resumo?: (ResumoSincronizacao & { inativos: number }) | null
+  erro?: string | null
+}
+
 export const conectoresApi = {
-  ver: () => api.get<{ rdstation_crm: ConectorRd }>('/integracoes/conectores'),
+  ver: () => api.get<{ rdstation_crm: ConectorRd; omie: ConectorOmie }>('/integracoes/conectores'),
+  conectarOmie: (app_key: string, app_secret: string, pesquisar_ao_faturar: boolean) =>
+    api.put<ConectorOmie>('/integracoes/conectores/omie', { app_key, app_secret, pesquisar_ao_faturar }),
+  alterarOmie: (pesquisar_ao_faturar: boolean) => api.patch<ConectorOmie>('/integracoes/conectores/omie', { pesquisar_ao_faturar }),
+  sincronizarOmie: () => api.post<ResumoSincronizacao & { inativos: number }>('/integracoes/conectores/omie/sincronizar'),
+  desconectarOmie: () => api.delete('/integracoes/conectores/omie'),
   conectarRd: (token: string, pesquisar_ao_ganhar: boolean) =>
     api.put<ConectorRd>('/integracoes/conectores/rdstation-crm', { token, pesquisar_ao_ganhar }),
   alterarRd: (pesquisar_ao_ganhar: boolean) => api.patch<ConectorRd>('/integracoes/conectores/rdstation-crm', { pesquisar_ao_ganhar }),
