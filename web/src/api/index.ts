@@ -148,3 +148,4 @@ export const plataformaApi = {
   cortesia: (id: ContaPlataforma['id']) =>
     api.post<ContaPlataforma>(`/plataforma/contas/${encodeURIComponent(String(id))}/cortesia`),
 }
+export * from './etapa5iSaude'

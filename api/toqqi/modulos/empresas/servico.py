@@ -1,4 +1,6 @@
 """Empresas (clientes da conta)."""
+from datetime import date
+
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -11,6 +13,7 @@ from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.paginacao import Pagina
 from toqqi.modelos import Contato, Empresa, Grupo, Responsavel, Segmento
 from toqqi.modulos.empresas import desfecho
+from toqqi.modulos.saude.calculo import saude_das_empresas
 from toqqi.modulos.relatorios.regras import data_br, gerar_csv, num, sim_nao
 
 REFERENCIAS = {
@@ -82,14 +85,58 @@ def condicoes(busca: str | None, grupo_id: int | None, segmento_id: int | None, 
 ORDEM = (func.lower(cast(Empresa.nome, String)), Empresa.id)
 
 
+def ve_numeros(ctx: Contexto) -> bool:
+    """Etapa 5i: a saúde da conta é um número do painel: pede `painel.ver` ou `relatorios.ver`."""
+    return "painel.ver" in ctx.permissoes or "relatorios.ver" in ctx.permissoes
+
+
+def _saude_resumo(sd: dict | None) -> dict | None:
+    return None if sd is None else {"faixa": sd["faixa"], "nota": sd["nota"], "destaque": sd["destaque"],
+                                    "porque": sd["porques"][0]["texto"] if sd["porques"] else None}
+
+
+_PESO_FAIXA = {"risco": 0, "atencao": 1, "saudavel": 2, "sem_dados": 3}
+
+
 def listar(ctx: Contexto, pg: Pagina, busca: str | None, grupo_id: int | None, segmento_id: int | None,
-           responsavel_id: int | None, ativa: str) -> dict:
+           responsavel_id: int | None, ativa: str, saude: str | None = None, ordem: str = "nome") -> dict:
+    """Etapa 5i: cada item ganha `saude` ({faixa, nota, destaque, porque} ou null: pausada, perdida ou sem a permissão
+    dos números); `saude=` filtra pela faixa (só ativas) e `ordem=saude` põe Risco (menor nota) primeiro."""
+    if saude:
+        ativa = "true"
+    numeros = ve_numeros(ctx)
+    if (saude or ordem == "saude") and not numeros:
+        raise AppError(403, "sem_permissao", "Você não tem permissão para ver a saúde das empresas.")
     filtros = [Empresa.conta_id == ctx.conta_id, *condicoes(busca, grupo_id, segmento_id, responsavel_id, ativa)]
     with em_conta(ctx.conta_id) as s:
-        total = s.scalar(select(func.count()).select_from(Empresa).where(*filtros))
-        linhas = s.execute(_consulta().where(*filtros).order_by(*ORDEM)
-                           .limit(pg.por_pagina).offset(pg.offset)).all()
-    return pg.resultado([_json(x) for x in linhas], total)
+        if saude or ordem in ("saude", "renovacao"):
+            linhas = s.execute(_consulta().where(*filtros).order_by(*ORDEM)).all()
+            saudes = saude_das_empresas(s, empresa_ids=[x[0].id for x in linhas]) if numeros else {}
+            if saude:
+                linhas = [x for x in linhas if saudes.get(x[0].id, {}).get("faixa") == saude]
+            if ordem == "saude":
+                linhas.sort(key=lambda x: (_PESO_FAIXA[saudes[x[0].id]["faixa"]] if x[0].id in saudes else 9,
+                                           saudes.get(x[0].id, {}).get("nota") or 0))
+            elif ordem == "renovacao":
+                linhas.sort(key=lambda x: (x[0].renovacao_em is None, x[0].renovacao_em or date.max))
+            total = len(linhas)
+            linhas = linhas[pg.offset:pg.offset + pg.por_pagina]
+        else:
+            total = s.scalar(select(func.count()).select_from(Empresa).where(*filtros))
+            linhas = s.execute(_consulta().where(*filtros).order_by(*ORDEM)
+                               .limit(pg.por_pagina).offset(pg.offset)).all()
+            saudes = saude_das_empresas(s, empresa_ids=[x[0].id for x in linhas]) if numeros else {}
+    return pg.resultado([_json(x) | {"saude": _saude_resumo(saudes.get(x[0].id))} for x in linhas], total)
+
+
+def saude(ctx: Contexto, empresa_id: int) -> dict:
+    """Etapa 5i: a saúde completa de uma empresa (critérios e porquês); null = pausada ou perdida."""
+    if not ve_numeros(ctx):
+        raise AppError(403, "sem_permissao", "Você não tem permissão para ver a saúde das empresas.")
+    with em_conta(ctx.conta_id) as s:
+        if s.get(Empresa, empresa_id) is None:
+            raise nao_encontrado("Empresa não encontrada.")
+        return {"empresa_id": empresa_id, "saude": saude_das_empresas(s, empresa_ids=[empresa_id]).get(empresa_id)}
 
 
 # ---- "Exportar CSV" (etapa 5f) --------------------------------------------------------------

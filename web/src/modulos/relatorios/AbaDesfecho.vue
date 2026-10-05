@@ -12,6 +12,7 @@ import { formatarMoeda, formatarNumero } from '@/utils/formatos'
 import Alerta from '@/components/ui/Alerta.vue'
 import EstadoVazio from '@/components/ui/EstadoVazio.vue'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
+import RenovacoesProximas from '@/modulos/saude/RenovacoesProximas.vue'
 import { desfechoParaApi, type FiltrosRelatorioTela } from './logica'
 import { usarRelatorio } from './usarRelatorio'
 
@@ -180,6 +181,8 @@ const maxMotivo = computed(() => Math.max(1, ...(dados.value?.motivos ?? []).map
           </li>
         </ul>
       </section>
+
+      <RenovacoesProximas :grupo-id="filtros.grupo_id" />
     </template>
   </div>
 </template>

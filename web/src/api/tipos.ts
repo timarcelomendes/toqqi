@@ -399,6 +399,8 @@ export interface Empresa {
   motivo_perda?: MotivoPerda | null
   motivo_perda_rotulo?: string | null
   motivo_detalhe?: string | null
+  /** Etapa 5i: saúde da conta (null: pausada, perdida ou sem permissão para os números). */
+  saude?: import('./etapa5iSaude').SaudeResumo | null
 }
 
 export type SituacaoEmpresa = 'ativa' | 'pausada' | 'perdida'

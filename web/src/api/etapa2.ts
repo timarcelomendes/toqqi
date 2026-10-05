@@ -55,6 +55,9 @@ export interface FiltrosEmpresas {
   segmento_id?: Id | ''
   responsavel_id?: Id | ''
   ativa?: 'true' | 'false' | 'todas'
+  /** Etapa 5i: filtra pela faixa da saúde (só ativas) e ordena. */
+  saude?: 'saudavel' | 'atencao' | 'risco' | 'sem_dados' | ''
+  ordem?: 'nome' | 'saude' | 'renovacao'
   pagina?: number
   por_pagina?: number
 }

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Building2, Download, History, MoreHorizontal, Pencil, RotateCcw, Search, Trash2, UserX } from 'lucide-vue-next'
-import { empresasApi, exportacaoListasApi, mensagemDoErro, type Empresa, type Id } from '@/api'
+import { empresasApi, exportacaoListasApi, mensagemDoErro, type Empresa, type FaixaSaude, type Id } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
 import { useCadastrosStore } from '@/stores/cadastros'
 import { useSessaoStore } from '@/stores/sessao'
-import { formatarData } from '@/utils/datas'
+import { formatarData, hojeIso } from '@/utils/datas'
 import { formatarDocumento, formatarMoeda, formatarNumero } from '@/utils/formatos'
 import ItemMenu from '@/components/app/ItemMenu.vue'
 import Alerta from '@/components/ui/Alerta.vue'
@@ -21,6 +22,9 @@ import Tabela, { type Coluna } from '@/components/ui/Tabela.vue'
 import ModalDesfecho from './ModalDesfecho.vue'
 import ModalEmpresa from './ModalEmpresa.vue'
 import { seloSituacao, situacaoEmpresa } from './desfecho'
+import ModalSaude from '@/modulos/saude/ModalSaude.vue'
+import SeloSaude from '@/modulos/saude/SeloSaude.vue'
+import { FAIXAS_SAUDE, textoRenova } from '@/modulos/saude/logica'
 import { consultaEmpresas, type FiltrosEmpresasTela } from './exportacao'
 
 const sessao = useSessaoStore()
@@ -39,6 +43,25 @@ const filtros = reactive<FiltrosEmpresasTela>({
   responsavel_id: '',
   ativa: 'true',
 })
+// Etapa 5i: saúde da conta (filtro e ordem; `?saude=risco` no endereço abre a lista filtrada).
+const rota = useRoute()
+const podeVerSaude = computed(() => sessao.pode('painel.ver') || sessao.pode('relatorios.ver'))
+const faixaInicial = String(rota.query.saude ?? '')
+const filtroSaude = ref<FaixaSaude | ''>(FAIXAS_SAUDE.some((f) => f.valor === faixaInicial) ? (faixaInicial as FaixaSaude) : '')
+const ordem = ref<'nome' | 'saude' | 'renovacao'>(filtroSaude.value ? 'saude' : 'nome')
+const opcoesOrdem = computed(() => [
+  { valor: 'nome' as const, rotulo: 'Ordenar por nome' },
+  ...(podeVerSaude.value ? [{ valor: 'saude' as const, rotulo: 'Pior saúde primeiro' }] : []),
+  { valor: 'renovacao' as const, rotulo: 'Renovação mais próxima' },
+])
+const saudeAberta = ref(false)
+const saudeDe = ref<Empresa | null>(null)
+/** Dias de hoje (São Paulo) até a data (aaaa-mm-dd). */
+const diasAte = (iso: string) => Math.round((Date.parse(iso.slice(0, 10)) - Date.parse(hojeIso())) / 864e5)
+function verSaude(e: Empresa) {
+  saudeDe.value = e
+  saudeAberta.value = true
+}
 const modalAberto = ref(false)
 const emEdicao = ref<Empresa | null>(null)
 
@@ -68,8 +91,9 @@ const colunas: Coluna[] = [
   { chave: 'grupo', rotulo: 'Grupo e segmento', classe: 'hidden lg:table-cell' },
   { chave: 'responsavel', rotulo: 'Responsável', classe: 'hidden md:table-cell' },
   { chave: 'valor_mensal', rotulo: 'Valor mensal', alinhar: 'direita', classe: 'hidden xl:table-cell' },
-  { chave: 'cliente_desde', rotulo: 'Cliente desde', classe: 'hidden xl:table-cell' },
-  { chave: 'contatos', rotulo: 'Contatos', alinhar: 'centro', classe: 'hidden sm:table-cell' },
+  { chave: 'cliente_desde', rotulo: 'Cliente desde', classe: 'hidden 2xl:table-cell' },
+  { chave: 'saude', rotulo: 'Saúde', classe: 'hidden sm:table-cell' },
+  { chave: 'contatos', rotulo: 'Contatos', alinhar: 'centro', classe: 'hidden xl:table-cell' },
   { chave: 'ativa', rotulo: 'Situação', classe: 'hidden md:table-cell' },
   { chave: 'acoes', rotulo: 'Ações', rotuloOculto: true, alinhar: 'direita' },
 ]
@@ -86,7 +110,10 @@ async function carregar() {
   carregando.value = true
   erro.value = null
   try {
-    const r = await empresasApi.listar({ ...consultaEmpresas(filtros), pagina: pagina.value }, controle.signal)
+    const r = await empresasApi.listar(
+      { ...consultaEmpresas(filtros), ...(filtroSaude.value ? { saude: filtroSaude.value } : {}), ...(ordem.value !== 'nome' ? { ordem: ordem.value } : {}), pagina: pagina.value },
+      controle.signal,
+    )
     empresas.value = r.itens
     total.value = r.total
     porPagina.value = r.por_pagina || 50
@@ -110,7 +137,7 @@ watch(
   },
 )
 watch(
-  () => [filtros.grupo_id, filtros.segmento_id, filtros.responsavel_id, filtros.ativa],
+  () => [filtros.grupo_id, filtros.segmento_id, filtros.responsavel_id, filtros.ativa, filtroSaude.value, ordem.value],
   () => {
     pagina.value = 1
     carregar()
@@ -186,6 +213,10 @@ defineExpose({ novo })
         <Selecao v-model="filtros.segmento_id" rotulo="Segmento" rotulo-oculto :opcoes="cadastros.listas.segmentos.map((g) => ({ valor: g.id, rotulo: g.nome }))" vazio="Todos os segmentos" />
         <Selecao v-model="filtros.responsavel_id" rotulo="Responsável" rotulo-oculto :opcoes="cadastros.listas.responsaveis.map((r) => ({ valor: r.id, rotulo: r.nome }))" vazio="Todos os responsáveis" />
       </div>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <Selecao v-if="podeVerSaude" v-model="filtroSaude" rotulo="Saúde" rotulo-oculto :opcoes="FAIXAS_SAUDE.map((f) => ({ valor: f.valor, rotulo: f.rotulo }))" vazio="Toda saúde" data-filtro-saude />
+        <Selecao v-model="ordem" rotulo="Ordem" rotulo-oculto :opcoes="opcoesOrdem" data-ordem />
+      </div>
       <div class="flex items-center justify-between gap-2">
         <div class="inline-flex w-fit rounded-xl border border-borda-forte p-0.5" role="radiogroup" aria-label="Mostrar empresas">
           <button
@@ -243,6 +274,15 @@ defineExpose({ novo })
       <template #cel-contatos="{ linha: e }">
         <span class="tabular-nums text-texto-suave">{{ formatarNumero(e.contatos) }}</span>
       </template>
+      <template #cel-saude="{ linha: e }">
+        <div v-if="e.saude" class="flex flex-col items-start gap-0.5">
+          <button type="button" class="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2" :aria-label="`Ver a saúde de ${e.nome}`" data-selo-saude @click="verSaude(e)">
+            <SeloSaude :faixa="e.saude.faixa" :nota="e.saude.nota" />
+          </button>
+          <span v-if="e.saude.destaque && e.renovacao_em" class="text-xs font-semibold text-erro">{{ textoRenova(diasAte(e.renovacao_em)) }}</span>
+        </div>
+        <span v-else class="text-texto-fraco">—</span>
+      </template>
       <template #cel-ativa="{ linha: e }">
         <Etiqueta :tom="seloSituacao(e).tom" ponto>{{ seloSituacao(e).texto }}</Etiqueta>
       </template>
@@ -269,6 +309,7 @@ defineExpose({ novo })
     </Tabela>
     <Paginacao v-if="!erro" v-model="pagina" :total="total" :por-pagina="porPagina" :carregando="carregando" :nome-itens="total === 1 ? 'empresa' : 'empresas'" />
     <ModalEmpresa v-model:aberto="modalAberto" :empresa="emEdicao" @salvo="aoSalvar" />
+    <ModalSaude v-model:aberto="saudeAberta" :empresa="saudeDe" />
     <ModalDesfecho v-model:aberto="desfecho.aberto" :empresa="desfecho.empresa" :modo="desfecho.modo" @salvo="aoSalvar" />
   </div>
 </template>

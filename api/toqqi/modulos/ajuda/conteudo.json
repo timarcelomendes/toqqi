@@ -954,6 +954,50 @@
           ]
         },
         {
+          "id": "saude-da-conta",
+          "titulo": "Saúde da conta: a nota de cada empresa",
+          "somente_admin": false,
+          "atalho": "contatos",
+          "palavras": [
+            "saúde da conta",
+            "health score",
+            "nota da empresa",
+            "risco",
+            "atenção",
+            "saudável",
+            "sem dados",
+            "carteira por saúde",
+            "renovação",
+            "churn",
+            "cliente em risco"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Cada empresa ativa tem uma nota de 0 a 100, calculada na hora com os últimos 6 meses. A coluna Saúde, em Contatos › Empresas, mostra a faixa e a nota; clique no selo para ver os motivos e como a nota é calculada."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Satisfação (até 40 pontos): o NPS da empresa.",
+                "Tendência (até 10): se o NPS subiu ou caiu em relação aos 6 meses anteriores.",
+                "Cobertura (até 15): quantos contatos convidados responderam.",
+                "Decisor (até 15): a nota mais recente de quem tem o perfil Decisor.",
+                "Silêncio (até 10): há quanto tempo um convite espera resposta.",
+                "Planos de ação (até 10): planos atrasados ou abertos para detrator tiram pontos."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Saudável é a partir de 70, Atenção de 45 a 69 e Risco abaixo de 45. Sem dados: a empresa ainda não respondeu e o primeiro convite tem 30 dias ou menos. Empresas pausadas ou perdidas não têm nota."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "No Início, o cartão Carteira por saúde mostra quantas empresas (e quanto de receita) estão em cada faixa e avisa quando uma empresa em Risco renova nos próximos 60 dias. Preencha “Renovação do contrato” em Editar empresa para receber esse aviso; a lista das renovações fica em Relatórios › Desfecho."
+            }
+          ]
+        },
+        {
           "id": "grupos-segmentos-perfis-e-cargos",
           "titulo": "Grupos, segmentos, perfis de contato e cargos",
           "somente_admin": false,

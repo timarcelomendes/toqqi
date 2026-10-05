@@ -30,6 +30,7 @@ import BlocoTom from './BlocoTom.vue'
 import CartaoMovimentacao from './CartaoMovimentacao.vue'
 import CartaoResumo from './CartaoResumo.vue'
 import CartaoResumoIa from './CartaoResumoIa.vue'
+import CartaoCarteiraSaude from '@/modulos/saude/CartaoCarteiraSaude.vue'
 import CartoesIndicadores from './CartoesIndicadores.vue'
 import GraficoEvolucao from './GraficoEvolucao.vue'
 import PrimeirosPassos from './PrimeirosPassos.vue'
@@ -479,6 +480,7 @@ onBeforeUnmount(() => {
     />
     <ResumoIaExemplo v-if="modoExemplo" :periodo="filtrosNaTela.rotulo" />
     <CartaoResumoIa v-else :filtros="filtrosResumo" :periodo="filtrosNaTela.rotulo" />
+    <CartaoCarteiraSaude v-if="!modoExemplo" :grupo-id="filtros.grupo_id" />
 
     <CartoesIndicadores :atencao="painelTela.atencao" :csat="painelTela.csat" :taxa="painelTela.taxa_resposta" :desativado="modoExemplo" />
 

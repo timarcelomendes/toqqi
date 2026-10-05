@@ -34,15 +34,24 @@ def listar(
     segmento_id: int | None = None,
     responsavel_id: int | None = None,
     ativa: Literal["true", "false", "todas"] = "todas",
+    saude: Literal["saudavel", "atencao", "risco", "sem_dados"] | None = None,  # etapa 5i
+    ordem: Literal["nome", "saude", "renovacao"] = "nome",
     pg: Pagina = Depends(pagina),
     ctx: Contexto = Depends(requer("contatos.ver")),
 ):
-    return servico.listar(ctx, pg, (busca or "").strip() or None, grupo_id, segmento_id, responsavel_id, ativa)
+    return servico.listar(ctx, pg, (busca or "").strip() or None, grupo_id, segmento_id, responsavel_id, ativa,
+                          saude, ordem)
 
 
 @router.post("", status_code=201)
 def criar(dados: EmpresaIn, ctx: Contexto = Depends(requer("contatos.editar"))):
     return servico.criar(ctx, dados)
+
+
+@router.get("/{empresa_id}/saude")
+def saude(empresa_id: int, ctx: Contexto = Depends(requer("contatos.ver"))):
+    """Etapa 5i: a saúde da conta (nota, critérios e porquês). Pede também `painel.ver` ou `relatorios.ver`."""
+    return servico.saude(ctx, empresa_id)
 
 
 @router.get("/{empresa_id}")

@@ -681,3 +681,14 @@ Ficou para depois: `PATCH /perda` (corrigir), `GET /historico` e a tela própria
 do Desfecho; importação e API de integração com renovação/perda e os webhooks `empresa.*`; o ToqqiAI e a jornada na
 Ajuda; a regra nova do "O que mudou". Importar um contato ativo de uma empresa perdida hoje para a importação com o 409
 `empresa_perdida` (a mensagem explica o que fazer).
+
+## 15. Notas da construção (B, versão enxuta, 05/10)
+Feito na sessão, sem agentes. Entrou: `modulos/saude/regras.py` (as regras do §3.1; os exemplos viraram teste — no
+exemplo 2, os 3 porquês seguem a regra "do que mais perdeu pontos": satisfação, decisor e tendência; no 4, com o convite
+dentro de J o contato conta como convidado, 46) e `calculo.py` (consultas agrupadas por empresa);
+`GET /empresas` com `saude` por item, `saude=` e `ordem=nome|saude|renovacao`; `GET /empresas/{id}/saude`;
+`GET /painel/saude` (o cartão "Carteira por saúde" no Início, com o aviso das renovações em Risco) e
+`GET /relatorios/renovacoes` (a lista no fim da aba Desfecho). No site: coluna, filtro e ordem em Contatos › Empresas,
+`?aba=empresas&saude=risco`, o selo abre a saúde com "Como a nota é calculada"; seção na Ajuda (Contatos).
+Ficou para depois: a regra no "O que mudou", a saúde no ToqqiAI, o CSV com a saúde e as renovações, os filtros de
+segmento/responsável nas renovações, o Crescimento excluir empresas em Risco e o cartão no modo exemplo.
