@@ -285,6 +285,9 @@ class Convite(Base):
     evento: Mapped[str | None] = mapped_column(Text)
     # etapa 5c: tentativas de indicação aceitas pela página pública (as repetidas também; o limite é por convite)
     indicacoes_feitas: Mapped[int] = mapped_column(Integer, server_default="0")
+    # conectores: de onde veio (ex.: "rd:<negociação>") e quando a resposta foi anotada lá
+    origem_externa: Mapped[str | None] = mapped_column(Text)
+    devolvida_em: Mapped[datetime | None] = mapped_column(TZ)
 
 
 class Resposta(Base):

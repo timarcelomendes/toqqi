@@ -64,6 +64,19 @@ def negociacao(token: str, deal_id: str) -> dict:
     return _pedir("GET", f"/deals/{deal_id}", token)
 
 
+def anotar(token: str, deal_id: str, texto: str) -> None:
+    """Anotação na negociação (POST /activities; o RD pede o autor: o dono da negociação ou o primeiro usuário)."""
+    deal = negociacao(token, deal_id)
+    dono = deal.get("user") if isinstance(deal.get("user"), dict) else {}
+    autor = ident(dono) if dono else None
+    if not autor:
+        usuarios = _pedir("GET", "/users", token).get("users") or []
+        autor = ident(usuarios[0]) if usuarios and isinstance(usuarios[0], dict) else None
+    if not autor:
+        raise ErroRd("O RD Station CRM não informou um usuário para a anotação.")
+    _pedir("POST", "/activities", token, json={"activity": {"deal_id": deal_id, "user_id": autor, "text": texto}})
+
+
 def criar_webhook(token: str, url: str) -> str | None:
     dados = _pedir("POST", "/webhooks", token, json={"event_type": "crm_deal_updated", "url": url,
                                                       "http_method": "POST"})

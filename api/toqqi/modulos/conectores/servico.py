@@ -8,9 +8,10 @@
 O token fica cifrado; o endereço do aviso leva um segredo próprio (só o hash fica no banco)."""
 import hashlib
 import secrets
+from datetime import timedelta
 from types import SimpleNamespace
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import DBAPIError
 
 from toqqi.core import relogio
@@ -21,7 +22,7 @@ from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError, erro_do_banco
 from toqqi.core.segredos import cifrar, decifrar
 from toqqi.core.texto import telefone_canonico
-from toqqi.modelos import Conector, Conta, Contato, Empresa
+from toqqi.modelos import Conector, Conta, Contato, Convite, Empresa, Resposta
 from toqqi.modulos.conectores import rdstation
 from toqqi.modulos.empresas.desfecho import marcar
 from toqqi.modulos.envios.descadastro import telefone_sql
@@ -254,8 +255,12 @@ def receber_aviso(segredo: str, corpo: dict) -> list:
                 if (org_nome or org_id) else None,
                 evento="negocio_ganho", referencia=_texto(doc.get("name"), 120), tipo="nps",
                 id_evento=f"rd:{deal_id}:{i}" if deal_id else None)
-            _, _, novos = pesquisas.disparar(ci, dados)
+            resultado, _, novos = pesquisas.disparar(ci, dados)
             envios += novos
+            if deal_id and resultado.get("convite_id"):  # para devolver a nota à negociação (tarefa `conectores`)
+                with em_conta(conta_id) as s:
+                    s.execute(update(Convite).where(Convite.id == resultado["convite_id"], Convite.origem_externa.is_(None))
+                              .values(origem_externa=f"rd:{deal_id}"[:100]))
         except (AppError, ValueError) as e:
             erros.append(getattr(e, "mensagem", None) or str(e))
     if erros:
@@ -264,3 +269,51 @@ def receber_aviso(segredo: str, corpo: dict) -> list:
             if c:
                 c.erro = f"Negócio ganho sem pesquisa: {erros[0]}"[:300]
     return envios
+
+
+# ---- devolver a nota ao CRM (tarefa `conectores`) ------------------------------------------------------
+
+DIAS_DEVOLVER = 7
+MAX_DEVOLVER = 100
+GRUPOS = {"promotor": "promotor", "neutro": "neutro", "detrator": "detrator"}
+
+
+def texto_nota(nota: int | None, tipo: str | None, grupo: str | None, nome: str | None, comentario: str | None) -> str:
+    """"Pesquisa Toqqi (NPS): Ana Azul deu nota 9 (promotor). Comentário: …" (até 1.000 caracteres)."""
+    quem = nome or "O cliente"
+    partes = [f"Pesquisa Toqqi ({(tipo or 'nps').upper()}): {quem} deu nota {nota}"
+              + (f" ({GRUPOS[grupo]})." if grupo in GRUPOS else ".")]
+    if comentario and comentario.strip():
+        partes.append(f"Comentário: {comentario.strip()}")
+    return " ".join(partes)[:1000]
+
+
+def devolver_notas() -> dict:
+    """Anota no RD Station CRM, na negociação que mandou a pesquisa, as respostas dos últimos 7 dias ainda não
+    anotadas (até 100 por vez; a que falhar tenta de novo na próxima rodada, dentro dos 7 dias)."""
+    desde = relogio.agora() - timedelta(days=DIAS_DEVOLVER)
+    with modo_sistema() as s:
+        linhas = s.execute(
+            select(Convite.id, Convite.conta_id, Convite.origem_externa, Conector.token_cifrado, Resposta.nota,
+                   Resposta.tipo_nota, Resposta.grupo, Resposta.comentario_cliente, Contato.nome)
+            .join(Conector, (Conector.conta_id == Convite.conta_id) & (Conector.provedor == "rdstation_crm"))
+            .join(Resposta, Resposta.convite_id == Convite.id)
+            .outerjoin(Contato, Contato.id == Resposta.contato_id)
+            .where(Convite.origem_externa.like("rd:%"), Convite.devolvida_em.is_(None),
+                   Convite.respondido_em >= desde, Resposta.nota.is_not(None))
+            .order_by(Convite.respondido_em, Convite.id).limit(MAX_DEVOLVER)).all()
+    anotadas = falharam = 0
+    vistos: set[int] = set()
+    for convite_id, conta_id, origem, token_cifrado, nota, tipo, grupo, comentario, nome in linhas:
+        if convite_id in vistos:
+            continue
+        vistos.add(convite_id)
+        try:
+            rdstation.anotar(decifrar(token_cifrado), origem.split(":", 1)[1], texto_nota(nota, tipo, grupo, nome, comentario))
+        except rdstation.ErroRd:
+            falharam += 1
+            continue
+        with modo_sistema() as s:
+            s.execute(update(Convite).where(Convite.id == convite_id).values(devolvida_em=relogio.agora()))
+        anotadas += 1
+    return {"anotadas": anotadas, "falharam": falharam}

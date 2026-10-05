@@ -39,11 +39,12 @@ from toqqi.modulos.assinatura import exclusao
 from toqqi.modulos.auditoria import emails as emails_enviados
 from toqqi.modulos.envios import automacao
 from toqqi.modulos.ia import servico as ia
+from toqqi.modulos.conectores import servico as conectores
 from toqqi.modulos.integracoes import webhooks
 from toqqi.modulos.plataforma import erros as aviso_erros
 from toqqi.modulos.relatorios import emails
 
-TAREFAS = ("assinaturas", "robo", "lembretes", "pendentes", "webhooks", "ia", "picos", "resumo", "erros", "limpeza",
+TAREFAS = ("assinaturas", "robo", "lembretes", "pendentes", "webhooks", "conectores", "ia", "picos", "resumo", "erros", "limpeza",
            "tudo")
 
 log = logging.getLogger("toqqi.tarefas")
@@ -70,6 +71,7 @@ def _passos() -> list[tuple[str, Callable[[], object]]]:
         ("robo", lambda: automacao.robo()),
         ("lembretes", lambda: automacao.lembretes()),
         ("webhooks", lambda: webhooks.entregar_devidas()),
+        ("conectores", lambda: conectores.devolver_notas()),  # a nota de volta ao CRM
         ("ia", _ia),
         ("picos", lambda: emails.picos()),
         ("resumo", lambda: emails.resumo()),

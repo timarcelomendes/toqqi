@@ -115,6 +115,7 @@ onMounted(carregar)
       <dl class="mt-3 flex flex-col gap-2.5">
         <div><dt class="font-semibold text-texto">Empresas e contatos</dt><dd class="text-texto-suave">“Sincronizar agora” traz as empresas e as pessoas do RD que ainda não estão no Toqqi, com e-mail ou telefone, cada uma ligada à sua empresa. Nunca apaga nem muda o que já existe aqui, e respeita o limite de contatos do plano.</dd></div>
         <div><dt class="font-semibold text-texto">Pesquisa no negócio ganho</dt><dd class="text-texto-suave">Ligada, o Toqqi cadastra um aviso no RD. Quando uma negociação vira ganha, os contatos dela recebem a pesquisa NPS, uma vez por negociação, pelas regras de envio da conta.</dd></div>
+        <div><dt class="font-semibold text-texto">A nota de volta no RD</dt><dd class="text-texto-suave">Quando o cliente responde, o Toqqi anota na negociação a nota e o comentário (em até 30 minutos), para o vendedor ver sem sair do CRM.</dd></div>
         <div><dt class="font-semibold text-texto">Segurança</dt><dd class="text-texto-suave">O token de instância fica cifrado e só é usado para falar com o RD. Desconectar apaga o token e remove o aviso no RD.</dd></div>
         <div><dt class="font-semibold text-texto">Ainda não faz</dt><dd class="text-texto-suave">Não devolve a nota ao RD e não atualiza dados já cadastrados; para isso, use o Toqqi ou a importação.</dd></div>
       </dl>

@@ -24,7 +24,7 @@ interface Item {
 }
 
 const ITENS: Item[] = [
-  { chave: 'rdstation', nome: 'RD Station CRM', tipo: 'CRM', iniciais: 'RD', resumo: 'Empresas e contatos do CRM; pesquisa no negócio ganho.', componente: SecaoRdStation },
+  { chave: 'rdstation', nome: 'RD Station CRM', tipo: 'CRM', iniciais: 'RD', resumo: 'Empresas e contatos do CRM; pesquisa no negócio ganho e a nota de volta na negociação.', componente: SecaoRdStation },
   { chave: 'omie', nome: 'Omie', tipo: 'ERP', iniciais: 'OM', resumo: 'Clientes do ERP; pesquisa no pedido faturado.', componente: SecaoOmie },
   { chave: 'pipedrive', nome: 'Pipedrive', tipo: 'CRM', iniciais: 'PD', resumo: '' },
   { chave: 'hubspot', nome: 'HubSpot', tipo: 'CRM', iniciais: 'HS', resumo: '' },

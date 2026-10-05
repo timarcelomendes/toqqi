@@ -138,3 +138,37 @@ def test_desconectar(client, dono, admin, rd):
     assert client.post(f"{API}/publico/conectores/rdstation-crm/{segredo}", json=aviso).status_code == 200
     eventos = {e for (e,) in sql(dono, "select evento from auditoria where conta_id = :c", c=admin["conta"]["id"])}
     assert {"conector_ligado", "conector_desligado"} <= eventos
+
+
+def test_nota_volta_para_a_negociacao(client, dono, admin, rd, monkeypatch):
+    from util import token_do_convite
+
+    from toqqi.modulos.conectores import servico
+
+    h = admin["h"]
+    form = form_padrao(client, h)
+    ligar_envios(client, h)
+    _conectar(client, h)
+    url = f"{API}/publico/conectores/rdstation-crm/{_segredo(rd)}"
+    antes = len(caixa_memoria)
+    client.post(url, json={"event_name": "crm_deal_updated", "document": {"id": "d9", "name": "Contrato anual", "win": True}})
+    m = caixa_memoria[antes]
+    assert sql(dono, "select origem_externa from convites")[0][0] == "rd:d9"
+
+    anotadas = []
+    monkeypatch.setattr(rdstation, "anotar", lambda token, deal, texto: anotadas.append((token, deal, texto)))
+    assert servico.devolver_notas() == {"anotadas": 0, "falharam": 0}  # sem resposta ainda
+    r = client.post(f"{API}/publico/convites/{token_do_convite(m)}/responder",
+                    json={"respostas": {form["perguntas"][0]["id"]: 9}, "comentario": "Tudo certo"})
+    assert r.status_code == 201, r.text
+    assert servico.devolver_notas() == {"anotadas": 1, "falharam": 0}
+    assert anotadas[0][:2] == (TOKEN, "d9") and "deu nota 9 (promotor)" in anotadas[0][2]
+    assert servico.devolver_notas() == {"anotadas": 0, "falharam": 0}  # uma vez só
+
+
+def test_texto_da_nota():
+    from toqqi.modulos.conectores.servico import texto_nota
+
+    assert texto_nota(3, "nps", "detrator", "Ana", " Demorou ") == \
+        "Pesquisa Toqqi (NPS): Ana deu nota 3 (detrator). Comentário: Demorou"
+    assert texto_nota(5, "csat", None, None, None) == "Pesquisa Toqqi (CSAT): O cliente deu nota 5."
