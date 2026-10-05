@@ -28,6 +28,9 @@ log = logging.getLogger("toqqi")
 # 22021 caractere inválido para a codificação (ex.: NUL), 22001 texto longo demais para a coluna
 SQLSTATES_DADO_INVALIDO = frozenset({"22003", "22P02", "22021", "22001"})
 MSG_DADO_INVALIDO = "Confira os dados enviados."
+# etapa 5i: contato ativo em empresa perdida (gatilho `contatos_empresa_perdida`, SQLSTATE TQ409)
+MSG_EMPRESA_PERDIDA = ("Esta empresa foi marcada como perdida. Para voltar a pesquisar este contato, marque “Voltou a "
+                       "ser cliente” na empresa.")
 
 
 class AppError(Exception):
@@ -204,9 +207,12 @@ def dado_invalido(exc: DBAPIError) -> bool:
 
 def erro_do_banco(exc: DBAPIError) -> AppError | None:
     """Erros de regra levantados pelo próprio banco (gatilhos) viram AppError. O limite de contatos (TQ402) leva o
-    limite em `campos.limite` (o gatilho manda no DETAIL), para a tela oferecer "Ver planos". Valor recusado pelo banco
-    (`dado_invalido`) vira 422 `dados_invalidos`."""
+    limite em `campos.limite` (o gatilho manda no DETAIL), para a tela oferecer "Ver planos". Contato ativo em empresa
+    perdida (TQ409, etapa 5i) vira 409 `empresa_perdida`. Valor recusado pelo banco (`dado_invalido`) vira 422
+    `dados_invalidos`."""
     orig = getattr(exc, "orig", None)
+    if getattr(orig, "sqlstate", None) == "TQ409":
+        return AppError(409, "empresa_perdida", MSG_EMPRESA_PERDIDA)
     if getattr(orig, "sqlstate", None) == "TQ402":
         diag = getattr(orig, "diag", None)
         msg = getattr(diag, "message_primary", None) or "Você atingiu o limite de contatos ativos do seu plano."

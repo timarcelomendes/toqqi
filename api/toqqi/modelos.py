@@ -75,6 +75,8 @@ class Conta(Base):
     # administradores e quando o aviso saiu (relógio do banco); os dois nulos ou os dois preenchidos
     exclusao_avisada_para: Mapped[date | None] = mapped_column(Date)
     exclusao_avisada_em: Mapped[datetime | None] = mapped_column(TZ)
+    # etapa 5i: de onde veio o cadastro ({utm_source, utm_medium, utm_campaign}, só as presentes); nula = sem origem
+    origem: Mapped[dict | None] = mapped_column(JSONB)
 
 
 class Usuario(Base):
@@ -197,6 +199,31 @@ class Empresa(Base):
     codigo_externo: Mapped[str | None] = mapped_column(Text)
     ativa: Mapped[bool] = mapped_column(Boolean, server_default="true")
     criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    # etapa 5i: desfecho. Perdida = `perdida_em` preenchida, com motivo e `ativa` false (o banco obriga); o histórico
+    # (`EmpresaHistorico`) é gravado pelo gatilho `empresas_historico`
+    renovacao_em: Mapped[date | None] = mapped_column(Date)  # renovação ou fim do contrato (passado permitido)
+    perdida_em: Mapped[date | None] = mapped_column(Date)
+    motivo_perda: Mapped[str | None] = mapped_column(Text)  # preco | concorrente | atendimento | produto | encerrou | outro
+    motivo_detalhe: Mapped[str | None] = mapped_column(Text)  # até 300
+
+
+class EmpresaHistorico(Base):
+    """Etapa 5i: entrada, mudança de valor, perda e retorno de cada empresa, gravados pelo gatilho do banco (nunca pela
+    aplicação: ela só passa `app.empresa_origem`, `app.usuario_id`, `app.hoje` e `app.contatos_desativados`)."""
+    __tablename__ = "empresa_historico"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    empresa_id: Mapped[int] = mapped_column(BigInteger)
+    tipo: Mapped[str] = mapped_column(Text)  # entrada | valor | perdida | reativada
+    data: Mapped[date] = mapped_column(Date)  # o dia que vale para os cálculos
+    valor_antes: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    valor_depois: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    motivo: Mapped[str | None] = mapped_column(Text)  # só (e sempre) na perdida
+    motivo_detalhe: Mapped[str | None] = mapped_column(Text)
+    contatos: Mapped[list[int] | None] = mapped_column(ARRAY(BigInteger))  # só na perdida: os ids desativados
+    origem: Mapped[str] = mapped_column(Text)  # tela | importacao | api | migracao | sistema
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger)
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
 
 
 class Contato(Base):
@@ -358,6 +385,8 @@ class ConfigEnvios(Base):
     email_imagem_topo_id: Mapped[int | None] = mapped_column(BigInteger)  # imagem 'banco' da conta (SET NULL)
     email_assinatura: Mapped[str | None] = mapped_column(Text)  # até 300
     email_rodape: Mapped[str | None] = mapped_column(Text)  # até 500
+    # etapa 5i: ocultar "Pesquisa feita com Toqqi" (só vale onde o plano permite; a regra é calculada ao mostrar)
+    ocultar_mencao_toqqi: Mapped[bool] = mapped_column(Boolean, server_default="false")
 
 
 class Envio(Base):

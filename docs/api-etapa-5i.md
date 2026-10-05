@@ -68,18 +68,24 @@ CASCADE`, ENABLE + FORCE RLS, política `isolamento_conta`, grants condicionais 
 `criado_em timestamptz DEFAULT now()`. CHECKs: `tipo = 'perdida'` ⇔ `motivo IS NOT NULL`; `contatos` só em `perdida`;
 `tipo <> 'valor' OR valor_antes IS DISTINCT FROM valor_depois`. Índices `(conta_id, empresa_id, data, id)` e
 `(conta_id, data) WHERE tipo = 'perdida'`; o do SET NULL do usuário como na 0013. O papel da aplicação tem SELECT e
-INSERT, e UPDATE só para a edição da perda (o gatilho faz).
+INSERT, e UPDATE só para a edição da perda (o gatilho faz); **sem DELETE nem TRUNCATE** (as linhas saem em cascata
+com a empresa ou a conta).
 
 **Gatilho `empresas_historico`** (AFTER INSERT OR UPDATE OF valor_mensal, perdida_em, motivo_perda, motivo_detalhe ON
 empresas). `hoje` = `app.hoje` ou o dia do banco em São Paulo; `origem` = `app.empresa_origem` ou `sistema`; `usuario`
-= `app.usuario_id` ou nulo.
-- INSERT: `entrada` (data hoje, `valor_depois` = valor). Se já nasce perdida (só pela API), uma `perdida` em seguida.
+= `app.usuario_id` ou nulo (também nulo se o usuário não é da conta da empresa, como a equipe Toqqi pela Plataforma).
+- INSERT: `entrada` (data hoje, `valor_depois` = valor). Se já nasce perdida (só pela API), uma `perdida` em seguida, e
+  a `entrada` fica com a menor entre hoje e `perdida_em` (para não vir depois da perda na ordem `data, id`).
 - UPDATE, nesta ordem:
-  - perdida_em nula → preenchida: `perdida` (data = `perdida_em`, `valor_antes` = valor, motivo, detalhe,
-    `contatos` = `app.contatos_desativados`, lista em texto, ou vazia).
+  - perdida_em nula → preenchida: `perdida` (data = `perdida_em`, `valor_antes` = OLD.valor, a carteira logo antes;
+    motivo, detalhe, `contatos` = `app.contatos_desativados`, ids separados por vírgula, como `"7,8"` (chaves
+    aceitas), ou vazia). O GUC vale a transação inteira: quem perde duas empresas na mesma transação troca o valor
+    antes de cada uma.
   - preenchida → nula: `reativada` (data hoje, `valor_antes` = OLD.valor, `valor_depois` = NEW.valor). Mudar o valor
     no mesmo UPDATE **não** gera também uma linha `valor`.
-  - perdida nos dois e data/motivo/detalhe mudaram: atualiza a última `perdida` da empresa.
+  - perdida nos dois e data/motivo/detalhe mudaram: atualiza a última `perdida` da empresa. Perdida nos dois e só o
+    valor mudou: **nada** (uma linha `valor` com a carteira em zero quebraria a ponte; o valor novo aparece no
+    `valor_antes` da `reativada`).
   - senão, valor mudou: `valor` (data hoje, antes, depois).
 - A empresa sem nenhuma linha (pausada antiga) ganha antes uma `entrada` com OLD.valor e data = a menor entre hoje e a
   data do evento.
@@ -93,7 +99,8 @@ empresa que tem `perdida_em` → `RAISE ... USING ERRCODE = 'TQ409'`. `core/erro
 - `config_envios.ocultar_mencao_toqqi boolean NOT NULL DEFAULT false`.
 - `contas.origem jsonb` nula, com CHECK: é objeto não vazio, as chaves estão em `{utm_source, utm_medium,
   utm_campaign}` e cada valor é texto `^[a-z0-9._-]{1,60}$` (`jsonb_path_exists`, como os passos da 0013).
-- Índice `convites_empresa_idx (conta_id, empresa_id, criado_em DESC) WHERE empresa_id IS NOT NULL` (saúde). Outros
+- Índice `convites_empresa_recentes_idx (conta_id, empresa_id, criado_em DESC) WHERE empresa_id IS NOT NULL` (saúde;
+  o nome `convites_empresa_idx` já existe desde a 0015, só por `empresa_id`, para o SET NULL da exclusão, e fica). Outros
   índices ficam a critério de quem constrói, provados pelo teste de desempenho (§10).
 - Semente, em modo sistema: uma linha `entrada` por empresa **ativa** (data = `criada_em` em São Paulo, `valor_depois`
   = `valor_mensal`, origem `migracao`).
@@ -102,7 +109,9 @@ empresa que tem `perdida_em` → `RAISE ... USING ERRCODE = 'TQ409'`. `core/erro
 com os eventos novos e tira os eventos dos outros (como a 0012). Volta o CHECK, apaga o índice dos convites e as
 colunas de `empresas`, `config_envios` e `contas`. As empresas perdidas ficam inativas.
 
-`apagar_conta` (plataforma) e a exportação de todos os dados (`dados/exportacao.py`) passam a incluir a tabela nova (A).
+A exportação de todos os dados (`dados/exportacao.py`) passa a incluir a tabela nova (A). `apagar_conta` (plataforma)
+**não** a põe em `_ORDEM_EXCLUSAO`: sem DELETE para o papel, ela sai em cascata quando `Empresa` é apagada (o
+`test_etapa5i_migracao` prova pela exclusão da empresa).
 
 ## 2. Desfecho (A)
 
@@ -593,7 +602,7 @@ propósito é ajustado e explicado.
   `modulos/importacao/{planilha.py, servico.py}`;
   `modulos/integracoes/{esquemas.py, pesquisas.py, empresas.py (novo), rotas.py, webhooks.py}`;
   `modulos/relatorios/{desfecho.py (novo), rotas.py}`;
-  `core/auditoria.py`; `modulos/plataforma/servico.py` (`_ORDEM_EXCLUSAO`); `modulos/dados/exportacao.py`;
+  `core/auditoria.py`; `modulos/dados/exportacao.py` (a plataforma não muda: o histórico sai em cascata, §1);
   `modulos/ajuda/servico.py` (`JORNADAS`); `docs/ajuda-jornadas.md`.
 - Site: `router/` (rota), `modulos/contatos/{EmpresaView.vue, ModalPerda.vue, ModalRetorno.vue, LinhaDoTempo.vue,
   desfecho.ts (novos), ModalEmpresa.vue, ContatoView.vue}`;
