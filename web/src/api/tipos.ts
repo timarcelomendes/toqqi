@@ -879,7 +879,8 @@ export interface EntregaWebhook {
 
 export interface FranquiaWhatsapp {
   plano: string | null
-  limite: number
+  /** Mensagens por mês; null = sem franquia (etapa 5k, o padrão: a Meta cobra a conta do cliente). */
+  limite: number | null
   usadas_mes: number
   excedente_ativo: boolean
   excedentes_mes: number
@@ -1712,9 +1713,38 @@ export interface CobrancaAssinatura extends FaturaAberta {
   pago_em: string | null
 }
 
+/** Etapa 5k: ciclo e forma de pagamento da assinatura. */
+export type CicloAssinatura = 'mensal' | 'anual'
+export type FormaAssinatura = 'pix' | 'qualquer'
+
+/** Etapa 5k: descontos em % (Pix no mensal; anual, sem somar com o Pix). */
+export interface DescontosPlanos {
+  pix: number
+  anual: number
+}
+
+/** Etapa 5k: a tabela do Personalizado (a calculadora em `utils/precos.ts` faz a conta). */
+export interface TabelaPersonalizado {
+  base: ValorDecimal
+  /** Preço a cada 100 contatos até `ate` (null = acima da última faixa). */
+  faixas: { ate: number | null; preco: ValorDecimal }[]
+  /** Pacotes de perguntas ao ToqqiAI por mês (o primeiro vem incluído, preço 0). */
+  ia: { cota: number; preco: ValorDecimal }[]
+  contatos_min: number
+  contatos_max: number
+  passo: number
+}
+
 export interface Assinatura {
-  plano: ChavePlano | (string & {})
+  plano: ChavePlano | 'personalizado' | (string & {})
+  /** Etapa 5k: "Profissional", "Personalizado (2.000 contatos, 500 perguntas)". */
+  nome?: string
+  /** O valor de cada fatura (por mês, ou o total do ano no anual). */
   valor: ValorDecimal
+  ciclo?: CicloAssinatura
+  forma?: FormaAssinatura
+  contatos?: number | null
+  cota_ia?: number | null
   situacao: 'ativa' | 'cancelada' | (string & {})
   criada_em: string
   cancelada_em: string | null
@@ -1733,11 +1763,16 @@ export interface EstadoAssinatura {
     atrasada_desde: string | null
     liberada: boolean
     pausa_em: string | null
+    contatos_personalizado?: number | null
+    cota_ia_personalizada?: number | null
   }
   contatos_ativos: number
   /** O Asaas está configurado na plataforma. */
   disponivel: boolean
   planos: PlanoAssinatura[]
+  /** Etapa 5k (ausentes no servidor antigo). */
+  descontos?: DescontosPlanos
+  personalizado?: TabelaPersonalizado
   /** Dos dados da empresa e do e-mail do admin, para preencher o formulário de cobrança. */
   dados_sugeridos: { [K in keyof DadosCobranca]: string | null }
   /** A assinatura ativa (null sem assinatura ou depois de cancelar). */
@@ -2373,8 +2408,8 @@ export interface PlanoPublico {
   preco: ValorDecimal
   /** null = sem limite. */
   contatos: number | null
-  /** Franquia mensal do WhatsApp automático. */
-  whatsapp: number
+  /** Franquia mensal do WhatsApp automático (5k: null = sem franquia, o padrão). */
+  whatsapp: number | null
   /** Cota de IA do plano (perguntas ao ToqqiAI, resumos e pareceres). */
   ia_cota: number
   /** Teto de segurança (comentários lidos pela IA e passos das ações). */
@@ -2384,8 +2419,11 @@ export interface PlanoPublico {
 /** GET /publico/planos (sem login): os números que o site e as telas públicas mostram. */
 export interface PlanosPublicos {
   planos: PlanoPublico[]
-  teste: { dias: number; plano: ChavePlano | (string & {}); whatsapp: number; ia_teto: number }
+  teste: { dias: number; plano: ChavePlano | (string & {}); whatsapp: number | null; ia_teto: number; ia_cota?: number }
   ia_analises: { rapido: number; equilibrado: number; detalhado: number }
+  /** Etapa 5k. */
+  descontos?: DescontosPlanos
+  personalizado?: TabelaPersonalizado & { whatsapp: number | null }
 }
 
 // ---- etapa 5i: Relatórios › Desfecho ----------------------------------------------------

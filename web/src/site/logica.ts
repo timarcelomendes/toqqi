@@ -89,20 +89,24 @@ export const PADROES_SITE: Record<string, string | number | null> = {
   'planos.empresa.preco': '799.00',
   'planos.essencial.contatos': 300,
   'planos.profissional.contatos': 1500,
-  'planos.empresa.contatos': null,
+  'planos.empresa.contatos': 5000,
   'ia.cota.essencial': 100,
   'ia.cota.profissional': 500,
   'ia.cota.empresa': 2000,
+  'ia.cota.teste': 50,
   'ia.teto.essencial': 1000,
   'ia.teto.profissional': 5000,
-  'ia.teto.empresa': 20000,
-  'ia.teto.teste': 1000,
-  'whatsapp.franquia.essencial': 40,
-  'whatsapp.franquia.profissional': 90,
-  'whatsapp.franquia.empresa': 200,
-  'whatsapp.franquia.teste': 20,
+  'ia.teto.empresa': 15000,
+  'ia.teto.teste': 500,
+  'whatsapp.franquia.essencial': null,
+  'whatsapp.franquia.profissional': null,
+  'whatsapp.franquia.empresa': null,
   'teste.dias': 14,
-  'ia.analises.detalhado': 2,
+  'ia.analises.detalhado': 3,
+  // etapa 5k
+  'planos.desconto.pix': 3,
+  'planos.desconto.anual': 10,
+  'planos.personalizado.base': '99.00',
 }
 
 type Objeto = Record<string, unknown>
@@ -121,7 +125,9 @@ export function valorPublico(corpo: unknown, chave: string): unknown {
   const campo = (o: Objeto | undefined, nome: string) => (o && nome in o ? o[nome] : undefined)
   if (grupo === 'planos' && b === 'preco') return campo(plano(a), 'preco')
   if (grupo === 'planos' && b === 'contatos') return campo(plano(a), 'contatos')
-  if (grupo === 'ia' && a === 'cota') return campo(plano(b), 'ia_cota')
+  if (grupo === 'ia' && a === 'cota') return b === 'teste' ? campo(teste, 'ia_cota') : campo(plano(b), 'ia_cota')
+  if (grupo === 'planos' && a === 'desconto') return ehObjeto(corpo.descontos) ? campo(corpo.descontos, b ?? '') : undefined
+  if (grupo === 'planos' && a === 'personalizado') return ehObjeto(corpo.personalizado) ? campo(corpo.personalizado, b ?? '') : undefined
   if (grupo === 'ia' && a === 'teto') return b === 'teste' ? campo(teste, 'ia_teto') : campo(plano(b), 'ia_teto')
   if (grupo === 'whatsapp' && a === 'franquia') return b === 'teste' ? campo(teste, 'whatsapp') : campo(plano(b), 'whatsapp')
   if (grupo === 'teste' && (a === 'dias' || a === 'plano')) return campo(teste, a)
@@ -137,13 +143,15 @@ const fmtCentavos = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, m
  * ("Sem limite" com `data-p-maiuscula`); os outros, inteiros com milhar ("1.500"). Valor que não serve → null (o HTML fica).
  */
 export function textoNumeroSite(chave: string, valor: unknown, maiuscula = false): string | null {
-  if (chave.endsWith('.preco')) {
+  if (chave.endsWith('.preco') || chave === 'planos.personalizado.base') {
     const n = typeof valor === 'number' ? valor : typeof valor === 'string' && valor.trim() ? Number(valor) : Number.NaN
     if (!Number.isFinite(n) || n < 0) return null
     const centavos = Math.round(n * 100)
     return centavos % 100 === 0 ? fmtInteiro.format(centavos / 100) : fmtCentavos.format(centavos / 100)
   }
   if (chave.endsWith('.contatos') && valor === null) return maiuscula ? 'Sem limite' : 'sem limite'
+  // etapa 5k: WhatsApp sem franquia (o padrão)
+  if (chave.startsWith('whatsapp.franquia.') && valor === null) return maiuscula ? 'Sem franquia' : 'sem franquia'
   if (typeof valor !== 'number' || !Number.isInteger(valor) || valor < 0) return null
   return fmtInteiro.format(valor)
 }

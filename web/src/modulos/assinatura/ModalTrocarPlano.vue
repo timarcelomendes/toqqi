@@ -4,6 +4,8 @@
 // Etapa 5g: o plano atual mostra o valor contratado quando o preço de hoje é outro; trocar manda sempre o preço mostrado
 // e, se ele mudou nesse meio-tempo (409 `preco_mudou`), a tela relê os planos e explica. Se a API recusar o preço mandado
 // (422 no campo `preco`), o alerta traz a mensagem dela e "Recarregar", que recarrega a página.
+// Etapa 5k: os valores seguem a forma de pagamento da assinatura (no Pix, com o desconto); o Personalizado entra com a
+// calculadora; na assinatura anual, a troca é feita pela equipe Toqqi (a janela explica e não troca).
 import { computed, nextTick, ref, watch } from 'vue'
 import { assinaturaApi, type EstadoAssinatura } from '@/api'
 import { avisar } from '@/composables/avisos'
@@ -13,7 +15,7 @@ import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Modal from '@/components/ui/Modal.vue'
 import EscolhaPlano from './EscolhaPlano.vue'
-import { efeitoTroca, planoPorChave } from './logica'
+import { contatosSugeridos, descontosDe, efeitoTroca, exibido, planoPersonalizado, planoPorChave, tabelaDe, type PlanoExibido } from './logica'
 
 const props = defineProps<{ estado: EstadoAssinatura }>()
 const aberto = defineModel<boolean>('aberto', { default: false })
@@ -22,7 +24,19 @@ const emit = defineEmits<{ trocado: [EstadoAssinatura]; recarregar: [] }>()
 const sessao = useSessaoStore()
 const { enviando, erroGeral, codigoErro, erros, executar, limpar } = useFormulario()
 const atual = computed(() => props.estado.assinatura?.plano ?? null)
+const anual = computed(() => props.estado.assinatura?.ciclo === 'anual')
+const forma = computed(() => props.estado.assinatura?.forma ?? 'qualquer')
 const escolhido = ref<string | null>(null)
+const contatosPers = ref(1000)
+const cotaPers = ref(500)
+const tabela = computed(() => tabelaDe(props.estado))
+const planosExibidos = computed<PlanoExibido[]>(() =>
+  props.estado.planos.map((p) => exibido(p, 'mensal', forma.value, descontosDe(props.estado))),
+)
+const persExibido = computed<PlanoExibido | null>(() => {
+  const p = planoPersonalizado(tabela.value, contatosPers.value, cotaPers.value)
+  return p ? { ...exibido(p, 'mensal', forma.value, descontosDe(props.estado)), cota_ia: p.cota_ia } : null
+})
 const formTroca = ref<HTMLFormElement | null>(null)
 /** 422 no campo `preco`: a API não aceitou o preço que esta tela mandou; só recarregando a página. */
 const erroPreco = computed(() => erros.preco ?? null)
@@ -35,16 +49,28 @@ watch(aberto, (v) => {
   if (!v) return
   limpar()
   escolhido.value = atual.value
+  const a = props.estado.assinatura
+  contatosPers.value = a?.plano === 'personalizado' && a.contatos ? a.contatos : contatosSugeridos(props.estado.contatos_ativos, tabela.value)
+  cotaPers.value = a?.plano === 'personalizado' && a.cota_ia ? a.cota_ia : 500
 })
 
-const novo = computed(() => (escolhido.value && escolhido.value !== atual.value ? planoPorChave(props.estado.planos, escolhido.value) : null))
+const novo = computed<PlanoExibido | null>(() => {
+  const e = escolhido.value
+  const a = props.estado.assinatura
+  if (!e) return null
+  if (e === 'personalizado') {
+    const mesmo = a?.plano === 'personalizado' && a.contatos === contatosPers.value && a.cota_ia === cotaPers.value
+    return mesmo ? null : persExibido.value
+  }
+  return e !== atual.value ? planoPorChave(planosExibidos.value, e) : null
+})
 const efeito = computed(() => (novo.value ? efeitoTroca(props.estado, novo.value) : null))
 const podeTrocar = computed(() => !!novo.value && !!efeito.value?.cabe && props.estado.disponivel)
 
 async function trocar() {
   const plano = novo.value
   if (!plano || !podeTrocar.value) return
-  const r = await executar(() => assinaturaApi.trocarPlano(plano.chave, plano.preco))
+  const r = await executar(() => assinaturaApi.trocarPlano(plano.chave, plano.preco, plano.contatos, plano.cota_ia))
   if (!r) {
     // O preço mudou desde que a janela abriu: a tela busca os planos de novo e a mensagem da API explica.
     if (codigoErro.value === 'preco_mudou') emit('recarregar')
@@ -73,9 +99,18 @@ async function trocar() {
         {{ erroPreco ?? erroGeral }}
         <button v-if="erroPreco" type="button" class="link ml-1" data-recarregar @click="recarregarPagina">Recarregar</button>
       </Alerta>
+      <Alerta v-if="anual" tom="info" data-troca-anual>
+        Na assinatura anual, a troca de plano é feita pela equipe Toqqi. Fale com a gente: ajustamos o plano e a diferença
+        do período que falta.
+      </Alerta>
       <EscolhaPlano
+        v-else
         v-model="escolhido"
-        :planos="estado.planos"
+        v-model:contatos="contatosPers"
+        v-model:cota-ia="cotaPers"
+        :planos="planosExibidos"
+        :personalizado="persExibido"
+        :tabela="tabela"
         :contatos-ativos="estado.contatos_ativos"
         rotulo="Planos"
         :atual="atual"
@@ -100,7 +135,7 @@ async function trocar() {
     </form>
     <template #rodape>
       <Botao variante="secundario" :desabilitado="enviando" @click="aberto = false">Cancelar</Botao>
-      <Botao tipo="submit" form="form-trocar-plano" :carregando="enviando" :desabilitado="!podeTrocar">
+      <Botao v-if="!anual" tipo="submit" form="form-trocar-plano" :carregando="enviando" :desabilitado="!podeTrocar">
         {{ novo ? `Trocar para o ${novo.nome}` : 'Trocar de plano' }}
       </Botao>
     </template>

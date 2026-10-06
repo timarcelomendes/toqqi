@@ -79,7 +79,7 @@ class Nivel(Opcao):
 MODELOS = (
     Nivel("rapido", "Rápido", "Respostas curtas e rápidas.", analises=1),
     Nivel("equilibrado", "Equilibrado", "O padrão: bom para o dia a dia.", analises=1),
-    Nivel("detalhado", "Mais detalhado", "Análises mais cuidadosas; pode demorar mais.", analises=2),
+    Nivel("detalhado", "Mais detalhado", "Análises mais cuidadosas; pode demorar mais.", analises=3),
 )
 ESTILOS = (
     Opcao("objetiva", "Objetiva", "Frases curtas, só o essencial."),

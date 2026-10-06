@@ -160,7 +160,7 @@ onMounted(() => {
   <p v-if="whatsapp && franquia" class="-mt-3 mb-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-texto-suave sm:-mt-5">
     <MessageCircle class="size-4 text-emerald-700" aria-hidden="true" />
     <span>
-      WhatsApp automático: <strong class="tabular-nums" :class="corFranquia[franquia.nivel]">{{ franquia.usadas }} de {{ franquia.limite }}</strong> no mês<template v-if="!whatsapp.ativo"> (desligado)</template><template v-else-if="franquia.nivel === 'esgotada'">{{ whatsapp.franquia.excedente_ativo ? ' (franquia acabou: mensagens extras liberadas)' : ' (franquia acabou: indo por e-mail)' }}</template>
+      WhatsApp automático: <strong class="tabular-nums" :class="corFranquia[franquia.nivel]">{{ franquia.semLimite ? franquia.usadas : `${franquia.usadas} de ${franquia.limite}` }}</strong> no mês<template v-if="!whatsapp.ativo"> (desligado)</template><template v-else-if="franquia.nivel === 'esgotada'">{{ whatsapp.franquia.excedente_ativo ? ' (franquia acabou: mensagens extras liberadas)' : ' (franquia acabou: indo por e-mail)' }}</template>
     </span>
     <RouterLink v-if="admin" to="/integracoes?aba=whatsapp" class="link">Ver detalhes</RouterLink>
   </p>

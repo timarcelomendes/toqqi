@@ -46,6 +46,16 @@ export const VALORES_PLANOS: Record<string, ValorParametro> = {
   'planos.essencial.contatos': 300,
   'planos.profissional.contatos': 1500,
   'planos.empresa.contatos': null,
+  // etapa 5k
+  'planos.desconto.pix': 3,
+  'planos.desconto.anual': 10,
+  'planos.personalizado.base': '99.00',
+  'planos.personalizado.ate_1500': '18.00',
+  'planos.personalizado.ate_10000': '11.00',
+  'planos.personalizado.acima': '6.00',
+  'planos.personalizado.ia_500': '30.00',
+  'planos.personalizado.ia_2000': '120.00',
+  'planos.personalizado.ia_5000': '250.00',
 }
 
 function grupoPlanos(valores: Record<string, ValorParametro> = {}): GrupoParametrosPlataforma {
@@ -62,11 +72,11 @@ function grupoPlanos(valores: Record<string, ValorParametro> = {}): GrupoParamet
 }
 
 describe('catálogo e layout', () => {
-  it('as 32 chaves do §2, cada uma num grupo, todas na tela (e só uma vez)', () => {
-    expect(CAMPOS).toHaveLength(32)
-    expect(camposDoGrupo('planos')).toHaveLength(6)
-    expect(camposDoGrupo('ia')).toHaveLength(18)
-    expect(camposDoGrupo('whatsapp')).toHaveLength(5)
+  it('as 43 chaves (5g + 5k), cada uma num grupo, todas na tela (e só uma vez)', () => {
+    expect(CAMPOS).toHaveLength(43)
+    expect(camposDoGrupo('planos')).toHaveLength(15)
+    expect(camposDoGrupo('ia')).toHaveLength(19)
+    expect(camposDoGrupo('whatsapp')).toHaveLength(6)
     expect(camposDoGrupo('teste').map((c) => c.chave)).toEqual(['teste.dias', 'teste.plano', 'teste.exclusao_automatica'])
     for (const c of CAMPOS) expect(c.chave.startsWith(`${c.grupo}.`)).toBe(true)
     const naTela = Object.values(LAYOUT_GRUPOS).flatMap((l) => l.blocos.flatMap((b) => [...b.chaves, ...(b.blocos ?? []).flatMap((s) => s.chaves)]))
@@ -75,7 +85,7 @@ describe('catálogo e layout', () => {
     expect(rotuloGrupo('teste')).toBe('Teste e cortesia')
   })
   it('as notas de cada grupo', () => {
-    expect(LAYOUT_GRUPOS.planos.nota).toBe('O preço novo vale para assinaturas novas e trocas de plano. Quem já assina continua com o valor contratado.')
+    expect(LAYOUT_GRUPOS.planos.nota).toBe('O preço novo vale para assinaturas novas e trocas de plano. Quem já assina continua com o valor contratado. O anual não soma o desconto do Pix.')
     expect(LAYOUT_GRUPOS.ia.nota).toBe('Ao salvar um modelo ou esforço novo, o Toqqi faz uma chamada curta à OpenAI para conferir.')
     expect(LAYOUT_GRUPOS.teste.nota).toBe('Cota, teto e franquia da cortesia e do teste ficam em IA e WhatsApp automático.')
     expect(LAYOUT_GRUPOS.ia.blocos.map((b) => b.legenda)).toEqual([
@@ -148,7 +158,10 @@ describe('leitura e validação dos campos (as regras da API)', () => {
     expect(ler('ia.cota.cortesia', '0')).toEqual({ valor: 0 })
     expect(ler('ia.teto.teste', '1000001')).toEqual({ erro: 'Use um número inteiro de 0 a 1.000.000.' })
     expect(ler('ia.analises.detalhado', '11')).toEqual({ erro: 'Use um número inteiro de 1 a 10.' })
-    expect(ler('whatsapp.franquia.teste', '2,5')).toEqual({ erro: 'Use um número inteiro de 0 a 100.000.' })
+    expect(ler('whatsapp.franquia.teste', '2,5')).toEqual({ erro: 'Use um número inteiro de 0 a 100.000, ou marque “Sem limite”.' })
+    expect(ler('whatsapp.franquia.teste', '', true)).toEqual({ valor: null })
+    expect(formatarValor('whatsapp.franquia.teste', null)).toBe('sem limite')
+    expect(ler('planos.desconto.pix', '31')).toEqual({ erro: 'Use um número inteiro de 0 a 30.' })
     expect(ler('teste.dias', '91')).toEqual({ erro: 'Use um número inteiro de 1 a 90.' })
     expect(ler('teste.dias', '7')).toEqual({ valor: 7 })
   })
@@ -366,7 +379,7 @@ describe('dias do teste (GET /publico/planos)', () => {
 describe('Termos de uso v6 (etapa 5g)', () => {
   const texto = JSON.stringify(TERMOS)
   it('versão 6, vigente desde 03/10/2026', () => {
-    expect([VERSAO_DOCUMENTOS, VIGENTE_DESDE]).toEqual([6, '2026-10-03'])
+    expect([VERSAO_DOCUMENTOS, VIGENTE_DESDE]).toEqual([7, '2026-10-05'])
   })
   it('o preço é o da contratação; limites e cotas podem mudar, com aviso se diminuírem', () => {
     expect(texto).toContain(

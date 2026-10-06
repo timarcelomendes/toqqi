@@ -7,7 +7,7 @@ a liberação valer antes dos envios):
 Conferência diária (uma vez por dia por conta com assinatura ativa ou cancelada há menos de 40 dias no ambiente atual,
 e por conta com cliente no Asaas ainda não conferida — um assinar que falhou ou caiu no meio):
 - concilia: assinatura viva no Asaas com a referência da conta e desconhecida aqui é adotada (conta sem assinatura
-  ativa, que não é cortesia, com o valor de hoje e a descrição de um mesmo plano: `servico.plano_da_assinatura`) ou
+  ativa, que não é cortesia, com o valor de hoje e a descrição de um mesmo contrato: `servico.contrato_do_asaas`) ou
   removida lá (auditoria); a cancelada aqui que segue viva lá é removida;
 - assinatura ativa: lida no Asaas — removida, INACTIVE ou EXPIRED → cancelada aqui (auditoria); 404 → log de erro a
   cada dia e, no 3º dia seguido, cancelada aqui (auditoria, atenção); valor diferente do daqui → o do Asaas volta a ser
@@ -115,19 +115,21 @@ def _dados_do_cliente(conta: Conta, cliente_id) -> dict | None:
 def _adotar(s, conta: Conta, sub: dict) -> Assinatura | None:
     """Grava aqui a assinatura viva no Asaas (com o plano do valor e da descrição dela) e troca o plano da conta."""
     valor = asaas.valor(sub.get("value"))
-    plano = servico.plano_da_assinatura(sub)
+    contrato = servico.contrato_do_asaas(sub)
+    plano = contrato.plano if contrato is not None else None
     dados = _dados_do_cliente(conta, sub.get("customer")) if plano is not None else None
     if plano is None or dados is None:
         log.error("Assinaturas: a assinatura %s da conta %s no Asaas não tem o valor e a descrição de um plano ou dados "
                   "de cobrança válidos; não foi adotada.", sub["id"], conta.id)
         return None
     a = Assinatura(conta_id=conta.id, asaas_id=sub["id"], ambiente=asaas.ambiente(), plano=plano, valor=valor,
+                   ciclo=contrato.ciclo, forma=contrato.forma, contatos=contrato.contatos, cota_ia=contrato.cota_ia,
                    situacao="ativa", primeiro_vencimento=asaas.data(sub.get("nextDueDate")) or dia_de(relogio.agora()),
                    criada_em=servico._agora_utc(), criada_por=None, **dados)
     s.add(a)
     s.flush()
     travar_contatos(s, conta.id)  # o plano muda: a mesma trava do gatilho do limite
-    conta.plano = plano
+    servico.aplicar_na_conta(conta, contrato)
     servico.buscar_cobrancas(s, conta.id, a)
     servico.ajustar_primeiro_vencimento(s, a)
     registrar(s, "assinatura_adotada", "atencao", {"plano": plano, "valor": str(valor)}, conta_id=conta.id)
@@ -218,7 +220,7 @@ def _realinhar(s, conta: Conta, a: Assinatura, valor_asaas) -> None:
     """O valor no Asaas difere do daqui (troca de plano que não foi gravada aqui, ou mudança no painel): volta ao
     daqui, também nas faturas em aberto."""
     try:
-        asaas.atualizar_assinatura(a.asaas_id, a.valor, servico.descricao(a.plano))
+        asaas.atualizar_assinatura(a.asaas_id, a.valor, servico.descricao(servico.contrato_de(a)))
     except asaas.FalhaAsaas as f:
         if f.tipo in servico.FORA_DO_AR:
             raise

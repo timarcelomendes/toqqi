@@ -160,9 +160,11 @@ describe('Assinatura: sem assinatura', () => {
     expect(t(w.get('#t-situacao').text())).toBe('Teste grátis até 15/10/2026')
     expect(t(w.get('[data-selo-situacao]').text())).toBe('Em teste')
     expect(t(w.get('[data-uso]').text())).toBe('320 de 1.500')
-    const radios = w.findAll<HTMLInputElement>('input[type="radio"]')
-    expect(radios.map((r) => r.element.value)).toEqual(['essencial', 'profissional', 'empresa'])
-    expect(radios.map((r) => r.element.disabled)).toEqual([true, false, false])
+    const radios = w.findAll<HTMLInputElement>('[data-plano] input[type="radio"]')
+    expect(radios.map((r) => r.element.value)).toEqual(['essencial', 'profissional', 'empresa', 'personalizado'])
+    expect(radios.map((r) => r.element.disabled)).toEqual([true, false, false, false])
+    // Etapa 5k: Mensal e Pix já vêm marcados (o Pix é a sugestão)
+    expect(w.findAll<HTMLInputElement>('[data-pagamento] input:checked').map((r) => r.element.value)).toEqual(['mensal', 'pix'])
     expect(t(w.get('[data-plano="essencial"]').text())).toContain('Você tem 320 contatos ativos: este plano permite até 300.')
     expect(t(w.get('[data-plano="profissional"]').text())).toContain('Plano do seu teste')
     expect(t(w.get('[data-plano="empresa"]').text())).toContain('Contatos ativos sem limite')
@@ -180,11 +182,34 @@ describe('Assinatura: sem assinatura', () => {
     expect(campo(w, 'documento').element.value).toBe('11.222.333/0001-81')
     expect(campo(w, 'email_cobranca').element.value).toBe('ana@sol.com.br')
     expect(campo(w, 'telefone').element.value).toBe('(11) 98765-4321')
-    expect(t(w.get('[data-resumo]').text())).toContain('Primeira fatura de R$ 349,00 com vencimento em 15/10/2026, no fim do teste. Ela cobre de 15/10 a 14/11/2026. Depois, todo dia 15.')
-    expect(t(botao(w, /^Assinar/).text())).toBe('Assinar o plano Profissional')
+    // Etapa 5k: no Pix (a sugestão), 3% de desconto; o preço cheio aparece riscado no cartão
+    expect(t(w.get('[data-resumo]').text())).toContain('Primeira fatura de R$ 338,53 com vencimento em 15/10/2026, no fim do teste. Ela cobre de 15/10 a 14/11/2026. Depois, todo dia 15.')
+    expect(t(w.get('[data-resumo]').text())).toContain('A fatura é paga por Pix.')
+    expect(t(w.get('[data-plano="profissional"] [data-cheio]').text())).toBe('R$ 349,00')
+    expect(t(botao(w, /^Assinar/).text())).toBe('Assinar o plano Profissional · R$ 338,53 por mês')
     // Trocar o plano muda o resumo.
     await w.get('input[value="empresa"]').setValue(true)
+    expect(t(w.get('[data-resumo]').text())).toContain('Primeira fatura de R$ 775,03')
+    // Cartão ou boleto: o preço cheio
+    await w.get('[data-pagamento] input[value="qualquer"]').setValue(true)
     expect(t(w.get('[data-resumo]').text())).toContain('Primeira fatura de R$ 799,00')
+    expect(t(w.get('[data-resumo]').text())).toContain('Na fatura, você escolhe Pix, boleto ou cartão.')
+    // Anual: 12 meses com 10% de desconto, uma fatura por ano
+    await w.get('[data-pagamento] input[value="anual"]').setValue(true)
+    expect(w.find('[data-pagamento] input[value="pix"]').exists()).toBe(false)
+    expect(t(w.get('[data-resumo]').text())).toContain('Primeira fatura de R$ 8.629,20 com vencimento em 15/10/2026, no fim do teste. Ela cobre de 15/10/2026 a 14/10/2027. Depois, todo ano em 15/10.')
+    expect(t(w.get('[data-plano="empresa"]').text())).toContain('equivale a R$ 719,10 por mês')
+    // Personalizado: a calculadora aparece e o preço segue os números
+    await w.get('input[value="personalizado"]').setValue(true)
+    expect(w.find('[data-calculadora]').exists()).toBe(true)
+    await w.get('[data-pagamento] input[value="mensal"]').setValue(true)
+    await w.get('[data-pagamento] input[value="qualquer"]').setValue(true)
+    const contatos = w.get<HTMLInputElement>('[data-calculadora] input[type="number"]')
+    await contatos.setValue('5000')
+    await contatos.trigger('change')
+    await w.get('[data-calculadora] select').setValue(2000)
+    expect(t(w.get('[data-preco-personalizado]').text())).toContain('R$ 874,00')
+    expect(t(botao(w, /^Assinar/).text())).toBe('Assinar o Personalizado · R$ 874,00 por mês')
     // A máscara vale ao digitar.
     await campo(w, 'documento').setValue('52998224725')
     expect(campo(w, 'documento').element.value).toBe('529.982.247-25')
@@ -197,7 +222,7 @@ describe('Assinatura: sem assinatura', () => {
     expect(t(w.get('#t-situacao').text())).toBe('Seu teste grátis terminou em 20/09/2026')
     await w.get('input[value="essencial"]').setValue(true)
     const resumo = t(w.get('[data-resumo]').text())
-    expect(resumo).toContain('Primeira fatura de R$ 149,00 com vencimento amanhã, 02/10/2026. Ela cobre de 02/10 a 01/11/2026. Depois, todo dia 2.')
+    expect(resumo).toContain('Primeira fatura de R$ 144,53 com vencimento amanhã, 02/10/2026. Ela cobre de 02/10 a 01/11/2026. Depois, todo dia 2.')
     expect(resumo).toContain('Os envios voltam assim que o pagamento for confirmado: Pix e cartão em segundos, boleto em até 3 dias úteis.')
   })
 
@@ -232,8 +257,10 @@ describe('Assinatura: sem assinatura', () => {
     await flushPromises()
     expect(chamadas(api, 'POST', '/assinatura')[0]!.corpo).toEqual({
       plano: 'profissional',
-      // Etapa 5g: o preço que a tela mostrou.
-      preco: '349.00',
+      // Etapa 5g: o preço que a tela mostrou (5k: no Pix, a sugestão, com 3% de desconto).
+      ciclo: 'mensal',
+      forma: 'pix',
+      preco: '338.53',
       razao_social: 'Distribuidora Sol Nascente Ltda',
       documento: '11222333000181',
       email_cobranca: 'financeiro@sol.com.br',
@@ -439,7 +466,7 @@ describe('Assinatura: com assinatura', () => {
     await botao(w, 'Trocar de plano').trigger('click')
     // (O stub do Teleport recria o conteúdo da janela a cada mudança: procura de novo a cada passo.)
     const janela = () => w.get('[role="dialog"]')
-    expect(janela().findAll<HTMLInputElement>('input[type="radio"]').map((r) => r.element.checked)).toEqual([false, true, false])
+    expect(janela().findAll<HTMLInputElement>('input[type="radio"]').map((r) => r.element.checked)).toEqual([false, true, false, false])
     expect(t(janela().get('[data-plano="profissional"]').text())).toContain('Plano atual')
     expect(botao(janela(), 'Trocar de plano').attributes('disabled')).toBeDefined()
     // Plano menor: aviso e botão travado.
@@ -509,7 +536,7 @@ describe('Assinatura: com assinatura', () => {
     // uma ao abrir (a sessão do teste dizia "teste" e a tela, "ativa": sincroniza) e outra depois de cancelar
     expect(chamadas(api, 'GET', '/eu')).toHaveLength(2)
     expect(t(w.get('#t-situacao').text())).toBe('Assinatura cancelada')
-    expect(w.findAll('input[type="radio"]')).toHaveLength(3)
+    expect(w.findAll('[data-plano] input[type="radio"]')).toHaveLength(4)
     // O histórico continua.
     expect(w.findAll('[data-historico] tbody tr')).toHaveLength(1)
   })

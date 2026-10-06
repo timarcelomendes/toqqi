@@ -18,6 +18,8 @@ def texto_do_site(chave: str, valor, maiuscula: bool = False) -> str:
     """Como o site escreve o número (`textoNumeroSite` do site): preço inteiro "149" (com centavos, "149,90"), "1.500",
     null "sem limite" (`data-p-maiuscula`: "Sem limite")."""
     if valor is None:
+        if chave.startswith("whatsapp.franquia."):  # etapa 5k: sem franquia
+            return "Sem franquia" if maiuscula else "sem franquia"
         return "Sem limite" if maiuscula else "sem limite"
     if parametros.CAMPOS[chave].tipo == "dinheiro":
         v = Decimal(valor)
@@ -58,9 +60,9 @@ def test_a_conferencia_acha_o_numero_que_nao_bate():
     trocado = html.replace('data-p="planos.empresa.preco">799<', 'data-p="planos.empresa.preco">899<', 1)
     assert trocado != html
     assert conferir(trocado) == ["planos.empresa.preco: o HTML diz '899', o padrão do código é '799'"]
-    sem_limite = html.replace('data-p-maiuscula>Sem limite<', 'data-p-maiuscula>sem limite<', 1)
-    assert conferir(sem_limite) == [
-        "planos.empresa.contatos: o HTML diz 'sem limite', o padrão do código é 'Sem limite'"]
+    sem_franquia = html.replace('data-p-maiuscula>Sem franquia<', 'data-p-maiuscula>sem franquia<', 1)
+    assert conferir(sem_franquia) == [
+        "whatsapp.franquia.essencial: o HTML diz 'sem franquia', o padrão do código é 'Sem franquia'"]
     restam = html.replace("<span data-restam>497</span>", "<span data-restam>499</span>", 1)
     assert conferir(restam) == ["data-restam: o HTML diz ['499'], a conversa parada pede ['497']"]
     assert texto_do_site("planos.essencial.preco", Decimal("149.90")) == "149,90"

@@ -48,12 +48,22 @@ const PADROES: Record<string, Record<string, ValorParametro>> = {
     'planos.profissional.contatos': 1500,
     'planos.empresa.preco': '799.00',
     'planos.empresa.contatos': null,
+    'planos.desconto.pix': 3,
+    'planos.desconto.anual': 10,
+    'planos.personalizado.base': '99.00',
+    'planos.personalizado.ate_1500': '18.00',
+    'planos.personalizado.ate_10000': '11.00',
+    'planos.personalizado.acima': '6.00',
+    'planos.personalizado.ia_500': '30.00',
+    'planos.personalizado.ia_2000': '120.00',
+    'planos.personalizado.ia_5000': '250.00',
   },
   ia: {
     'ia.cota.essencial': 100,
     'ia.cota.profissional': 500,
     'ia.cota.empresa': 2000,
     'ia.cota.cortesia': 500,
+    'ia.cota.teste': 50,
     'ia.modelo.rapido': 'gpt-5-nano',
     'ia.esforco.rapido': 'minimal',
     'ia.analises.rapido': 1,
@@ -73,6 +83,7 @@ const PADROES: Record<string, Record<string, ValorParametro>> = {
     'whatsapp.franquia.essencial': 40,
     'whatsapp.franquia.profissional': 90,
     'whatsapp.franquia.empresa': 200,
+    'whatsapp.franquia.personalizado': 200,
     'whatsapp.franquia.cortesia': 200,
     'whatsapp.franquia.teste': 20,
   },
@@ -216,7 +227,7 @@ describe('Plataforma › Parâmetros', () => {
     expect(t(cartao('planos').querySelector('[data-alterado]')!.textContent)).toBe('Alterado em 03/10/2026 às 14:32 por marcelo@toqqi.com')
     expect(t(cartao('ia').querySelector('[data-alterado]')!.textContent)).toBe('Nunca alterado: valem os padrões.')
     // Um fieldset por plano (legenda = nome), com preço e contatos.
-    expect(Array.from(cartao('planos').querySelectorAll('fieldset[data-bloco] > legend')).map((l) => t(l.textContent))).toEqual(['Essencial', 'Profissional', 'Empresa'])
+    expect(Array.from(cartao('planos').querySelectorAll('fieldset[data-bloco] > legend')).map((l) => t(l.textContent))).toEqual(['Essencial', 'Profissional', 'Empresa', 'Descontos', 'Personalizado'])
     const preco = campo('planos.essencial.preco')!
     expect(preco.value).toBe('159,00')
     const dica = document.getElementById(preco.getAttribute('aria-describedby')!.split(' ').pop()!)!
@@ -230,7 +241,7 @@ describe('Plataforma › Parâmetros', () => {
     expect(campo('planos.empresa.contatos')!.disabled).toBe(true)
     expect([campo('planos.empresa.contatos')!.value, campo('planos.empresa.contatos')!.placeholder]).toEqual(['', 'Sem limite'])
     expect(t(cartao('planos').querySelector('[data-nota]')!.textContent)).toBe(
-      'O preço novo vale para assinaturas novas e trocas de plano. Quem já assina continua com o valor contratado.',
+      'O preço novo vale para assinaturas novas e trocas de plano. Quem já assina continua com o valor contratado. O anual não soma o desconto do Pix.',
     )
     // IA: níveis com modelo, esforço (lista, vazio = "Sem raciocínio") e análises; a origem da variável de ambiente.
     expect(Array.from(cartao('ia').querySelectorAll('fieldset[data-bloco] fieldset > legend')).map((l) => t(l.textContent))).toEqual(['Rápido', 'Equilibrado', 'Mais detalhado'])
@@ -810,7 +821,7 @@ describe('Assinatura: preço mostrado e 409 `preco_mudou`', () => {
     const api = apiFalsa({
       'GET /assinatura': () => (++leituras === 1 ? estado() : estado({ planos: comPreco('profissional', '399.00') })),
       'POST /assinatura': (c) =>
-        (c.corpo as { preco: string }).preco === '399.00' ? estado({ assinatura: { ...ASSINATURA, valor: '399.00' } }) : erroApi(409, 'preco_mudou', PRECO_MUDOU),
+        (c.corpo as { preco: string }).preco === '387.03' ? estado({ assinatura: { ...ASSINATURA, valor: '387.03' } }) : erroApi(409, 'preco_mudou', PRECO_MUDOU),
       'GET /eu': () => ({ usuario: { ...USUARIO, perfil: 'admin', superadmin: false }, conta: { id: 1, nome: 'Sol', plano: 'profissional', situacao: 'teste', teste_ate: null }, permissoes: ['assinatura.gerenciar'] }),
     })
     await abrir('/assinatura')
@@ -820,15 +831,15 @@ describe('Assinatura: preço mostrado e 409 `preco_mudou`', () => {
     await flushPromises()
     $('[data-form-assinar] form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await flushPromises()
-    expect((chamadasDe(api, 'POST', '/assinatura')[0]!.corpo as { preco: string; plano: string })).toMatchObject({ plano: 'profissional', preco: '349.00' })
+    expect((chamadasDe(api, 'POST', '/assinatura')[0]!.corpo as { preco: string; plano: string })).toMatchObject({ plano: 'profissional', forma: 'pix', ciclo: 'mensal', preco: '338.53' }) // 5k: Pix sugerido, 3%
     expect(leituras).toBe(2)
     expect(t($('[data-erro-assinar]')!.textContent)).toBe(PRECO_MUDOU)
     expect($('[data-erro-assinar]')!.getAttribute('role')).toBe('status')
-    expect(t($('[data-resumo]')!.textContent)).toContain('Primeira fatura de R$ 399,00')
-    expect(t($('[data-plano="profissional"]')!.textContent)).toContain('R$ 399,00')
+    expect(t($('[data-resumo]')!.textContent)).toContain('Primeira fatura de R$ 387,03')
+    expect(t($('[data-plano="profissional"]')!.textContent)).toContain('R$ 387,03')
     $('[data-form-assinar] form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await flushPromises()
-    expect(chamadasDe(api, 'POST', '/assinatura').map((c) => (c.corpo as { preco: string }).preco)).toEqual(['349.00', '399.00'])
+    expect(chamadasDe(api, 'POST', '/assinatura').map((c) => (c.corpo as { preco: string }).preco)).toEqual(['338.53', '387.03'])
   })
 
   it('trocar de plano: o atual mostra o contratado quando o preço mudou; 409 relê e explica', async () => {
@@ -868,7 +879,7 @@ describe('Assinatura: preço mostrado e 409 `preco_mudou`', () => {
       await flushPromises()
       $('[data-form-assinar] form')!.dispatchEvent(new Event('submit', { cancelable: true }))
       await flushPromises()
-      expect(chamadasDe(api, 'POST', '/assinatura')[0]!.corpo).toMatchObject({ plano: 'essencial', preco: '149.00' })
+      expect(chamadasDe(api, 'POST', '/assinatura')[0]!.corpo).toMatchObject({ plano: 'essencial', preco: '144.53' })
       const alerta = $('[data-erro-assinar]')!
       expect(t(alerta.textContent)).toBe(`${PRECO_422} Recarregar`)
       expect(alerta.getAttribute('role')).toBe('status')

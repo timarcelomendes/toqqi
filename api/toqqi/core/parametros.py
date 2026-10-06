@@ -76,10 +76,17 @@ CENTAVOS = Decimal("0.01")
 
 # padrões do código (antes em core.planos, ia.cota, ia.regras, whatsapp.franquia, acesso.servico e assinatura.servico)
 PRECOS = {"essencial": Decimal("149.00"), "profissional": Decimal("349.00"), "empresa": Decimal("799.00")}
-CONTATOS = {"essencial": 300, "profissional": 1500, "empresa": None}  # o mesmo da função limite_contatos (0002)
+CONTATOS = {"essencial": 300, "profissional": 1500, "empresa": 5000}  # o mesmo da função limite_contatos (0025)
 COTAS = {"essencial": 100, "profissional": 500, "empresa": 2000}
-TETOS = {"essencial": 1000, "profissional": 5000, "empresa": 20000, "cortesia": 5000, "teste": 1000}
-FRANQUIAS = {"essencial": 40, "profissional": 90, "empresa": 200, "cortesia": 200, "teste": 20}
+COTA_TESTE = 50  # etapa 5k: o teste tem cota própria do ToqqiAI (antes, a do plano do teste)
+TETOS = {"essencial": 1000, "profissional": 5000, "empresa": 15000, "cortesia": 2000, "teste": 500}
+# etapa 5k: WhatsApp sem franquia (o número é do cliente e a Meta cobra a conta dele); None = sem limite
+FRANQUIAS_DE = ("essencial", "profissional", "empresa", "personalizado", "cortesia", "teste")
+DESCONTOS = {"pix": (3, 30), "anual": (10, 50)}  # padrão e máximo (%), etapa 5k
+# Personalizado (etapa 5k, docs/api-etapa-5k.md §3): base + contatos em faixas (preço a cada 100) + pacote do ToqqiAI
+PERSONALIZADO = {"base": Decimal("99.00"), "ate_1500": Decimal("18.00"), "ate_10000": Decimal("11.00"),
+                 "acima": Decimal("6.00"), "ia_500": Decimal("30.00"), "ia_2000": Decimal("120.00"),
+                 "ia_5000": Decimal("250.00")}
 DIAS_TESTE = 14
 PLANO_DO_TESTE = "profissional"
 
@@ -89,7 +96,7 @@ MSG_INVALIDOS = "Confira os campos destacados."
 @dataclass(frozen=True)
 class Campo:
     chave: str
-    tipo: str  # dinheiro | contatos | inteiro | modelo | esforco | plano | exclusao
+    tipo: str  # dinheiro | contatos | limite | inteiro | modelo | esforco | plano | exclusao
     padrao: Callable[[], tuple[object, tuple[str, ...]]]  # (valor, variáveis lidas até achar o valor)
     minimo: int = 0
     maximo: int = 0
@@ -143,16 +150,19 @@ def _montar() -> dict[str, Campo]:
     for p in PLANOS:
         campos += [Campo(f"planos.{p}.preco", "dinheiro", _codigo(PRECOS[p])),
                    Campo(f"planos.{p}.contatos", "contatos", _codigo(CONTATOS[p]), 1, 1_000_000)]
+    campos += [Campo(f"planos.desconto.{d}", "inteiro", _codigo(padrao_d), 0, maximo)
+               for d, (padrao_d, maximo) in DESCONTOS.items()]
+    campos += [Campo(f"planos.personalizado.{k}", "dinheiro", _codigo(v)) for k, v in PERSONALIZADO.items()]
     campos += [Campo(f"ia.cota.{p}", "inteiro", _codigo(COTAS[p]), 0, 100_000) for p in PLANOS]
     campos.append(Campo("ia.cota.cortesia", "inteiro", _cota_cortesia, 0, 100_000))
+    campos.append(Campo("ia.cota.teste", "inteiro", _codigo(COTA_TESTE), 0, 100_000))
     for n in NIVEIS:
         campos += [Campo(f"ia.modelo.{n}", "modelo", _variavel(*_MODELO[n])),
                    Campo(f"ia.esforco.{n}", "esforco", _variavel(*_ESFORCO[n], vazio_vale=True)),
                    Campo(f"ia.analises.{n}", "inteiro", _analises(n), 1, 10)]
     campos += [Campo(f"ia.teto.{p}", "inteiro", _codigo(TETOS[p]), 0, 1_000_000)
                for p in (*PLANOS, "cortesia", "teste")]
-    campos += [Campo(f"whatsapp.franquia.{p}", "inteiro", _codigo(FRANQUIAS[p]), 0, 100_000)
-               for p in (*PLANOS, "cortesia", "teste")]
+    campos += [Campo(f"whatsapp.franquia.{p}", "limite", _codigo(None), 0, 100_000) for p in FRANQUIAS_DE]
     campos += [Campo("teste.dias", "inteiro", _codigo(DIAS_TESTE), 1, 90),
                Campo("teste.plano", "plano", _codigo(PLANO_DO_TESTE)),
                Campo("teste.exclusao_automatica", "exclusao", _exclusao)]
@@ -208,7 +218,7 @@ def formatar(chave: str, v) -> str:
         return "sem limite"
     if tipo == "dinheiro":
         return reais(v)
-    if tipo in ("contatos", "inteiro"):
+    if tipo in ("contatos", "limite", "inteiro"):
         return numero(int(v))
     if tipo == "plano":
         return NOMES_PLANOS.get(v, str(v))
@@ -248,6 +258,12 @@ def _converter(campo: Campo, v):
             return None
         if not _inteiro(v) or not campo.minimo <= v <= campo.maximo:
             raise ValueError("Use um número inteiro de 1 a 1.000.000, ou marque “Sem limite”.")
+        return v
+    if campo.tipo == "limite":  # inteiro ou None (sem limite), etapa 5k
+        if v is None:
+            return None
+        if not _inteiro(v) or not campo.minimo <= v <= campo.maximo:
+            raise ValueError(f"{_msg_inteiro(campo)[:-1]}, ou marque “Sem limite”.")
         return v
     if campo.tipo == "inteiro":
         if not _inteiro(v) or not campo.minimo <= v <= campo.maximo:
@@ -290,6 +306,15 @@ def _regras_dos_planos(limpos: dict, campos: dict[str, str]) -> None:
         if a in limpos and b in limpos and _maior(limpos[a], limpos[b]):
             campos.setdefault(b, f"O limite do {NOMES_PLANOS[maior]} não pode ser menor que o do "
                                  f"{NOMES_PLANOS[menor]}.")
+    # Personalizado (5k): o preço a cada 100 contatos não sobe com o volume; os pacotes do ToqqiAI sobem com a cota
+    faixas = [f"planos.personalizado.{k}" for k in ("ate_1500", "ate_10000", "acima")]
+    for a, b in zip(faixas, faixas[1:]):
+        if a in limpos and b in limpos and limpos[b] > limpos[a]:
+            campos.setdefault(b, "O preço a cada 100 contatos não pode subir na faixa seguinte.")
+    pacotes = [f"planos.personalizado.{k}" for k in ("ia_500", "ia_2000", "ia_5000")]
+    for a, b in zip(pacotes, pacotes[1:]):
+        if a in limpos and b in limpos and limpos[b] <= limpos[a]:
+            campos.setdefault(b, "O pacote maior do ToqqiAI precisa custar mais que o menor.")
 
 
 NOMES_NIVEIS = {"rapido": "Rápido", "equilibrado": "Equilibrado", "detalhado": "Mais detalhado"}

@@ -27,6 +27,7 @@ import {
   valorPublico,
 } from './logica'
 import { guardarOrigem } from './origem'
+import { TABELA_PADRAO, ajustarContatos, precoPersonalizado, type Tabela } from '@/utils/precos'
 
 const INTERVALO_PASSOS = 5500
 const RISCO = 262399.99
@@ -247,8 +248,50 @@ function comparar(): void {
   })
 }
 
+// ── Etapa 5k: calculadora do Personalizado ──────────────────────────────────
+let tabelaCalc: Tabela = TABELA_PADRAO
+
+function precoCalc(): void {
+  const raiz = document.querySelector<HTMLElement>('[data-calc]')
+  const campo = raiz?.querySelector<HTMLInputElement>('[data-calc-contatos]')
+  const cota = raiz?.querySelector<HTMLSelectElement>('[data-calc-cota]')
+  const saida = raiz?.querySelector<HTMLElement>('[data-calc-preco]')
+  if (!campo || !cota || !saida) return
+  const contatos = ajustarContatos(Number(campo.value), tabelaCalc)
+  const c = precoPersonalizado(contatos, Number(cota.value), tabelaCalc)
+  if (Number.isFinite(c)) saida.textContent = textoNumeroSite('planos.personalizado.preco', c / 100) ?? saida.textContent
+}
+
+function calculadora(): void {
+  const raiz = document.querySelector<HTMLElement>('[data-calc]')
+  const campo = raiz?.querySelector<HTMLInputElement>('[data-calc-contatos]')
+  const cota = raiz?.querySelector<HTMLSelectElement>('[data-calc-cota]')
+  if (!campo || !cota) return
+  campo.addEventListener('input', precoCalc)
+  campo.addEventListener('change', () => {
+    campo.value = String(ajustarContatos(Number(campo.value), tabelaCalc))
+    precoCalc()
+  })
+  cota.addEventListener('change', precoCalc)
+  precoCalc()
+}
+
+/** A tabela do Personalizado de GET /publico/planos, se vier inteira (senão, a do código). */
+function tabelaDoCorpo(corpo: unknown): Tabela | null {
+  const t = typeof corpo === 'object' && corpo !== null ? (corpo as { personalizado?: unknown }).personalizado : null
+  if (typeof t !== 'object' || t === null) return null
+  const x = t as Partial<Tabela>
+  if (!Array.isArray(x.faixas) || !Array.isArray(x.ia) || x.base === undefined || typeof x.passo !== 'number') return null
+  return x as Tabela
+}
+
 /** Troca os números do HTML pelos de GET /publico/planos (o que não vier certo fica como está). */
 function aplicarNumeros(corpo: unknown): void {
+  const t = tabelaDoCorpo(corpo)
+  if (t) {
+    tabelaCalc = t
+    precoCalc()
+  }
   for (const el of Array.from(document.querySelectorAll<HTMLElement>('[data-p]'))) {
     const chave = el.dataset.p ?? ''
     const texto = textoNumeroSite(chave, valorPublico(corpo, chave), el.hasAttribute('data-p-maiuscula'))
@@ -290,4 +333,5 @@ passos(calmo)
 retencao(calmo)
 conversa(calmo)
 comparar()
+calculadora()
 numerosDosPlanos()

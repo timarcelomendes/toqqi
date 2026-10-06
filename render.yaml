@@ -59,11 +59,11 @@ services:
       # Etapa 5g: as quatro abaixo (modelo e esforço do nível Equilibrado, cota da cortesia e exclusão automática) são
       # só o padrão: o que a equipe Toqqi salvar em Plataforma › Parâmetros vale mais.
       - key: IA_ASSISTENTE_MODELO   # assistente (etapa 5b); a OPENAI_API_KEY fica só no painel do Render
-        value: gpt-5-mini
+        value: gpt-6-luna
       - key: IA_ASSISTENTE_ESFORCO
         value: low
       - key: IA_COTA_CORTESIA       # análises de IA por mês das contas em cortesia (cota do plano)
-        value: "500"
+        value: "200"
       - key: IP_CLIENTE_CABECALHO   # IP do cliente: o cabeçalho que a Cloudflare (na frente do Render) sobrescreve
         value: CF-Connecting-IP
       - key: EXCLUSAO_AUTOMATICA    # contas encerradas excluídas 90 dias depois (simular = só conta e registra no log)

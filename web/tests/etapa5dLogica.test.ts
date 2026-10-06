@@ -333,7 +333,7 @@ describe('Termos de uso e Política de privacidade (versão 2)', () => {
       'cada resumo, parecer ou pergunta usa análises da cota de IA do plano, conforme o nível de modelo escolhido em Configurações › IA (a tela mostra quantas).',
     )
     expect(texto).not.toContain('usa 1 análise da cota')
-    expect([VERSAO_DOCUMENTOS, VIGENTE_DESDE]).toEqual([6, '2026-10-03'])
+    expect([VERSAO_DOCUMENTOS, VIGENTE_DESDE]).toEqual([7, '2026-10-05'])
     expect(texto).toContain('/privacidade#inteligencia-artificial')
     // O texto antigo (só dois recursos) saiu.
     expect(texto).not.toContain('A análise de comentários já vem ligada')

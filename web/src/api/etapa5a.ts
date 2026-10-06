@@ -1,7 +1,16 @@
 // Endpoints da etapa 5a (docs/api-etapa-5a.md): assinatura e cobrança pelo Asaas.
 // O aviso do topo das telas vem na sessão (`conta.cobranca`, em GET /eu e no login); a Plataforma usa `plataformaApi`.
 import { api } from './cliente'
-import type { DadosCobranca, EstadoAssinatura, PlanoAssinatura } from './tipos'
+import type { CicloAssinatura, DadosCobranca, EstadoAssinatura, FormaAssinatura, PlanoAssinatura } from './tipos'
+
+/** Etapa 5k: o que se assina além do plano (ciclo, forma e, no Personalizado, contatos e cota do ToqqiAI). */
+export interface ContratoPedido {
+  plano: PlanoAssinatura['chave'] | 'personalizado'
+  ciclo?: CicloAssinatura
+  forma?: FormaAssinatura
+  contatos?: number | null
+  cota_ia?: number | null
+}
 
 export const assinaturaApi = {
   /** Os 3 planos, na ordem (qualquer usuário logado). */
@@ -13,14 +22,17 @@ export const assinaturaApi = {
    * Etapa 5g: `preco` (obrigatório) é o que a tela mostrou; diferente do atual → 409 `preco_mudou` (antes de chamar o
    * Asaas); faltando ou inválido → 422 no campo `preco` ("Recarregue a página para ver o preço atual do plano.").
    */
-  assinar: (dados: DadosCobranca & { plano: PlanoAssinatura['chave']; preco: PlanoAssinatura['preco'] }) =>
+  assinar: (dados: DadosCobranca & ContratoPedido & { preco: PlanoAssinatura['preco'] }) =>
     api.post<EstadoAssinatura>('/assinatura', dados),
   /**
    * Também muda o valor das faturas em aberto. 409 `sem_assinatura`; 422 `limite_do_plano`. Etapa 5g: sempre com o
    * `preco` que a tela mostrou; diferente do atual → 409 `preco_mudou`; faltando ou inválido → 422 no campo `preco`.
    */
-  trocarPlano: (plano: PlanoAssinatura['chave'], preco: PlanoAssinatura['preco']) =>
-    api.put<EstadoAssinatura>('/assinatura/plano', { plano, preco }),
+  trocarPlano: (plano: ContratoPedido['plano'], preco: PlanoAssinatura['preco'], contatos?: number | null,
+                cotaIa?: number | null) =>
+    api.put<EstadoAssinatura>('/assinatura/plano', {
+      plano, preco, ...(plano === 'personalizado' ? { contatos, cota_ia: cotaIa } : {}),
+    }),
   alterarDados: (dados: DadosCobranca) => api.put<EstadoAssinatura>('/assinatura/dados', dados),
   /** Remove a assinatura no Asaas (com as faturas em aberto); o uso segue até o fim do período pago. */
   cancelar: () => api.post<EstadoAssinatura>('/assinatura/cancelar'),

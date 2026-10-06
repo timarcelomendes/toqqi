@@ -14,6 +14,9 @@
 // Versão 6 (etapa 5g), vigente desde 03/10/2026: nos Termos, o preço é o da contratação e só muda por reajuste; limites
 // e cotas dos planos podem mudar (se diminuírem, com aviso); as análises que cada nível de IA gasta ficam na tela
 // (Configurações › IA), editáveis em Plataforma › Parâmetros. A Política de privacidade não muda.
-export const VERSAO_DOCUMENTOS = 6
+// Versão 7 (etapa 5k), vigente desde 05/10/2026: nos Termos, o plano Personalizado, a cobrança mensal ou anual (Pix com
+// desconto no mensal; anual com desconto), trocar forma ou ciclo = cancelar e assinar de novo, e o WhatsApp automático
+// cobrado pela Meta direto da Empresa (sem franquia do Toqqi, salvo a informada em Integrações). A Política não muda.
+export const VERSAO_DOCUMENTOS = 7
 /** Data em que a versão atual (VERSAO_DOCUMENTOS) passou a valer (AAAA-MM-DD). */
-export const VIGENTE_DESDE = '2026-10-03'
+export const VIGENTE_DESDE = '2026-10-05'

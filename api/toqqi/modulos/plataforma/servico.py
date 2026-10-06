@@ -78,7 +78,8 @@ def _conta_json(c: Conta, usuarios: int, a: Assinatura | None = None, admins: li
         "id": c.id, "nome": c.nome, "plano": c.plano, "situacao": c.situacao,
         "teste_ate": c.teste_ate, "usuarios": usuarios, "criada_em": c.criada_em,
         "pago_ate": c.pago_ate, "atrasada_desde": c.atrasada_desde,
-        "assinatura": {"plano": a.plano, "valor": a.valor, "situacao": a.situacao} if a is not None else None,
+        "assinatura": {"plano": a.plano, "valor": a.valor, "situacao": a.situacao, "ciclo": a.ciclo,
+                       "forma": a.forma, "contatos": a.contatos, "cota_ia": a.cota_ia} if a is not None else None,
         "admins": admins or [], "exclusao_em": regras.exclusao_em(c),
     }
 

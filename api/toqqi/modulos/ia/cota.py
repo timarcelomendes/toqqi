@@ -49,17 +49,25 @@ def mes_atual() -> date:
 
 
 def chave_do_limite(conta: Conta) -> str:
-    """O parâmetro da cota da conta: cortesia → `ia.cota.cortesia`; demais situações (inclusive teste) → pelo plano
-    da conta (desconhecido → o de `teste.plano`)."""
+    """O parâmetro da cota da conta: cortesia → `ia.cota.cortesia`; teste (ou teste expirado) sem assinatura →
+    `ia.cota.teste` (etapa 5k; antes, a do plano do teste); Personalizado → `planos.personalizado` (a cota fica na
+    conta, `limite`); demais → pelo plano da conta (desconhecido → o de `teste.plano`)."""
     if conta.situacao == "cortesia":
         return "ia.cota.cortesia"
+    if conta.situacao in ("teste", "teste_expirado") and conta.primeiro_vencimento is None:
+        return "ia.cota.teste"
+    if conta.plano == "personalizado":
+        return "planos.personalizado"
     plano = conta.plano if conta.plano in parametros.PLANOS else parametros.valor("teste.plano")
     return f"ia.cota.{plano}"
 
 
 def limite(conta: Conta) -> int:
-    """Análises por mês da conta (`chave_do_limite`)."""
-    return max(0, int(parametros.valor(chave_do_limite(conta))))
+    """Análises por mês da conta (`chave_do_limite`; no Personalizado, a cota contratada gravada na conta)."""
+    chave = chave_do_limite(conta)
+    if chave == "planos.personalizado":
+        return max(0, int(conta.cota_ia_personalizada or 0))
+    return max(0, int(parametros.valor(chave)))
 
 
 def estado(s: Session, conta: Conta) -> dict:

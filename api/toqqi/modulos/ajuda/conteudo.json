@@ -486,10 +486,11 @@
       "atalho": "assinatura",
       "como": [
         "Abra Assinatura, ou clique em “Escolher plano” no selo do teste grátis, no topo da tela.",
-        "Em “Escolha um plano”, clique no plano que comporta os seus contatos ativos. Os que não comportam ficam bloqueados.",
+        "No alto, escolha Mensal ou Anual ({{planos.desconto.anual}}% de desconto) e, no mensal, Pix ({{planos.desconto.pix}}% de desconto) ou cartão e boleto.",
+        "Em “Escolha um plano”, clique no plano que comporta os seus contatos ativos. Os que não comportam ficam bloqueados. No Personalizado, escolha os contatos e as perguntas ao ToqqiAI e veja o preço na hora.",
         "Em “Dados de cobrança”, confira Razão social, CPF ou CNPJ, Telefone e E-mail de cobrança: as faturas saem com eles.",
         "Leia o resumo da primeira fatura e clique em “Assinar o plano”, seguido do nome do plano.",
-        "No cartão “Fatura em aberto”, clique em “Pagar” e escolha Pix, boleto ou cartão."
+        "No cartão “Fatura em aberto”, clique em “Pagar” e pague (no mensal com Pix, a fatura só aceita Pix)."
       ],
       "resultado": "Com o pagamento confirmado (Pix e cartão em segundos, boleto em até 3 dias úteis), o selo da conta passa a “Ativa”, com “Pago até” e a data. Quem assina durante o teste continua testando, e a primeira fatura vence no último dia dele.",
       "veja": [
@@ -498,6 +499,10 @@
         "assinatura#pagar-a-fatura-e-historico"
       ],
       "palavras": [
+        "plano anual",
+        "desconto no pix",
+        "personalizado",
+        "calcular preço",
         "assinar um plano",
         "contratar",
         "pagar",
@@ -3628,7 +3633,7 @@
         },
         {
           "id": "franquia-e-mensagens-extras-do-whatsapp",
-          "titulo": "Franquia do WhatsApp automático e mensagens extras",
+          "titulo": "WhatsApp automático: sem franquia, cobrado pela Meta",
           "somente_admin": true,
           "atalho": "integracoes",
           "palavras": [
@@ -3646,13 +3651,13 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Cada plano inclui pesquisas por WhatsApp automático por mês: Essencial {{whatsapp.franquia.essencial}}, Profissional {{whatsapp.franquia.profissional}} e Empresa {{whatsapp.franquia.empresa}}. A franquia renova todo mês, conta só os convites enviados pelo WhatsApp automático e aparece em uma barra na aba “WhatsApp automático”. Os administradores recebem um e-mail quando ela chega a 80% e quando acaba."
+              "texto": "O WhatsApp automático não tem franquia em nenhum plano: as pesquisas saem pelo número da sua empresa, e a Meta cobra cada mensagem direto da sua conta no WhatsApp Business, pela forma de pagamento cadastrada lá. O Toqqi não cobra nada a mais por mensagem. A aba “WhatsApp automático” mostra quantas mensagens saíram no mês."
             },
             {
               "tipo": "lista",
               "itens": [
-                "Franquia acabou e as mensagens extras estão desligadas: as pesquisas vão por e-mail, para quem tem e-mail cadastrado, até o mês virar.",
-                "“Continuar pelo WhatsApp depois da franquia” ligado: as pesquisas continuam saindo pelo WhatsApp, e cada mensagem extra custa R$ 1,50. A tela mostra quantas extras já saíram no mês."
+                "Se a equipe Toqqi combinar um limite mensal com a sua conta, a aba mostra uma barra com o uso, e os administradores recebem um e-mail aos 80% e quando ele acaba.",
+                "Nesse caso, acabou o limite e as mensagens extras estão desligadas: as pesquisas vão por e-mail, para quem tem e-mail cadastrado, até o mês virar. Com “Continuar pelo WhatsApp depois da franquia” ligado, cada mensagem extra custa R$ 1,50."
               ]
             }
           ]
@@ -4573,6 +4578,10 @@
           "somente_admin": true,
           "atalho": "assinatura",
           "palavras": [
+            "plano anual",
+            "desconto no pix",
+            "personalizado",
+            "calcular preço",
             "preço",
             "valor",
             "mensalidade",
@@ -4591,14 +4600,15 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "São três planos, com cobrança mensal e sem fidelidade: você cancela quando quiser, sem multa. Todos têm envios, formulários e usuários ilimitados. O que muda é o limite de contatos ativos:"
+              "texto": "São três planos prontos e o Personalizado, sem fidelidade: você cancela quando quiser, sem multa. Todos têm envios, formulários, usuários e WhatsApp automático sem limite. O que muda é o limite de contatos ativos e as perguntas ao ToqqiAI por mês:"
             },
             {
               "tipo": "lista",
               "itens": [
                 "Essencial: {{planos.essencial.preco}} por mês. Contatos ativos: {{planos.essencial.contatos}}.",
                 "Profissional: {{planos.profissional.preco}} por mês. Contatos ativos: {{planos.profissional.contatos}}.",
-                "Empresa: {{planos.empresa.preco}} por mês. Contatos ativos: {{planos.empresa.contatos}}."
+                "Empresa: {{planos.empresa.preco}} por mês. Contatos ativos: {{planos.empresa.contatos}}.",
+                "Personalizado: você escolhe os contatos ativos (de 100 em 100) e as perguntas ao ToqqiAI por mês (100, 500, 2.000 ou 5.000), e a tela calcula o preço na hora: {{planos.personalizado.base}} de base, mais os contatos (cada 100 sai mais barato quanto mais você tem) e o pacote do ToqqiAI."
               ]
             },
             {
@@ -4607,7 +4617,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Ao chegar no limite, o Toqqi mostra “Você chegou ao limite do seu plano”, e o administrador pode clicar em “Ver planos”. A cota de análises de IA do ToqqiAI e a franquia de WhatsApp automático também dependem do plano: veja os tópicos ToqqiAI e Integrações."
+              "texto": "Ao chegar no limite, o Toqqi mostra “Você chegou ao limite do seu plano”, e o administrador pode clicar em “Ver planos”. A cota de análises de IA do ToqqiAI também depende do plano: veja o tópico ToqqiAI."
             }
           ]
         },
@@ -4635,7 +4645,8 @@
               "tipo": "passos",
               "itens": [
                 "Abra Administração › Assinatura. Também dá para ir pelo menu da sua conta, no topo da tela, ou pelo botão “Escolher plano” do aviso.",
-                "Em “Escolha um plano”, clique no plano que você quer.",
+                "No alto, escolha Mensal ou Anual. No anual, você paga o ano de uma vez com {{planos.desconto.anual}}% de desconto, por Pix, boleto ou cartão. No mensal, escolha a forma: Pix, com {{planos.desconto.pix}}% de desconto, ou cartão e boleto, pelo preço cheio.",
+                "Em “Escolha um plano”, clique no plano que você quer. No Personalizado, informe os contatos e as perguntas ao ToqqiAI por mês: o preço aparece na hora.",
                 "Em “Dados de cobrança”, confira Razão social (para CPF, o nome completo), CPF ou CNPJ, Telefone com DDD e E-mail de cobrança. Eles vêm dos dados da empresa e saem nas faturas.",
                 "Leia o resumo da primeira fatura e clique em “Assinar o plano”, seguido do nome do plano.",
                 "Na fatura que aparece, clique em “Pagar” e escolha Pix, boleto ou cartão."
@@ -4643,7 +4654,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Quem assina durante o teste continua testando, e a primeira fatura vence no último dia dele. Se o período já pago ainda não acabou, ela vence no dia seguinte ao fim dele. Sem nenhum dos dois, ela vence amanhã e os envios voltam quando o pagamento for confirmado. Depois, a cobrança é mensal, no mesmo dia (nos meses mais curtos, no último dia)."
+              "texto": "Quem assina durante o teste continua testando, e a primeira fatura vence no último dia dele. Se o período já pago ainda não acabou, ela vence no dia seguinte ao fim dele. Sem nenhum dos dois, ela vence amanhã e os envios voltam quando o pagamento for confirmado. Depois, a cobrança é mensal (ou anual), no mesmo dia (nos meses mais curtos, no último dia). No mensal com Pix, a fatura só aceita Pix; para pagar com cartão ou boleto, cancele e assine de novo com a outra forma: a assinatura nova começa quando o período pago acabar. Do mensal para o anual é igual."
             },
             {
               "tipo": "dica",
@@ -4722,7 +4733,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "O novo valor vale para as próximas faturas e para as pendentes. As vencidas não mudam. O limite de contatos muda na hora. Se você tem mais contatos ativos do que o plano novo permite, a tela avisa e não deixa trocar: desative contatos antes (o link “Ver contatos” ajuda)."
+              "texto": "O novo valor vale para as próximas faturas e para as pendentes, com a mesma forma de pagamento (no Pix, com o desconto). As vencidas não mudam. O limite de contatos muda na hora. Se você tem mais contatos ativos do que o plano novo permite, a tela avisa e não deixa trocar: desative contatos antes (o link “Ver contatos” ajuda). No Personalizado, a troca também muda os contatos e as perguntas ao ToqqiAI. Na assinatura anual, a troca de plano é feita pela equipe Toqqi: fale com a gente."
             },
             {
               "tipo": "paragrafo",
@@ -5161,7 +5172,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Acabou a cota? O chat explica: “O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.” O administrador vê o uso em Configurações › IA, na seção “Cota de IA do plano”, e pode trocar de plano em Assinatura. No teste grátis, vale a cota do plano do teste, o {{teste.plano}}."
+              "texto": "Acabou a cota? O chat explica: “O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.” O administrador vê o uso em Configurações › IA, na seção “Cota de IA do plano”, e pode trocar de plano em Assinatura. No teste grátis, a cota é de {{ia.cota.teste}} análises; quem assina durante o teste passa a usar a do plano escolhido."
             }
           ]
         },

@@ -69,7 +69,7 @@ async function usarPadrao() {
       <template #antes><span class="text-sm font-semibold">R$</span></template>
     </Campo>
 
-    <template v-else-if="tipo === 'contatos'">
+    <template v-else-if="tipo === 'contatos' || tipo === 'limite'">
       <Campo
         :id="id"
         v-model="textoContatos"

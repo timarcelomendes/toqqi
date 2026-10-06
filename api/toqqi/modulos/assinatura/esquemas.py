@@ -15,7 +15,9 @@ from pydantic_core import PydanticCustomError
 from toqqi.core.texto import normalizar_documento
 from toqqi.core.validacao import _validar_email, telefone_br
 
-Plano = Literal["essencial", "profissional", "empresa"]
+Plano = Literal["essencial", "profissional", "empresa", "personalizado"]
+Ciclo = Literal["mensal", "anual"]
+Forma = Literal["pix", "qualquer"]
 MAX_RAZAO_SOCIAL = 200
 
 
@@ -84,10 +86,18 @@ PrecoMostrado = Annotated[Decimal, BeforeValidator(_preco), Field(ge=0, le=Decim
 
 
 class AssinarIn(DadosCobrancaIn):
+    """Etapa 5k: `ciclo` (padrão mensal) e `forma` (padrão qualquer); no Personalizado, `contatos` e `cota_ia`. `preco`
+    = o valor de cada fatura que a tela mostrou (por mês, ou o total do ano)."""
     plano: Plano
+    ciclo: Ciclo = "mensal"
+    forma: Forma = "qualquer"
+    contatos: int | None = Field(default=None, ge=1, le=1_000_000)
+    cota_ia: int | None = Field(default=None, ge=1, le=100_000)
     preco: PrecoMostrado = Field(default=None, validate_default=True)
 
 
 class PlanoIn(BaseModel):
     plano: Plano
+    contatos: int | None = Field(default=None, ge=1, le=1_000_000)
+    cota_ia: int | None = Field(default=None, ge=1, le=100_000)
     preco: PrecoMostrado = Field(default=None, validate_default=True)

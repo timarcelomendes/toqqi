@@ -105,13 +105,14 @@ export const TERMOS: DocumentoLegal = {
         {
           tipo: 'p',
           texto:
-            'O Toqqi tem os planos Essencial, Profissional e Empresa. Cada plano tem limites e recursos próprios, mostrados na tela de assinatura. O preço é o mostrado na contratação e só muda por reajuste, como abaixo. Limites e cotas dos planos podem mudar; se diminuírem, avisamos com antecedência razoável.',
+            'O Toqqi tem os planos Essencial, Profissional e Empresa e o Personalizado, em que a Empresa escolhe na contratação os contatos ativos e as perguntas ao ToqqiAI por mês. Cada plano tem limites e recursos próprios, mostrados na tela de assinatura. O preço é o mostrado na contratação e só muda por reajuste, como abaixo. Limites e cotas dos planos podem mudar; se diminuírem, avisamos com antecedência razoável.',
         },
         {
           tipo: 'lista',
           itens: [
             'Teste grátis: quando houver, vale pelo período informado na tela. Ao final, a conta precisa de um plano pago para continuar enviando pesquisas. Se a Empresa não assinar, os dados ficam guardados por 90 dias depois do fim do teste e então são excluídos, como no fim do contrato (veja a seção sobre tratamento de dados).',
-            'Cobrança: mensal, pelo Asaas, por boleto, Pix ou cartão, conforme as opções oferecidas.',
+            'Cobrança: mensal ou anual, pelo Asaas. No mensal, por Pix, com o desconto mostrado na contratação (a fatura aceita só Pix), ou por boleto ou cartão, pelo preço cheio. No anual, o ano é pago de uma vez, com o desconto mostrado na contratação, por boleto, Pix ou cartão. Para mudar a forma de pagamento ou o ciclo, cancele e assine de novo: a nova assinatura começa quando o período já pago acabar. Na assinatura anual, a troca de plano é feita pela nossa equipe.',
+            'WhatsApp automático: as mensagens saem pelo número da Empresa, na conta dela na Meta, que cobra cada mensagem diretamente da Empresa. O Toqqi não cobra por mensagem, salvo quando um limite mensal e o valor das mensagens extras estiverem informados na tela de Integrações.',
             'Atraso: se o pagamento atrasar, avisamos e damos 7 dias. Passado esse prazo, os envios de pesquisas e os recursos de IA são pausados até a regularização. Avisamos no topo das telas. Seus dados continuam guardados e você continua vendo o que já coletou.',
             'Cancelamento: você pode cancelar quando quiser. O plano vale até o fim do período já pago, sem nova cobrança depois disso. Depois, valem as regras do fim do contrato (veja a seção sobre tratamento de dados).',
             'Reajuste: podemos reajustar os preços, avisando com pelo menos [a confirmar: prazo de aviso de reajuste, sugerido 30 dias] de antecedência. O novo valor vale a partir da renovação seguinte. Se não concordar com o reajuste, você pode cancelar sem multa antes do novo valor valer.',

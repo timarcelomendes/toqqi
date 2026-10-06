@@ -16,14 +16,15 @@ from toqqi.core import asaas
 from toqqi.core.db import RAIZ_API, em_conta
 
 
-def _migracao():
-    spec = importlib.util.spec_from_file_location("m0008", RAIZ_API / "alembic/versions/0008_assinaturas.py")
+def _migracao(nome: str = "0008_assinaturas"):
+    spec = importlib.util.spec_from_file_location(f"m{nome[:4]}", RAIZ_API / f"alembic/versions/{nome}.py")
     modulo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modulo)
     return modulo
 
 
 M0008 = _migracao()
+M0025 = _migracao("0025_planos_5k")
 
 
 @pytest.fixture
@@ -129,6 +130,8 @@ def test_com_a_funcao_antiga_a_conta_passava_do_limite(client, dono, conta_empre
     """Reprodução do problema com a função da 0002 (a 0008 a substitui; o downgrade a devolve)."""
     conta = conta_empresa["conta"]["id"]
     sql(dono, M0008.FUNCAO_ANTIGA)
+    # 5k: o Empresa passou a ter limite (5.000); o problema aparecia com ele sem limite, como era
+    sql(dono, "insert into parametros (chave, valor) values ('planos.empresa.contatos', 'null')")
     try:
         t, resposta, entrou, solta = _trocar_em_paralelo(client, conta_empresa["h"], monkeypatch)
         assert entrou.wait(10)
@@ -141,4 +144,4 @@ def test_com_a_funcao_antiga_a_conta_passava_do_limite(client, dono, conta_empre
         assert _ativos(dono, conta) == 301
         assert sql(dono, "select limite_contatos(plano, situacao) from contas where id = :c", c=conta) == [(300,)]
     finally:
-        sql(dono, M0008.FUNCAO_NOVA)
+        sql(dono, M0025.GATILHO.format(limite=M0025.LIMITE_NOVO))

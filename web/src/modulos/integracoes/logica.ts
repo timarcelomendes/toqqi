@@ -19,6 +19,8 @@ export const LIMIAR_AVISO_FRANQUIA = 0.8
 export type NivelFranquia = 'ok' | 'atencao' | 'esgotada'
 
 export interface EstadoFranquia {
+  /** Etapa 5k: sem franquia (o padrão): sem barra, sem avisos, sem excedente. */
+  semLimite: boolean
   usadas: number
   limite: number
   restantes: number
@@ -31,6 +33,13 @@ export interface EstadoFranquia {
 }
 
 export function estadoFranquia(f: Pick<FranquiaWhatsapp, 'limite' | 'usadas_mes'> | null | undefined): EstadoFranquia {
+  if (f && f.limite === null) {
+    const usadas = Math.max(0, Math.floor(Number(f.usadas_mes) || 0))
+    return {
+      semLimite: true, usadas, limite: 0, restantes: 0, percentual: 0, nivel: 'ok', tom: 'sucesso',
+      resumo: `${formatarNumero(usadas)} ${usadas === 1 ? 'mensagem' : 'mensagens'} no mês, sem franquia`,
+    }
+  }
   const limite = Math.max(0, Math.floor(Number(f?.limite) || 0))
   const usadas = Math.max(0, Math.floor(Number(f?.usadas_mes) || 0))
   const fracao = limite > 0 ? usadas / limite : 1
@@ -38,6 +47,7 @@ export function estadoFranquia(f: Pick<FranquiaWhatsapp, 'limite' | 'usadas_mes'
   // Arredonda para baixo: 199 de 200 mostra 99%, nunca "100%" sem ter acabado.
   const percentual = nivel === 'esgotada' ? 100 : Math.min(99, Math.floor(fracao * 100))
   return {
+    semLimite: false,
     usadas,
     limite,
     restantes: Math.max(0, limite - usadas),
@@ -51,6 +61,9 @@ export function estadoFranquia(f: Pick<FranquiaWhatsapp, 'limite' | 'usadas_mes'
 /** Explicação da franquia em português simples, conforme o estado e o excedente. */
 export function explicacaoFranquia(f: FranquiaWhatsapp): string {
   const e = estadoFranquia(f)
+  if (e.semLimite) {
+    return 'Sem franquia: as pesquisas saem pelo número da sua empresa e a Meta cobra cada mensagem direto da sua conta no WhatsApp Business. O Toqqi não cobra nada a mais.'
+  }
   const valor = formatarMoeda(f.valor_excedente ?? 1.5)
   if (e.nivel === 'esgotada') {
     return f.excedente_ativo

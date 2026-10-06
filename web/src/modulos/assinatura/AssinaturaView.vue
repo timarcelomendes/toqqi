@@ -11,6 +11,9 @@
 //   tela busca os planos de novo e mostra a mensagem da API (ninguém paga o que não viu). Se a API recusar o preço
 //   mandado (422 no campo `preco`, ex.: página aberta antes de uma atualização do site), o alerta traz a mensagem dela
 //   ("Recarregue a página para ver o preço atual do plano.") e "Recarregar", que recarrega a página.
+// - Etapa 5k: antes dos planos, Mensal ou Anual (com o desconto) e, no mensal, Pix (com desconto) ou cartão e boleto;
+//   os cartões mostram o valor da fatura nessa escolha, e o Personalizado entra com a calculadora. O que vai em
+//   `preco` é sempre o valor mostrado (a API refaz a conta e devolve 409 `preco_mudou` se mudou).
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ArrowRightLeft, CreditCard, ExternalLink, FileText, Pencil, RefreshCw, XCircle } from 'lucide-vue-next'
 import { assinaturaApi, mensagemDoErro, type EstadoAssinatura, type FaturaAberta } from '@/api'
@@ -26,6 +29,8 @@ import Botao from '@/components/ui/Botao.vue'
 import Carregando from '@/components/ui/Carregando.vue'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
 import Medidor from '@/components/ui/Medidor.vue'
+import BotoesSegmentados from '@/components/ui/BotoesSegmentados.vue'
+import type { Ciclo, Forma } from '@/utils/precos'
 import CamposCobranca from './CamposCobranca.vue'
 import EscolhaPlano from './EscolhaPlano.vue'
 import HistoricoCobrancas from './HistoricoCobrancas.vue'
@@ -51,7 +56,15 @@ import {
   situacaoNaTela,
   textoPeriodo,
   validarCobranca,
+  contatosSugeridos,
+  descontosDe,
+  exibido,
+  planoPersonalizado,
+  tabelaDe,
+  textoForma,
+  textoPorPeriodo,
   type FormCobranca,
+  type PlanoExibido,
 } from './logica'
 
 const sessao = useSessaoStore()
@@ -68,9 +81,16 @@ const outrasAbertas = computed(() => (dados.value && fatura.value ? faturasEmAbe
 const cortesia = computed(() => dados.value?.conta.situacao === 'cortesia')
 const situacao = computed(() => (dados.value ? situacaoNaTela(dados.value) : null))
 const planoAtual = computed(() => (dados.value ? planoPorChave(dados.value.planos, assinatura.value?.plano ?? dados.value.conta.plano) : null))
-const limite = computed(() => (cortesia.value ? null : (planoAtual.value?.contatos ?? null)))
+const limite = computed(() => {
+  if (cortesia.value || !dados.value) return null
+  if ((assinatura.value?.plano ?? dados.value.conta.plano) === 'personalizado') return dados.value.conta.contatos_personalizado ?? null
+  return planoAtual.value?.contatos ?? null
+})
 const proximo = computed(() => (dados.value ? proximoVencimento(dados.value) : null))
-const titulo = computed(() => (assinatura.value ? `Plano ${planoAtual.value?.nome ?? assinatura.value.plano}` : (situacao.value?.titulo ?? 'Assinatura')))
+const titulo = computed(() =>
+  assinatura.value ? `Plano ${assinatura.value.nome ?? planoAtual.value?.nome ?? assinatura.value.plano}` : (situacao.value?.titulo ?? 'Assinatura'),
+)
+const cicloAtual = computed<Ciclo>(() => assinatura.value?.ciclo ?? 'mensal')
 
 function aplicar(e: EstadoAssinatura) {
   const antes = dados.value
@@ -97,6 +117,7 @@ async function carregar() {
     dados.value = e
     ultimaBusca = Date.now()
     form.value = formCobrancaDe(e.dados_sugeridos)
+    contatosPers.value = contatosSugeridos(e.contatos_ativos, tabelaDe(e))
     sincronizarSessao(e)
   } catch (e) {
     erroCarga.value = mensagemDoErro(e)
@@ -203,8 +224,35 @@ async function atualizarAgora() {
 
 // ── Assinar ──────────────────────────────────────────────────────────────────
 const planoEscolhido = ref<string | null>(null)
-const plano = computed(() => (dados.value && planoEscolhido.value ? planoPorChave(dados.value.planos, planoEscolhido.value) : null))
-const resumo = computed(() => (dados.value && plano.value ? resumoPrimeiraFatura(plano.value, dados.value.conta) : null))
+const ciclo = ref<Ciclo>('mensal')
+/** Pix é a sugestão (o desconto aparece já no cartão); cartão e boleto pagam o preço cheio. */
+const forma = ref<Forma>('pix')
+const contatosPers = ref(1000)
+const cotaPers = ref(500)
+const descontos = computed(() => descontosDe(dados.value))
+const tabela = computed(() => tabelaDe(dados.value))
+const OPCOES_CICLO = computed(() => [
+  { valor: 'mensal' as Ciclo, rotulo: 'Mensal' },
+  { valor: 'anual' as Ciclo, rotulo: descontos.value.anual ? `Anual: ${descontos.value.anual}% off` : 'Anual' },
+])
+const OPCOES_FORMA = computed(() => [
+  { valor: 'pix' as Forma, rotulo: descontos.value.pix ? `Pix: ${descontos.value.pix}% off` : 'Pix' },
+  { valor: 'qualquer' as Forma, rotulo: 'Cartão ou boleto' },
+])
+const planosExibidos = computed<PlanoExibido[]>(() =>
+  dados.value ? dados.value.planos.map((p) => exibido(p, ciclo.value, forma.value, descontos.value)) : [],
+)
+const persExibido = computed<PlanoExibido | null>(() => {
+  const p = planoPersonalizado(tabela.value, contatosPers.value, cotaPers.value)
+  return p ? { ...exibido(p, ciclo.value, forma.value, descontos.value), cota_ia: p.cota_ia } : null
+})
+const plano = computed<PlanoExibido | null>(() => {
+  if (!dados.value || !planoEscolhido.value) return null
+  if (planoEscolhido.value === 'personalizado') return persExibido.value
+  return planoPorChave(planosExibidos.value, planoEscolhido.value)
+})
+const plano_cabe = computed(() => !plano.value || plano.value.contatos === null || dados.value!.contatos_ativos <= plano.value.contatos)
+const resumo = computed(() => (dados.value && plano.value ? resumoPrimeiraFatura(plano.value, dados.value.conta, new Date(), plano.value.ciclo) : null))
 const emTeste = computed(() => dados.value?.conta.situacao === 'teste')
 const form = ref<FormCobranca>(formCobrancaDe(null))
 const locais = reactive<Partial<Record<keyof FormCobranca, string>>>({})
@@ -257,7 +305,20 @@ async function assinar() {
     focarPrimeiroErro()
     return
   }
-  const r = await executar(() => assinaturaApi.assinar({ ...corpoCobranca(form.value), plano: p.chave, preco: p.preco }))
+  if (!plano_cabe.value) {
+    erroGeral.value = `Você tem ${formatarNumero(dados.value.contatos_ativos)} contatos ativos: escolha pelo menos esse número no Personalizado.`
+    return
+  }
+  const r = await executar(() =>
+    assinaturaApi.assinar({
+      ...corpoCobranca(form.value),
+      plano: p.chave,
+      ciclo: p.ciclo,
+      forma: p.forma,
+      ...(p.chave === 'personalizado' ? { contatos: p.contatos, cota_ia: p.cota_ia } : {}),
+      preco: p.preco,
+    }),
+  )
   if (!r) {
     // Já tem assinatura ou virou cortesia (outra aba, a equipe Toqqi): mostra como está agora.
     if (codigoErro.value === 'ja_assinada' || codigoErro.value === 'cortesia') {
@@ -339,7 +400,7 @@ onBeforeUnmount(() => {
 <template>
   <CabecalhoPagina
     titulo="Assinatura"
-    descricao="Seu plano, as faturas e os dados de cobrança. A cobrança é feita pelo Asaas: na fatura, você escolhe Pix, boleto ou cartão."
+    descricao="Seu plano, as faturas e os dados de cobrança. A cobrança é feita pelo Asaas, por Pix, boleto ou cartão."
   />
 
   <Carregando v-if="carregando" :linhas="4" rotulo="Carregando a assinatura" />
@@ -361,7 +422,8 @@ onBeforeUnmount(() => {
           <p v-if="situacao.descricao" class="mt-1.5 text-sm text-texto-suave">{{ situacao.descricao }}</p>
         </div>
         <p v-if="assinatura" class="shrink-0 sm:text-right">
-          <span class="block text-2xl font-bold tabular-nums text-texto">{{ formatarMoeda(assinatura.valor) }}</span>{{ ' ' }}<span class="text-sm text-texto-suave">por mês</span>
+          <span class="block text-2xl font-bold tabular-nums text-texto">{{ formatarMoeda(assinatura.valor) }}</span>{{ ' ' }}<span class="text-sm text-texto-suave">{{ cicloAtual === 'anual' ? 'por ano' : 'por mês' }}</span>
+          <span v-if="assinatura.forma === 'pix' || cicloAtual === 'anual'" class="block text-xs text-texto-fraco" data-condicao>{{ cicloAtual === 'anual' ? 'Assinatura anual' : 'Mensal com Pix' }}</span>
         </p>
       </div>
 
@@ -422,8 +484,8 @@ onBeforeUnmount(() => {
           <p class="mt-1.5 text-sm text-texto-suave">
             <strong class="font-semibold text-texto">{{ formatarMoeda(fatura.valor) }}</strong>,
             {{ fatura.situacao === 'vencida' ? 'venceu em' : 'vence em' }} {{ formatarData(fatura.vencimento) }}
-            e cobre de <span class="whitespace-nowrap" data-periodo>{{ textoPeriodo(fatura.vencimento) }}</span>.
-            {{ futura ? 'Se quiser pagar antes, na fatura você escolhe Pix, boleto ou cartão.' : 'Na fatura, você escolhe Pix, boleto ou cartão.' }}
+            e cobre de <span class="whitespace-nowrap" data-periodo>{{ textoPeriodo(fatura.vencimento, false, cicloAtual) }}</span>.
+            {{ futura ? `Se quiser, pague antes. ${textoForma(assinatura.forma)}` : textoForma(assinatura.forma) }}
           </p>
           <p v-if="outrasAbertas.length" class="mt-1 text-sm text-texto-suave" data-outras-abertas>
             Também em aberto: {{ outrasAbertas.length === 1 ? 'a fatura' : `${outrasAbertas.length} faturas` }} com vencimento em
@@ -461,11 +523,28 @@ onBeforeUnmount(() => {
       <section class="flex flex-col gap-4" aria-labelledby="t-planos">
         <div>
           <h2 id="t-planos" class="text-lg font-bold text-texto">Escolha um plano</h2>
-          <p class="mt-1 text-sm text-texto-suave">Cobrança mensal, sem fidelidade: cancele quando quiser, sem multa.</p>
+          <p class="mt-1 text-sm text-texto-suave">Sem fidelidade: cancele quando quiser, sem multa. WhatsApp automático sem franquia em todos.</p>
+        </div>
+        <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4" data-pagamento>
+          <BotoesSegmentados v-model="ciclo" :opcoes="OPCOES_CICLO" rotulo="Ciclo da cobrança" bloco :desabilitado="!dados.disponivel || enviando" />
+          <BotoesSegmentados v-if="ciclo === 'mensal'" v-model="forma" :opcoes="OPCOES_FORMA" rotulo="Forma de pagamento" bloco :desabilitado="!dados.disponivel || enviando" />
+          <p class="text-sm text-texto-suave" aria-live="polite" data-texto-pagamento>
+            {{
+              ciclo === 'anual'
+                ? `Um pagamento por ano, por Pix, boleto ou cartão${descontos.anual ? `, com ${descontos.anual}% de desconto` : ''}.`
+                : forma === 'pix'
+                  ? `Todo mês por Pix${descontos.pix ? `, com ${descontos.pix}% de desconto` : ''}.`
+                  : 'Todo mês, por cartão ou boleto (a fatura também aceita Pix, sem o desconto).'
+            }}
+          </p>
         </div>
         <EscolhaPlano
           v-model="planoEscolhido"
-          :planos="dados.planos"
+          v-model:contatos="contatosPers"
+          v-model:cota-ia="cotaPers"
+          :planos="planosExibidos"
+          :personalizado="persExibido"
+          :tabela="tabela"
           :contatos-ativos="dados.contatos_ativos"
           rotulo="Planos"
           :atual="emTeste ? dados.conta.plano : null"
@@ -494,10 +573,12 @@ onBeforeUnmount(() => {
           <div class="flex flex-col gap-1 rounded-xl bg-superficie-2 p-4 text-sm" data-resumo>
             <p class="font-semibold text-texto" aria-live="polite">{{ resumo.texto }}</p>
             <p v-if="resumo.envios" class="text-texto-suave">{{ resumo.envios }}</p>
-            <p class="text-texto-suave">Na fatura, você escolhe Pix, boleto ou cartão.</p>
+            <p class="text-texto-suave">{{ textoForma(plano.forma) }}</p>
           </div>
           <div class="flex sm:justify-end">
-            <Botao tipo="submit" tamanho="lg" class="w-full sm:w-auto" :carregando="enviando" :desabilitado="!dados.disponivel">Assinar o plano {{ plano.nome }}</Botao>
+            <Botao tipo="submit" tamanho="lg" class="w-full sm:w-auto" :carregando="enviando" :desabilitado="!dados.disponivel || !plano_cabe">
+              Assinar {{ plano.chave === 'personalizado' ? 'o Personalizado' : `o plano ${plano.nome}` }}<span class="hidden sm:inline">&nbsp;· {{ textoPorPeriodo(plano.preco, plano.ciclo) }}</span>
+            </Botao>
           </div>
         </form>
       </section>
@@ -541,7 +622,7 @@ onBeforeUnmount(() => {
         <h2 id="t-historico" class="text-base font-bold text-texto">Histórico de cobranças</h2>
         <p class="mt-0.5 text-sm text-texto-suave">As 12 mais recentes. "Ver fatura" abre a página da fatura no Asaas.</p>
       </div>
-      <HistoricoCobrancas :cobrancas="dados.cobrancas" />
+      <HistoricoCobrancas :cobrancas="dados.cobrancas" :ciclo="cicloAtual" />
     </section>
   </div>
 

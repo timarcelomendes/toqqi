@@ -41,6 +41,7 @@ Os testes rodam no GitHub a cada envio (`.github/workflows/testes.yml`).
 | 5f. Dados da conta: exportação completa e CSV das listas, zona de risco, auditoria por grupo, registros de acesso (6 meses), exclusão automática depois do encerramento, IP real atrás do proxy | pronta | `docs/api-etapa-5f.md` |
 | 6. Lançamento (sem migração: não há clientes no Rakiti): backup diário cifrado no Cloudflare R2 com restauração testada | pronta (falta criar o bucket e os segredos) | `docs/backup.md` |
 | Extra: Ajuda em jornadas (onde, como e resultado das 13 principais funcionalidades), abertura da Ajuda e respostas do ToqqiAI | pronta | `docs/ajuda-jornadas.md` |
+| 5k. Preços: Pix com 3% de desconto, anual com 10%, plano Personalizado (calculadora), WhatsApp sem franquia, IA no GPT-6 Luna/Sol, limites novos (Empresa 5.000 contatos, cota do teste) | pronta | `docs/api-etapa-5k.md` |
 
 ## Publicação (Render)
 O arquivo `render.yaml` cria tudo de uma vez: no Render, **New > Blueprint** e escolha este repositório.

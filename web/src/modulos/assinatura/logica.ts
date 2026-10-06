@@ -10,7 +10,21 @@ import type {
   EstadoAssinatura,
   FaturaAberta,
   PlanoAssinatura,
+  TabelaPersonalizado,
 } from '@/api/tipos'
+import {
+  DESCONTOS_PADRAO,
+  TABELA_PADRAO,
+  ajustarContatos,
+  centavos,
+  nomePersonalizado,
+  paraApi,
+  precoPersonalizado,
+  valorFatura,
+  type Ciclo,
+  type Descontos,
+  type Forma,
+} from '@/utils/precos'
 import { FUSO, formatarData, formatarDiaMes } from '@/utils/datas'
 import { formatarDocumento, formatarMoeda, formatarNumero } from '@/utils/formatos'
 import { somarDias } from '@/utils/periodo'
@@ -76,24 +90,34 @@ function maisUmMes(iso: string): string {
   return `${ano}-${String(mes).padStart(2, '0')}-${String(Math.min(d, ultimo)).padStart(2, '0')}`
 }
 
-/** Último dia coberto por uma fatura: vencimento + 1 mês − 1 dia (a regra do `pago_ate` na API). */
-export function fimDoPeriodo(vencimento: string): string {
-  return somarDias(maisUmMes(vencimento), -1)
+/** Mesmo dia no ano seguinte (29/02 → 28/02), como `mais_um_ano` na API. */
+function maisUmAno(iso: string): string {
+  const a = Number(iso.slice(0, 4)) + 1
+  const m = iso.slice(5, 7)
+  const ultimo = new Date(Date.UTC(a, Number(m), 0)).getUTCDate()
+  return `${a}-${m}-${String(Math.min(Number(iso.slice(8, 10)), ultimo)).padStart(2, '0')}`
+}
+
+/** Último dia coberto por uma fatura: vencimento + 1 mês (no anual, + 1 ano) − 1 dia (a regra do `pago_ate` na API). */
+export function fimDoPeriodo(vencimento: string, ciclo: Ciclo = 'mensal'): string {
+  return somarDias(ciclo === 'anual' ? maisUmAno(vencimento) : maisUmMes(vencimento), -1)
 }
 
 /**
  * Período coberto por uma fatura: "16/10 a 15/11/2026" (mesmo ano) ou "16/12/2026 a 15/01/2027". `curto` (no
  * histórico, logo abaixo do vencimento, que já mostra o ano): "16/10 a 15/11", "16/12 a 15/01".
  */
-export function textoPeriodo(vencimento: string, curto = false): string {
-  const fim = fimDoPeriodo(vencimento)
+export function textoPeriodo(vencimento: string, curto = false, ciclo: Ciclo = 'mensal'): string {
+  const fim = fimDoPeriodo(vencimento, ciclo)
+  if (curto && ciclo === 'anual') return `${formatarData(vencimento)} a ${formatarData(fim)}`
   if (curto) return `${formatarDiaMes(vencimento)} a ${formatarDiaMes(fim)}`
   const inicio = vencimento.slice(0, 4) === fim.slice(0, 4) ? formatarDiaMes(vencimento) : formatarData(vencimento)
   return `${inicio} a ${formatarData(fim)}`
 }
 
 /** "Depois, todo dia 15." (dias 29 a 31 não existem em todo mês: aí a fatura vem no último dia.) */
-export function textoDepois(vencimento: string): string {
+export function textoDepois(vencimento: string, ciclo: Ciclo = 'mensal'): string {
+  if (ciclo === 'anual') return `Depois, todo ano em ${formatarDiaMes(vencimento)}.`
   const dia = Number(vencimento.slice(8, 10))
   return dia >= 29 ? `Depois, todo dia ${dia} (ou no último dia do mês, nos meses mais curtos).` : `Depois, todo dia ${dia}.`
 }
@@ -110,6 +134,7 @@ export function resumoPrimeiraFatura(
   plano: Pick<PlanoAssinatura, 'preco'>,
   conta: { teste_ate: string | null; pago_ate: string | null },
   agora: Date = new Date(),
+  ciclo: Ciclo = 'mensal',
 ): { texto: string; envios: string | null; vencimento: string } {
   const { data, motivo } = primeiroVencimento(conta, agora)
   const valor = formatarMoeda(plano.preco)
@@ -122,7 +147,7 @@ export function resumoPrimeiraFatura(
         : `em ${formatarData(data)}`
   const porque = motivo === 'teste' ? ', no fim do teste' : motivo === 'pago' ? ', no dia seguinte ao fim do período já pago' : ''
   return {
-    texto: `Primeira fatura de ${valor} com vencimento ${quando}${porque}. Ela cobre de ${textoPeriodo(data)}. ${textoDepois(data)}`,
+    texto: `Primeira fatura de ${valor} com vencimento ${quando}${porque}. Ela cobre de ${textoPeriodo(data, false, ciclo)}. ${textoDepois(data, ciclo)}`,
     // Sem teste nem período pago, os envios estão parados até o pagamento.
     envios: motivo === 'amanha' ? `Os envios voltam assim que o pagamento for confirmado: ${TEMPO_CONFIRMACAO}.` : null,
     vencimento: data,
@@ -294,7 +319,73 @@ export function situacaoNaTela(e: Pick<EstadoAssinatura, 'conta' | 'assinatura'>
 export const RECURSOS_PLANOS = 'Envios, formulários e usuários ilimitados'
 
 /** Nomes dos planos para telas que não buscam a lista (Plataforma). */
-export const NOMES_PLANOS: Record<string, string> = { essencial: 'Essencial', profissional: 'Profissional', empresa: 'Empresa' }
+export const NOMES_PLANOS: Record<string, string> = {
+  essencial: 'Essencial', profissional: 'Profissional', empresa: 'Empresa', personalizado: 'Personalizado',
+}
+
+// ── Etapa 5k: ciclo, forma de pagamento e Personalizado ─────────────────────
+
+/** Um plano como a tela mostra: `preco` = o valor de cada fatura (com o desconto); `cheio` = o mesmo período sem ele. */
+export interface PlanoExibido extends PlanoAssinatura {
+  /** Valor por mês sem desconto (o preço do plano). */
+  por_mes: PlanoAssinatura['preco']
+  /** O valor da fatura sem desconto (12 × no anual); igual a `preco` quando não há desconto. */
+  cheio: PlanoAssinatura['preco']
+  ciclo: Ciclo
+  forma: Forma
+  /** Só no Personalizado. */
+  cota_ia?: number
+}
+
+export function descontosDe(e: Partial<Pick<EstadoAssinatura, 'descontos'>> | null | undefined): Descontos {
+  return e?.descontos ?? DESCONTOS_PADRAO
+}
+
+export function tabelaDe(e: Partial<Pick<EstadoAssinatura, 'personalizado'>> | null | undefined): TabelaPersonalizado {
+  return e?.personalizado ?? TABELA_PADRAO
+}
+
+/** O plano com o valor da fatura no ciclo e na forma escolhidos (anual: sempre "qualquer", sem o desconto do Pix). */
+export function exibido(p: PlanoAssinatura, ciclo: Ciclo, forma: Forma, d: Descontos): PlanoExibido {
+  const formaReal: Forma = ciclo === 'anual' ? 'qualquer' : forma
+  const mes = centavos(p.preco)
+  return {
+    ...p,
+    preco: paraApi(valorFatura(mes, ciclo, formaReal, d)),
+    por_mes: p.preco,
+    cheio: paraApi(ciclo === 'anual' ? mes * 12 : mes),
+    ciclo,
+    forma: formaReal,
+  }
+}
+
+/** O Personalizado como plano (para os cartões, o resumo e o efeito da troca); fora da tabela → null. */
+export function planoPersonalizado(t: TabelaPersonalizado, contatos: number, cotaIa: number): PlanoAssinatura & { cota_ia: number } | null {
+  const c = precoPersonalizado(contatos, cotaIa, t)
+  if (!Number.isFinite(c)) return null
+  return { chave: 'personalizado', nome: nomePersonalizado(contatos, cotaIa), preco: paraApi(c), contatos, cota_ia: cotaIa }
+}
+
+/** Contatos sugeridos ao abrir a calculadora: os ativos de hoje com folga (arredondado para cima, no mínimo 500). */
+export function contatosSugeridos(ativos: number, t: TabelaPersonalizado): number {
+  return ajustarContatos(Math.max(500, Math.ceil((ativos * 1.2) / t.passo) * t.passo), t)
+}
+
+/** "R$ 1.609,20 por ano" / "R$ 144,53 por mês". */
+export function textoPorPeriodo(valor: PlanoAssinatura['preco'], ciclo: Ciclo | undefined): string {
+  return `${formatarMoeda(valor)} ${ciclo === 'anual' ? 'por ano' : 'por mês'}`
+}
+
+/** "equivale a R$ 134,10 por mês" (anual) ou null. */
+export function equivaleMes(p: Pick<PlanoExibido, 'preco' | 'ciclo'>): string | null {
+  if (p.ciclo !== 'anual') return null
+  return `equivale a ${formatarMoeda(paraApi(Math.round(centavos(p.preco) / 12)))} por mês`
+}
+
+/** O que a fatura aceita: "Pague por Pix." ou "Na fatura, você escolhe Pix, boleto ou cartão." */
+export function textoForma(forma: Forma | undefined): string {
+  return forma === 'pix' ? 'A fatura é paga por Pix.' : 'Na fatura, você escolhe Pix, boleto ou cartão.'
+}
 
 export function nomeDoPlano(chave: string | null | undefined): string {
   if (!chave) return '—'

@@ -62,8 +62,15 @@ const PLANOS_NOVOS = {
     { chave: 'profissional', nome: 'Profissional', preco: '399.00', contatos: 2000, whatsapp: 120, ia_cota: 800, ia_teto: 6000 },
     { chave: 'empresa', nome: 'Empresa', preco: '1299.00', contatos: null, whatsapp: 250, ia_cota: 2500, ia_teto: 25000 },
   ],
-  teste: { dias: 7, plano: 'essencial', whatsapp: 15, ia_teto: 800 },
-  ia_analises: { rapido: 1, equilibrado: 1, detalhado: 3 },
+  teste: { dias: 7, plano: 'essencial', whatsapp: 15, ia_teto: 800, ia_cota: 40 },
+  ia_analises: { rapido: 1, equilibrado: 1, detalhado: 4 },
+  descontos: { pix: 5, anual: 15 },
+  personalizado: {
+    base: '109.00',
+    faixas: [{ ate: 1500, preco: '20.00' }, { ate: 10000, preco: '12.00' }, { ate: null, preco: '7.00' }],
+    ia: [{ cota: 100, preco: '0.00' }, { cota: 500, preco: '40.00' }, { cota: 2000, preco: '150.00' }, { cota: 5000, preco: '300.00' }],
+    contatos_min: 100, contatos_max: 100000, passo: 100, whatsapp: null,
+  },
 }
 
 describe('números dos planos (etapa 5g)', () => {
@@ -78,7 +85,7 @@ describe('números dos planos (etapa 5g)', () => {
     expect(valorPublico(PLANOS_NOVOS, 'whatsapp.franquia.teste')).toBe(15)
     expect(valorPublico(PLANOS_NOVOS, 'teste.dias')).toBe(7)
     expect(valorPublico(PLANOS_NOVOS, 'teste.plano')).toBe('essencial')
-    expect(valorPublico(PLANOS_NOVOS, 'ia.analises.detalhado')).toBe(3)
+    expect(valorPublico(PLANOS_NOVOS, 'ia.analises.detalhado')).toBe(4)
     // O que não está lá (ou corpo estranho) fica undefined: o HTML não muda.
     expect(valorPublico(PLANOS_NOVOS, 'ia.cota.cortesia')).toBeUndefined()
     expect(valorPublico(PLANOS_NOVOS, 'ia.modelo.rapido')).toBeUndefined()
@@ -137,7 +144,7 @@ describe('index.html', () => {
   it('cada data-p traz o padrão do código, no formato da página', () => {
     document.body.innerHTML = corpo.replace(/<script[\s\S]*?<\/script>/g, '')
     const marcados = Array.from(document.querySelectorAll<HTMLElement>('[data-p]'))
-    expect(marcados).toHaveLength(37)
+    expect(marcados).toHaveLength(40)
     for (const el of marcados) {
       const chave = el.dataset.p!
       expect(chave in PADROES_SITE, chave).toBe(true)
@@ -147,8 +154,9 @@ describe('index.html', () => {
     expect(new Set(marcados.map((el) => el.dataset.p))).toEqual(new Set(Object.keys(PADROES_SITE)))
     expect(marcados.filter((el) => el.dataset.p === 'teste.dias')).toHaveLength(6)
     expect(marcados.filter((el) => el.dataset.p === 'planos.essencial.preco').map((el) => el.textContent)).toEqual(['149', '149'])
-    expect(document.querySelector('[data-p-maiuscula]')!.textContent).toBe('Sem limite')
-    expect(document.querySelector('[data-p="planos.empresa.contatos"]:not([data-p-maiuscula])')!.textContent).toBe('sem limite')
+    // Etapa 5k: WhatsApp sem franquia e o Empresa com 5.000 contatos
+    expect(document.querySelector('[data-p="whatsapp.franquia.essencial"]')!.textContent).toBe('Sem franquia')
+    expect(marcados.filter((el) => el.dataset.p === 'planos.empresa.contatos').map((el) => el.textContent)).toEqual(['5.000', '5.000'])
     document.body.innerHTML = ''
   })
   it('nos botões, o número fica dentro de um texto só (solto, ele vira item do flex e o gap abre espaço em volta)', () => {
@@ -177,7 +185,9 @@ describe('index.html', () => {
       'Começar 14 dias grátis',
       'Comece grátis por 14 dias',
       'Testar 14 dias grátis',
-      'No teste grátis valem 20 convites de WhatsApp automático e até 1.000 comentários lidos pela IA.',
+      'No teste grátis valem 50 perguntas ao ToqqiAI e até 500 comentários lidos pela IA.',
+      'pague por mês (3% de desconto no Pix) ou por ano (10% de desconto)',
+      'Base de R$ 99 por mês.',
       'Restam 497 de 500 perguntas no mês',
       'Contatos ativos1.500',
       '100/mês',
@@ -191,13 +201,13 @@ describe('index.html', () => {
     expect(html.slice(0, html.indexOf('<body>'))).not.toContain('14 dias')
     expect(corpo).toContain('ficam guardados por 90 dias; sem assinatura, a conta é excluída depois disso, com aviso por e-mail 7 dias antes.')
   })
-  it('a nota abaixo da tabela de planos: no nível Mais detalhado, cada pergunta, resumo ou parecer conta 2 (03/10)', () => {
+  it('a nota abaixo da tabela de planos: no nível Mais detalhado, cada pergunta, resumo ou parecer conta 3 (5k)', () => {
     const tabela = corpo.indexOf('id="tabela-planos"')
     const nota = corpo.indexOf('data-nota-ia')
     expect(tabela).toBeGreaterThan(-1)
     expect(nota).toBeGreaterThan(corpo.indexOf('</table>', tabela))
     expect(corpo).toContain(
-      'No nível “Mais detalhado” da IA, cada pergunta ao ToqqiAI, resumo ou parecer conta como <span data-p="ia.analises.detalhado">2</span>.',
+      'No nível “Mais detalhado” da IA, cada pergunta ao ToqqiAI, resumo ou parecer conta como <span data-p="ia.analises.detalhado">3</span>.',
     )
   })
 })
@@ -247,19 +257,24 @@ describe('comportamento da página', () => {
     expect(n['planos.essencial.contatos']).toEqual(['250', '250'])
     expect(n['planos.profissional.contatos']).toEqual(['2.000', '2.000'])
     expect(n['planos.empresa.contatos']).toEqual(['sem limite', 'Sem limite'])
+    expect(n['planos.desconto.pix']).toEqual(['5'])
+    expect(n['planos.desconto.anual']).toEqual(['15'])
+    expect(n['planos.personalizado.base']).toEqual(['109'])
+    // a calculadora segue a tabela de agora: 5.000 contatos e 2.000 perguntas = 109 + 15×20 + 35×12 + 150 = 979
+    expect(document.querySelector('[data-calc-preco]')!.textContent).toBe('979')
     expect(n['whatsapp.franquia.essencial']).toEqual(['35', '35'])
     expect(n['ia.cota.empresa']).toEqual(['2.500', '2.500'])
     expect(n['ia.teto.empresa']).toEqual(['25.000'])
-    expect(n['whatsapp.franquia.teste']).toEqual(['15'])
+    expect(n['ia.cota.teste']).toEqual(['40'])
     expect(n['ia.teto.teste']).toEqual(['800'])
-    expect(n['ia.analises.detalhado']).toEqual(['3'])
+    expect(n['ia.analises.detalhado']).toEqual(['4'])
     // A conversa: "de 800" (a cota do Profissional) e a contagem a partir dela.
     expect(n['ia.cota.profissional']).toEqual(['800', '800', '800'])
     const texto = (sel: string) => (document.querySelector(sel)!.textContent ?? '').replace(/\s+/g, ' ').trim()
     expect(texto('[data-nota-teste]')).toBe(
-      'No teste grátis valem 15 convites de WhatsApp automático e até 800 comentários lidos pela IA. As perguntas ao ToqqiAI seguem o plano escolhido para o teste.',
+      'No teste grátis valem 40 perguntas ao ToqqiAI e até 800 comentários lidos pela IA.',
     )
-    expect(texto('[data-nota-ia]')).toBe('No nível “Mais detalhado” da IA, cada pergunta ao ToqqiAI, resumo ou parecer conta como 3.')
+    expect(texto('[data-nota-ia]')).toBe('No nível “Mais detalhado” da IA, cada pergunta ao ToqqiAI, resumo ou parecer conta como 4.')
     expect(texto('#planos h2')).toBe('Comece grátis por 7 dias')
   })
 
@@ -326,7 +341,7 @@ describe('comportamento da página', () => {
     expect(n['planos.essencial.preco']).toEqual(['159', '159'])
     expect(n['teste.dias']).toEqual(antes()['teste.dias'])
     expect(n['planos.profissional.preco']).toEqual(['349', '349'])
-    expect(n['ia.analises.detalhado']).toEqual(['3'])
+    expect(n['ia.analises.detalhado']).toEqual(['4'])
   })
 
   it('passos: clique troca a cena e o tempo avança sozinho', async () => {

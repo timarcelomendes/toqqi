@@ -63,6 +63,8 @@ class Conta(Base):
     asaas_ambiente: Mapped[str | None] = mapped_column(Text)  # sandbox | producao (o do cliente acima)
     asaas_conferida_em: Mapped[date | None] = mapped_column(Date)  # última conferência diária (São Paulo)
     pago_ate: Mapped[date | None] = mapped_column(Date)  # último dia coberto por pagamento (inclusivo)
+    contatos_personalizado: Mapped[int | None] = mapped_column(Integer)  # etapa 5k: o contratado no Personalizado
+    cota_ia_personalizada: Mapped[int | None] = mapped_column(Integer)
     atrasada_desde: Mapped[date | None] = mapped_column(Date)  # vencimento da fatura em atraso mais antiga
     # cópia do primeiro vencimento da assinatura ativa (null sem assinatura ativa): a regra de "liberada" sai só da
     # linha da conta, lida a cada requisição
@@ -636,7 +638,11 @@ class Assinatura(Base):
     asaas_id: Mapped[str] = mapped_column(Text)
     ambiente: Mapped[str] = mapped_column(Text)  # sandbox | producao: o do Asaas em que ela existe
     plano: Mapped[str] = mapped_column(Text)
-    valor: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    valor: Mapped[Decimal] = mapped_column(Numeric(10, 2))  # o valor de cada fatura (por mês, ou o total do ano)
+    ciclo: Mapped[str] = mapped_column(Text, server_default="mensal")  # mensal | anual (etapa 5k)
+    forma: Mapped[str] = mapped_column(Text, server_default="qualquer")  # pix | qualquer (etapa 5k)
+    contatos: Mapped[int | None] = mapped_column(Integer)  # só no Personalizado (etapa 5k)
+    cota_ia: Mapped[int | None] = mapped_column(Integer)  # só no Personalizado (etapa 5k)
     situacao: Mapped[str] = mapped_column(Text, server_default="ativa")  # ativa | cancelada
     razao_social: Mapped[str] = mapped_column(Text)
     documento: Mapped[str] = mapped_column(Text)  # CPF (11 dígitos) ou CNPJ (14, alfanumérico em maiúsculas)

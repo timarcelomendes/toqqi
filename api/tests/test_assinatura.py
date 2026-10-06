@@ -66,7 +66,7 @@ def test_planos_para_qualquer_logado(client, admin):
     assert r.status_code == 200
     assert r.json() == [{"chave": "essencial", "nome": "Essencial", "preco": 149.0, "contatos": 300},
                         {"chave": "profissional", "nome": "Profissional", "preco": 349.0, "contatos": 1500},
-                        {"chave": "empresa", "nome": "Empresa", "preco": 799.0, "contatos": None}]
+                        {"chave": "empresa", "nome": "Empresa", "preco": 799.0, "contatos": 5000}]
     assert client.get(f"{API}/assinatura/planos").status_code == 401
 
 
@@ -95,7 +95,9 @@ def test_estado_inicial_e_dados_sugeridos(client, admin, dono, asaas_falso):
     d = estado(client, h)
     assert d["conta"] == {"situacao": "teste", "plano": "profissional", "teste_ate": "2026-10-15T17:30:00+00:00",
                           "pago_ate": None, "atrasada_desde": None, "liberada": True,
-                          "pausa_em": "2026-10-15T17:30:00+00:00"}
+                          "pausa_em": "2026-10-15T17:30:00+00:00", "contatos_personalizado": None,
+                          "cota_ia_personalizada": None}
+    assert d["descontos"] == {"pix": 3, "anual": 10} and d["personalizado"]["base"] == 99.0
     assert d["contatos_ativos"] == 1 and d["disponivel"] is True and len(d["planos"]) == 3
     assert d["dados_sugeridos"] == {"razao_social": "Alfa Distribuidora Ltda", "documento": "11222333000181",
                                     "email_cobranca": "ana@alfa.com.br", "telefone": "551140001234"}
@@ -131,7 +133,8 @@ def test_assinar_durante_o_teste(client, admin, dono, asaas_falso):
     assert r.status_code == 201, r.text
     d = r.json()
     assert d["assinatura"] == {
-        "plano": "essencial", "valor": 149.0, "situacao": "ativa", "criada_em": "2026-10-10T13:00:00+00:00",
+        "plano": "essencial", "nome": "Essencial", "valor": 149.0, "ciclo": "mensal", "forma": "qualquer",
+        "contatos": None, "cota_ia": None, "situacao": "ativa", "criada_em": "2026-10-10T13:00:00+00:00",
         "cancelada_em": None, "primeiro_vencimento": "2026-10-15",
         "dados": {"razao_social": "Alfa Distribuidora Ltda", "documento": "11222333000181",
                   "email_cobranca": "financeiro@alfa.com.br", "telefone": "5511987654321"}}

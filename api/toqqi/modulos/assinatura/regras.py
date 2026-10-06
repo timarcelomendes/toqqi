@@ -53,9 +53,14 @@ def mais_um_mes(d: date) -> date:
     return date(ano, mes, min(d.day, calendar.monthrange(ano, mes)[1]))
 
 
-def fim_do_periodo_pago(vencimento: date) -> date:
-    """Último dia coberto pelo pagamento de uma fatura: vencimento + 1 mês − 1 dia."""
-    return mais_um_mes(vencimento) - timedelta(days=1)
+def mais_um_ano(d: date) -> date:
+    """Mesmo dia no ano seguinte (29/02 → 28/02)."""
+    return date(d.year + 1, d.month, min(d.day, calendar.monthrange(d.year + 1, d.month)[1]))
+
+
+def fim_do_periodo_pago(vencimento: date, ciclo: str = "mensal") -> date:
+    """Último dia coberto pelo pagamento de uma fatura: vencimento + 1 mês (ou + 1 ano, no anual) − 1 dia."""
+    return (mais_um_ano(vencimento) if ciclo == "anual" else mais_um_mes(vencimento)) - timedelta(days=1)
 
 
 def ultimo_dia_do_teste(conta: Conta) -> date | None:

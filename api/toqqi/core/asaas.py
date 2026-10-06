@@ -215,14 +215,20 @@ def valor_json(valor: Decimal) -> float:
     return float(valor.quantize(Decimal("0.01")))
 
 
-def corpo_assinatura(cliente_id: str, valor: Decimal, vencimento: date, descricao: str, referencia: str) -> dict:
-    return {"customer": cliente_id, "billingType": "UNDEFINED", "value": valor_json(valor),
-            "nextDueDate": vencimento.isoformat(), "cycle": "MONTHLY", "description": descricao,
+CICLOS = {"mensal": "MONTHLY", "anual": "YEARLY"}
+COBRANCA = {"pix": "PIX", "qualquer": "UNDEFINED"}  # qualquer = a fatura deixa escolher Pix, boleto ou cartão
+
+
+def corpo_assinatura(cliente_id: str, valor: Decimal, vencimento: date, descricao: str, referencia: str,
+                     ciclo: str = "mensal", forma: str = "qualquer") -> dict:
+    return {"customer": cliente_id, "billingType": COBRANCA[forma], "value": valor_json(valor),
+            "nextDueDate": vencimento.isoformat(), "cycle": CICLOS[ciclo], "description": descricao,
             "externalReference": referencia}
 
 
-def criar_assinatura(cliente_id: str, valor: Decimal, vencimento: date, descricao: str, referencia: str) -> str:
-    corpo = corpo_assinatura(cliente_id, valor, vencimento, descricao, referencia)
+def criar_assinatura(cliente_id: str, valor: Decimal, vencimento: date, descricao: str, referencia: str,
+                     ciclo: str = "mensal", forma: str = "qualquer") -> str:
+    corpo = corpo_assinatura(cliente_id, valor, vencimento, descricao, referencia, ciclo, forma)
     return _id_criado(_chamar("POST", "/subscriptions", corpo), "POST", "/subscriptions")
 
 

@@ -115,7 +115,7 @@ def visao() -> dict:
             "convites_30d": convites.get(c.id, 0), "respostas_30d": respostas.get(c.id, (0, 0))[1],
             "respostas_total": respostas.get(c.id, (0, 0))[0], "ativacao": ativacao(c.id),
             "ia_analises_mes": ia.get(c.id, 0), "origem": rotulo_origem(c),
-            "assinatura": {"plano": a.plano, "valor": a.valor} if a is not None else None,
+            "assinatura": {"plano": a.plano, "valor": a.valor, "ciclo": a.ciclo} if a is not None else None,
         })
 
     limite = agora + timedelta(days=DIAS_ACABANDO)
@@ -172,7 +172,8 @@ def visao() -> dict:
         "origens": origens,
         "totais": {
             "contas": len(contas), "por_situacao": por_situacao, "pagantes": len(ativas),
-            "receita_mensal": sum((a.valor for a in ativas.values()), Decimal("0.00")),
+            "receita_mensal": sum(((a.valor / 12).quantize(Decimal("0.01")) if a.ciclo == "anual" else a.valor
+                                   for a in ativas.values()), Decimal("0.00")),  # 5k: o anual entra por mês
             "ambiente": asaas.ambiente(),
             "novas_7d": sum(1 for c in contas if c.criada_em >= agora - timedelta(days=7)),
             "novas_30d": sum(1 for c in contas if c.criada_em >= trinta),

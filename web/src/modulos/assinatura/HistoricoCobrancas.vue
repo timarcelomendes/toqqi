@@ -12,7 +12,7 @@ import Etiqueta from '@/components/ui/Etiqueta.vue'
 import Tabela, { type Coluna } from '@/components/ui/Tabela.vue'
 import { linkDaCobranca, rotuloForma, situacaoCobranca, textoPeriodo } from './logica'
 
-const props = defineProps<{ cobrancas: CobrancaAssinatura[] }>()
+const props = withDefaults(defineProps<{ cobrancas: CobrancaAssinatura[]; ciclo?: 'mensal' | 'anual' }>(), { ciclo: 'mensal' })
 
 // As cobranças não têm id na API: a posição na lista serve de chave.
 const linhas = computed(() => props.cobrancas.map((c, i) => ({ ...c, posicao: i, link: linkDaCobranca(c) })))
@@ -35,7 +35,7 @@ const chave = (c: Linha) => c.posicao
       <Tabela :colunas="colunas" :linhas="linhas" :chave="chave" legenda="Histórico de cobranças">
         <template #cel-vencimento="{ linha: c }">
           <span class="block whitespace-nowrap font-semibold text-texto">{{ formatarData(c.vencimento) }}</span>
-          <span class="block whitespace-nowrap text-xs text-texto-suave" data-periodo>cobre {{ textoPeriodo(c.vencimento, true) }}</span>
+          <span class="block whitespace-nowrap text-xs text-texto-suave" data-periodo>cobre {{ textoPeriodo(c.vencimento, true, ciclo) }}</span>
         </template>
         <template #cel-valor="{ linha: c }">
           <span class="whitespace-nowrap tabular-nums text-texto">{{ formatarMoeda(c.valor) }}</span>
@@ -64,7 +64,7 @@ const chave = (c: Linha) => c.posicao
           </p>
           <Etiqueta :tom="situacaoCobranca(c.situacao).tom" ponto>{{ situacaoCobranca(c.situacao).rotulo }}</Etiqueta>
         </div>
-        <p class="text-sm text-texto-suave" data-periodo>Cobre de {{ textoPeriodo(c.vencimento) }}</p>
+        <p class="text-sm text-texto-suave" data-periodo>Cobre de {{ textoPeriodo(c.vencimento, false, ciclo) }}</p>
         <p v-if="rotuloForma(c) !== '—' || c.pago_em" class="text-sm text-texto-suave">
           {{ rotuloForma(c) }}<template v-if="c.pago_em"> · paga em {{ formatarData(c.pago_em) }}</template>
         </p>

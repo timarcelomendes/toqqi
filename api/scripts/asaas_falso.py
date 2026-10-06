@@ -97,7 +97,8 @@ def criar_app(webhook_url: str | None = None, webhook_token: str | None = None, 
         pid = novo_id("pay")
         p = {"object": "payment", "id": pid, "dateCreated": hoje().isoformat(), "customer": assinatura["customer"],
              "subscription": assinatura["id"], "value": assinatura["value"],
-             "netValue": round(assinatura["value"] - 0.99, 2), "billingType": "UNDEFINED", "status": "PENDING",
+             "netValue": round(assinatura["value"] - 0.99, 2), "billingType": assinatura.get("billingType", "UNDEFINED"),
+             "status": "PENDING",
              "dueDate": vencimento.isoformat(), "originalDueDate": vencimento.isoformat(), "paymentDate": None,
              "clientPaymentDate": None, "invoiceUrl": f"{url_publica}/fatura/{pid}", "deleted": False,
              "description": assinatura["description"], "externalReference": assinatura["externalReference"]}
@@ -273,7 +274,9 @@ def criar_app(webhook_url: str | None = None, webhook_token: str | None = None, 
         if a is None or a["deleted"]:
             return _erro(404, "not_found", "Assinatura não encontrada.")
         ultima = max(date.fromisoformat(p["dueDate"]) for p in cobrancas.values() if p["subscription"] == sid)
-        p = nova_cobranca(a, _mais_um_mes(ultima))
+        proximo = (ultima.replace(year=ultima.year + 1) if not (ultima.month == 2 and ultima.day == 29)
+                   else ultima.replace(year=ultima.year + 1, day=28)) if a.get("cycle") == "YEARLY" else _mais_um_mes(ultima)
+        p = nova_cobranca(a, proximo)
         a["nextDueDate"] = p["dueDate"]
         return {"cobranca": p, **avisar("PAYMENT_CREATED", p)}
 

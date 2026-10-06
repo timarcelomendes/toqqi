@@ -5,7 +5,7 @@ import { CheckCircle2, Gauge, MessageCircle, Send, Unplug } from 'lucide-vue-nex
 import { mensagemDoErro, whatsappAutomaticoApi, type WhatsappIntegracao } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
-import { formatarMoeda, telefoneWhatsapp } from '@/utils/formatos'
+import { formatarMoeda, formatarNumero, telefoneWhatsapp } from '@/utils/formatos'
 import { formatarTelefone } from '@/utils/validacao'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
@@ -150,12 +150,16 @@ async function desconectar() {
     <section class="cartao grid gap-6 p-5 sm:p-6 md:grid-cols-3" aria-labelledby="t-wa-franquia">
       <div>
         <div class="mb-3 flex size-10 items-center justify-center rounded-xl bg-marca-suave text-marca-texto"><Gauge class="size-5" aria-hidden="true" /></div>
-        <h2 id="t-wa-franquia" class="text-base font-bold text-texto">Franquia do mês</h2>
-        <p class="mt-1 text-sm text-texto-suave">
+        <h2 id="t-wa-franquia" class="text-base font-bold text-texto">{{ franquia.semLimite ? 'Mensagens do mês' : 'Franquia do mês' }}</h2>
+        <p v-if="!franquia.semLimite" class="mt-1 text-sm text-texto-suave">
           Seu plano inclui {{ dados.franquia.limite }} pesquisas por WhatsApp automático por mês. Os administradores recebem um e-mail aos 80% e quando acabar.
         </p>
       </div>
-      <div class="flex flex-col gap-4 md:col-span-2">
+      <div v-if="franquia.semLimite" class="flex flex-col gap-2 md:col-span-2" data-sem-franquia>
+        <p class="text-2xl font-bold tabular-nums text-texto">{{ formatarNumero(franquia.usadas) }} <span class="text-sm font-normal text-texto-suave">{{ franquia.usadas === 1 ? 'mensagem enviada neste mês' : 'mensagens enviadas neste mês' }}</span></p>
+        <p class="text-sm text-texto-suave">{{ explicacaoFranquia(dados.franquia) }}</p>
+      </div>
+      <div v-else class="flex flex-col gap-4 md:col-span-2">
         <BarraFranquia :franquia="dados.franquia" />
         <Alerta v-if="franquia.nivel !== 'ok'" :tom="franquia.nivel === 'esgotada' ? 'erro' : 'atencao'">{{ explicacaoFranquia(dados.franquia) }}</Alerta>
         <p v-else class="text-sm text-texto-suave">{{ explicacaoFranquia(dados.franquia) }}</p>

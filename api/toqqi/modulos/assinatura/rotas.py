@@ -6,7 +6,8 @@ from fastapi.concurrency import run_in_threadpool
 
 from toqqi.core.deps import Contexto, requer
 from toqqi.core.errors import AppError, nao_encontrado
-from toqqi.core.planos import planos_json
+from toqqi.core.planos import Contrato, planos_json, preco_mensal, valor_contrato
+from toqqi.core.planos import descricao as descricao_contrato
 from toqqi.core.rate_limit import LIMITE_ASAAS_WEBHOOK, limiter
 from toqqi.modulos.assinatura import servico, webhook
 from toqqi.modulos.assinatura.esquemas import AssinarIn, DadosCobrancaIn, PlanoIn
@@ -22,6 +23,14 @@ def planos(ctx: Contexto = Depends(requer())):
     return planos_json()
 
 
+@router.get("/preco")
+def preco(plano: str, ciclo: str = "mensal", forma: str = "qualquer", contatos: int | None = None,
+          cota_ia: int | None = None, ctx: Contexto = Depends(requer())):
+    """Etapa 5k: o valor de cada fatura de um contrato (a calculadora da tela faz a mesma conta; esta rota é a prova)."""
+    c = servico.contrato_valido(Contrato(plano, ciclo, forma, contatos, cota_ia))
+    return {"valor": valor_contrato(c), "por_mes": preco_mensal(c), "descricao": descricao_contrato(c)}
+
+
 @router.get("")
 def obter(ctx: Contexto = Depends(GERENCIAR)):
     return servico.obter(ctx)
@@ -34,7 +43,7 @@ def assinar(dados: AssinarIn, ctx: Contexto = Depends(GERENCIAR)):
 
 @router.put("/plano")
 def trocar_plano(dados: PlanoIn, ctx: Contexto = Depends(GERENCIAR)):
-    return servico.trocar_plano(ctx, dados.plano, dados.preco)
+    return servico.trocar_plano(ctx, dados.plano, dados.preco, dados.contatos, dados.cota_ia)
 
 
 @router.put("/dados")

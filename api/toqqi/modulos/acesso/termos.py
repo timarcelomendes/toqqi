@@ -21,8 +21,9 @@ from toqqi.modelos import AceiteTermos, Usuario
 # de acesso (6 meses), exclusão automática 90 dias depois do fim do período pago ou do teste e portabilidade; 5 (03/10):
 # nos Termos, o nível "Mais detalhado" da IA gasta 2 análises da cota por resumo, parecer ou pergunta; 6 (etapa 5g):
 # nos Termos, o preço é o da contratação (só muda por reajuste) e limites e cotas podem mudar, com aviso; a IA usa as
-# análises do nível escolhido (a tela mostra quantas)
-VERSAO_DOCUMENTOS = 6
+# análises do nível escolhido (a tela mostra quantas); 7 (etapa 5k): Personalizado, mensal ou anual (Pix com desconto),
+# trocar forma ou ciclo = cancelar e assinar de novo, WhatsApp cobrado pela Meta direto da Empresa
+VERSAO_DOCUMENTOS = 7
 
 AGENTE_MAX = 400
 ORIGENS = ("cadastro", "tela")

@@ -10,6 +10,10 @@ Etapa 5g: as franquias são parâmetros da plataforma (`whatsapp.franquia.{plano
 Essencial 40, Profissional 90, Empresa 200, Cortesia 200 e teste 20) e valem na próxima reserva. Abaixo do já usado no
 mês: sem franquia até o mês virar (e-mail ou excedente), e a primeira reserva sem franquia manda uma vez o aviso de
 "acabou" (pelo `avisou_100`); subir libera na hora. O excedente (R$ 1,50) fica no código.
+
+Etapa 5k: o padrão é **sem franquia** (None) em todos os planos: o número é do cliente e a Meta cobra a conta dele. Sem
+franquia, toda reserva passa (conta em `usadas`, para o histórico), sem avisos nem excedente; o mecanismo segue para
+quando a equipe definir um número em Plataforma › Parâmetros.
 """
 import math
 
@@ -23,14 +27,15 @@ from toqqi.core.config import config
 from toqqi.modelos import Conta, WhatsappConta, WhatsappUso
 
 VALOR_EXCEDENTE = 1.50
-FRANQUIAS = ("essencial", "profissional", "empresa", "cortesia", "teste")
+FRANQUIAS = parametros.FRANQUIAS_DE
 
 
 def plano_da_franquia(conta: Conta) -> str:
     return conta.situacao if conta.situacao in ("cortesia", "teste") else conta.plano
 
 
-def limite(conta: Conta) -> int:
+def limite(conta: Conta) -> int | None:
+    """Mensagens por mês (None = sem franquia)."""
     plano = plano_da_franquia(conta)
     return parametros.valor(f"whatsapp.franquia.{plano}") if plano in FRANQUIAS else 0
 
@@ -70,6 +75,9 @@ def reservar(s: Session, wc: WhatsappConta) -> str | None:
     """Gasta uma mensagem do mês: "franquia", "excedente" ou None (acabou e o excedente está desligado)."""
     lim = limite(s.scalar(select(Conta)))
     uso = _uso(s, travar=True)
+    if lim is None:  # sem franquia (padrão da 5k)
+        uso.usadas += 1
+        return "franquia"
     if uso.usadas < lim:
         uso.usadas += 1
         _avisar(s, uso, lim, wc)

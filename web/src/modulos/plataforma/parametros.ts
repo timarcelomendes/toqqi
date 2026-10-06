@@ -54,7 +54,7 @@ export const OPCOES_EXCLUSAO = [
 
 // ── Catálogo ────────────────────────────────────────────────────────────────
 
-export type TipoCampo = 'dinheiro' | 'contatos' | 'inteiro' | 'modelo' | 'esforco' | 'plano' | 'exclusao'
+export type TipoCampo = 'dinheiro' | 'contatos' | 'limite' | 'inteiro' | 'modelo' | 'esforco' | 'plano' | 'exclusao'
 
 export interface CampoParametro {
   chave: string
@@ -79,19 +79,35 @@ function campo(c: CampoParametro): CampoParametro {
 
 const DE_PLANO = (p: { chave: string; nome: string }) => `do ${p.nome}`
 
+/** Etapa 5k: a tabela do Personalizado (preços em reais). */
+const PERSONALIZADO = [
+  { chave: 'base', rotulo: 'Base por mês', nome: 'Base do Personalizado' },
+  { chave: 'ate_1500', rotulo: 'Cada 100 contatos, até 1.500', nome: 'Personalizado: cada 100 contatos até 1.500' },
+  { chave: 'ate_10000', rotulo: 'Cada 100, de 1.501 a 10.000', nome: 'Personalizado: cada 100 contatos de 1.501 a 10.000' },
+  { chave: 'acima', rotulo: 'Cada 100, acima de 10.000', nome: 'Personalizado: cada 100 contatos acima de 10.000' },
+  { chave: 'ia_500', rotulo: 'ToqqiAI: 500 perguntas', nome: 'Personalizado: pacote de 500 perguntas' },
+  { chave: 'ia_2000', rotulo: 'ToqqiAI: 2.000 perguntas', nome: 'Personalizado: pacote de 2.000 perguntas' },
+  { chave: 'ia_5000', rotulo: 'ToqqiAI: 5.000 perguntas', nome: 'Personalizado: pacote de 5.000 perguntas' },
+] as const
+
 /** Todas as chaves do §2, na ordem da tela. */
 export const CAMPOS: CampoParametro[] = [
   ...PLANOS.flatMap((p) => [
     campo({ chave: `planos.${p.chave}.preco`, grupo: 'planos', tipo: 'dinheiro', rotulo: 'Preço por mês', nome: `Preço ${DE_PLANO(p)}`, min: 5, max: 99_999.99 }),
     campo({ chave: `planos.${p.chave}.contatos`, grupo: 'planos', tipo: 'contatos', rotulo: 'Contatos ativos', nome: `Contatos ${DE_PLANO(p)}`, min: 1, max: 1_000_000, peso: 'contatos' }),
   ]),
-  ...[...PLANOS, { chave: 'cortesia', nome: 'Cortesia' }].map((p) =>
+  campo({ chave: 'planos.desconto.pix', grupo: 'planos', tipo: 'inteiro', rotulo: 'Pix no mensal (%)', nome: 'Desconto no Pix (%)', min: 0, max: 30 }),
+  campo({ chave: 'planos.desconto.anual', grupo: 'planos', tipo: 'inteiro', rotulo: 'Anual (%)', nome: 'Desconto no anual (%)', min: 0, max: 50 }),
+  ...PERSONALIZADO.map((p) =>
+    campo({ chave: `planos.personalizado.${p.chave}`, grupo: 'planos', tipo: 'dinheiro', rotulo: p.rotulo, nome: p.nome, min: 5, max: 99_999.99 }),
+  ),
+  ...[...PLANOS, { chave: 'cortesia', nome: 'Cortesia' }, { chave: 'teste', nome: 'Teste' }].map((p) =>
     campo({
       chave: `ia.cota.${p.chave}`,
       grupo: 'ia',
       tipo: 'inteiro',
       rotulo: p.nome,
-      nome: p.chave === 'cortesia' ? 'Cota de IA da cortesia' : `Cota de IA ${DE_PLANO(p)}`,
+      nome: p.chave === 'cortesia' ? 'Cota de IA da cortesia' : p.chave === 'teste' ? 'Cota de IA do teste' : `Cota de IA ${DE_PLANO(p)}`,
       min: 0,
       max: 100_000,
       peso: 'uso',
@@ -114,11 +130,11 @@ export const CAMPOS: CampoParametro[] = [
       peso: 'uso',
     }),
   ),
-  ...[...PLANOS, { chave: 'cortesia', nome: 'Cortesia' }, { chave: 'teste', nome: 'Teste' }].map((p) =>
+  ...[...PLANOS, { chave: 'personalizado', nome: 'Personalizado' }, { chave: 'cortesia', nome: 'Cortesia' }, { chave: 'teste', nome: 'Teste' }].map((p) =>
     campo({
       chave: `whatsapp.franquia.${p.chave}`,
       grupo: 'whatsapp',
-      tipo: 'inteiro',
+      tipo: 'limite',
       rotulo: p.nome,
       nome: p.chave === 'cortesia' ? 'Franquia de WhatsApp da cortesia' : p.chave === 'teste' ? 'Franquia de WhatsApp do teste' : `Franquia de WhatsApp ${DE_PLANO(p)}`,
       min: 0,
@@ -161,15 +177,19 @@ export interface LayoutGrupo {
 
 export const LAYOUT_GRUPOS: Record<GrupoParametros, LayoutGrupo> = {
   planos: {
-    descricao: 'Preço e limite de contatos ativos de cada plano.',
-    blocos: PLANOS.map((p) => ({ legenda: p.nome, chaves: [`planos.${p.chave}.preco`, `planos.${p.chave}.contatos`] })),
+    descricao: 'Preço e limite de contatos ativos de cada plano, os descontos (Pix e anual) e a tabela do Personalizado.',
+    blocos: [
+      ...PLANOS.map((p) => ({ legenda: p.nome, chaves: [`planos.${p.chave}.preco`, `planos.${p.chave}.contatos`] })),
+      { legenda: 'Descontos', chaves: ['planos.desconto.pix', 'planos.desconto.anual'] },
+      { legenda: 'Personalizado', chaves: PERSONALIZADO.map((p) => `planos.personalizado.${p.chave}`) },
+    ],
     ladoALado: true,
-    nota: 'O preço novo vale para assinaturas novas e trocas de plano. Quem já assina continua com o valor contratado.',
+    nota: 'O preço novo vale para assinaturas novas e trocas de plano. Quem já assina continua com o valor contratado. O anual não soma o desconto do Pix.',
   },
   ia: {
     descricao: 'Cotas, modelos e tetos de segurança da inteligência artificial.',
     blocos: [
-      { legenda: 'Análises por mês (cota do plano)', chaves: ['essencial', 'profissional', 'empresa', 'cortesia'].map((p) => `ia.cota.${p}`) },
+      { legenda: 'Análises por mês (cota do plano)', chaves: ['essencial', 'profissional', 'empresa', 'cortesia', 'teste'].map((p) => `ia.cota.${p}`) },
       {
         legenda: 'Níveis de modelo',
         chaves: [],
@@ -183,9 +203,9 @@ export const LAYOUT_GRUPOS: Record<GrupoParametros, LayoutGrupo> = {
     nota: 'Ao salvar um modelo ou esforço novo, o Toqqi faz uma chamada curta à OpenAI para conferir.',
   },
   whatsapp: {
-    descricao: 'Franquia do WhatsApp automático de cada plano.',
-    blocos: [{ legenda: 'Mensagens por mês', chaves: ['essencial', 'profissional', 'empresa', 'cortesia', 'teste'].map((p) => `whatsapp.franquia.${p}`) }],
-    nota: null,
+    descricao: 'Franquia do WhatsApp automático de cada plano. O padrão é sem franquia: as mensagens saem pelo número do cliente e a Meta cobra a conta dele.',
+    blocos: [{ legenda: 'Mensagens por mês', chaves: ['essencial', 'profissional', 'empresa', 'personalizado', 'cortesia', 'teste'].map((p) => `whatsapp.franquia.${p}`) }],
+    nota: 'Com franquia, quem passa dela segue por e-mail (ou pelo excedente de R$ 1,50 por mensagem, se ligar).',
   },
   teste: {
     descricao: 'O teste grátis das contas novas e a exclusão das contas encerradas.',
@@ -220,6 +240,7 @@ export function formatarValor(chave: string, v: ValorParametro | undefined): str
     case 'dinheiro':
       return formatarMoeda(v)
     case 'contatos':
+    case 'limite':
       return v === null ? 'sem limite' : formatarNumero(inteiroDe(v))
     case 'inteiro':
       return formatarNumero(inteiroDe(v))
@@ -238,7 +259,7 @@ export function formatarValor(chave: string, v: ValorParametro | undefined): str
 export function mesmoValor(chave: string, a: ValorParametro | undefined, b: ValorParametro | undefined): boolean {
   const c = campoDaChave(chave)
   if (c?.tipo === 'dinheiro') return centavos(a) === centavos(b)
-  if (c?.tipo === 'contatos' || c?.tipo === 'inteiro') return inteiroDe(a) === inteiroDe(b)
+  if (c?.tipo === 'contatos' || c?.tipo === 'limite' || c?.tipo === 'inteiro') return inteiroDe(a) === inteiroDe(b)
   return (a ?? null) === (b ?? null)
 }
 
@@ -263,7 +284,7 @@ export function formDe(dados: Pick<GrupoParametrosPlataforma, 'grupo' | 'valores
   for (const c of camposDoGrupo(dados.grupo)) {
     const v = dados.valores[c.chave]
     form.textos[c.chave] = textoDoCampo(c.chave, v)
-    if (c.tipo === 'contatos') form.semLimite[c.chave] = v === null
+    if (c.tipo === 'contatos' || c.tipo === 'limite') form.semLimite[c.chave] = v === null
   }
   return form
 }
@@ -272,7 +293,7 @@ export function formDe(dados: Pick<GrupoParametrosPlataforma, 'grupo' | 'valores
 export function aplicarPadrao(form: FormParametros, chave: string, padrao: ValorParametro | undefined): void {
   const c = campoDaChave(chave)
   form.textos[chave] = textoDoCampo(chave, padrao)
-  if (c?.tipo === 'contatos') form.semLimite[chave] = padrao === null
+  if (c?.tipo === 'contatos' || c?.tipo === 'limite') form.semLimite[chave] = padrao === null
 }
 
 /** Milhar com ponto ("1.500", "1.000.000"), como em `lerMoeda`. */
@@ -329,12 +350,16 @@ export function lerCampo(form: FormParametros, chave: string): { valor: ValorPar
       return { valor: n.toFixed(2) }
     }
     case 'contatos':
+    case 'limite':
     case 'inteiro': {
-      if (c.tipo === 'contatos' && form.semLimite[chave]) return { valor: null }
+      if (c.tipo !== 'inteiro' && form.semLimite[chave]) return { valor: null }
       const n = lerInteiro(texto)
       const min = c.min ?? 0
       const max = c.max ?? Number.MAX_SAFE_INTEGER
-      if (n === null || n < min || n > max) return { erro: c.tipo === 'contatos' ? MENSAGENS_PARAMETROS.contatos : mensagemInteiro(min, max) }
+      if (n === null || n < min || n > max) {
+        if (c.tipo === 'contatos') return { erro: MENSAGENS_PARAMETROS.contatos }
+        return { erro: c.tipo === 'limite' ? `${mensagemInteiro(min, max).slice(0, -1)}, ou marque “Sem limite”.` : mensagemInteiro(min, max) }
+      }
       return { valor: n }
     }
     case 'modelo': {
@@ -421,7 +446,8 @@ export function textoAlterado(g: Pick<GrupoParametrosPlataforma, 'alterado_em' |
 
 /** "Padrão: R$ 149,00, do código." (ligado ao campo por aria-describedby). */
 export function textoPadrao(chave: string, padrao: ValorParametro | undefined, origem: string | undefined): string {
-  const valor = campoDaChave(chave)?.tipo === 'contatos' && padrao === null ? 'sem limite' : formatarValor(chave, padrao)
+  const tipo = campoDaChave(chave)?.tipo
+  const valor = (tipo === 'contatos' || tipo === 'limite') && padrao === null ? 'sem limite' : formatarValor(chave, padrao)
   if (origem === 'codigo') return `Padrão: ${valor}, do código.`
   if (origem === 'ambiente') return `Padrão: ${valor}, da variável de ambiente.`
   if (origem === 'banco') return `Padrão: ${valor}. O valor em uso foi salvo aqui.`
@@ -450,7 +476,7 @@ export function diminui(m: MudancaParametro): boolean {
   const c = campoDaChave(m.chave)
   if (!c?.peso) return false
   if (c.peso === 'analises') return (inteiroDe(m.para) ?? 0) > (inteiroDe(m.de) ?? 0)
-  if (c.peso === 'contatos') return limiteComparavel(m.para) < limiteComparavel(m.de)
+  if (c.peso === 'contatos' || c.tipo === 'limite') return limiteComparavel(m.para) < limiteComparavel(m.de)
   return (inteiroDe(m.para) ?? 0) < (inteiroDe(m.de) ?? 0)
 }
 
@@ -458,7 +484,7 @@ export function diminui(m: MudancaParametro): boolean {
 export function textoImpacto(m: MudancaParametro, impacto: ImpactoParametro | undefined): string | null {
   const c = campoDaChave(m.chave)
   if (!c) return null
-  if (c.tipo === 'dinheiro') return 'Vale para assinaturas novas e trocas de plano.'
+  if (c.tipo === 'dinheiro' || m.chave.startsWith('planos.desconto.')) return 'Vale para assinaturas novas e trocas de plano.'
   if (c.tipo === 'exclusao' && m.para === 'ligada' && m.de !== 'ligada') {
     return 'Na próxima rodada (9h), contas encerradas há 90 dias passam a ser avisadas e excluídas de vez.'
   }

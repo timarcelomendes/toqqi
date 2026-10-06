@@ -46,7 +46,7 @@ from toqqi.core.auditoria import registrar
 from toqqi.core.db import apos_commit, modo_sistema, travar
 from toqqi.core.deps import Contexto, requer_superadmin
 from toqqi.core.errors import AppError, nao_encontrado
-from toqqi.core.planos import PLANOS
+from toqqi.core.planos import PLANOS, descontos_json, personalizado_json
 from toqqi.core.rate_limit import LIMITE_PLANOS_PUBLICOS, limiter
 from toqqi.modelos import Conta, Contato, IaUsoMensal, Parametro, ParametroHistorico, WhatsappUso
 from toqqi.modulos.ia import cota, regras
@@ -127,14 +127,15 @@ def _mudancas_json(mudancas: list[tuple[str, Any, Any]]) -> list[dict]:
 
 
 def _diminuiu(chave: str, de, para) -> bool:
-    if chave.endswith(".contatos"):
+    if chave.endswith(".contatos") or chave.startswith("whatsapp.franquia."):  # None = sem limite (o maior)
         return parametros._maior(de, para)
     return para < de
 
 
 def _familia(chave: str) -> str | None:
-    if chave.startswith("planos.") and chave.endswith(".preco"):
-        return "preco"
+    if chave.startswith("planos.") and (chave.endswith(".preco") or chave.startswith(("planos.desconto.",
+                                                                                       "planos.personalizado."))):
+        return "preco"  # preços, descontos e a tabela do Personalizado (5k): pedem confirmação, sem impacto
     if chave.startswith("planos.") and chave.endswith(".contatos"):
         return "contatos"
     for prefixo in ("ia.cota.", "ia.teto.", "whatsapp.franquia.", "ia.analises."):
@@ -351,8 +352,10 @@ def planos_publicos() -> dict:
                     "whatsapp": v(f"whatsapp.franquia.{c}"), "ia_cota": v(f"ia.cota.{c}"), "ia_teto": v(f"ia.teto.{c}")}
                    for c, n in PLANOS],
         "teste": {"dias": v("teste.dias"), "plano": v("teste.plano"), "whatsapp": v("whatsapp.franquia.teste"),
-                  "ia_teto": v("ia.teto.teste")},
+                  "ia_teto": v("ia.teto.teste"), "ia_cota": v("ia.cota.teste")},
         "ia_analises": {n: v(f"ia.analises.{n}") for n in ia_texto.NIVEIS},
+        "descontos": descontos_json(),
+        "personalizado": {**personalizado_json(), "whatsapp": v("whatsapp.franquia.personalizado")},
     }
 
 

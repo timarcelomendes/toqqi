@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from util import (
+    gravar_parametro,
     API,
     FUSO,
     PNID,
@@ -73,7 +74,7 @@ def test_conectar_confere_na_meta_e_guarda_o_token_cifrado(client, admin, meta, 
     h = admin["h"]
     d = ver(client, h)
     assert d["conectado"] is False and d["modelo"] is None and d["ativo"] is False
-    assert d["franquia"] == {"plano": "cortesia", "limite": 200, "usadas_mes": 0, "excedente_ativo": False,
+    assert d["franquia"] == {"plano": "cortesia", "limite": None, "usadas_mes": 0, "excedente_ativo": False,
                              "excedentes_mes": 0, "valor_excedente": 1.5}
     assert d["webhook_url"] == f"{config().API_PUBLIC_URL.rstrip('/')}/api/v1/publico/whatsapp/webhook"
     assert d["webhook_verificacao"] == VERIFY_TOKEN
@@ -264,6 +265,7 @@ def test_franquia_avisos_queda_para_email_e_excedente(client, admin, meta, dono)
     h = admin["h"]
     conta = admin["conta"]["id"]
     sql(dono, "update contas set situacao = 'teste', teste_ate = now() + interval '10 days' where id = :c", c=conta)
+    gravar_parametro(dono, "whatsapp.franquia.teste", 20)  # 5k: sem franquia por padrão; a equipe pode definir
     ligar(client, h)
     chave = gerar_chave(client, h)
     assert ver(client, h)["franquia"]["limite"] == 20 and ver(client, h)["franquia"]["plano"] == "teste"
@@ -419,3 +421,18 @@ def test_franquia_conta_por_mes(client, admin, meta, dono, monkeypatch):
     disparar(client, h, [c["id"]], ignorar_descanso=True)
     assert sql(dono, "select mes, usadas from whatsapp_uso order by mes") == [("2026-09", 1), ("2026-10", 1)]
     assert ver(client, h)["franquia"]["usadas_mes"] == 1
+
+
+def test_sem_franquia_por_padrao_conta_e_nao_avisa(client, admin, meta, dono):
+    """Etapa 5k: o padrão é sem franquia (a Meta cobra a conta do cliente): tudo sai pelo WhatsApp, sem aviso."""
+    h = admin["h"]
+    conta = admin["conta"]["id"]
+    sql(dono, "update contas set situacao = 'teste', teste_ate = now() + interval '10 days' where id = :c", c=conta)
+    ligar(client, h)
+    chave = gerar_chave(client, h)
+    sql(dono, "insert into whatsapp_uso (conta_id, mes, usadas) values (:c, :m, 5000)", c=conta, m=mes())
+    assert ver(client, h)["franquia"]["limite"] is None
+    r = evento(client, chave, telefone="11900000001", email="c1@cliente.com.br")
+    assert r.json()["canal"] == "whatsapp"
+    assert sql(dono, "select usadas, excedentes from whatsapp_uso where conta_id = :c", c=conta) == [(5001, 0)]
+    assert not [m for m in emails_para("ana@alfa.com.br") if "franquia" in m.assunto]

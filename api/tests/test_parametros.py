@@ -35,18 +35,24 @@ from toqqi.core.rate_limit import limiter
 PADROES = {
     "planos": {"planos.essencial.preco": "149.00", "planos.essencial.contatos": 300,
                "planos.profissional.preco": "349.00", "planos.profissional.contatos": 1500,
-               "planos.empresa.preco": "799.00", "planos.empresa.contatos": None},
-    "ia": {"ia.cota.essencial": 100, "ia.cota.profissional": 500, "ia.cota.empresa": 2000, "ia.cota.cortesia": 500,
-           "ia.modelo.rapido": "gpt-5-nano", "ia.esforco.rapido": "minimal", "ia.analises.rapido": 1,
-           "ia.modelo.equilibrado": "gpt-5-mini", "ia.esforco.equilibrado": "low", "ia.analises.equilibrado": 1,
-           "ia.modelo.detalhado": "gpt-5", "ia.esforco.detalhado": "low", "ia.analises.detalhado": 2,
-           "ia.teto.essencial": 1000, "ia.teto.profissional": 5000, "ia.teto.empresa": 20000,
-           "ia.teto.cortesia": 5000, "ia.teto.teste": 1000},
-    "whatsapp": {"whatsapp.franquia.essencial": 40, "whatsapp.franquia.profissional": 90,
-                 "whatsapp.franquia.empresa": 200, "whatsapp.franquia.cortesia": 200, "whatsapp.franquia.teste": 20},
+               "planos.empresa.preco": "799.00", "planos.empresa.contatos": 5000,
+               "planos.desconto.pix": 3, "planos.desconto.anual": 10,
+               "planos.personalizado.base": "99.00", "planos.personalizado.ate_1500": "18.00",
+               "planos.personalizado.ate_10000": "11.00", "planos.personalizado.acima": "6.00",
+               "planos.personalizado.ia_500": "30.00", "planos.personalizado.ia_2000": "120.00",
+               "planos.personalizado.ia_5000": "250.00"},
+    "ia": {"ia.cota.essencial": 100, "ia.cota.profissional": 500, "ia.cota.empresa": 2000, "ia.cota.cortesia": 200,
+           "ia.cota.teste": 50,
+           "ia.modelo.rapido": "gpt-6-luna", "ia.esforco.rapido": "none", "ia.analises.rapido": 1,
+           "ia.modelo.equilibrado": "gpt-6-luna", "ia.esforco.equilibrado": "low", "ia.analises.equilibrado": 1,
+           "ia.modelo.detalhado": "gpt-6-sol", "ia.esforco.detalhado": "low", "ia.analises.detalhado": 3,
+           "ia.teto.essencial": 1000, "ia.teto.profissional": 5000, "ia.teto.empresa": 15000,
+           "ia.teto.cortesia": 2000, "ia.teto.teste": 500},
+    "whatsapp": {"whatsapp.franquia.essencial": None, "whatsapp.franquia.profissional": None,
+                 "whatsapp.franquia.empresa": None, "whatsapp.franquia.personalizado": None,
+                 "whatsapp.franquia.cortesia": None, "whatsapp.franquia.teste": None},
     "teste": {"teste.dias": 14, "teste.plano": "profissional", "teste.exclusao_automatica": "simular"},
 }
-
 
 @pytest.fixture
 def root(client):
@@ -343,14 +349,22 @@ def test_put_apaga_as_linhas_fora_do_formato_do_grupo(client, root, dono):
     ("ia", {"ia.analises.detalhado": 11}, "ia.analises.detalhado", "Use um número inteiro de 1 a 10."),
     ("ia", {"ia.analises.rapido": 2}, "ia.analises.equilibrado",
      "O Equilibrado não pode gastar menos análises que o Rápido."),
-    ("ia", {"ia.analises.equilibrado": 3}, "ia.analises.detalhado",
+    ("ia", {"ia.analises.equilibrado": 4}, "ia.analises.detalhado",
      "O Mais detalhado não pode gastar menos análises que o Equilibrado."),
     ("ia", {"ia.teto.teste": 1_000_001}, "ia.teto.teste", "Use um número inteiro de 0 a 1.000.000."),
     ("ia", {"ia.modelo.rapido": "gpt 5"}, "ia.modelo.rapido", "Informe o nome do modelo"),
     ("ia", {"ia.modelo.rapido": ""}, "ia.modelo.rapido", "Informe o nome do modelo"),
     ("ia", {"ia.esforco.rapido": "turbo"}, "ia.esforco.rapido", "Escolha um esforço da lista"),
     ("whatsapp", {"whatsapp.franquia.teste": 100_001}, "whatsapp.franquia.teste",
-     "Use um número inteiro de 0 a 100.000."),
+     "Use um número inteiro de 0 a 100.000, ou marque “Sem limite”."),
+    ("whatsapp", {"whatsapp.franquia.teste": "20"}, "whatsapp.franquia.teste", "Use um número inteiro de 0"),
+    ("planos", {"planos.desconto.pix": 31}, "planos.desconto.pix", "Use um número inteiro de 0 a 30."),
+    ("planos", {"planos.desconto.anual": 51}, "planos.desconto.anual", "Use um número inteiro de 0 a 50."),
+    ("planos", {"planos.personalizado.base": "4.99"}, "planos.personalizado.base", "Use um valor entre R$ 5,00"),
+    ("planos", {"planos.personalizado.ate_10000": "19.00"}, "planos.personalizado.ate_10000",
+     "O preço a cada 100 contatos não pode subir na faixa seguinte."),
+    ("planos", {"planos.personalizado.ia_2000": "30.00"}, "planos.personalizado.ia_2000",
+     "O pacote maior do ToqqiAI precisa custar mais que o menor."),
     ("teste", {"teste.dias": 91}, "teste.dias", "Use um número inteiro de 1 a 90."),
     ("teste", {"teste.dias": 0}, "teste.dias", "Use um número inteiro de 1 a 90."),
     ("teste", {"teste.plano": "ouro"}, "teste.plano", "Escolha um dos planos"),
@@ -388,7 +402,7 @@ def test_preco_normalizado_e_espacos_do_modelo(client, root, dono):
     r = salvar_parametros(client, root["h"], "planos", {"planos.essencial.preco": 159.9})
     assert r.status_code == 200 and r.json()["valores"]["planos.essencial.preco"] == "159.90"
     assert sql(dono, "select valor from parametros where chave = 'planos.essencial.preco'") == [("159.90",)]
-    r = salvar_parametros(client, root["h"], "ia", {"ia.modelo.rapido": "  gpt-5-nano  "})
+    r = salvar_parametros(client, root["h"], "ia", {"ia.modelo.rapido": "  gpt-6-luna  "})
     assert r.status_code == 200 and r.json()["versao"] == 0  # igual ao padrão depois de tirar os espaços: nada muda
 
 
@@ -430,15 +444,17 @@ def test_put_grava_historico_e_evento_global(client, root, dono):
     ("planos", {"planos.empresa.preco": "899.00"}, True),
     ("planos", {"planos.essencial.contatos": 250}, True),
     ("planos", {"planos.essencial.contatos": 400}, False),
-    ("planos", {"planos.empresa.contatos": 50000}, True),  # sem limite → número: diminuiu
+    ("planos", {"planos.empresa.contatos": 4000}, True),
+    ("planos", {"planos.empresa.contatos": None}, False),  # número → sem limite: aumentou
+    ("planos", {"planos.desconto.pix": 5}, True),
+    ("planos", {"planos.personalizado.base": "109.00"}, True),
     ("ia", {"ia.cota.essencial": 90}, True),
     ("ia", {"ia.cota.essencial": 110}, False),
-    ("ia", {"ia.teto.teste": 900}, True),
-    ("ia", {"ia.analises.detalhado": 3}, True),
+    ("ia", {"ia.teto.teste": 400}, True),
+    ("ia", {"ia.analises.detalhado": 4}, True),
     ("ia", {"ia.analises.detalhado": 1}, False),
     ("ia", {"ia.esforco.rapido": "low"}, False),
-    ("whatsapp", {"whatsapp.franquia.cortesia": 100}, True),
-    ("whatsapp", {"whatsapp.franquia.cortesia": 300}, False),
+    ("whatsapp", {"whatsapp.franquia.cortesia": 100}, True),  # sem limite → número: diminuiu
     ("teste", {"teste.exclusao_automatica": "ligada"}, True),
     ("teste", {"teste.dias": 7, "teste.plano": "essencial"}, False),
 ])
@@ -473,10 +489,10 @@ def test_previa_dos_contatos_e_do_preco(client, root, dono):
     for conta, n in ((alfa, 3), (beta, 5), (gama, 9), (delta, 9)):
         encher_contatos(dono, conta, n)
     p = _previa(client, root["h"], "planos", {"planos.essencial.contatos": 2, "planos.essencial.preco": "159.00",
-                                              "planos.empresa.contatos": 9000})
+                                              "planos.empresa.contatos": 4000})
     assert p["mudancas"] == [{"chave": "planos.essencial.preco", "de": "149.00", "para": "159.00"},
                              {"chave": "planos.essencial.contatos", "de": 300, "para": 2},
-                             {"chave": "planos.empresa.contatos", "de": None, "para": 9000}]
+                             {"chave": "planos.empresa.contatos", "de": 5000, "para": 4000}]
     assert p["precisa_confirmar"] is True
     assert p["impactos"] == [
         {"chave": "planos.essencial.contatos", "contas": 2,
@@ -498,15 +514,15 @@ def test_previa_da_cota_do_teto_da_franquia_e_das_analises(client, root, dono):
     sql(dono, "update ia_uso_mensal set analises = cota_usada where mes = :m", m=mes)
     sql(dono, "update contas set ia_modelo = 'detalhado' where id = :c", c=alfa)
     p = _previa(client, root["h"], "ia", {"ia.cota.profissional": 300, "ia.teto.teste": 400,
-                                          "ia.analises.detalhado": 3, "ia.analises.equilibrado": 2,
-                                          "ia.cota.cortesia": 600})
+                                          "ia.analises.detalhado": 4, "ia.analises.equilibrado": 2,
+                                          "ia.cota.cortesia": 600, "ia.cota.teste": 40})
     assert p["precisa_confirmar"] is True
     por_chave = {i["chave"]: i for i in p["impactos"]}
-    assert set(por_chave) == {"ia.cota.profissional", "ia.teto.teste", "ia.analises.detalhado",
+    assert set(por_chave) == {"ia.cota.profissional", "ia.cota.teste", "ia.teto.teste", "ia.analises.detalhado",
                               "ia.analises.equilibrado"}  # subir a cota da cortesia não tem impacto
-    # a cota da cortesia não é a do plano; o teste usa a do plano dele
-    assert por_chave["ia.cota.profissional"]["exemplos"] == [{"id": beta, "nome": "Beta", "uso": 450},
-                                                             {"id": alfa, "nome": "Alfa", "uso": 300}]
+    # a cota da cortesia não é a do plano; o teste tem a sua (5k)
+    assert por_chave["ia.cota.profissional"]["exemplos"] == [{"id": alfa, "nome": "Alfa", "uso": 300}]
+    assert por_chave["ia.cota.teste"]["exemplos"] == [{"id": beta, "nome": "Beta", "uso": 450}]
     assert por_chave["ia.teto.teste"] == {"chave": "ia.teto.teste", "contas": 1,
                                           "exemplos": [{"id": beta, "nome": "Beta", "uso": 450}]}
     assert por_chave["ia.analises.detalhado"]["exemplos"] == [{"id": alfa, "nome": "Alfa", "uso": 0}]
@@ -539,10 +555,10 @@ def test_previa_da_exclusao(client, root):
 # ---- teste do modelo ------------------------------------------------------------------------------------------
 
 def test_modelo_novo_testado_antes_de_salvar(client, root, dono):
-    r = salvar_parametros(client, root["h"], "ia", {"ia.modelo.detalhado": "gpt-5.1", "ia.cota.essencial": 120})
+    r = salvar_parametros(client, root["h"], "ia", {"ia.modelo.detalhado": "gpt-6-astra", "ia.cota.essencial": 120})
     assert r.status_code == 200, r.text
-    assert r.json()["testados"] == ["detalhado"] and r.json()["valores"]["ia.modelo.detalhado"] == "gpt-5.1"
-    assert memoria.corpos == [{"model": "gpt-5.1", "reasoning": {"effort": "low"}, "input": "Responda apenas: ok",
+    assert r.json()["testados"] == ["detalhado"] and r.json()["valores"]["ia.modelo.detalhado"] == "gpt-6-astra"
+    assert memoria.corpos == [{"model": "gpt-6-astra", "reasoning": {"effort": "low"}, "input": "Responda apenas: ok",
                                "max_output_tokens": 16, "store": False}]
     assert memoria.tempos == [20]
     # só os níveis mudados; sem esforço, sem `reasoning`; a resposta incompleta também vale
@@ -550,7 +566,7 @@ def test_modelo_novo_testado_antes_de_salvar(client, root, dono):
     memoria.programar({"output": [], "status": "incomplete"})
     r = salvar_parametros(client, root["h"], "ia", {"ia.esforco.rapido": ""})
     assert r.status_code == 200 and r.json()["testados"] == ["rapido"]
-    assert memoria.corpos == [{"model": "gpt-5-nano", "input": "Responda apenas: ok", "max_output_tokens": 16,
+    assert memoria.corpos == [{"model": "gpt-6-luna", "input": "Responda apenas: ok", "max_output_tokens": 16,
                                "store": False}]
     # nada de modelo mudou: não testa
     memoria.limpar()
@@ -564,7 +580,7 @@ def test_modelo_recusado_ou_sem_resposta_nada_salvo(client, root, dono):
     r = salvar_parametros(client, root["h"], "ia", {"ia.modelo.rapido": "gpt-x", "ia.cota.essencial": 120})
     assert r.status_code == 422
     assert r.json()["erro"]["campos"] == {"ia.modelo.rapido": "A OpenAI recusou o modelo “gpt-x” com o esforço "
-                                                              "“minimal” (HTTP 400). Confira o nome e o esforço."}
+                                                              "“none” (HTTP 400). Confira o nome e o esforço."}
     memoria.programar("definitiva")
     r = salvar_parametros(client, root["h"], "ia", {"ia.modelo.detalhado": "gpt-y", "ia.esforco.detalhado": ""})
     assert r.status_code == 422 and r.json()["erro"]["campos"]["ia.modelo.detalhado"].startswith(
@@ -658,21 +674,27 @@ def test_planos_publicos(client, root):
     assert r.status_code == 200 and r.headers["cache-control"] == "public, max-age=60"
     assert r.json() == {
         "planos": [
-            {"chave": "essencial", "nome": "Essencial", "preco": 149.0, "contatos": 300, "whatsapp": 40,
+            {"chave": "essencial", "nome": "Essencial", "preco": 149.0, "contatos": 300, "whatsapp": None,
              "ia_cota": 100, "ia_teto": 1000},
-            {"chave": "profissional", "nome": "Profissional", "preco": 349.0, "contatos": 1500, "whatsapp": 90,
+            {"chave": "profissional", "nome": "Profissional", "preco": 349.0, "contatos": 1500, "whatsapp": None,
              "ia_cota": 500, "ia_teto": 5000},
-            {"chave": "empresa", "nome": "Empresa", "preco": 799.0, "contatos": None, "whatsapp": 200,
-             "ia_cota": 2000, "ia_teto": 20000}],
-        "teste": {"dias": 14, "plano": "profissional", "whatsapp": 20, "ia_teto": 1000},
-        "ia_analises": {"rapido": 1, "equilibrado": 1, "detalhado": 2}}
+            {"chave": "empresa", "nome": "Empresa", "preco": 799.0, "contatos": 5000, "whatsapp": None,
+             "ia_cota": 2000, "ia_teto": 15000}],
+        "teste": {"dias": 14, "plano": "profissional", "whatsapp": None, "ia_teto": 500, "ia_cota": 50},
+        "ia_analises": {"rapido": 1, "equilibrado": 1, "detalhado": 3},
+        "descontos": {"pix": 3, "anual": 10},
+        "personalizado": {"base": 99.0, "faixas": [{"ate": 1500, "preco": 18.0}, {"ate": 10000, "preco": 11.0},
+                                                   {"ate": None, "preco": 6.0}],
+                          "ia": [{"cota": 100, "preco": 0.0}, {"cota": 500, "preco": 30.0},
+                                 {"cota": 2000, "preco": 120.0}, {"cota": 5000, "preco": 250.0}],
+                          "contatos_min": 100, "contatos_max": 100000, "passo": 100, "whatsapp": None}}
     assert salvar_parametros(client, root["h"], "planos", {"planos.essencial.preco": "159.90",
                                                            "planos.empresa.contatos": 9000}).status_code == 200
     assert salvar_parametros(client, root["h"], "teste", {"teste.dias": 7, "teste.plano": "essencial"}
                              ).status_code == 200
     corpo = client.get(f"{API}/publico/planos").json()
     assert (corpo["planos"][0]["preco"], corpo["planos"][2]["contatos"]) == (159.9, 9000)
-    assert corpo["teste"] == {"dias": 7, "plano": "essencial", "whatsapp": 20, "ia_teto": 1000}
+    assert corpo["teste"] == {"dias": 7, "plano": "essencial", "whatsapp": None, "ia_teto": 500, "ia_cota": 50}
 
 
 def test_planos_publicos_60_por_minuto(client):

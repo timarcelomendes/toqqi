@@ -282,7 +282,7 @@ def test_devolucao_e_o_reservado_mesmo_depois_da_mudanca(client, root, ana, dono
     c = ana["conta"]["id"]
     with em_conta(c) as s:
         reserva = cota.reservar(s, s.get(Conta, c), ia_texto.analises_do_nivel("detalhado"))
-    assert reserva.quantidade == 2
+    assert reserva.quantidade == 3
     _salvar(client, root, "ia", {"ia.analises.detalhado": 1})
     assert ia_texto.analises_do_nivel("detalhado") == 1
     cota.devolver(reserva)
@@ -291,12 +291,12 @@ def test_devolucao_e_o_reservado_mesmo_depois_da_mudanca(client, root, ana, dono
 
 def test_cota_abaixo_do_uso_fica_sem_saldo_ate_subir(client, root, ana, dono):
     h, c = ana["h"], ana["conta"]["id"]
-    usar_cota(dono, c, 300)  # profissional (teste): 500
-    _salvar(client, root, "ia", {"ia.cota.profissional": 200})
+    usar_cota(dono, c, 40)  # teste (5k: cota própria): 50
+    _salvar(client, root, "ia", {"ia.cota.teste": 30})
     r = perguntar(client, h)
     assert r.status_code == 409 and r.json()["erro"]["codigo"] == "cota_esgotada"
     assert client.get(f"{API}/conta/ia", headers=h).json()["cota"]["restantes"] == 0
-    _salvar(client, root, "ia", {"ia.cota.profissional": 302})
+    _salvar(client, root, "ia", {"ia.cota.teste": 42})
     assert perguntar(client, h).status_code == 200
 
 
@@ -486,9 +486,9 @@ def test_ajuda_com_os_valores_de_hoje(client, root, ana):
     assert not [t for t in textos if "{{" in t or "}}" in t]
     tudo = " ".join(textos)
     for trecho in ("Começar 14 dias grátis", "Essencial: R$ 149,00 por mês. Contatos ativos: 300.",
-                   "Empresa: R$ 799,00 por mês. Contatos ativos: sem limite.", "Profissional 1.500 e Empresa sem limite",
-                   "Essencial 40, Profissional 90 e Empresa 200", "Rápido 1, Equilibrado 1 e Mais detalhado 2",
-                   "como “120 de 500”", "2.000 no Empresa", "o Profissional."):
+                   "Empresa: R$ 799,00 por mês. Contatos ativos: 5.000.", "Profissional 1.500 e Empresa 5.000",
+                   "Rápido 1, Equilibrado 1 e Mais detalhado 3", "R$ 99,00 de base", "com 10% de desconto",
+                   "Pix, com 3% de desconto", "a cota é de 50 análises", "como “120 de 500”", "2.000 no Empresa"):
         assert trecho in tudo, trecho
     # sem nível fixo na sugestão de quando restam menos análises do que o nível gasta
     assert "“Equilibrado” em Configurações › IA" not in tudo and "troque para o “Equilibrado”" not in tudo
