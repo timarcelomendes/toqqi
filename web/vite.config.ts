@@ -3,7 +3,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, type Connect, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
-import { GUIAS, guiaDoEndereco, robots, sitemap, urlDoSite } from './src/site/guias'
+import { PAGINAS, paginaDoEndereco, robots, sitemap, urlDoSite } from './src/site/guias'
 
 const raiz = (caminho: string) => fileURLToPath(new URL(caminho, import.meta.url))
 
@@ -17,8 +17,8 @@ function paginasPublicas(): Plugin {
       const i = req.url.indexOf('?')
       req.url = '/responder.html' + (i >= 0 ? req.url.slice(i) : '')
     } else if (req.url) {
-      // Guias do site: /reduzir-churn → reduzir-churn.html (no Render, as regras do render.yaml).
-      const guia = guiaDoEndereco(req.url)
+      // Guias do site: /guias → guias.html, /reduzir-churn → reduzir-churn.html (no Render, as regras do render.yaml).
+      const guia = paginaDoEndereco(req.url)
       if (guia && !(req.url.split('?')[0] ?? '').endsWith('.html')) {
         const i = req.url.indexOf('?')
         req.url = `/${guia.caminho}.html` + (i >= 0 ? req.url.slice(i) : '')
@@ -47,7 +47,7 @@ function guiasDoSite(): Plugin {
   return {
     name: 'toqqi-guias',
     transformIndexHtml(html, ctx) {
-      const guia = guiaDoEndereco(ctx.path)
+      const guia = paginaDoEndereco(ctx.path)
       const caminho = guia ? `/${guia.caminho}` : ctx.path === '/index.html' ? '/' : null
       const tag = site && caminho ? `<link rel="canonical" href="${site}${caminho}" />` : ''
       return html.replace('<!-- canonical -->', tag)
@@ -79,7 +79,7 @@ export default defineConfig({
       input: {
         app: raiz('./index.html'),
         responder: raiz('./responder.html'),
-        ...Object.fromEntries(GUIAS.map((g) => [g.caminho, raiz(`./${g.caminho}.html`)])),
+        ...Object.fromEntries(PAGINAS.map((g) => [g.caminho, raiz(`./${g.caminho}.html`)])),
       },
     },
   },

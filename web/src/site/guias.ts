@@ -17,10 +17,22 @@ export const GUIAS: readonly Guia[] = [
   { caminho: 'customer-success', rotulo: 'Software de customer success' },
 ]
 
+/** A página que lista os guias (`/guias`, link "Guias" no menu do site). */
+export const INDICE: Guia = { caminho: 'guias', rotulo: 'Guias' }
+
+/** Todas as páginas de conteúdo servidas como HTML próprio: o índice e cada guia. */
+export const PAGINAS: readonly Guia[] = [INDICE, ...GUIAS]
+
 /** O guia de um endereço (`/reduzir-churn`, `/reduzir-churn/` ou `/reduzir-churn.html`), ou null. */
 export function guiaDoEndereco(url: string): Guia | null {
   const caminho = (url.split(/[?#]/)[0] ?? '').replace(/^\/+/, '').replace(/\/+$/, '').replace(/\.html$/, '')
   return GUIAS.find((g) => g.caminho === caminho) ?? null
+}
+
+/** A página de conteúdo (índice ou guia) de um endereço, ou null. */
+export function paginaDoEndereco(url: string): Guia | null {
+  const caminho = (url.split(/[?#]/)[0] ?? '').replace(/^\/+/, '').replace(/\/+$/, '').replace(/\.html$/, '')
+  return PAGINAS.find((g) => g.caminho === caminho) ?? null
 }
 
 /** Endereço público do site, sem barra no fim, ou null quando não se sabe (build local). */
@@ -29,9 +41,9 @@ export function urlDoSite(env: Record<string, string | undefined>): string | nul
   return /^https:\/\/[a-z0-9.-]+$/i.test(bruto) ? bruto : null
 }
 
-/** `sitemap.xml` com a raiz e os guias. */
+/** `sitemap.xml` com a raiz, o índice e os guias. */
 export function sitemap(site: string, hoje: string): string {
-  const urls = ['/', ...GUIAS.map((g) => `/${g.caminho}`)]
+  const urls = ['/', ...PAGINAS.map((g) => `/${g.caminho}`)]
   const itens = urls.map((u) => `  <url><loc>${site}${u}</loc><lastmod>${hoje}</lastmod></url>`).join('\n')
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${itens}\n</urlset>\n`
 }

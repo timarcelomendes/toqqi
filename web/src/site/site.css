@@ -105,3 +105,8 @@ details[open] .mais{transform:rotate(45deg)}
 .topc{font-size:11px;font-weight:700;color:#475569;background:#F1F5F9;border-radius:999px;padding:2px 7px;white-space:nowrap;margin-left:4px}
 @media (max-width:760px){.nav{display:none !important}.so-largo{display:none !important}}
 @media (max-width:600px){.tplanos{min-width:0;font-size:13px}.tplanos th,.tplanos td{padding:10px 6px}.tplanos tbody th{padding-left:14px}.tplanos thead th{font-size:13px}.tplanos td{width:19%}.topc{display:inline-block;margin:2px 0 0}}
+/* Menu com 6 itens (Guias, 06/10): não quebra linha; entre 761 e 1080 px fica mais justo e, abaixo de 960, some (os
+   guias seguem no rodapé). */
+.nav a,.btn{white-space:nowrap}
+@media (max-width:1080px){.nav{gap:20px !important}.nav a{font-size:14px}}
+@media (max-width:960px){.nav{display:none !important}}

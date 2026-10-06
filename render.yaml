@@ -159,6 +159,9 @@ services:
         destination: /responder.html
       # Guias do site (web/src/site/guias.ts): cada endereço serve o seu HTML. Antes da regra geral, que manda ao app.
       - type: rewrite
+        source: /guias
+        destination: /guias.html
+      - type: rewrite
         source: /reduzir-churn
         destination: /reduzir-churn.html
       - type: rewrite

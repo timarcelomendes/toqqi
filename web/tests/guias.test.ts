@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { GUIAS, guiaDoEndereco, robots, sitemap, urlDoSite } from '@/site/guias'
+import { GUIAS, INDICE, PAGINAS, guiaDoEndereco, paginaDoEndereco, robots, sitemap, urlDoSite } from '@/site/guias'
 import { ehSite } from '@/site/rota'
 
 const ler = (arquivo: string) => readFileSync(resolve(__dirname, '..', arquivo), 'utf8')
@@ -22,6 +22,14 @@ describe('lista dos guias', () => {
       expect(guiaDoEndereco(u)).toBeNull()
     }
   })
+  it('o índice /guias é página de conteúdo, mas não é um guia', () => {
+    expect(paginaDoEndereco('/guias')?.caminho).toBe('guias')
+    expect(paginaDoEndereco('/guias/?x=1')?.caminho).toBe('guias')
+    expect(paginaDoEndereco('/reduzir-churn')?.caminho).toBe('reduzir-churn')
+    expect(guiaDoEndereco('/guias')).toBeNull()
+    expect(paginaDoEndereco('/entrar')).toBeNull()
+    expect(ehSite('/guias')).toBe(false)
+  })
   it('os guias não são a raiz do site (o app nunca carrega a página da raiz neles)', () => {
     for (const g of GUIAS) expect(ehSite(`/${g.caminho}`)).toBe(false)
   })
@@ -37,7 +45,7 @@ describe('lista dos guias', () => {
   it('sitemap com a raiz e cada guia; robots esconde pesquisa e descadastro', () => {
     const xml = sitemap('https://toqqi.com', '2026-10-05')
     expect(xml).toContain('<loc>https://toqqi.com/</loc>')
-    for (const g of GUIAS) expect(xml).toContain(`<loc>https://toqqi.com/${g.caminho}</loc>`)
+    for (const g of PAGINAS) expect(xml).toContain(`<loc>https://toqqi.com/${g.caminho}</loc>`)
     const txt = robots('https://toqqi.com')
     for (const p of ['/r/', '/f/', '/sair/']) expect(txt).toContain(`Disallow: ${p}`)
     expect(txt).toContain('Sitemap: https://toqqi.com/sitemap.xml')
@@ -50,15 +58,31 @@ describe('servidor e build', () => {
     const yaml = ler('../render.yaml')
     const geral = yaml.indexOf('source: /*\n        destination: /index.html')
     expect(geral).toBeGreaterThan(0)
-    for (const g of GUIAS) {
+    for (const g of PAGINAS) {
       const regra = yaml.indexOf(`source: /${g.caminho}\n        destination: /${g.caminho}.html`)
       expect(regra, g.caminho).toBeGreaterThan(0)
       expect(regra, g.caminho).toBeLessThan(geral)
     }
   })
-  it('a página da raiz leva a cada guia no rodapé', () => {
+  it('a página da raiz leva ao índice no menu e a cada guia no rodapé', () => {
     const raiz = ler('index.html')
+    const menu = raiz.slice(raiz.indexOf('<nav class="nav"'), raiz.indexOf('</nav>', raiz.indexOf('<nav class="nav"')))
+    expect(menu).toContain('<a href="/guias">Guias</a>')
     for (const g of GUIAS) expect(raiz).toContain(`href="/${g.caminho}"`)
+  })
+})
+
+describe('índice /guias', () => {
+  const html = ler(`${INDICE.caminho}.html`)
+  const corpo = corpoDe(html)
+  it('lista cada guia, com o menu marcando Guias e a mesma entrada leve, sem nada de fora', () => {
+    for (const g of GUIAS) expect(corpo).toContain(`<a href="/${g.caminho}" class="guia-cartao cartao">`)
+    expect(corpo).toContain('<a href="/guias" aria-current="page">Guias</a>')
+    expect(corpo.match(/<h1[\s>]/g)).toHaveLength(1)
+    expect(html).toMatch(/<title>[^<]+· Toqqi<\/title>/)
+    expect(html).toContain('<!-- canonical -->')
+    expect(html).toContain('<script type="module" src="/src/site/guia.ts"></script>')
+    expect(html).not.toMatch(/(src|href)="(https?:)?\/\//)
   })
 })
 
@@ -98,12 +122,14 @@ describe.each(GUIAS.map((g) => [g.caminho]))('guia %s', (caminho) => {
     const ancoras = [...corpo.matchAll(/<li><a href="#([^"]+)">/g)].map((m) => m[1])
     expect(ancoras.length).toBeGreaterThanOrEqual(4)
     for (const a of ancoras) expect(corpo).toContain(`<section id="${a}"`)
-    const conhecidos = new Set(['/', '/entrar', '/termos', '/privacidade', ...GUIAS.map((g) => `/${g.caminho}`)])
+    const conhecidos = new Set(['/', '/entrar', '/termos', '/privacidade', ...PAGINAS.map((g) => `/${g.caminho}`)])
     for (const [, href] of corpo.matchAll(/href="(\/[^"#?]*)/g)) {
       if (href === '/cadastro') continue
       expect(conhecidos.has(href as string), href).toBe(true)
     }
     for (const g of GUIAS.filter((x) => x.caminho !== caminho)) expect(corpo).toContain(`href="/${g.caminho}"`)
+    expect(corpo).toContain('<li><a href="/guias">Guias</a></li>')
+    expect(corpo).toContain('<a href="/guias">Guias</a>\n</nav>')
   })
 
   it('não promete o que o produto não tem nem preço escrito (preços e limites mudam em Parâmetros)', () => {
@@ -111,6 +137,8 @@ describe.each(GUIAS.map((g) => [g.caminho]))('guia %s', (caminho) => {
     expect(texto).not.toMatch(/\b(14|7) dias grátis/)
     expect(texto).not.toMatch(/\[a confirmar|lorem ipsum/i)
     expect(texto).not.toMatch(/\bTODO\b/)
+    // 5k: o WhatsApp automático não tem franquia em nenhum plano.
+    expect(texto).not.toMatch(/franquia mensal|mensagens automáticas por mês|quantidade de mensagens/)
     for (const proibido of ['Teams', 'Fillout', 'Google Analytics', 'cookies de terceiros']) {
       expect(texto).not.toContain(proibido)
     }
