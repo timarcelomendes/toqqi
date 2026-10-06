@@ -75,3 +75,44 @@ def test_pedir_acesso_so_cria_para_dominio_liberado(client, dono):
 def test_pedir_acesso_exige_senha_forte(client):
     r = client.post(f"{API}/auth/pedir-acesso", json={"nome": "Novo", "email": "n@alfa.com.br", "senha": "123"})
     assert r.status_code == 422 and "senha" in r.json()["erro"]["campos"]
+
+
+def test_pedido_confirmado_avisa_os_administradores_uma_vez(client, dono):
+    """Ao confirmar o e-mail (e só então: quem pede pode digitar o e-mail de outra pessoa), os administradores ativos
+    recebem o aviso com o atalho para os pedidos; Gestor e Consulta não; confirmar de novo não repete."""
+    from util import membro
+
+    a = conta_pronta(client, "ana@alfa.com.br", empresa="Alfa Ltda")
+    membro(client, a["h"], "gil@alfa.com.br", "gestor")
+    _put(client, a["h"], ["alfa.com.br"])
+    assert client.get(f"{API}/equipe/pendentes", headers=a["h"]).json() == {"total": 0}
+    r = client.post(f"{API}/auth/pedir-acesso", json={"nome": "Nina  Souza", "email": "nina@alfa.com.br", "senha": SENHA})
+    assert r.status_code == 200, r.text
+    assert client.get(f"{API}/equipe/pendentes", headers=a["h"]).json() == {"total": 1}
+    token = token_do_email("nina@alfa.com.br", "confirmar-email")
+    caixa_memoria.clear()
+    r = client.post(f"{API}/auth/confirmar-email", json={"token": token})
+    assert r.status_code == 200 and "aguardar o administrador" in r.json()["mensagem"]
+    [m] = caixa_memoria
+    assert m.para == "ana@alfa.com.br" and m.assunto == "Nina Souza pediu acesso ao Toqqi"
+    assert "Nina Souza (nina@alfa.com.br) pediu acesso à conta Alfa Ltda no Toqqi" in m.texto
+    assert "Ver pedidos: http" in m.texto and "/equipe?pedidos=1" in m.texto
+    assert sql(dono, "select tipo, destinatario from emails_enviados where tipo = 'aviso'") == [
+        ("aviso", "ana@alfa.com.br")]
+    # o mesmo link de novo: nada de novo aviso
+    caixa_memoria.clear()
+    client.post(f"{API}/auth/confirmar-email", json={"token": token})
+    assert caixa_memoria == []
+    # aprovado, o número some
+    nina = next(u for u in client.get(f"{API}/equipe", headers=a["h"]).json() if u["email"] == "nina@alfa.com.br")
+    client.patch(f"{API}/equipe/{nina['id']}", headers=a["h"], json={"situacao": "ativo"})
+    assert client.get(f"{API}/equipe/pendentes", headers=a["h"]).json() == {"total": 0}
+
+
+def test_pendentes_so_para_quem_gerencia_a_equipe(client):
+    from util import membro
+
+    a = conta_pronta(client, "ana@alfa.com.br")
+    g = membro(client, a["h"], "gil@alfa.com.br", "gestor")
+    assert client.get(f"{API}/equipe/pendentes", headers=g["h"]).status_code == 403
+    assert client.get(f"{API}/equipe/pendentes").status_code == 401

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next'
 import { useSessaoStore } from '@/stores/sessao'
 import { useMenuLateral } from '@/composables/menuLateral'
+import { textoPedidos, usarPedidosAcesso } from '@/composables/pedidosAcesso'
 import logo from '@/assets/logo.svg'
 import Marca from '@/components/app/Marca.vue'
 import { filtrarNavegacao, itemAtivo, navegacaoAdministracao, navegacaoPrincipal, navegacaoRodape, type ItemNavegacao } from './navegacao'
@@ -23,6 +24,13 @@ function ativoNa(i: ItemNavegacao, isActive: boolean) {
 
 const principal = computed(() => filtrarNavegacao(navegacaoPrincipal, sessao.pode, sessao.superadmin))
 const administracao = computed(() => filtrarNavegacao(navegacaoAdministracao, sessao.pode, sessao.superadmin, sessao.admin))
+
+// Pedidos de acesso esperando aprovação: o número ao lado de Equipe (relido a cada troca de página, no máximo a cada 60 s).
+const pedidos = usarPedidosAcesso()
+watch(() => rota.fullPath, () => void pedidos.atualizar(sessao.pode('equipe.gerenciar')), { immediate: true })
+function contagem(i: ItemNavegacao): number {
+  return i.contador === 'pedidosAcesso' ? pedidos.total.value : 0
+}
 
 function classes(ativo: boolean) {
   return [
@@ -80,8 +88,24 @@ const classeDica =
             <RouterLink v-slot="{ href, navigate, isActive }" :to="item.para" custom>
               <a :href="href" :class="classes(ativoNa(item, isActive))" :aria-current="ativoNa(item, isActive) ? 'page' : undefined" @click="(e) => { navigate(e); $emit('navegou') }">
                 <component :is="item.icone" class="size-5 shrink-0" aria-hidden="true" />
-                <span :class="compacto ? 'sr-only' : 'flex-1'">{{ item.rotulo }}</span>
-                <span v-if="compacto" aria-hidden="true" :class="classeDica">{{ item.rotulo }}</span>
+                <span :class="compacto ? 'sr-only' : 'flex-1'">
+                  {{ item.rotulo }}<span v-if="contagem(item) > 0" class="sr-only">, {{ textoPedidos(contagem(item)) }}</span>
+                </span>
+                <span
+                  v-if="contagem(item) > 0 && !compacto"
+                  class="min-w-5 rounded-full bg-marca-forte px-1.5 text-center text-xs font-bold text-white"
+                  aria-hidden="true"
+                  data-contador-menu
+                >{{ contagem(item) }}</span>
+                <span
+                  v-else-if="contagem(item) > 0"
+                  class="absolute right-2 top-1.5 size-2 rounded-full bg-marca-forte ring-2 ring-superficie"
+                  aria-hidden="true"
+                  data-contador-menu
+                />
+                <span v-if="compacto" aria-hidden="true" :class="classeDica">
+                  {{ item.rotulo }}<template v-if="contagem(item) > 0"> · {{ textoPedidos(contagem(item)) }}</template>
+                </span>
               </a>
             </RouterLink>
           </li>

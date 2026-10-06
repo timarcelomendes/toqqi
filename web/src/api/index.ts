@@ -84,6 +84,8 @@ export const euApi = {
 
 export const equipeApi = {
   listar: () => api.get<Usuario[]>('/equipe'),
+  /** Pedidos de acesso esperando aprovação (o número ao lado de Equipe no menu). */
+  pendentes: () => api.get<{ total: number }>('/equipe/pendentes'),
   criar: (dados: { nome: string; email: string; cargo?: string; perfil: Perfil; senha: string }) =>
     api.post<Usuario>('/equipe', dados),
   atualizar: (

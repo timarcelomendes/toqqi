@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Ban, CheckCircle2, MailPlus, MoreHorizontal, Pencil, Search, Trash2, UserCheck, Users } from 'lucide-vue-next'
 import { equipeApi, mensagemDoErro, type SituacaoUsuario, type Usuario } from '@/api'
 import { avisar } from '@/composables/avisos'
+import { usarPedidosAcesso } from '@/composables/pedidosAcesso'
 import { confirmar } from '@/composables/confirmacao'
 import { useSessaoStore } from '@/stores/sessao'
 import { formatarDataHora } from '@/utils/datas'
@@ -22,7 +24,8 @@ const usuarios = ref<Usuario[]>([])
 const carregando = ref(true)
 const erro = ref<string | null>(null)
 const busca = ref('')
-const soPendentes = ref(false)
+// `?pedidos=1` (o botão "Ver pedidos" do e-mail do pedido de acesso) já abre só com os pedidos.
+const soPendentes = ref(useRoute().query.pedidos === '1')
 const ocupado = ref<Usuario['id'] | null>(null)
 
 const modalAberto = ref(false)
@@ -39,6 +42,9 @@ const colunas: Coluna[] = [
 
 const ordemSituacao: Record<SituacaoUsuario, number> = { pendente: 0, ativo: 1, bloqueado: 2 }
 const pendentes = computed(() => usuarios.value.filter((u) => u.situacao === 'pendente').length)
+// O número ao lado de Equipe no menu acompanha a lista (aprovar, bloquear e excluir mudam na hora).
+const pedidosAcesso = usarPedidosAcesso()
+watch(pendentes, (n) => pedidosAcesso.definir(n))
 
 function normalizar(t: string) {
   return t.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()

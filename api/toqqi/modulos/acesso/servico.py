@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session, aliased
 from toqqi.apresentacao import conta_json, usuario_json
 from toqqi.core import acessos, parametros, planos, relogio
 from toqqi.core.auditoria import registrar
+from toqqi.core.avisos import avisar_admins
+from toqqi.core.config import config
 from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError, nao_encontrado
@@ -217,7 +219,10 @@ def confirmar_email(token: str) -> str:
             if u is not None and u.email_confirmado and t.usado_em is not None:
                 return "Seu e-mail já estava confirmado. É só entrar."
             raise AppError(400, "link_invalido", MSG_LINK_INVALIDO)
+        ja_confirmado = u.email_confirmado
         u.email_confirmado = True  # nunca altera a situação do usuário
+        if u.situacao == "pendente" and not ja_confirmado:
+            _avisar_pedido_de_acesso(s, u)
     if u.situacao == "pendente":
         return "E-mail confirmado! Agora é só aguardar o administrador da conta aprovar o seu acesso."
     return "E-mail confirmado! Você já pode entrar."
@@ -277,6 +282,20 @@ def redefinir_senha(token: str, senha: str) -> str:
 
 
 # ---- pedido de acesso -------------------------------------------------------
+
+def _avisar_pedido_de_acesso(s: Session, u: Usuario) -> None:
+    """Pedido de acesso com o e-mail confirmado (a pessoa provou ser dona do endereço): e-mail aos administradores
+    ativos da conta, depois do commit, com o atalho para os pedidos em Equipe. Uma vez por pedido (na primeira
+    confirmação); entra no registro de e-mails enviados como `aviso`."""
+    nome = " ".join((u.nome or "").split())[:80] or u.email
+    empresa = " ".join((s.get(Conta, u.conta_id).nome or "").split())
+    conta = f"à conta {empresa} no Toqqi" if empresa else "à sua conta no Toqqi"
+    avisar_admins(s, u.conta_id, f"{nome} pediu acesso ao Toqqi", [
+        f"{nome} ({u.email}) pediu acesso {conta} e já confirmou o e-mail.",
+        "Confira quem é e aprove ou bloqueie o pedido em Equipe. Quem é aprovado entra com o perfil Consulta, que você "
+        "pode trocar depois.",
+    ], ("Ver pedidos", f"{config().FRONTEND_URL.rstrip('/')}/equipe?pedidos=1"))
+
 
 def pedir_acesso(dados) -> str:
     senha_hash = gerar_hash(dados.senha)

@@ -19,6 +19,12 @@ def salvar_permissoes(dados: PermissoesIn, ctx: Contexto = Depends(GERENCIAR)):
     return servico.salvar_permissoes(ctx, dados)
 
 
+@router.get("/pendentes")
+def pendentes(ctx: Contexto = Depends(GERENCIAR)):
+    """{total}: pedidos de acesso esperando aprovação (o número ao lado de Equipe no menu)."""
+    return servico.pendentes(ctx)
+
+
 @router.get("")
 def listar(ctx: Contexto = Depends(GERENCIAR)):
     return servico.listar(ctx)

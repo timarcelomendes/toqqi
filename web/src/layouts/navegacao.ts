@@ -30,6 +30,8 @@ export interface ItemNavegacao {
   prefixo?: string
   /** Ainda não existe nesta etapa. */
   emBreve?: boolean
+  /** Número ao lado do item (ex.: pedidos de acesso esperando aprovação, em Equipe). */
+  contador?: 'pedidosAcesso'
 }
 
 export const navegacaoPrincipal: ItemNavegacao[] = [
@@ -45,7 +47,7 @@ export const navegacaoPrincipal: ItemNavegacao[] = [
 ]
 
 export const navegacaoAdministracao: ItemNavegacao[] = [
-  { rotulo: 'Equipe', para: '/equipe', icone: Users, permissao: 'equipe.gerenciar' },
+  { rotulo: 'Equipe', para: '/equipe', icone: Users, permissao: 'equipe.gerenciar', contador: 'pedidosAcesso' },
   { rotulo: 'Configurações', para: '/configuracoes/empresa', prefixo: '/configuracoes', icone: ShieldCheck, permissao: 'configuracoes.gerenciar' },
   { rotulo: 'Integrações', para: '/integracoes', icone: Plug, admin: true },
   { rotulo: 'Assinatura', para: '/assinatura', icone: CreditCard, permissao: 'assinatura.gerenciar' },

@@ -4326,12 +4326,12 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Quem tem e-mail de um domínio liberado em Configurações › Segurança pode clicar em “Pedir acesso à minha empresa”, na tela de entrada. A pessoa confirma o e-mail e fica “Pendente de aprovação”, com perfil Consulta, sem poder entrar."
+              "texto": "Quem tem e-mail de um domínio liberado em Configurações › Segurança pode clicar em “Pedir acesso à minha empresa”, na tela de entrada. A pessoa confirma o e-mail e fica “Pendente de aprovação”, com perfil Consulta, sem poder entrar. Nessa hora, os administradores recebem o e-mail “(nome) pediu acesso ao Toqqi”, e o número de pedidos aparece ao lado de Equipe, no menu."
             },
             {
               "tipo": "passos",
               "itens": [
-                "Em Equipe, quando há pedidos aparece o aviso “N pessoas pediram acesso”. Clique em “Ver pedidos”.",
+                "Clique em “Ver pedidos” no e-mail do pedido ou, em Equipe, no aviso “N pessoas pediram acesso”.",
                 "Confira quem é. Para liberar, clique em “Aprovar” e confirme. Para negar, use o menu da pessoa e escolha Bloquear ou Excluir.",
                 "Se quiser outro perfil, abra Editar e mude o Perfil. Quem pediu acesso entra como Consulta."
               ]

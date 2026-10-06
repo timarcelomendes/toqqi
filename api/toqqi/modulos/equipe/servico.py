@@ -1,5 +1,5 @@
 """Regras da equipe: usuários da conta e matriz de permissões por perfil."""
-from sqlalchemy import delete, insert, select
+from sqlalchemy import delete, func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -48,6 +48,14 @@ def _sobraria_admin(s: Session, alvo: Usuario) -> bool:
         .with_for_update()
     ).all()
     return len(outros) > 0
+
+
+def pendentes(ctx: Contexto) -> dict:
+    """Quantos pedidos de acesso esperam aprovação (o número ao lado de Equipe no menu)."""
+    with em_conta(ctx.conta_id) as s:
+        total = s.scalar(select(func.count()).select_from(Usuario).where(Usuario.conta_id == ctx.conta_id,
+                                                                         Usuario.situacao == "pendente"))
+    return {"total": total or 0}
 
 
 def listar(ctx: Contexto) -> list[dict]:
