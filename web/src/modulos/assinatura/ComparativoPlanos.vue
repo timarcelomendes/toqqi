@@ -3,8 +3,8 @@
 // ativos, perguntas ao ToqqiAI, comentários lidos pela IA, WhatsApp automático) e o que todos têm. Aparece também com a
 // assinatura vigente, com o plano atual marcado e "Trocar para este" nos outros (no mensal; no anual, a troca é com a
 // equipe). No computador, uma tabela; no celular, um cartão por plano.
-import { computed } from 'vue'
-import { Check } from 'lucide-vue-next'
+import { computed, useId } from 'vue'
+import { Check, ChevronDown } from 'lucide-vue-next'
 import type { PlanoAssinatura, TabelaPersonalizado } from '@/api/tipos'
 import { formatarMoeda, formatarNumero } from '@/utils/formatos'
 import { ajustarContatos, tetoPersonalizado } from '@/utils/precos'
@@ -39,6 +39,12 @@ const colunas = computed<Coluna[]>(() => [
 ])
 const ciclo = computed(() => props.planos[0]?.ciclo ?? 'mensal')
 const periodo = computed(() => (ciclo.value === 'anual' ? 'por ano' : 'por mês'))
+const idSim = `sim-${useId()}`
+/** Os dois campos da simulação com a mesma altura, largura e alinhamento (sem as setas do campo numérico). */
+const CLASSE_CONTROLE =
+  'block h-9 w-full rounded-lg border border-borda-forte bg-superficie px-2.5 text-left text-sm font-normal tabular-nums text-texto ' +
+  'focus:border-marca focus:outline-none focus:ring-3 focus:ring-marca/20 [appearance:textfield] ' +
+  '[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 const opcoesCota = computed(() => props.tabela.ia.map((p) => ({ valor: p.cota, rotulo: formatarNumero(p.cota) })))
 function aoMudarContatos(e: Event) {
   contatos.value = ajustarContatos(Number((e.target as HTMLInputElement).value), props.tabela)
@@ -111,19 +117,17 @@ const RECURSOS = [
             <span class="block text-xs text-texto-suave">{{ periodo }}</span>
           </p>
         </div>
-        <div v-if="c.chave === 'personalizado' && !contratado" class="grid grid-cols-2 gap-2" data-simulador>
-          <label class="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
-            Contatos ativos
-            <input type="number" inputmode="numeric" :min="tabela.contatos_min" :max="tabela.contatos_max" :step="tabela.passo" :value="contatos"
-                   class="h-9 w-full rounded-lg border border-borda-forte bg-superficie px-2.5 text-sm tabular-nums text-texto focus:border-marca focus:outline-none focus:ring-3 focus:ring-marca/20"
-                   @change="aoMudarContatos" />
-          </label>
-          <label class="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
-            Perguntas ao ToqqiAI
-            <select v-model.number="cotaIa" class="h-9 w-full rounded-lg border border-borda-forte bg-superficie px-2 text-sm text-texto focus:border-marca focus:outline-none focus:ring-3 focus:ring-marca/20">
+        <div v-if="c.chave === 'personalizado' && !contratado" class="grid grid-cols-2 gap-x-3 gap-y-1" data-simulador>
+          <label :for="`${idSim}-m-contatos`" class="text-xs font-semibold text-texto-suave">Contatos ativos</label>
+          <label :for="`${idSim}-m-cota`" class="text-xs font-semibold text-texto-suave">Perguntas ao ToqqiAI</label>
+          <input :id="`${idSim}-m-contatos`" type="number" inputmode="numeric" :min="tabela.contatos_min" :max="tabela.contatos_max" :step="tabela.passo" :value="contatos"
+                 :class="CLASSE_CONTROLE" @change="aoMudarContatos" />
+          <span class="relative block">
+            <select :id="`${idSim}-m-cota`" v-model.number="cotaIa" :class="[CLASSE_CONTROLE, 'appearance-none pr-7']">
               <option v-for="o in opcoesCota" :key="o.valor" :value="o.valor">{{ o.rotulo }}</option>
             </select>
-          </label>
+            <ChevronDown class="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-texto-fraco" aria-hidden="true" />
+          </span>
         </div>
         <dl class="flex flex-col gap-1.5 text-sm">
           <div v-for="l in linhas" :key="l.rotulo" class="flex justify-between gap-3 border-t border-borda pt-1.5">
@@ -171,19 +175,17 @@ const RECURSOS = [
                   <span class="text-lg font-bold tabular-nums text-texto">{{ formatarMoeda(c.plano.preco) }}</span>
                   <span class="text-xs text-texto-suave">{{ periodo }}<template v-if="equivaleMes(c.plano)"> · {{ equivaleMes(c.plano) }}</template></span>
                 </template>
-                <span v-if="c.chave === 'personalizado' && !contratado" class="mt-2 flex flex-col gap-1.5" data-simulador>
-                  <label class="flex items-center justify-between gap-2 text-xs font-semibold text-texto-suave">
-                    Contatos
-                    <input type="number" inputmode="numeric" :min="tabela.contatos_min" :max="tabela.contatos_max" :step="tabela.passo" :value="contatos"
-                           class="h-8 w-24 rounded-lg border border-borda-forte bg-superficie px-2 text-right text-sm font-normal tabular-nums text-texto focus:border-marca focus:outline-none focus:ring-3 focus:ring-marca/20"
-                           @change="aoMudarContatos" />
-                  </label>
-                  <label class="flex items-center justify-between gap-2 text-xs font-semibold text-texto-suave">
-                    Perguntas
-                    <select v-model.number="cotaIa" class="h-8 w-24 rounded-lg border border-borda-forte bg-superficie px-1.5 text-sm font-normal text-texto focus:border-marca focus:outline-none focus:ring-3 focus:ring-marca/20">
+                <span v-if="c.chave === 'personalizado' && !contratado" class="mt-3 grid grid-cols-[auto_7rem] items-center gap-x-3 gap-y-2" data-simulador>
+                  <label :for="`${idSim}-contatos`" class="text-xs font-semibold text-texto-suave">Contatos</label>
+                  <input :id="`${idSim}-contatos`" type="number" inputmode="numeric" :min="tabela.contatos_min" :max="tabela.contatos_max" :step="tabela.passo" :value="contatos"
+                         :class="CLASSE_CONTROLE" @change="aoMudarContatos" />
+                  <label :for="`${idSim}-cota`" class="text-xs font-semibold text-texto-suave">Perguntas</label>
+                  <span class="relative block">
+                    <select :id="`${idSim}-cota`" v-model.number="cotaIa" :class="[CLASSE_CONTROLE, 'appearance-none pr-7']">
                       <option v-for="o in opcoesCota" :key="o.valor" :value="o.valor">{{ o.rotulo }}</option>
                     </select>
-                  </label>
+                    <ChevronDown class="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-texto-fraco" aria-hidden="true" />
+                  </span>
                 </span>
               </span>
             </th>
