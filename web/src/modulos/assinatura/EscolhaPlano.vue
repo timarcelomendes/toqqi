@@ -9,7 +9,7 @@ import { computed, useId } from 'vue'
 import { Check, CheckCircle2, Circle, SlidersHorizontal, UsersRound } from 'lucide-vue-next'
 import type { PlanoAssinatura, TabelaPersonalizado } from '@/api/tipos'
 import { formatarMoeda, formatarNumero } from '@/utils/formatos'
-import { ajustarContatos } from '@/utils/precos'
+import { ajustarContatos, tetoPersonalizado } from '@/utils/precos'
 import Selecao from '@/components/ui/Selecao.vue'
 import { RECURSOS_PLANOS, cabeNoPlano, equivaleMes, rotuloLimite, textoContratado, type PlanoExibido } from './logica'
 
@@ -218,8 +218,13 @@ function aoSairContatos(e: Event) {
           </div>
           <div class="flex flex-col gap-1.5">
             <Selecao v-model="cotaIa" rotulo="Perguntas ao ToqqiAI por mês" :opcoes="pacotes" :desabilitado="desabilitado" />
-            <p class="text-xs text-texto-suave">Quanto mais contatos, mais barato cada 100. WhatsApp automático sem franquia.</p>
+            <p class="text-xs text-texto-suave">Quanto mais contatos, mais barato cada 100.</p>
           </div>
+          <p class="text-sm text-texto-suave sm:col-span-2" data-inclui>
+            Inclui por mês: <strong class="font-semibold text-texto">{{ formatarNumero(cotaIa) }} perguntas ao ToqqiAI</strong> e
+            <strong class="font-semibold text-texto">{{ formatarNumero(tetoPersonalizado(contatos)) }} comentários lidos pela IA</strong>;
+            WhatsApp automático sem franquia e usuários sem limite.
+          </p>
         </div>
       </div>
     </div>

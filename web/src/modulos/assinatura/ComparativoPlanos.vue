@@ -7,7 +7,7 @@ import { computed } from 'vue'
 import { Check } from 'lucide-vue-next'
 import type { PlanoAssinatura, TabelaPersonalizado } from '@/api/tipos'
 import { formatarMoeda, formatarNumero } from '@/utils/formatos'
-import { paraApi, precoPersonalizado } from '@/utils/precos'
+import { ajustarContatos, tetoPersonalizado } from '@/utils/precos'
 import { equivaleMes, type PlanoExibido } from './logica'
 import Botao from '@/components/ui/Botao.vue'
 
@@ -28,6 +28,9 @@ const props = withDefaults(
   { personalizado: null, atual: null, rotuloAtual: 'Seu plano', podeTrocar: false, personalizadoContratado: false },
 )
 const emit = defineEmits<{ trocar: [chave: string] }>()
+/** Os números do Personalizado (fora do contratado): a simulação, com o preço e os limites calculados na hora. */
+const contatos = defineModel<number>('contatos', { default: 1000 })
+const cotaIa = defineModel<number>('cotaIa', { default: 500 })
 
 type Coluna = { chave: string; nome: string; plano: PlanoExibido | null }
 const colunas = computed<Coluna[]>(() => [
@@ -36,15 +39,11 @@ const colunas = computed<Coluna[]>(() => [
 ])
 const ciclo = computed(() => props.planos[0]?.ciclo ?? 'mensal')
 const periodo = computed(() => (ciclo.value === 'anual' ? 'por ano' : 'por mês'))
-const minimoPers = computed(() => {
-  const c = precoPersonalizado(props.tabela.contatos_min, props.tabela.ia[0]?.cota ?? 100, props.tabela)
-  const ref = props.planos[0]
-  if (!Number.isFinite(c) || !ref) return null
-  // O mesmo desconto da escolha de agora (a razão entre o valor e o cheio do primeiro plano).
-  const fator = Number(ref.preco) / Number(ref.cheio || ref.preco)
-  return paraApi(Math.round(c * (ciclo.value === 'anual' ? 12 : 1) * fator))
-})
-const pacotes = computed(() => props.tabela.ia.map((p) => formatarNumero(p.cota)).join(', ').replace(/, ([^,]*)$/, ' ou $1'))
+const opcoesCota = computed(() => props.tabela.ia.map((p) => ({ valor: p.cota, rotulo: formatarNumero(p.cota) })))
+function aoMudarContatos(e: Event) {
+  contatos.value = ajustarContatos(Number((e.target as HTMLInputElement).value), props.tabela)
+  ;(e.target as HTMLInputElement).value = String(contatos.value)
+}
 const ehAtual = (c: Coluna) => props.atual === c.chave
 const contratado = computed(() => props.personalizadoContratado && props.atual === 'personalizado')
 
@@ -52,10 +51,11 @@ function franquia(v: number | null | undefined): string {
   return v === null || v === undefined ? 'Sem franquia' : `${formatarNumero(v)} por mês`
 }
 const linhas = computed(() => {
+  // Personalizado: sempre calculado com os números de agora (o contratado ou a simulação).
   const pers = props.personalizado
-  const contatosPers = contratado.value && pers?.contatos ? formatarNumero(pers.contatos) : `Você escolhe (${formatarNumero(props.tabela.contatos_min)} a ${formatarNumero(props.tabela.contatos_max)})`
-  const cotaPers = contratado.value && pers?.cota_ia ? `${formatarNumero(pers.cota_ia)} por mês` : `${pacotes.value} por mês`
-  const tetoPers = contratado.value && pers?.contatos ? `${formatarNumero(Math.max(1000, 3 * pers.contatos))} por mês` : '3 por contato (mínimo 1.000)'
+  const contatosPers = pers?.contatos ? formatarNumero(pers.contatos) : '—'
+  const cotaPers = pers?.cota_ia ? `${formatarNumero(pers.cota_ia)} por mês` : '—'
+  const tetoPers = pers?.contatos ? `${formatarNumero(tetoPersonalizado(pers.contatos))} por mês` : '—'
   const valor = (c: Coluna, f: (p: PlanoAssinatura) => string, pers: string) => (c.chave === 'personalizado' ? pers : c.plano ? f(c.plano) : '—')
   return [
     { rotulo: 'Contatos ativos', valores: colunas.value.map((c) => valor(c, (p) => (p.contatos === null ? 'Sem limite' : formatarNumero(p.contatos)), contatosPers)) },
@@ -104,16 +104,26 @@ const RECURSOS = [
             <span v-if="ehAtual(c)" class="whitespace-nowrap rounded-full bg-marca-suave px-2 py-0.5 text-xs font-semibold text-marca-texto">{{ rotuloAtual }}</span>
           </div>
           <p class="shrink-0 text-right">
-            <template v-if="c.chave === 'personalizado' && !contratado">
-              <span class="block text-xs text-texto-suave">a partir de</span>
-              <span class="block font-bold tabular-nums text-texto">{{ minimoPers ? formatarMoeda(minimoPers) : '—' }}</span>
-            </template>
-            <template v-else-if="c.plano">
+            <template v-if="c.plano">
               <s v-if="Number(c.plano.cheio) !== Number(c.plano.preco)" class="block text-xs tabular-nums text-texto-fraco">{{ formatarMoeda(c.plano.cheio) }}</s>
               <span class="block font-bold tabular-nums text-texto">{{ formatarMoeda(c.plano.preco) }}</span>
             </template>
             <span class="block text-xs text-texto-suave">{{ periodo }}</span>
           </p>
+        </div>
+        <div v-if="c.chave === 'personalizado' && !contratado" class="grid grid-cols-2 gap-2" data-simulador>
+          <label class="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
+            Contatos ativos
+            <input type="number" inputmode="numeric" :min="tabela.contatos_min" :max="tabela.contatos_max" :step="tabela.passo" :value="contatos"
+                   class="h-9 w-full rounded-lg border border-borda-forte bg-superficie px-2.5 text-sm tabular-nums text-texto focus:border-marca focus:outline-none focus:ring-3 focus:ring-marca/20"
+                   @change="aoMudarContatos" />
+          </label>
+          <label class="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
+            Perguntas ao ToqqiAI
+            <select v-model.number="cotaIa" class="h-9 w-full rounded-lg border border-borda-forte bg-superficie px-2 text-sm text-texto focus:border-marca focus:outline-none focus:ring-3 focus:ring-marca/20">
+              <option v-for="o in opcoesCota" :key="o.valor" :value="o.valor">{{ o.rotulo }}</option>
+            </select>
+          </label>
         </div>
         <dl class="flex flex-col gap-1.5 text-sm">
           <div v-for="l in linhas" :key="l.rotulo" class="flex justify-between gap-3 border-t border-borda pt-1.5">
@@ -156,16 +166,25 @@ const RECURSOS = [
                   <span class="text-base font-bold text-texto">{{ c.nome }}</span>
                   <span v-if="ehAtual(c)" class="whitespace-nowrap rounded-full bg-marca-suave px-2 py-0.5 text-xs font-semibold text-marca-texto">{{ rotuloAtual }}</span>
                 </span>
-                <template v-if="c.chave === 'personalizado' && !contratado">
-                  <span class="text-xs text-texto-suave">a partir de</span>
-                  <span class="text-lg font-bold tabular-nums text-texto">{{ minimoPers ? formatarMoeda(minimoPers) : '—' }}</span>
-                  <span class="text-xs text-texto-suave">{{ periodo }}, calculado na hora</span>
-                </template>
-                <template v-else-if="c.plano">
+                <template v-if="c.plano">
                   <s v-if="Number(c.plano.cheio) !== Number(c.plano.preco)" class="text-xs tabular-nums text-texto-fraco">{{ formatarMoeda(c.plano.cheio) }}</s>
                   <span class="text-lg font-bold tabular-nums text-texto">{{ formatarMoeda(c.plano.preco) }}</span>
                   <span class="text-xs text-texto-suave">{{ periodo }}<template v-if="equivaleMes(c.plano)"> · {{ equivaleMes(c.plano) }}</template></span>
                 </template>
+                <span v-if="c.chave === 'personalizado' && !contratado" class="mt-2 flex flex-col gap-1.5" data-simulador>
+                  <label class="flex items-center justify-between gap-2 text-xs font-semibold text-texto-suave">
+                    Contatos
+                    <input type="number" inputmode="numeric" :min="tabela.contatos_min" :max="tabela.contatos_max" :step="tabela.passo" :value="contatos"
+                           class="h-8 w-24 rounded-lg border border-borda-forte bg-superficie px-2 text-right text-sm font-normal tabular-nums text-texto focus:border-marca focus:outline-none focus:ring-3 focus:ring-marca/20"
+                           @change="aoMudarContatos" />
+                  </label>
+                  <label class="flex items-center justify-between gap-2 text-xs font-semibold text-texto-suave">
+                    Perguntas
+                    <select v-model.number="cotaIa" class="h-8 w-24 rounded-lg border border-borda-forte bg-superficie px-1.5 text-sm font-normal text-texto focus:border-marca focus:outline-none focus:ring-3 focus:ring-marca/20">
+                      <option v-for="o in opcoesCota" :key="o.valor" :value="o.valor">{{ o.rotulo }}</option>
+                    </select>
+                  </label>
+                </span>
               </span>
             </th>
           </tr>

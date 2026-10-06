@@ -95,6 +95,11 @@ export function reais(c: number, semCentavosRedondos = false): string {
   })
 }
 
+/** Comentários lidos pela IA por mês no Personalizado: 3 por contato, no mínimo 1.000 (a regra da API). */
+export function tetoPersonalizado(contatos: number): number {
+  return Math.max(1000, 3 * contatos)
+}
+
 /** "Personalizado (2.000 contatos, 500 perguntas)" — o mesmo nome da API. */
 export function nomePersonalizado(contatos: number, cotaIa: number): string {
   const n = (x: number) => x.toLocaleString('pt-BR')

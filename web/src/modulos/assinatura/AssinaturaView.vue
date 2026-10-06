@@ -576,6 +576,8 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <ComparativoPlanos
+        v-model:contatos="contatosPers"
+        v-model:cota-ia="cotaPers"
         :planos="planosDaAssinatura"
         :tabela="tabela"
         :personalizado="persDaAssinatura"
@@ -623,7 +625,7 @@ onBeforeUnmount(() => {
         <details class="group" data-comparar-planos>
           <summary class="link w-fit cursor-pointer text-sm font-semibold">Comparar os planos em detalhe</summary>
           <div class="mt-4">
-            <ComparativoPlanos :planos="planosExibidos" :tabela="tabela" :personalizado="persExibido" :atual="emTeste ? dados.conta.plano : null" rotulo-atual="Plano do seu teste" />
+            <ComparativoPlanos v-model:contatos="contatosPers" v-model:cota-ia="cotaPers" :planos="planosExibidos" :tabela="tabela" :personalizado="persExibido" :atual="emTeste ? dados.conta.plano : null" rotulo-atual="Plano do seu teste" />
           </div>
         </details>
       </section>
@@ -700,6 +702,6 @@ onBeforeUnmount(() => {
     </section>
   </div>
 
-  <ModalTrocarPlano v-if="dados?.assinatura" v-model:aberto="trocarAberto" :estado="dados" :inicial="trocaInicial" @trocado="aoMudarAssinatura" @recarregar="atualizar" />
+  <ModalTrocarPlano v-if="dados?.assinatura" v-model:aberto="trocarAberto" :estado="dados" :inicial="trocaInicial" :contatos-iniciais="contatosPers" :cota-inicial="cotaPers" @trocado="aoMudarAssinatura" @recarregar="atualizar" />
   <ModalDadosCobranca v-if="dados?.assinatura" v-model:aberto="dadosAberto" :dados="dados.assinatura.dados" :disponivel="dados.disponivel" @salvo="aplicar" />
 </template>

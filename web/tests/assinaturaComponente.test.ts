@@ -209,6 +209,7 @@ describe('Assinatura: sem assinatura', () => {
     await contatos.trigger('change')
     await w.get('[data-calculadora] select').setValue(2000)
     expect(t(w.get('[data-preco-personalizado]').text())).toContain('R$ 874,00')
+    expect(t(w.get('[data-inclui]').text())).toContain('2.000 perguntas ao ToqqiAI e 15.000 comentários lidos pela IA')
     expect(t(botao(w, /^Assinar/).text())).toBe('Assinar o Personalizado · R$ 874,00 por mês')
     // A máscara vale ao digitar.
     await campo(w, 'documento').setValue('52998224725')
@@ -464,7 +465,25 @@ describe('Assinatura: com assinatura', () => {
     expect(sec.findAll('thead [data-coluna]').map((c) => c.attributes('data-coluna'))).toEqual(['essencial', 'profissional', 'empresa', 'personalizado'])
     expect(t(sec.get('[data-coluna="profissional"]').text())).toContain('Seu plano')
     expect(t(sec.get('[data-coluna="essencial"]').text())).toContain('R$ 149,00')
-    expect(t(sec.get('[data-coluna="personalizado"]').text())).toContain('R$ 117,00')
+    // Personalizado calculado: 320 ativos → 500 contatos sugeridos, 500 perguntas = R$ 219,00; 1.500 comentários (mín. 1.000, 3 por contato)
+    expect(t(sec.get('[data-coluna="personalizado"]').text())).toContain('R$ 219,00')
+    const tabela = () => t(w.get('[data-planos-assinada] table').text())
+    expect(tabela()).toContain('1.500 por mês')
+    // Simular outros números recalcula preço e limites
+    const sim = w.get('[data-planos-assinada] table [data-simulador]')
+    const campoContatos = sim.get<HTMLInputElement>('input[type="number"]')
+    campoContatos.element.value = '5000'
+    await campoContatos.trigger('change')
+    await sim.get('select').setValue(2000)
+    expect(t(w.get('[data-planos-assinada] [data-coluna="personalizado"]').text())).toContain('R$ 874,00')
+    expect(tabela()).toContain('15.000 por mês')
+    expect(tabela()).toContain('5.000')
+    // "Trocar para este" no Personalizado leva os números simulados à janela
+    await w.get('[data-planos-assinada] table [data-trocar-para="personalizado"]').trigger('click')
+    await flushPromises()
+    expect(t(w.get('[role="dialog"] [data-preco-personalizado]').text())).toContain('R$ 874,00')
+    await botao(w.get('[role="dialog"]'), 'Cancelar').trigger('click')
+    await flushPromises()
     const texto = t(sec.text())
     for (const trecho of ['Perguntas ao ToqqiAI', '2.000 por mês', 'Comentários lidos pela IA', 'WhatsApp automático', 'Sem franquia', 'Sem limite']) {
       expect(texto).toContain(trecho)
