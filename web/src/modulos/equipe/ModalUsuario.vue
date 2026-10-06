@@ -14,7 +14,8 @@ import Campo from '@/components/ui/Campo.vue'
 import CampoSenha from '@/components/ui/CampoSenha.vue'
 import Modal from '@/components/ui/Modal.vue'
 
-const props = defineProps<{ usuario: Usuario | null; ehVoce?: boolean }>()
+// `perfilInicial`: o perfil já marcado num usuário novo ("Novo usuário" do Adicionar administrador traz Administrador).
+const props = defineProps<{ usuario: Usuario | null; ehVoce?: boolean; perfilInicial?: Perfil }>()
 const aberto = defineModel<boolean>('aberto', { default: false })
 const emit = defineEmits<{ salvo: [Usuario] }>()
 
@@ -37,7 +38,7 @@ watch(aberto, (v) => {
     nome: u?.nome ?? '',
     email: u?.email ?? '',
     cargo: u?.cargo ?? '',
-    perfil: u?.perfil ?? 'gestor',
+    perfil: u?.perfil ?? props.perfilInicial ?? 'gestor',
     senha: '',
   })
 })

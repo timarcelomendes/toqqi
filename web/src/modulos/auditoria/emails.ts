@@ -36,9 +36,9 @@ export const PERIODOS_EMAILS: { valor: PeriodoEmails; rotulo: string }[] = [
   { valor: 'personalizado', rotulo: 'Escolher as datas' },
 ]
 
-/** Os tipos na ordem do filtro, com os mesmos rótulos da API (`tipo_rotulo`). Boas-vindas e Cobrança existem na API,
- *  mas hoje nenhum e-mail sai com eles (usuário criado pela equipe e assinatura não mandam e-mail): ficam fora do filtro
- *  para não oferecer uma opção sempre vazia; uma linha com eles ainda aparece com o rótulo da API. */
+/** Os tipos na ordem do filtro, com os mesmos rótulos da API (`tipo_rotulo`). Boas-vindas é o e-mail de pedido de acesso
+ *  aprovado. Cobrança existe na API, mas hoje nenhum e-mail sai com ele (a assinatura não manda e-mail): fica fora do
+ *  filtro para não oferecer uma opção sempre vazia; uma linha com ele ainda aparece com o rótulo da API. */
 export const TIPOS_EMAIL: { valor: TipoEmailEnviado; rotulo: string }[] = [
   { valor: 'convite', rotulo: 'Convite de pesquisa' },
   { valor: 'lembrete', rotulo: 'Lembrete' },
@@ -47,6 +47,7 @@ export const TIPOS_EMAIL: { valor: TipoEmailEnviado; rotulo: string }[] = [
   { valor: 'teste', rotulo: 'E-mail de teste' },
   { valor: 'confirmacao', rotulo: 'Confirmação de e-mail' },
   { valor: 'senha', rotulo: 'Redefinição de senha' },
+  { valor: 'boas_vindas', rotulo: 'Boas-vindas' },
   { valor: 'alerta_risco', rotulo: 'Alerta de risco' },
   { valor: 'resumo_semanal', rotulo: 'Resumo semanal' },
   { valor: 'pico', rotulo: 'Pico de reclamações' },

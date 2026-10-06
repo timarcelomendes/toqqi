@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, File, Response, UploadFile
 
 from toqqi.core.deps import Contexto, requer
 from toqqi.modulos.conta import dados as dados_empresa
-from toqqi.modulos.conta import marca, servico
+from toqqi.modulos.conta import administradores, marca, servico
 from toqqi.modulos.conta.esquemas import DadosEmpresaIn, IaIn, MarcaIn, SegurancaIn
 from toqqi.modulos.ia import servico as ia
 from toqqi.modulos.imagens.servico import ler_envio
@@ -73,3 +73,11 @@ def salvar_ia(dados: IaIn, ctx: Contexto = Depends(GERENCIAR)):
 @router.post("/ia/analisar-recentes")
 def analisar_recentes(ctx: Contexto = Depends(GERENCIAR)):
     return ia.analisar_recentes(ctx)
+
+
+# ---- quem administra a conta (Minha conta) -------------------------------------------
+
+@router.get("/administradores")
+def listar_administradores(ctx: Contexto = Depends(requer())):
+    """Para qualquer perfil da conta: os administradores ativos [{id, nome, email, cargo, voce}]."""
+    return administradores.listar(ctx)

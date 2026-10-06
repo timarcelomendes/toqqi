@@ -1,6 +1,7 @@
 import { api } from './cliente'
 import type {
   Aceite,
+  AdministradorConta,
   ContaPlataforma,
   DadosSessao,
   Gravidade,
@@ -103,6 +104,8 @@ export const equipeApi = {
 export const contaApi = {
   seguranca: () => api.get<Seguranca>('/conta/seguranca'),
   salvarSeguranca: (dados: Seguranca) => api.put<Seguranca>('/conta/seguranca', dados),
+  /** Quem administra a conta (Minha conta), para qualquer perfil. */
+  administradores: () => api.get<AdministradorConta[]>('/conta/administradores'),
 }
 
 export interface FiltrosAuditoria {

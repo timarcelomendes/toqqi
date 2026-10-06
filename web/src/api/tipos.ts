@@ -165,6 +165,16 @@ export interface Seguranca {
   dominios: string[]
 }
 
+/** Minha conta › Administradores da conta (GET /conta/administradores, para qualquer perfil): os administradores ativos. */
+export interface AdministradorConta {
+  id: number | string
+  nome: string
+  email: string
+  cargo: string | null
+  /** É quem está vendo. */
+  voce: boolean
+}
+
 export type Gravidade = 'info' | 'sucesso' | 'atencao' | 'erro'
 
 export interface ItemAuditoria {

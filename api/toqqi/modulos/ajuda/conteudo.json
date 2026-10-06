@@ -4259,7 +4259,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "O menu mostra só o que o seu perfil pode abrir. Se faltar uma tela ou um botão, peça ao administrador para ajustar a permissão. A conta sempre precisa de pelo menos um administrador ativo."
+              "texto": "O menu mostra só o que o seu perfil pode abrir. Se faltar uma tela ou um botão, peça ao administrador para ajustar a permissão. Quem são os administradores aparece em Minha conta, em “Administradores da conta”. A conta sempre precisa de pelo menos um administrador ativo."
             }
           ]
         },
@@ -4300,11 +4300,47 @@
             {
               "tipo": "lista",
               "itens": [
-                "Menu de cada pessoa: Editar (nome, cargo e perfil), Reenviar confirmação (se o e-mail ainda não foi confirmado), Bloquear ou Desbloquear e Excluir.",
+                "Menu de cada pessoa: Editar (nome, cargo e perfil), Reenviar confirmação (se o e-mail ainda não foi confirmado), Tornar administrador ou Remover dos administradores, Bloquear ou Desbloquear e Excluir.",
                 "Bloquear: a pessoa é desconectada na hora e não entra até você desbloquear.",
                 "Excluir: ela perde o acesso e sai da lista. O que ela fez continua na Auditoria. Não dá para desfazer.",
                 "Você não muda o seu próprio perfil nem se bloqueia ou exclui: peça a outro administrador."
               ]
+            }
+          ]
+        },
+        {
+          "id": "adicionar-e-remover-administradores",
+          "titulo": "Adicionar e remover administradores",
+          "somente_admin": true,
+          "atalho": "equipe",
+          "palavras": [
+            "administrador",
+            "novo administrador",
+            "tornar administrador",
+            "remover administrador",
+            "dar acesso de administrador",
+            "trocar o administrador",
+            "mais de um administrador",
+            "admin",
+            "dono da conta",
+            "responsável pela conta"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "A conta pode ter mais de um administrador. Em Administração › Equipe, aba “Pessoas”, o quadro “Administradores da conta” mostra quem administra hoje."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Para adicionar, clique em “Adicionar administrador”, escolha a pessoa da equipe e clique em “Tornar administrador”. Também dá pelo menu da pessoa, em “Tornar administrador”.",
+                "Para remover, clique no X ao lado do nome, no quadro, ou escolha “Remover dos administradores” no menu da pessoa, e confirme. Ela passa a ter o perfil Gestor.",
+                "É alguém de fora da equipe? Crie em “Novo usuário” com o perfil Administrador."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "A conta sempre precisa de pelo menos um administrador ativo, e você não tira o seu próprio acesso: peça a outro administrador. Toda a equipe vê quem são os administradores em Minha conta."
             }
           ]
         },
@@ -4332,7 +4368,7 @@
               "tipo": "passos",
               "itens": [
                 "Clique em “Ver pedidos” no e-mail do pedido ou, em Equipe, no aviso “N pessoas pediram acesso”.",
-                "Confira quem é. Para liberar, clique em “Aprovar” e confirme. Para negar, use o menu da pessoa e escolha Bloquear ou Excluir.",
+                "Confira quem é. Para liberar, clique em “Aprovar” e confirme: a pessoa recebe um e-mail com o perfil dela e quem administra a conta. Para negar, use o menu da pessoa e escolha Bloquear ou Excluir.",
                 "Se quiser outro perfil, abra Editar e mude o Perfil. Quem pediu acesso entra como Consulta."
               ]
             },
@@ -4822,7 +4858,7 @@
     {
       "id": "minha-conta",
       "titulo": "Minha conta",
-      "resumo": "Seus dados, sua senha, os e-mails que você recebe e os aparelhos onde você está conectado.",
+      "resumo": "Seus dados, quem administra a conta, sua senha, os e-mails que você recebe e os aparelhos onde você está conectado.",
       "secoes": [
         {
           "id": "abrir-minha-conta-e-editar-seus-dados",
@@ -4848,7 +4884,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Clique no seu nome (ou nas suas iniciais), no canto superior direito, e escolha “Minha conta”. A tela reúne seus dados, os e-mails que você recebe, a senha e os aparelhos conectados."
+              "texto": "Clique no seu nome (ou nas suas iniciais), no canto superior direito, e escolha “Minha conta”. A tela reúne seus dados, quem administra a conta, os e-mails que você recebe, a senha e os aparelhos conectados."
             },
             {
               "tipo": "passos",
@@ -4864,6 +4900,33 @@
             {
               "tipo": "dica",
               "texto": "O botão com sol ou lua, ao lado do seu nome, troca o tema entre claro e escuro."
+            }
+          ]
+        },
+        {
+          "id": "quem-administra-a-conta",
+          "titulo": "Quem administra a conta",
+          "somente_admin": false,
+          "atalho": "minha_conta",
+          "palavras": [
+            "administrador",
+            "quem é o administrador",
+            "quem administra",
+            "falar com o administrador",
+            "pedir permissão",
+            "mudar meu perfil",
+            "admin da conta",
+            "responsável pela conta",
+            "dono da conta"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Minha conta, a seção “Administradores da conta” mostra o nome, o cargo e o e-mail de quem administra a conta. Clique no e-mail para escrever para a pessoa."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Fale com um administrador para mudar o seu perfil, pedir mais permissões, chamar alguém para a equipe ou trocar de plano. Se você é administrador, o atalho “Adicionar ou remover em Equipe” leva para onde você muda quem administra."
             }
           ]
         },

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Ban, CheckCircle2, MailPlus, MoreHorizontal, Pencil, Search, Trash2, UserCheck, Users } from 'lucide-vue-next'
-import { equipeApi, mensagemDoErro, type SituacaoUsuario, type Usuario } from '@/api'
+import { Ban, CheckCircle2, MailPlus, MoreHorizontal, Pencil, Search, ShieldMinus, ShieldPlus, Trash2, UserCheck, Users, X } from 'lucide-vue-next'
+import { equipeApi, mensagemDoErro, type Perfil, type SituacaoUsuario, type Usuario } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { usarPedidosAcesso } from '@/composables/pedidosAcesso'
 import { confirmar } from '@/composables/confirmacao'
@@ -17,6 +17,7 @@ import EstadoVazio from '@/components/ui/EstadoVazio.vue'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
 import MenuSuspenso from '@/components/ui/MenuSuspenso.vue'
 import Tabela, { type Coluna } from '@/components/ui/Tabela.vue'
+import ModalAdministrador from './ModalAdministrador.vue'
 import ModalUsuario from './ModalUsuario.vue'
 
 const sessao = useSessaoStore()
@@ -30,6 +31,8 @@ const ocupado = ref<Usuario['id'] | null>(null)
 
 const modalAberto = ref(false)
 const emEdicao = ref<Usuario | null>(null)
+const perfilNovo = ref<Perfil>('gestor')
+const modalAdminAberto = ref(false)
 
 const colunas: Coluna[] = [
   { chave: 'nome', rotulo: 'Nome e e-mail' },
@@ -45,6 +48,11 @@ const pendentes = computed(() => usuarios.value.filter((u) => u.situacao === 'pe
 // O número ao lado de Equipe no menu acompanha a lista (aprovar, bloquear e excluir mudam na hora).
 const pedidosAcesso = usarPedidosAcesso()
 watch(pendentes, (n) => pedidosAcesso.definir(n))
+
+// Administradores ativos (o quadro do topo) e quem pode virar administrador (ativo e com outro perfil).
+const porNome = (a: Usuario, b: Usuario) => a.nome.localeCompare(b.nome, 'pt-BR')
+const administradores = computed(() => usuarios.value.filter((u) => u.perfil === 'admin' && u.situacao === 'ativo').sort(porNome))
+const candidatosAdmin = computed(() => usuarios.value.filter((u) => u.perfil !== 'admin' && u.situacao === 'ativo').sort(porNome))
 
 function normalizar(t: string) {
   return t.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
@@ -80,8 +88,9 @@ function substituir(u: Usuario) {
   else usuarios.value.push(u)
 }
 
-function novo() {
+function novo(perfil: Perfil = 'gestor') {
   emEdicao.value = null
+  perfilNovo.value = perfil
   modalAberto.value = true
 }
 function editar(u: Usuario) {
@@ -110,6 +119,45 @@ async function mudarSituacao(u: Usuario, situacao: SituacaoUsuario) {
   try {
     substituir(await equipeApi.atualizar(u.id, { situacao }))
     avisar.sucesso(t.ok)
+  } catch (e) {
+    avisar.erro(mensagemDoErro(e))
+  } finally {
+    ocupado.value = null
+  }
+}
+
+async function tornarAdmin(u: Usuario) {
+  const ok = await confirmar({
+    titulo: `Dar acesso de administrador a ${u.nome}?`,
+    mensagem: 'A pessoa passa a poder tudo no Toqqi, inclusive cuidar da equipe, das configurações e da assinatura.',
+    confirmar: 'Tornar administrador',
+  })
+  if (!ok) return
+  ocupado.value = u.id
+  try {
+    substituir(await equipeApi.atualizar(u.id, { perfil: 'admin' }))
+    avisar.sucesso(`${u.nome} agora administra a conta.`)
+  } catch (e) {
+    avisar.erro(mensagemDoErro(e))
+  } finally {
+    ocupado.value = null
+  }
+}
+
+/** Quem sai dos administradores fica com o perfil Gestor (dá para trocar depois em Editar). */
+async function removerAdmin(u: Usuario) {
+  const ok = await confirmar({
+    titulo: `Remover ${u.nome} dos administradores?`,
+    mensagem:
+      'A pessoa passa a ter o perfil Gestor e deixa de cuidar da equipe, das configurações e da assinatura. Dá para trocar o perfil depois em Editar.',
+    confirmar: 'Remover dos administradores',
+    perigo: true,
+  })
+  if (!ok) return
+  ocupado.value = u.id
+  try {
+    substituir(await equipeApi.atualizar(u.id, { perfil: 'gestor' }))
+    avisar.sucesso(`${u.nome} não administra mais a conta e ficou com o perfil Gestor.`)
   } catch (e) {
     avisar.erro(mensagemDoErro(e))
   } finally {
@@ -159,6 +207,45 @@ defineExpose({ novo })
       Confira quem é e aprove ou bloqueie.
       <button type="button" class="link ml-1" @click="soPendentes = true">Ver pedidos</button>
     </Alerta>
+
+    <section v-if="!carregando && !erro && !soPendentes" class="cartao flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:px-5" aria-labelledby="titulo-administradores" data-administradores>
+      <div class="min-w-0 flex-1">
+        <h2 id="titulo-administradores" class="font-semibold text-texto">Administradores da conta</h2>
+        <p class="text-sm text-texto-fraco">
+          Podem tudo no Toqqi, inclusive cuidar da equipe, das configurações e da assinatura. Todos da equipe veem quem são em Minha conta.
+        </p>
+        <ul class="mt-3 flex flex-wrap gap-2">
+          <li
+            v-for="u in administradores"
+            :key="u.id"
+            class="inline-flex max-w-full items-center gap-2 rounded-full border border-borda py-1 pl-1 text-sm"
+            :class="ehVoce(u) ? 'pr-3' : 'pr-1'"
+            data-administrador
+          >
+            <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-marca-suave text-xs font-bold text-marca-texto" aria-hidden="true">
+              {{ iniciais(u.nome) }}
+            </span>
+            <span class="truncate font-semibold text-texto">{{ u.nome }}</span>
+            <span v-if="ehVoce(u)" class="text-texto-fraco">(você)</span>
+            <button
+              v-else
+              type="button"
+              class="flex size-7 shrink-0 items-center justify-center rounded-full text-texto-fraco hover:bg-superficie-2 hover:text-erro disabled:opacity-50"
+              :disabled="ocupado === u.id"
+              :aria-label="`Remover ${u.nome} dos administradores`"
+              :title="`Remover ${u.nome} dos administradores`"
+              data-remover-admin
+              @click="removerAdmin(u)"
+            >
+              <X class="size-4" aria-hidden="true" />
+            </button>
+          </li>
+        </ul>
+      </div>
+      <Botao variante="secundario" tamanho="sm" class="self-start" data-adicionar-admin @click="modalAdminAberto = true">
+        <ShieldPlus class="size-4" aria-hidden="true" /> Adicionar administrador
+      </Botao>
+    </section>
 
     <div class="cartao">
       <div class="flex flex-col gap-3 border-b border-borda p-4 sm:flex-row sm:items-center sm:px-5">
@@ -234,6 +321,8 @@ defineExpose({ novo })
               <ItemMenu :icone="Pencil" @click="editar(u)">Editar</ItemMenu>
               <ItemMenu v-if="!u.email_confirmado && u.situacao !== 'pendente'" :icone="MailPlus" @click="reenviar(u)">Reenviar confirmação</ItemMenu>
               <template v-if="!ehVoce(u)">
+                <ItemMenu v-if="u.perfil === 'admin'" :icone="ShieldMinus" @click="removerAdmin(u)">Remover dos administradores</ItemMenu>
+                <ItemMenu v-else-if="u.situacao === 'ativo'" :icone="ShieldPlus" @click="tornarAdmin(u)">Tornar administrador</ItemMenu>
                 <ItemMenu v-if="u.situacao === 'bloqueado'" :icone="CheckCircle2" @click="mudarSituacao(u, 'ativo')">Desbloquear</ItemMenu>
                 <ItemMenu v-else :icone="Ban" @click="mudarSituacao(u, 'bloqueado')">Bloquear</ItemMenu>
                 <ItemMenu :icone="Trash2" perigo @click="excluir(u)">Excluir</ItemMenu>
@@ -249,12 +338,19 @@ defineExpose({ novo })
             :descricao="soPendentes ? 'Não há pedidos de acesso esperando você.' : 'Tente buscar por outro nome ou e-mail.'"
           />
           <EstadoVazio v-else :icone="Users" titulo="Sua equipe começa aqui" descricao="Chame quem vai acompanhar os clientes com você.">
-            <Botao @click="novo">Novo usuário</Botao>
+            <Botao @click="novo()">Novo usuário</Botao>
           </EstadoVazio>
         </template>
       </Tabela>
     </div>
 
-    <ModalUsuario v-model:aberto="modalAberto" :usuario="emEdicao" :eh-voce="!!emEdicao && ehVoce(emEdicao)" @salvo="substituir" />
+    <ModalUsuario
+      v-model:aberto="modalAberto"
+      :usuario="emEdicao"
+      :eh-voce="!!emEdicao && ehVoce(emEdicao)"
+      :perfil-inicial="perfilNovo"
+      @salvo="substituir"
+    />
+    <ModalAdministrador v-model:aberto="modalAdminAberto" :candidatos="candidatosAdmin" @salvo="substituir" @novo="novo('admin')" />
   </div>
 </template>

@@ -5,12 +5,12 @@ from sqlalchemy.orm import Session
 
 from toqqi.apresentacao import eh_superadmin, usuario_json
 from toqqi.core.auditoria import registrar
-from toqqi.core.db import em_conta
+from toqqi.core.db import apos_commit, em_conta
 from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.permissoes import CHAVES, SOMENTE_ADMIN, catalogo_json, ordenar
 from toqqi.core.security import gerar_hash
-from toqqi.modelos import PerfilPermissao, Usuario
+from toqqi.modelos import Conta, PerfilPermissao, Usuario
 from toqqi.modulos.acesso import emails
 from toqqi.modulos.acesso.servico import criar_token, revogar_sessoes
 
@@ -122,7 +122,29 @@ def alterar(ctx: Contexto, usuario_id: int, dados) -> dict:
         else:
             registrar(s, "usuario_alterado", "info", detalhe, usuario_id=ctx.usuario_id)
         s.flush()
+        if mudancas.get("situacao") == ["pendente", "ativo"] and u.email_confirmado:
+            _avisar_aprovacao(s, ctx, u)
         return usuario_json(u)
+
+
+def _limpo(texto: str | None) -> str:
+    return " ".join((texto or "").split())[:80]
+
+
+def _avisar_aprovacao(s: Session, ctx: Contexto, u: Usuario) -> None:
+    """Pedido de acesso aprovado: e-mail à pessoa (depois do commit) com quem aprovou, o perfil e os administradores.
+    Só com o e-mail confirmado: um pedido feito com o e-mail de outra pessoa não manda nada para ela."""
+    admins = [(_limpo(nome), email) for nome, email in s.execute(
+        select(Usuario.nome, Usuario.email)
+        .where(Usuario.conta_id == ctx.conta_id, Usuario.perfil == "admin", Usuario.situacao == "ativo",
+               Usuario.id != u.id)  # aprovado já como administrador: a lista traz os outros
+        .order_by(Usuario.nome, Usuario.id)
+    )]
+    conta = s.get(Conta, ctx.conta_id)
+    nome, email, perfil = _limpo(u.nome) or u.email, u.email, u.perfil
+    aprovador = _limpo((ctx.usuario or {}).get("nome")) or "O administrador da conta"
+    empresa = _limpo(conta.nome if conta else "")
+    apos_commit(s, lambda: emails.acesso_aprovado(nome, email, aprovador, empresa, perfil, admins, ctx.conta_id))
 
 
 def excluir(ctx: Contexto, usuario_id: int) -> None:
