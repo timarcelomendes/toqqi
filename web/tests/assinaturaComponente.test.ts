@@ -477,6 +477,26 @@ describe('Assinatura: com assinatura', () => {
     expect(t(janela.get('[data-efeito]').text())).toContain('O valor passa de R$ 349,00 para R$ 799,00 por mês.')
   })
 
+  it('API sem os limites nos planos: a comparação completa com /publico/planos (sem "—")', async () => {
+    entrar(['assinatura.gerenciar'])
+    const pub = {
+      planos: [
+        { chave: 'essencial', nome: 'Essencial', preco: '149.00', contatos: 300, whatsapp: null, ia_cota: 100, ia_teto: 1000 },
+        { chave: 'profissional', nome: 'Profissional', preco: '349.00', contatos: 1500, whatsapp: null, ia_cota: 500, ia_teto: 5000 },
+        { chave: 'empresa', nome: 'Empresa', preco: '799.00', contatos: 5000, whatsapp: null, ia_cota: 2000, ia_teto: 15000 },
+      ],
+      teste: { dias: 14, plano: 'profissional', whatsapp: null, ia_teto: 500 },
+      ia_analises: { rapido: 1, equilibrado: 1, detalhado: 3 },
+    }
+    apiFalsa({ 'GET /assinatura': () => ASSINADA_NO_TESTE(), 'GET /publico/planos': () => pub, 'GET /eu': () => DADOS_EU() })
+    const w = await abrir('/assinatura', AssinaturaView)
+    await flushPromises()
+    const texto = t(w.get('[data-planos-assinada] table').text())
+    expect(texto).toContain('15.000 por mês')
+    expect(texto).toContain('2.000 por mês')
+    expect(texto).not.toContain('—')
+  })
+
   it('trocar de plano: mostra o novo valor e o efeito na fatura; plano menor com contatos demais avisa e não deixa', async () => {
     entrar(['assinatura.gerenciar', 'contatos.ver'])
     const api = apiFalsa({

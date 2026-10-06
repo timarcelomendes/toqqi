@@ -17,6 +17,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ArrowRightLeft, CreditCard, ExternalLink, FileText, Pencil, RefreshCw, XCircle } from 'lucide-vue-next'
 import { assinaturaApi, mensagemDoErro, type EstadoAssinatura, type FaturaAberta } from '@/api'
+import { publicoApi } from '@/api/publico'
+import type { PlanoAssinatura } from '@/api/tipos'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
 import { useFormulario } from '@/composables/formulario'
@@ -120,6 +122,7 @@ async function carregar() {
     form.value = formCobrancaDe(e.dados_sugeridos)
     contatosPers.value = contatosSugeridos(e.contatos_ativos, tabelaDe(e))
     sincronizarSessao(e)
+    completarLimites(e)
   } catch (e) {
     erroCarga.value = mensagemDoErro(e)
   } finally {
@@ -241,7 +244,7 @@ const OPCOES_FORMA = computed(() => [
   { valor: 'qualquer' as Forma, rotulo: 'Cartão ou boleto' },
 ])
 const planosExibidos = computed<PlanoExibido[]>(() =>
-  dados.value ? dados.value.planos.map((p) => exibido(p, ciclo.value, forma.value, descontos.value)) : [],
+  dados.value ? planosCompletos.value.map((p) => exibido(p, ciclo.value, forma.value, descontos.value)) : [],
 )
 const persExibido = computed<PlanoExibido | null>(() => {
   const p = planoPersonalizado(tabela.value, contatosPers.value, cotaPers.value)
@@ -252,10 +255,30 @@ const plano = computed<PlanoExibido | null>(() => {
   if (planoEscolhido.value === 'personalizado') return persExibido.value
   return planoPorChave(planosExibidos.value, planoEscolhido.value)
 })
+/**
+ * Cota do ToqqiAI, comentários lidos pela IA e WhatsApp de cada plano: vêm em GET /assinatura; se a API ainda não os
+ * manda (subiu depois do site), completa com GET /publico/planos, que os tem desde a 5g.
+ */
+const limitesPublicos = ref<Record<string, Pick<PlanoAssinatura, 'ia_cota' | 'ia_teto' | 'whatsapp'>>>({})
+async function completarLimites(e: EstadoAssinatura) {
+  if (e.planos.every((p) => p.ia_cota !== undefined && p.ia_teto !== undefined)) return
+  try {
+    const pub = await publicoApi.planos()
+    limitesPublicos.value = Object.fromEntries(
+      pub.planos.map((p) => [String(p.chave), { ia_cota: p.ia_cota, ia_teto: p.ia_teto, whatsapp: p.whatsapp ?? null }]),
+    )
+  } catch {
+    /* sem resposta: a comparação mostra "—" nessas linhas */
+  }
+}
+const planosCompletos = computed<PlanoAssinatura[]>(() =>
+  (dados.value?.planos ?? []).map((p) => ({ ...(limitesPublicos.value[String(p.chave)] ?? {}), ...Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined)) }) as PlanoAssinatura),
+)
+
 /** Com assinatura: os planos no ciclo e na forma dela (a comparação mostra o que cada um custaria hoje). */
 const planosDaAssinatura = computed<PlanoExibido[]>(() =>
   dados.value && assinatura.value
-    ? dados.value.planos.map((p) => exibido(p, cicloAtual.value, assinatura.value!.forma ?? 'qualquer', descontos.value))
+    ? planosCompletos.value.map((p) => exibido(p, cicloAtual.value, assinatura.value!.forma ?? 'qualquer', descontos.value))
     : [],
 )
 const persDaAssinatura = computed<PlanoExibido | null>(() => {
