@@ -8,6 +8,7 @@ import { formatarNumero, plural } from '@/utils/formatos'
 import { CANAIS, GRUPOS_NOTA, tomGrupo } from '@/utils/rotulos'
 import { ROTULOS_CONTEXTO, type CampoContexto } from '@/pesquisa/tipos'
 import { renderizarVariaveis } from '@/pesquisa/variaveis'
+import { RE_CITACAO, respondivel } from '@/pesquisa/logica'
 import { quandoFoiResposta, seloOrigem } from '@/modulos/respostas/logica'
 import { useSessaoStore } from '@/stores/sessao'
 import Alerta from '@/components/ui/Alerta.vue'
@@ -125,9 +126,13 @@ function faixaDoGrupo(rotulo: string): string {
 }
 function tituloPergunta(r: ResultadoPergunta) {
   const bruto = r.titulo || props.perguntas.find((p) => p.id === r.id)?.titulo || 'Pergunta'
-  // mostra o título como o cliente viu: {empresa} vira o nome da conta; {nome} some
-  return renderizarVariaveis(bruto, { empresa: sessao.conta?.nome ?? '' })
+  // mostra o título como o cliente viu: {empresa} vira o nome da conta; {nome} some. Etapa 5l: citação de outra
+  // resposta ({{id}}) aparece como "…" (como a API manda).
+  return renderizarVariaveis(bruto.replace(RE_CITACAO, '…'), { empresa: sessao.conta?.nome ?? '' })
 }
+
+/** Etapa 5l: blocos de conteúdo e quebras de página não têm resposta (a API já tira; aqui, por garantia). */
+const perguntasComResposta = computed(() => (resultados.value?.perguntas ?? []).filter((r) => respondivel(r.tipo)))
 
 /** Distribuição com todos os valores da faixa (inclusive os sem resposta). */
 function barras(r: ResultadoPergunta) {
@@ -239,7 +244,7 @@ function chipsContexto(r: Resposta) {
       <section aria-labelledby="t-perguntas" class="flex flex-col gap-3">
         <h2 id="t-perguntas" class="text-lg font-bold text-texto">Pergunta por pergunta</h2>
         <div class="grid gap-4 lg:grid-cols-2">
-          <article v-for="r in resultados.perguntas" :key="r.id" class="cartao flex flex-col gap-3 p-5">
+          <article v-for="r in perguntasComResposta" :key="r.id" class="cartao flex flex-col gap-3 p-5">
             <header>
               <h3 class="font-semibold text-texto">{{ tituloPergunta(r) }}</h3>
               <p class="text-xs text-texto-fraco">

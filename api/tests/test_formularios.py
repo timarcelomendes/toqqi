@@ -23,13 +23,17 @@ def test_conta_nova_recebe_formularios_padrao(client, admin):
     p0 = completo["perguntas"][0]
     assert p0["titulo"] == "Como foi a entrega do seu pedido {referencia}?"
     assert all(p["id"].startswith("p_") and len(p["id"]) == 8 for p in completo["perguntas"])
-    assert completo["perguntas"][2]["condicao"] == {"tipo": "grupo", "grupos": ["insatisfeito", "neutro"]}
+    # etapa 5l: a condição dos modelos vem no formato novo (logica.mostrar_se na nota principal)
+    assert "condicao" not in completo["perguntas"][2]
+    assert completo["perguntas"][2]["logica"]["mostrar_se"] == {"juncao": "todas", "condicoes": [
+        {"fonte": p0["id"], "op": "grupo_e", "valor": ["insatisfeito", "neutro"]}]}
 
 
 def test_modelos(client, admin):
     ms = client.get(f"{API}/formularios/modelos", headers=admin["h"]).json()
     assert [m["chave"] for m in ms] == ["nps_simples", "pos_entrega", "pos_atendimento", "nps_distribuidora",
-                                        "pesquisa_rapida", "em_branco"]
+                                        "pesquisa_rapida", "nps_segmentos", "ces_atendimento", "csat_motivo",
+                                        "em_branco"]  # etapa 5l: três modelos novos antes do "Em branco"
     pos = next(m for m in ms if m["chave"] == "pos_atendimento")
     assert pos["perguntas"][1]["tipo"] == "escala" and (pos["perguntas"][1]["min"], pos["perguntas"][1]["max"]) == (1, 7)
     f = client.post(f"{API}/formularios", headers=admin["h"], json={"nome": "Distribuidora", "modelo": "nps_distribuidora"})
@@ -83,7 +87,10 @@ def test_condicao_so_depois_da_nota_principal(client, admin):
     assert "perguntas.1.condicao" in campos
     ok = criar_form(client, admin["h"], [NPS, {"tipo": "comentario", "titulo": "X",
                                                "condicao": {"tipo": "nota", "operador": "<=", "valor": 6}}])
-    assert ok["perguntas"][1]["condicao"] == {"tipo": "nota", "operador": "<=", "valor": 6}
+    # etapa 5l: a condição antiga é aceita e sai convertida (a saída nunca tem `condicao`)
+    assert "condicao" not in ok["perguntas"][1]
+    assert ok["perguntas"][1]["logica"] == {"mostrar_se": {"juncao": "todas", "condicoes": [
+        {"fonte": ok["perguntas"][0]["id"], "op": "menor_igual", "valor": 6}]}, "pular": []}
 
 
 def test_validacoes_de_perguntas(client, admin):

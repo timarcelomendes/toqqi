@@ -185,3 +185,16 @@ services:
       - path: /*
         name: Referrer-Policy
         value: strict-origin-when-cross-origin
+      # Etapa 5l (docs/api-etapa-5l.md §3.4): as páginas de pesquisa mostram HTML escrito no editor e dividem a origem
+      # com o app logado, então só rodam script do próprio site e só conversam com a API. `img-src https:` mantém os
+      # logos de fora; `frame-ancestors *` mantém o widget (iframe no site do cliente). Trocou o domínio da API:
+      # ajuste o connect-src também.
+      - path: /r/*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.toqqi.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *"
+      - path: /f/*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.toqqi.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *"
+      - path: /sair/*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.toqqi.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *"

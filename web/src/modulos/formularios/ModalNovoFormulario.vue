@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { GitBranch } from 'lucide-vue-next'
 import { formulariosApi, mensagemDoErro, type ModeloFormulario } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { useFormulario } from '@/composables/formulario'
@@ -30,6 +31,9 @@ const nomeEditado = ref(false)
 const erroNome = ref<string | null>(null)
 
 const modelo = computed(() => modelos.value.find((m) => m.chave === escolhido.value) ?? null)
+/** Etapa 5l: o modelo tem lógica (mostrar se, pular) ou finais por condição. */
+const comLogica = (m: ModeloFormulario) =>
+  !!m.finais?.length || (m.perguntas ?? []).some((p) => !!p.logica?.mostrar_se?.condicoes?.length || !!p.logica?.pular?.length || !!p.condicao)
 
 async function carregar() {
   carregando.value = true
@@ -98,9 +102,12 @@ async function criar() {
               :class="escolhido === m.chave ? 'border-marca bg-marca-suave' : 'border-borda-forte hover:bg-superficie-2'"
             >
               <input v-model="escolhido" type="radio" name="modelo" :value="m.chave" class="sr-only" />
-              <span class="flex items-center justify-between gap-2">
+              <span class="flex items-start justify-between gap-2">
                 <span class="text-sm font-bold text-texto">{{ m.nome }}</span>
-                <Etiqueta :tom="TIPOS_FORMULARIO[tipoPrincipal(m.perguntas ?? [])].tom">{{ TIPOS_FORMULARIO[tipoPrincipal(m.perguntas ?? [])].rotulo }}</Etiqueta>
+                <span class="flex shrink-0 flex-wrap justify-end gap-1">
+                  <Etiqueta v-if="comLogica(m)" tom="info" data-com-logica><GitBranch class="size-3" aria-hidden="true" /> Com lógica</Etiqueta>
+                  <Etiqueta :tom="TIPOS_FORMULARIO[tipoPrincipal(m.perguntas ?? [])].tom">{{ TIPOS_FORMULARIO[tipoPrincipal(m.perguntas ?? [])].rotulo }}</Etiqueta>
+                </span>
               </span>
               <span class="text-xs text-texto-suave">{{ m.descricao }}</span>
             </label>
@@ -113,6 +120,7 @@ async function criar() {
               v-if="modelo"
               :key="modelo.chave"
               :formulario="{ nome: modelo.nome, perguntas: modelo.perguntas ?? [], tema: { ...modelo.tema, logo_url: logoParaCliente(modelo.tema?.logo_url, sessao.conta?.logo_url).url } }"
+              :finais="modelo.finais ?? []"
               :variaveis="{ empresa: sessao.conta?.nome ?? 'Sua empresa', nome: 'Maria', assunto: '', referencia: '' }"
               previa
               compacto

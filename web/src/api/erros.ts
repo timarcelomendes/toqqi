@@ -3,13 +3,16 @@ export class ApiError extends Error {
   readonly status: number
   readonly codigo: string
   readonly campos: Record<string, string>
+  /** O objeto `erro` inteiro, para os dados a mais de alguns erros (ex.: 409 `rascunho_desatualizado`, etapa 5l). */
+  readonly dados: Record<string, unknown>
 
-  constructor(status: number, codigo: string, mensagem: string, campos: Record<string, string> = {}) {
+  constructor(status: number, codigo: string, mensagem: string, campos: Record<string, string> = {}, dados: Record<string, unknown> = {}) {
     super(mensagem)
     this.name = 'ApiError'
     this.status = status
     this.codigo = codigo
     this.campos = campos
+    this.dados = dados
   }
 
   /** Texto pronto para mostrar ao usuário. */
@@ -74,7 +77,7 @@ export function lerErroApi(status: number, corpo: unknown): ApiError {
   // 429 sempre com o mesmo texto, simples e direto. Menos o `aguarde` do resumo e do parecer da IA (etapa 5d), que diz
   // quantos segundos faltam ("Aguarde 12 s para gerar de novo.") ou que outro já está sendo gerado.
   if (status === 429 && codigo !== 'aguarde') mensagem = MENSAGEM_MUITAS_TENTATIVAS
-  return new ApiError(status, codigo, mensagem, erro ? lerCampos(erro.campos) : {})
+  return new ApiError(status, codigo, mensagem, erro ? lerCampos(erro.campos) : {}, erro ?? {})
 }
 
 /** Erro de rede (sem resposta do servidor). */

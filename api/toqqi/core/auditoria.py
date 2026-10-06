@@ -4,8 +4,8 @@ Etapa 5f: grupos dos eventos (`GRUPOS`, nesta ordem; cada evento de `ROTULOS` em
 o filtro da tela de Auditoria e a exportação:
 - `acesso` "Acesso e segurança": login_*, cadastro_conta, senha_*, sessao_encerrada, seguranca_alterada, termos_*;
 - `equipe` "Equipe e permissões": usuario_criado/alterado/bloqueado, permissoes_alteradas;
-- `configuracoes` "Configurações": config_*, dados_empresa_alterados, logo_*, formulario_padrao/arquivado,
-  imagem_enviada, ia_analisar_recentes, marca_alterada (5h);
+- `configuracoes` "Configurações": config_*, dados_empresa_alterados, logo_*, formulario_padrao/arquivado/publicado
+  (5l), imagem_enviada, ia_analisar_recentes, marca_alterada (5h);
 - `envios` "Envios e descadastros": envio_*, lembretes_automaticos, descadastro*;
 - `dados` "Importações, edições e exportações": importacao*, resposta_editada, indicacao_registrada/atualizada,
   exportacao_*, acoes_detratores_criadas (5h);
@@ -48,6 +48,7 @@ ROTULOS = {
     "formulario_excluido": "Formulário excluído",
     "formulario_arquivado": "Formulário arquivado",
     "formulario_padrao": "Formulário padrão alterado",
+    "formulario_publicado": "Formulário publicado",  # etapa 5l: {formulario, versao, perguntas, finais}
     "config_envios": "Configurações de envio alteradas",
     "envio_manual": "Pesquisas enviadas manualmente",
     "envio_retorno": "Cliente avisado do que foi feito (retorno)",
@@ -138,8 +139,8 @@ def _grupo(evento: str) -> str:
     if evento in ("usuario_criado", "usuario_alterado", "usuario_bloqueado", "permissoes_alteradas"):
         return "equipe"
     if evento.startswith(("config_", "logo_")) or evento in (
-            "dados_empresa_alterados", "formulario_padrao", "formulario_arquivado", "imagem_enviada",
-            "ia_analisar_recentes", "marca_alterada"):
+            "dados_empresa_alterados", "formulario_padrao", "formulario_arquivado", "formulario_publicado",
+            "imagem_enviada", "ia_analisar_recentes", "marca_alterada"):
         return "configuracoes"
     if evento.startswith(("envio_", "descadastro")) or evento == "lembretes_automaticos":
         return "envios"

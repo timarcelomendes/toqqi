@@ -1,246 +1,450 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
-import { AlertCircle, ArrowDown, ArrowUp, ChevronDown, Copy, GitBranch, GripVertical, Plus, Trash2 } from 'lucide-vue-next'
-import type { Pergunta, TipoPergunta } from '@/api/tipos'
+// Aba "Perguntas" do editor (docs/api-etapa-5l.md §5.3): estrutura à esquerda (~300 px), edição do item ao centro e a
+// prévia à direita (~400 px) a partir de 1280 px. De 768 a 1279 px: estrutura e edição, com a prévia num painel
+// lateral. Abaixo de 768 px: a lista; tocar num item abre a edição em tela cheia, com "Voltar".
+// Aqui ficam as operações nos itens (adicionar, mover, duplicar, excluir) e nos finais; cada uma é um passo do desfazer.
+import { computed, nextTick, ref, watch } from 'vue'
+import { ChevronLeft, Eye, X } from 'lucide-vue-next'
+import type { Final, Id } from '@/api/tipos'
+import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
-import { indicePrincipal } from '@/pesquisa/logica'
-import { renderizarVariaveis } from '@/pesquisa/variaveis'
+import { useMidia } from '@/composables/midia'
+import { respondivel, tipoPrincipal } from '@/pesquisa/logica'
+import { FOCO_FINAL_PADRAO } from '@/pesquisa/tipos'
 import Botao from '@/components/ui/Botao.vue'
-import EstadoVazio from '@/components/ui/EstadoVazio.vue'
-import Etiqueta from '@/components/ui/Etiqueta.vue'
-import Modal from '@/components/ui/Modal.vue'
-import { criarPergunta, duplicarPergunta, INFO_TIPO, mover, TIPOS_PERGUNTA } from '../tiposPergunta'
-import { LIMITE_PERGUNTAS } from '../validacaoFormulario'
-import EditorPergunta from './EditorPergunta.vue'
+import PainelLateral from '@/components/ui/PainelLateral.vue'
+import { cortar, descreverGrupo, MAX_FINAIS, nomeDoItem, numerosDasPerguntas, quemUsa, removerReferencias } from '../logicaEditor'
+import { criarDaOpcao, criarFinal, duplicarPergunta, type OpcaoAdicionar } from '../tiposPergunta'
+import { LIMITE_CONTEUDOS, LIMITE_ITENS, LIMITE_PERGUNTAS, type Problema } from '../validacaoFormulario'
+import { usarEditor } from './documento'
+import EditorItem from './EditorItem.vue'
+import Estrutura from './Estrutura.vue'
+import MenuAdicionar from './MenuAdicionar.vue'
+import ModalMoverPara from './ModalMoverPara.vue'
+import PreVisualizacao from './PreVisualizacao.vue'
 
 const props = defineProps<{
-  /** Erros por índice de pergunta. */
-  erros: Record<number, Record<string, string>>
   podeEditar: boolean
   nomeEmpresa: string
+  formularioId: Id
+  prefixoImagens: string | null
+  nome: string
 }>()
-const perguntas = defineModel<Pergunta[]>({ required: true })
-const selecionada = defineModel<string | null>('selecionada', { default: null })
 
-const escolherTipoAberto = ref(false)
+const editor = usarEditor()
+const xl = useMidia('(min-width: 1280px)')
+const md = useMidia('(min-width: 768px)')
+const previaAberta = ref(false)
+/** Celular: a edição do item em tela cheia (com "Voltar"). */
+const edicaoAberta = ref(false)
+const menuAberto = ref(false)
+/** Onde o item novo entra (índice); null = depois do selecionado, ou no fim. */
+const posicaoMenu = ref<number | null>(null)
+const moverAberto = ref(false)
+const moverId = ref<string | null>(null)
+/** Itens cuja lógica quebrou no último mover: a faixa some sozinha quando todos forem ajustados (ou ao desfazer). */
+const quebrados = ref<string[]>([])
 const anuncio = ref('')
-const arrastando = ref<number | null>(null)
-const alvo = ref<number | null>(null)
-const alcaAtiva = ref<number | null>(null)
-const lista = ref<HTMLElement | null>(null)
+const estrutura = ref<InstanceType<typeof Estrutura> | null>(null)
 
-const ip = computed(() => indicePrincipal(perguntas.value))
-const totalPerguntas = computed(() => perguntas.value.filter((p) => p.tipo !== 'quebra_pagina').length)
-const tituloVisivel = (p: Pergunta) =>
-  renderizarVariaveis(p.titulo, { empresa: props.nomeEmpresa, nome: 'Maria' }) || (p.tipo === 'quebra_pagina' ? 'Quebra de página' : 'Pergunta sem título')
+const itens = computed(() => editor.doc.perguntas)
+const finais = computed(() => editor.doc.finais)
+const numeros = computed(() => numerosDasPerguntas(itens.value))
+const tipo = computed(() => tipoPrincipal(itens.value))
+const selecionadoItem = computed(() => itens.value.find((p) => p.id === editor.selecionado.value) ?? null)
+const selecionadoFinal = computed(() => finais.value.find((f) => f.id === editor.selecionado.value) ?? null)
 
-async function focarItem(id: string) {
-  await nextTick()
-  lista.value?.querySelector<HTMLElement>(`[data-item="${id}"] [data-cabeca]`)?.focus()
-}
-
-function alternar(p: Pergunta) {
-  selecionada.value = selecionada.value === p.id ? null : p.id
-}
-
-function adicionar(tipo: TipoPergunta) {
-  escolherTipoAberto.value = false
-  const nova = criarPergunta(tipo, perguntas.value)
-  const i = perguntas.value.findIndex((p) => p.id === selecionada.value)
-  const pos = i >= 0 ? i + 1 : perguntas.value.length
-  const lista = [...perguntas.value]
-  lista.splice(pos, 0, nova)
-  perguntas.value = lista
-  selecionada.value = nova.id
-  anuncio.value = `${INFO_TIPO[tipo].rotulo} adicionada na posição ${pos + 1}.`
-  focarItem(nova.id)
-}
-
-function moverPara(de: number, para: number) {
-  if (para < 0 || para >= perguntas.value.length || de === para) return
-  const id = perguntas.value[de]!.id
-  perguntas.value = mover(perguntas.value, de, para)
-  anuncio.value = `Pergunta movida para a posição ${para + 1} de ${perguntas.value.length}.`
+/** O que a prévia mostra: o item (ou final) selecionado, e por que ele aparece. */
+const focoPrevia = computed(() => {
+  const id = editor.selecionado.value
+  if (!id) return null
+  if (selecionadoItem.value?.tipo === 'quebra_pagina') return null
   return id
+})
+const motivoFoco = computed(() => {
+  const p = selecionadoItem.value
+  if (p) return p.logica?.mostrar_se?.condicoes?.length ? descreverGrupo(p.logica.mostrar_se, itens.value) : 'as respostas anteriores não pulam este item'
+  const f = selecionadoFinal.value
+  return f?.mostrar_se?.condicoes?.length ? descreverGrupo(f.mostrar_se, itens.value) : null
+})
+
+function selecionar(id: string) {
+  editor.selecionado.value = id
+  if (!md.value) edicaoAberta.value = true
+}
+watch(md, (v) => {
+  if (v) edicaoAberta.value = false
+})
+
+function anunciar(t: string) {
+  anuncio.value = ''
+  void nextTick(() => (anuncio.value = t))
 }
 
-async function moverBotao(i: number, d: number, e: Event) {
-  moverPara(i, i + d)
-  await nextTick()
-  // Mantém o foco no mesmo botão, que agora está na nova posição.
-  const botao = (e.currentTarget as HTMLElement | null)?.dataset.acao
-  const novo = lista.value?.querySelectorAll<HTMLElement>('[data-item]')[i + d]
-  const alvoBotao = novo?.querySelector<HTMLElement>(`[data-acao="${botao}"]:not([disabled])`) ?? novo?.querySelector<HTMLElement>('[data-cabeca]')
-  alvoBotao?.focus()
+// ── adicionar ──
+
+function abrirAdicionar(posicao?: number) {
+  if (!props.podeEditar) return
+  posicaoMenu.value = posicao ?? null
+  menuAberto.value = true
 }
 
-function duplicar(i: number) {
-  const copia = duplicarPergunta(perguntas.value[i]!, perguntas.value)
-  const l = [...perguntas.value]
-  l.splice(i + 1, 0, copia)
-  perguntas.value = l
-  selecionada.value = copia.id
-  anuncio.value = 'Pergunta duplicada.'
-  focarItem(copia.id)
+const descricaoPosicao = computed(() => {
+  const i = posicaoMenu.value
+  if (i !== null) {
+    const antes = itens.value[i - 1]
+    return antes ? `Entra depois de “${cortar(nomeDoItem(antes, numeros.value), 50)}”.` : 'Entra no começo do formulário.'
+  }
+  const s = selecionadoItem.value
+  return s ? `Entra depois de “${cortar(nomeDoItem(s, numeros.value), 50)}”.` : 'Entra no fim do formulário.'
+})
+
+function cabeMais(tipoNovo: string): string | null {
+  if (itens.value.length >= LIMITE_ITENS) return `Use no máximo ${LIMITE_ITENS} itens (perguntas, blocos de conteúdo e quebras).`
+  if (respondivel(tipoNovo) && itens.value.filter((p) => respondivel(p.tipo)).length >= LIMITE_PERGUNTAS) return `Use no máximo ${LIMITE_PERGUNTAS} perguntas.`
+  if (tipoNovo === 'conteudo' && itens.value.filter((p) => p.tipo === 'conteudo').length >= LIMITE_CONTEUDOS) return `Use no máximo ${LIMITE_CONTEUDOS} blocos de conteúdo.`
+  return null
 }
 
-async function remover(i: number) {
-  const p = perguntas.value[i]!
-  const ok = await confirmar({
-    titulo: 'Apagar esta pergunta?',
-    mensagem: `“${tituloVisivel(p)}” sai do formulário. As respostas antigas dela continuam guardadas. Você ainda pode descartar as alterações antes de salvar.`,
-    confirmar: 'Apagar',
-    perigo: true,
-  })
-  if (!ok) return
-  perguntas.value = perguntas.value.filter((_, j) => j !== i)
-  if (selecionada.value === p.id) selecionada.value = null
-  anuncio.value = 'Pergunta apagada.'
-}
-
-// Arrastar e soltar (só pela alça, para não atrapalhar a seleção de texto).
-function aoIniciarArraste(e: DragEvent, i: number) {
-  if (alcaAtiva.value !== i) {
-    e.preventDefault()
+function adicionar(opcao: OpcaoAdicionar) {
+  menuAberto.value = false
+  const limite = cabeMais(opcao.tipo)
+  if (limite) {
+    avisar.atencao(limite)
     return
   }
-  arrastando.value = i
-  e.dataTransfer?.setData('text/plain', String(i))
-  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+  const novo = criarDaOpcao(opcao, itens.value)
+  const doSelecionado = selecionadoItem.value ? itens.value.indexOf(selecionadoItem.value) + 1 : itens.value.length
+  const i = Math.min(posicaoMenu.value ?? doSelecionado, itens.value.length)
+  editor.mudar(() => editor.doc.perguntas.splice(i, 0, novo))
+  selecionar(novo.id)
+  anunciar(`${opcao.rotulo} adicionado na posição ${i + 1}.`)
+  focarCampo(novo.tipo === 'conteudo' ? 'html' : novo.tipo === 'quebra_pagina' ? null : 'titulo')
 }
-function aoPassar(e: DragEvent, i: number) {
-  if (arrastando.value === null) return
-  e.preventDefault()
-  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  alvo.value = e.clientY < r.top + r.height / 2 ? i : i + 1
+
+// ── mover ──
+
+/** Itens (e finais) com problema de lógica: para avisar quando mover quebrar alguma. */
+function comProblemaDeLogica(): Set<string> {
+  return new Set(
+    editor.problemasLocais.value.filter((p) => !p.aviso && 'id' in p.alvo && (p.campo === 'logica' || p.campo === 'mostrar_se')).map((p) => (p.alvo as { id: string }).id),
+  )
 }
-function aoSoltar() {
-  if (arrastando.value !== null && alvo.value !== null) {
-    const de = arrastando.value
-    const para = alvo.value > de ? alvo.value - 1 : alvo.value
-    moverPara(de, para)
+
+function avisarSeQuebrou(antes: Set<string>) {
+  quebrados.value = [...comProblemaDeLogica()].filter((id) => !antes.has(id))
+}
+
+const avisoLogica = computed(() => {
+  if (!quebrados.value.length) return null
+  const atuais = comProblemaDeLogica()
+  const n = quebrados.value.filter((id) => atuais.has(id)).length
+  return n ? `A lógica de ${n} ${n === 1 ? 'item' : 'itens'} precisa de ajuste` : null
+})
+
+function moverItem(de: number, para: number) {
+  const n = itens.value.length
+  if (de === para || de < 0 || para < 0 || de >= n || para >= n) return
+  const antes = comProblemaDeLogica()
+  editor.mudar(() => {
+    const [item] = editor.doc.perguntas.splice(de, 1)
+    editor.doc.perguntas.splice(para, 0, item!)
+  })
+  anunciar(`Item movido para a posição ${para + 1} de ${n}.`)
+  avisarSeQuebrou(antes)
+}
+
+function moverPorId(id: string, delta: number) {
+  const i = itens.value.findIndex((p) => p.id === id)
+  if (i < 0) return
+  moverItem(i, i + delta)
+  void nextTick(() => estrutura.value?.focarLinha(id))
+}
+
+function abrirMoverPara(id: string) {
+  moverId.value = id
+  moverAberto.value = true
+}
+
+function moverPara(id: string, depoisDe: string | null) {
+  const de = itens.value.findIndex((p) => p.id === id)
+  if (de < 0) return
+  // "No começo": posição 0; "depois de X": logo depois de X na lista sem o item movido.
+  const semEle = itens.value.filter((p) => p.id !== id)
+  const para = depoisDe ? semEle.findIndex((p) => p.id === depoisDe) + 1 : 0
+  moverItem(de, para)
+  void nextTick(() => estrutura.value?.focarLinha(id))
+}
+
+// ── duplicar e excluir ──
+
+function duplicar(id: string) {
+  const i = itens.value.findIndex((p) => p.id === id)
+  const p = itens.value[i]
+  if (!p) return
+  const limite = cabeMais(p.tipo)
+  if (limite) {
+    avisar.atencao(limite)
+    return
   }
-  finalizarArraste()
+  const copia = duplicarPergunta(p, itens.value)
+  editor.mudar(() => editor.doc.perguntas.splice(i + 1, 0, copia))
+  selecionar(copia.id)
+  anunciar('Item duplicado. A cópia vem sem as regras de pular.')
 }
-function finalizarArraste() {
-  arrastando.value = null
-  alvo.value = null
-  alcaAtiva.value = null
+
+function juntarNomes(nomes: string[]): string {
+  return nomes.length <= 1 ? (nomes[0] ?? '') : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}`
 }
+
+async function excluir(id: string) {
+  const i = itens.value.findIndex((p) => p.id === id)
+  const p = itens.value[i]
+  if (!p) return
+  const nome = nomeDoItem(p, numeros.value, 60)
+  if (p.tipo !== 'quebra_pagina') {
+    const usos = quemUsa(id, itens.value, finais.value)
+    const nomes = [...new Set(usos.map((u) => (u.tipo === 'final' ? `o final “${finais.value.find((f) => f.id === u.id)?.nome ?? ''}”` : `“${nomeDoItem(itens.value.find((x) => x.id === u.id)!, numeros.value, 40)}”`)))]
+    const ok = await confirmar(
+      usos.length
+        ? {
+            titulo: 'Excluir este item?',
+            mensagem: `“${nome}” é usado na lógica de ${juntarNomes(nomes)}.`,
+            complemento: ['As condições e regras que usam este item saem junto. Dá para desfazer.'],
+            confirmar: 'Excluir e remover as condições que usam este item',
+            perigo: true,
+          }
+        : {
+            titulo: 'Excluir este item?',
+            mensagem: `“${nome}” sai do formulário. As respostas antigas continuam guardadas. Dá para desfazer.`,
+            confirmar: 'Excluir',
+            perigo: true,
+          },
+    )
+    if (!ok) return
+  }
+  editor.mudar(() => {
+    removerReferencias(id, editor.doc.perguntas, editor.doc.finais)
+    editor.doc.perguntas.splice(
+      editor.doc.perguntas.findIndex((x) => x.id === id),
+      1,
+    )
+  })
+  const vizinho = itens.value[i] ?? itens.value[i - 1] ?? null
+  editor.selecionado.value = vizinho?.id ?? null
+  if (!md.value) edicaoAberta.value = false
+  anunciar('Item excluído.')
+  if (vizinho) void nextTick(() => estrutura.value?.focarLinha(vizinho.id))
+}
+
+// ── finais ──
+
+function adicionarFinal() {
+  if (finais.value.length >= MAX_FINAIS) {
+    avisar.atencao(`Use no máximo ${MAX_FINAIS} finais.`)
+    return
+  }
+  const novo = criarFinal(finais.value)
+  editor.mudar(() => editor.doc.finais.push(novo))
+  selecionar(novo.id)
+  anunciar('Final adicionado.')
+  focarCampo('nome')
+}
+
+function moverFinal(de: number, para: number) {
+  const n = finais.value.length
+  if (de === para || de < 0 || para < 0 || de >= n || para >= n) return
+  editor.mudar(() => {
+    const [f] = editor.doc.finais.splice(de, 1)
+    editor.doc.finais.splice(para, 0, f!)
+  })
+  anunciar(`Final movido para a posição ${para + 1} de ${n}.`)
+}
+
+async function excluirFinal(id: string) {
+  const f = finais.value.find((x) => x.id === id)
+  if (!f) return
+  const ok = await confirmar({ titulo: 'Excluir este final?', mensagem: `O final “${f.nome}” sai do formulário. Dá para desfazer.`, confirmar: 'Excluir', perigo: true })
+  if (!ok) return
+  const i = finais.value.indexOf(f)
+  editor.mudar(() => editor.doc.finais.splice(i, 1))
+  editor.selecionado.value = (finais.value[i] ?? finais.value[i - 1])?.id ?? FOCO_FINAL_PADRAO
+  anunciar('Final excluído.')
+}
+
+function duplicarFinal(id: string) {
+  const f = finais.value.find((x) => x.id === id)
+  if (!f) return
+  if (finais.value.length >= MAX_FINAIS) {
+    avisar.atencao(`Use no máximo ${MAX_FINAIS} finais.`)
+    return
+  }
+  const { id: _original, ...resto } = JSON.parse(JSON.stringify(f)) as Final
+  const copia: Final = criarFinal(finais.value, { ...resto, nome: `${f.nome} (cópia)`.slice(0, 60) })
+  editor.mudar(() => editor.doc.finais.splice(finais.value.indexOf(f) + 1, 0, copia))
+  selecionar(copia.id)
+}
+
+// ── foco num campo (item novo, painel de problemas) ──
+
+async function focarCampo(campo: string | null, logica: Problema['logica'] | null = null) {
+  const id = editor.selecionado.value
+  if (!id) return
+  editor.pedirFoco(id, campo, logica)
+  if (!md.value) edicaoAberta.value = true
+  // A edição pode montar partes assíncronas (o editor de texto): espera um pouco antes de procurar o campo.
+  for (let tentativa = 0; tentativa < 10; tentativa++) {
+    await nextTick()
+    const painel = document.querySelector<HTMLElement>('[data-painel-edicao]')
+    if (!painel) return
+    const alvo = buscarCampo(painel, campo, logica)
+    if (alvo) {
+      alvo.focus()
+      if ('select' in alvo && campo === 'titulo' && typeof (alvo as HTMLInputElement).select === 'function') (alvo as HTMLInputElement).select()
+      alvo.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+      return
+    }
+    await new Promise((r) => setTimeout(r, 30))
+  }
+}
+
+function buscarCampo(painel: HTMLElement, campo: string | null, logica: Problema['logica'] | null): HTMLElement | null {
+  const focavel = (el: Element | null) =>
+    (el?.matches?.('input, textarea, select, button, [contenteditable="true"]') ? el : el?.querySelector('input, textarea, select, [contenteditable="true"], button')) as HTMLElement | null
+  if (!campo) return painel.querySelector<HTMLElement>('[data-titulo-edicao]')
+  if (campo === 'logica' || campo === 'mostrar_se') {
+    const onde = logica?.onde ?? 'mostrar_se'
+    const bloco = onde === 'pular' && logica?.regra ? painel.querySelector(`[data-regra="${logica.regra}"]`) : painel.querySelector(`[data-logica-onde="${onde}"]`)
+    const linha = logica?.condicao ? bloco?.querySelector(`[data-condicao="${logica.condicao}"]`) : null
+    return focavel(linha ?? bloco ?? painel.querySelector('[data-secao-logica]'))
+  }
+  const base = campo.split('.')[0]!
+  return focavel(painel.querySelector(`[data-campo="${campo}"]`) ?? painel.querySelector(`[data-campo="${base}"]`))
+}
+
+// ── atalhos (a tela chama) ──
+
+function duplicarSelecionado() {
+  const id = editor.selecionado.value
+  if (!id || !props.podeEditar) return
+  if (selecionadoItem.value) duplicar(id)
+  else if (selecionadoFinal.value) duplicarFinal(id)
+}
+
+function moverSelecionado(delta: number) {
+  const id = editor.selecionado.value
+  if (!id || !props.podeEditar) return
+  if (selecionadoItem.value) moverPorId(id, delta)
+  else if (selecionadoFinal.value) {
+    const i = finais.value.indexOf(selecionadoFinal.value)
+    moverFinal(i, i + delta)
+  }
+}
+
+function verProblemas() {
+  quebrados.value = []
+  editor.painelProblemas.value = true
+}
+
+defineExpose({ abrirAdicionar, duplicarSelecionado, moverSelecionado, focarCampo })
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
-    <EstadoVazio v-if="!perguntas.length" class="cartao" titulo="Nenhuma pergunta ainda" descricao="Comece por uma nota de 0 a 10 (NPS) ou por carinhas de satisfação (CSAT).">
-      <Botao v-if="podeEditar" @click="escolherTipoAberto = true"><Plus class="size-4" aria-hidden="true" /> Adicionar pergunta</Botao>
-    </EstadoVazio>
-
-    <ol v-else ref="lista" class="flex flex-col gap-2" aria-label="Perguntas do formulário" @dragend="finalizarArraste">
-      <li
-        v-for="(p, i) in perguntas"
-        :key="p.id"
-        :data-item="p.id"
-        class="relative"
-        :draggable="podeEditar && alcaAtiva === i"
-        @dragstart="aoIniciarArraste($event, i)"
-        @dragover="aoPassar($event, i)"
-        @drop.prevent="aoSoltar"
+  <div data-aba-perguntas>
+    <!-- Abaixo de 1280 px a prévia abre por botão; no celular, "Voltar" sai da edição -->
+    <div class="mb-3 flex items-center gap-2 xl:hidden">
+      <button
+        v-if="!md && edicaoAberta"
+        type="button"
+        class="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-sm font-semibold text-texto-suave hover:bg-superficie-2 hover:text-texto"
+        data-voltar-lista
+        @click="edicaoAberta = false"
       >
-        <div v-if="alvo === i && arrastando !== null" class="absolute -top-1.5 left-0 right-0 h-1 rounded-full bg-marca" aria-hidden="true" />
-        <div v-if="alvo === i + 1 && i === perguntas.length - 1 && arrastando !== null" class="absolute -bottom-1.5 left-0 right-0 h-1 rounded-full bg-marca" aria-hidden="true" />
-
-        <div
-          class="cartao overflow-hidden transition-shadow"
-          :class="[
-            selecionada === p.id ? 'ring-2 ring-marca' : '',
-            arrastando === i ? 'opacity-50' : '',
-            erros[i] ? 'border-erro' : '',
-            p.tipo === 'quebra_pagina' ? 'border-dashed bg-superficie-2/50' : '',
-          ]"
-        >
-          <div class="flex items-center gap-1 p-2 pr-3">
-            <span
-              v-if="podeEditar"
-              class="flex size-8 shrink-0 cursor-grab items-center justify-center rounded-lg text-texto-fraco hover:bg-superficie-2 active:cursor-grabbing"
-              title="Arraste para mudar a ordem"
-              aria-hidden="true"
-              @pointerdown="alcaAtiva = i"
-              @pointerup="alcaAtiva = null"
-            >
-              <GripVertical class="size-4" />
-            </span>
-            <button
-              type="button"
-              data-cabeca
-              class="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 text-left hover:bg-superficie-2/60"
-              :aria-expanded="selecionada === p.id"
-              :aria-controls="`painel-${p.id}`"
-              @click="alternar(p)"
-            >
-              <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-superficie-2 text-texto-suave" aria-hidden="true">
-                <component :is="INFO_TIPO[p.tipo]?.icone" class="size-4" />
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="block truncate text-sm font-semibold text-texto">
-                  <span class="text-texto-fraco">{{ i + 1 }}.</span> {{ tituloVisivel(p) }}
-                </span>
-                <span class="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-texto-fraco">
-                  {{ INFO_TIPO[p.tipo]?.rotulo ?? p.tipo }}
-                  <Etiqueta v-if="i === ip" tom="marca">Nota principal</Etiqueta>
-                  <Etiqueta v-if="p.obrigatoria && p.tipo !== 'quebra_pagina'" tom="neutro">Obrigatória</Etiqueta>
-                  <Etiqueta v-if="p.condicao" tom="info"><GitBranch class="size-3" aria-hidden="true" /> Com condição</Etiqueta>
-                  <span v-if="erros[i]" class="inline-flex items-center gap-1 font-semibold text-erro"><AlertCircle class="size-3.5" aria-hidden="true" /> Precisa de ajuste</span>
-                </span>
-              </span>
-              <ChevronDown class="size-4 shrink-0 text-texto-fraco transition-transform" :class="{ 'rotate-180': selecionada === p.id }" aria-hidden="true" />
-            </button>
-            <div v-if="podeEditar" class="flex shrink-0 items-center">
-              <button type="button" data-acao="subir" class="hidden size-8 items-center justify-center rounded-lg text-texto-fraco hover:bg-superficie-2 hover:text-texto disabled:opacity-30 sm:flex" :disabled="i === 0" :aria-label="`Subir pergunta ${i + 1}`" @click="moverBotao(i, -1, $event)">
-                <ArrowUp class="size-4" aria-hidden="true" />
-              </button>
-              <button type="button" data-acao="descer" class="hidden size-8 items-center justify-center rounded-lg text-texto-fraco hover:bg-superficie-2 hover:text-texto disabled:opacity-30 sm:flex" :disabled="i === perguntas.length - 1" :aria-label="`Descer pergunta ${i + 1}`" @click="moverBotao(i, 1, $event)">
-                <ArrowDown class="size-4" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-
-          <div v-if="selecionada === p.id" :id="`painel-${p.id}`" class="border-t border-borda p-4 sm:p-5">
-            <fieldset :disabled="!podeEditar" class="min-w-0">
-              <EditorPergunta :pergunta="p" :indice="i" :perguntas="perguntas" :erros="erros[i]" />
-            </fieldset>
-            <div v-if="podeEditar" class="mt-5 flex flex-wrap gap-2 border-t border-borda pt-4">
-              <Botao variante="secundario" tamanho="sm" data-acao="subir" class="sm:hidden" :desabilitado="i === 0" @click="moverBotao(i, -1, $event)"><ArrowUp class="size-4" aria-hidden="true" /> Subir</Botao>
-              <Botao variante="secundario" tamanho="sm" data-acao="descer" class="sm:hidden" :desabilitado="i === perguntas.length - 1" @click="moverBotao(i, 1, $event)"><ArrowDown class="size-4" aria-hidden="true" /> Descer</Botao>
-              <Botao variante="secundario" tamanho="sm" @click="duplicar(i)"><Copy class="size-4" aria-hidden="true" /> Duplicar</Botao>
-              <Botao variante="perigo-suave" tamanho="sm" @click="remover(i)"><Trash2 class="size-4" aria-hidden="true" /> Apagar</Botao>
-            </div>
-          </div>
-        </div>
-      </li>
-    </ol>
-
-    <div v-if="podeEditar && perguntas.length" class="flex flex-wrap items-center gap-3">
-      <Botao variante="secundario" :desabilitado="totalPerguntas >= LIMITE_PERGUNTAS" @click="escolherTipoAberto = true">
-        <Plus class="size-4" aria-hidden="true" /> Adicionar pergunta
-      </Botao>
-      <p class="text-sm text-texto-fraco">{{ totalPerguntas }} de {{ LIMITE_PERGUNTAS }} perguntas</p>
+        <ChevronLeft class="size-4" aria-hidden="true" /> Voltar
+      </button>
+      <Botao variante="secundario" tamanho="sm" class="ml-auto" data-abrir-previa @click="previaAberta = true"><Eye class="size-4" aria-hidden="true" /> Prévia</Botao>
     </div>
-    <p class="sr-only" aria-live="polite">{{ anuncio }}</p>
 
-    <Modal v-model:aberto="escolherTipoAberto" titulo="Que tipo de pergunta?" :descricao="selecionada ? 'Ela entra logo depois da pergunta aberta.' : 'Ela entra no fim do formulário.'" tamanho="lg">
-      <ul class="grid gap-2 sm:grid-cols-2">
-        <li v-for="t in TIPOS_PERGUNTA" :key="t.tipo">
-          <button type="button" class="flex h-full w-full items-start gap-3 rounded-xl border border-borda-forte p-3 text-left transition-colors hover:border-marca hover:bg-marca-suave" @click="adicionar(t.tipo)">
-            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-superficie-2 text-marca-texto" aria-hidden="true">
-              <component :is="t.icone" class="size-5" />
-            </span>
-            <span class="min-w-0">
-              <span class="block text-sm font-bold text-texto">{{ t.rotulo }}</span>
-              <span class="block text-xs text-texto-suave">{{ t.descricao }}</span>
-            </span>
-          </button>
-        </li>
-      </ul>
-    </Modal>
+    <div v-if="avisoLogica" class="mb-3 flex items-center gap-3 rounded-xl border border-atencao/30 bg-atencao-suave px-3.5 py-2.5 text-sm" role="status" data-aviso-logica>
+      <p class="flex-1 font-medium text-texto">{{ avisoLogica }}.</p>
+      <button type="button" class="link" @click="verProblemas">Ver</button>
+      <button type="button" class="flex size-8 items-center justify-center rounded-lg text-texto-fraco hover:bg-superficie-2" aria-label="Fechar aviso" @click="quebrados = []">
+        <X class="size-4" aria-hidden="true" />
+      </button>
+    </div>
+
+    <div class="grid items-start gap-5 md:grid-cols-[16rem_minmax(0,1fr)] lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[18.75rem_minmax(0,1fr)_25rem]">
+      <nav
+        aria-label="Estrutura do formulário"
+        class="min-w-0 md:sticky md:top-20 md:max-h-[calc(100dvh-6.5rem)] md:overflow-y-auto md:overscroll-contain md:pr-1"
+        :class="!md && edicaoAberta ? 'hidden' : ''"
+        data-coluna-estrutura
+      >
+        <Estrutura
+          ref="estrutura"
+          :pode-editar="podeEditar"
+          :nome-empresa="nomeEmpresa"
+          @selecionar="selecionar"
+          @adicionar="abrirAdicionar"
+          @duplicar="duplicar"
+          @excluir="excluir"
+          @mover="moverItem"
+          @mover-por-id="moverPorId"
+          @mover-para="abrirMoverPara"
+          @adicionar-final="adicionarFinal"
+          @duplicar-final="duplicarFinal"
+          @excluir-final="excluirFinal"
+          @mover-final="moverFinal"
+        />
+      </nav>
+
+      <section aria-label="Edição do item" class="min-w-0" :class="!md && !edicaoAberta ? 'hidden' : ''" data-painel-edicao>
+        <EditorItem
+          :pode-editar="podeEditar"
+          :nome-empresa="nomeEmpresa"
+          :formulario-id="formularioId"
+          :prefixo-imagens="prefixoImagens"
+          @adicionar="abrirAdicionar()"
+          @duplicar="duplicarSelecionado"
+          @excluir="(id: string) => (selecionadoFinal ? excluirFinal(id) : excluir(id))"
+          @selecionar="selecionar"
+        />
+      </section>
+
+      <aside v-if="xl" class="sticky top-20 h-[calc(100dvh-9.5rem)] min-w-0" aria-label="Prévia" data-coluna-previa>
+        <PreVisualizacao
+          :nome="nome"
+          :perguntas="editor.doc.perguntas"
+          :tema="editor.doc.tema"
+          :finais="editor.doc.finais"
+          :nome-empresa="nomeEmpresa"
+          :tipo="tipo"
+          :prefixo-imagens="prefixoImagens"
+          :foco-id="focoPrevia"
+          :motivo-foco="motivoFoco"
+        />
+      </aside>
+    </div>
+
+    <MenuAdicionar v-model:aberto="menuAberto" :descricao="descricaoPosicao" @escolher="adicionar" />
+    <ModalMoverPara v-model:aberto="moverAberto" :item-id="moverId" @mover="moverPara" />
+
+    <PainelLateral v-if="!xl" v-model:aberto="previaAberta" titulo="Prévia" descricao="É assim que seu cliente vê. Nada é gravado." largura="lg">
+      <div class="-mx-4 -my-5 h-[calc(100dvh-7rem)] sm:-mx-6">
+        <PreVisualizacao
+          :nome="nome"
+          :perguntas="editor.doc.perguntas"
+          :tema="editor.doc.tema"
+          :finais="editor.doc.finais"
+          :nome-empresa="nomeEmpresa"
+          :tipo="tipo"
+          :prefixo-imagens="prefixoImagens"
+          :foco-id="focoPrevia"
+          :motivo-foco="motivoFoco"
+          :titulo="false"
+        />
+      </div>
+    </PainelLateral>
+    <p class="sr-only" aria-live="polite">{{ anuncio }}</p>
   </div>
 </template>

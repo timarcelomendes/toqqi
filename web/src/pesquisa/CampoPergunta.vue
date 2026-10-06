@@ -14,6 +14,10 @@ const props = defineProps<{
   variaveis?: Partial<Variaveis>
   /** Número mostrado antes do título (modo páginas). */
   numero?: number
+  /** Etapa 5l: a ordem das opções para quem responde (embaralhada uma vez por visita); sem ela, a ordem salva. */
+  ordemOpcoes?: string[]
+  /** Etapa 5l: troca as citações `{{id}}` do título e da descrição pelas respostas (depois das variáveis). */
+  citar?: (texto: string) => string
 }>()
 const emit = defineEmits<{
   'update:modelValue': [ValorResposta | undefined]
@@ -25,8 +29,20 @@ const id = `pq-${useId()}`
 const idTitulo = `${id}-titulo`
 const idDesc = `${id}-desc`
 const idErro = `${id}-erro`
-const titulo = computed(() => renderizarVariaveis(props.pergunta.titulo, props.variaveis))
-const descricao = computed(() => renderizarVariaveis(props.pergunta.descricao, props.variaveis))
+const comCitacoes = (t: string) => (props.citar && t.includes('{{') ? props.citar(t) : t)
+const titulo = computed(() => comCitacoes(renderizarVariaveis(props.pergunta.titulo, props.variaveis)))
+const descricao = computed(() => comCitacoes(renderizarVariaveis(props.pergunta.descricao, props.variaveis)))
+/** As opções na ordem de quem responde (a resposta da múltipla continua na ordem salva). */
+const opcoes = computed(() => props.ordemOpcoes ?? props.pergunta.opcoes ?? [])
+/** Escolha múltipla: no máximo N (etapa 5l). */
+const maxSelecoes = computed(() => {
+  const m = props.pergunta.max_selecoes
+  return props.pergunta.tipo === 'escolha_multipla' && typeof m === 'number' && m > 0 ? m : null
+})
+const marcadas = computed(() => (Array.isArray(props.modelValue) ? props.modelValue : []))
+const noLimite = computed(() => maxSelecoes.value !== null && marcadas.value.length >= maxSelecoes.value)
+/** Anúncio do limite para leitores de tela (no momento em que ele é atingido). */
+const anuncioLimite = ref('')
 const descritoPor = computed(() => [descricao.value ? idDesc : '', props.erro ? idErro : ''].filter(Boolean).join(' ') || undefined)
 const notas = computed(() => {
   const { min, max } = faixa(props.pergunta)
@@ -52,8 +68,16 @@ function escolher(v: ValorResposta) {
 function alternarMultipla(opcao: string, marcado: boolean) {
   const atual = Array.isArray(props.modelValue) ? props.modelValue : []
   const novo = marcado ? [...atual.filter((o) => o !== opcao), opcao] : atual.filter((o) => o !== opcao)
-  // Mantém a ordem das opções.
-  emit('update:modelValue', (props.pergunta.opcoes ?? []).filter((o) => novo.includes(o)))
+  // Mantém a ordem das opções (a salva, mesmo com a ordem embaralhada na tela).
+  const valor = (props.pergunta.opcoes ?? []).filter((o) => novo.includes(o))
+  emit('update:modelValue', valor)
+  anuncioLimite.value = maxSelecoes.value !== null && valor.length >= maxSelecoes.value ? `Você pode escolher até ${maxSelecoes.value} opções.` : ''
+}
+
+/** Lista suspensa (escolha única com `exibicao: 'lista'`): vazio volta a "sem resposta". */
+function escolherNaLista(e: Event) {
+  const v = (e.target as HTMLSelectElement).value
+  emit('update:modelValue', v === '' ? undefined : v)
 }
 
 function texto(e: Event) {
@@ -136,6 +160,11 @@ const autocompletar = computed(() => {
   return f === 'email' ? 'email' : f === 'telefone' ? 'tel' : 'off'
 })
 const textoAtual = computed(() => (typeof props.modelValue === 'string' ? props.modelValue : ''))
+/** Etapa 5l: o texto de exemplo da pergunta; sem ele, o de sempre. */
+const exemploTextoCurto = computed(
+  () => props.pergunta.placeholder?.trim() || (props.pergunta.formato === 'email' ? 'seu@email.com' : props.pergunta.formato === 'telefone' ? '(11) 91234-5678' : 'Sua resposta'),
+)
+const exemploComentario = computed(() => props.pergunta.placeholder?.trim() || 'Escreva aqui, se quiser')
 
 const classeOpcao =
   'flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-2.5 text-[0.95rem] font-medium text-slate-800 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--cor)]'
@@ -249,7 +278,7 @@ const classeOpcao =
           :aria-describedby="descritoPor"
           :aria-invalid="erro ? 'true' : undefined"
           class="h-12 w-full rounded-xl border-2 border-slate-200 bg-white px-4 text-base text-slate-900 placeholder:text-slate-400 focus:border-[var(--cor)] focus:outline-none"
-          :placeholder="pergunta.formato === 'email' ? 'seu@email.com' : pergunta.formato === 'telefone' ? '(11) 91234-5678' : 'Sua resposta'"
+          :placeholder="exemploTextoCurto"
           @input="texto"
         />
       </div>
@@ -264,16 +293,34 @@ const classeOpcao =
           :aria-describedby="descritoPor"
           :aria-invalid="erro ? 'true' : undefined"
           class="w-full resize-y rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-[var(--cor)] focus:outline-none"
-          placeholder="Escreva aqui, se quiser"
+          :placeholder="exemploComentario"
           @input="texto"
         />
         <p v-if="textoAtual.length > LIMITE_COMENTARIO * 0.8" class="mt-1 text-right text-xs text-slate-500">{{ textoAtual.length }} de {{ LIMITE_COMENTARIO }}</p>
       </div>
 
+      <!-- Escolha única em lista suspensa (etapa 5l): boa para muitas opções -->
+      <div v-else-if="pergunta.tipo === 'escolha_unica' && pergunta.exibicao === 'lista'" class="relative">
+        <select
+          :id="`${id}-lista`"
+          :value="typeof modelValue === 'string' ? modelValue : ''"
+          :aria-labelledby="idTitulo"
+          :aria-describedby="descritoPor"
+          :aria-invalid="erro ? 'true' : undefined"
+          class="h-12 w-full appearance-none rounded-xl border-2 border-slate-200 bg-white pl-4 pr-11 text-base text-slate-900 focus:border-[var(--cor)] focus:outline-none"
+          data-lista-opcoes
+          @change="escolherNaLista"
+        >
+          <option value="">Escolha uma opção</option>
+          <option v-for="o in opcoes" :key="o" :value="o">{{ o }}</option>
+        </select>
+        <svg viewBox="0 0 24 24" class="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+      </div>
+
       <!-- Escolha única -->
       <div v-else-if="pergunta.tipo === 'escolha_unica'" role="radiogroup" :aria-labelledby="idTitulo" class="flex flex-col gap-2">
         <label
-          v-for="o in pergunta.opcoes ?? []"
+          v-for="o in opcoes"
           :key="o"
           :class="[classeOpcao, modelValue === o ? 'border-[var(--cor)] bg-[var(--cor-suave)]' : 'border-slate-200 bg-white hover:border-slate-300']"
         >
@@ -284,21 +331,30 @@ const classeOpcao =
 
       <!-- Escolha múltipla -->
       <div v-else-if="pergunta.tipo === 'escolha_multipla'" class="flex flex-col gap-2">
-        <p class="text-xs text-slate-500">Pode escolher mais de uma.</p>
+        <p :id="`${id}-limite`" class="text-xs text-slate-500" data-dica-multipla>
+          {{ maxSelecoes ? `Escolha até ${maxSelecoes} opções.` : 'Pode escolher mais de uma.' }}
+        </p>
         <label
-          v-for="o in pergunta.opcoes ?? []"
+          v-for="o in opcoes"
           :key="o"
-          :class="[classeOpcao, Array.isArray(modelValue) && modelValue.includes(o) ? 'border-[var(--cor)] bg-[var(--cor-suave)]' : 'border-slate-200 bg-white hover:border-slate-300']"
+          :class="[
+            classeOpcao,
+            marcadas.includes(o) ? 'border-[var(--cor)] bg-[var(--cor-suave)]' : 'border-slate-200 bg-white hover:border-slate-300',
+            noLimite && !marcadas.includes(o) ? 'cursor-not-allowed opacity-50 hover:border-slate-200' : '',
+          ]"
         >
           <input
             type="checkbox"
             :value="o"
-            :checked="Array.isArray(modelValue) && modelValue.includes(o)"
-            class="size-5 shrink-0 accent-[var(--cor)]"
+            :checked="marcadas.includes(o)"
+            :disabled="noLimite && !marcadas.includes(o)"
+            :aria-describedby="maxSelecoes ? `${id}-limite` : undefined"
+            class="size-5 shrink-0 accent-[var(--cor)] disabled:cursor-not-allowed"
             @change="alternarMultipla(o, ($event.target as HTMLInputElement).checked)"
           />
           <span>{{ o }}</span>
         </label>
+        <p v-if="maxSelecoes" class="sr-only" aria-live="polite">{{ anuncioLimite }}</p>
       </div>
 
       <!-- Sim / não -->

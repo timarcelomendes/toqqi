@@ -7,13 +7,19 @@ renovam sozinhos. Só PNG ou JPEG, conferidos pelos primeiros bytes (não pela e
 1 MB no banco de imagens, que também guarda o nome do arquivo (limpo) e as dimensões lidas do cabeçalho.
 
 Onde o cliente vê o logo (página da pesquisa e e-mails): o do formulário; sem ele, o da conta (`logo_para_cliente`).
+
+Etapa 5l (docs/api-etapa-5l.md §4.6): imagens dos blocos de conteúdo (`conteudo_formulario`, até 1 MB) e logos do
+formulário ficam ligadas ao formulário e não apagam as anteriores ao enviar (o rascunho pode trocar o logo sem quebrar o
+que está no ar; desfazer no editor ainda acha a imagem). A limpeza (`limpar_do_formulario`) roda ao publicar e ao
+descartar o rascunho: saem as do formulário que nenhum formulário da conta cita (publicado ou rascunho, no logo do tema
+ou em algum HTML). Entre uma limpeza e outra, cada formulário guarda até 60 imagens (`LIMITE_POR_FORMULARIO`).
 """
 import hashlib
 import re
 import secrets
 import unicodedata
 
-from sqlalchemy import delete, exists, select
+from sqlalchemy import delete, exists, func, select, text
 from sqlalchemy.orm import Session
 
 from toqqi.core.config import config
@@ -23,8 +29,12 @@ from toqqi.modelos import Imagem
 
 LIMITE_BYTES = 300 * 1024  # 307200: logos
 MSG_ARQUIVO = "Use uma imagem PNG ou JPG de até 300 KB."
-LIMITE_BANCO = 1024 * 1024  # 1048576: banco de imagens
+LIMITE_BANCO = 1024 * 1024  # 1048576: banco de imagens e imagens dos blocos de conteúdo
 MSG_BANCO = "Use uma imagem PNG ou JPG de até 1 MB."
+USOS_DO_FORMULARIO = ("logo_formulario", "conteudo_formulario")
+LIMITE_POR_FORMULARIO = 60
+MSG_LIMITE_FORMULARIO = ("Este formulário chegou ao limite de 60 imagens enviadas. Publique ou descarte as alterações "
+                         "para liberar as que não estão em uso.")
 MAX_NOME = 120
 MAX_DIMENSAO = 2**31 - 1  # coluna integer
 CAMINHO = "/api/v1/publico/imagens/"
@@ -140,9 +150,9 @@ def nova_imagem(conta_id: int, uso: str, dados: bytes, tipo: str, **campos) -> I
 
 
 def gravar(s: Session, uso: str, dados: bytes, tipo: str, conta_id: int, formulario_id: int | None = None) -> str:
-    """Troca a imagem do uso (logo da conta ou do formulário): apaga a anterior e grava outra, com chave nova.
-    Quem chama trava o dono (conta ou formulário) antes, para duas trocas ao mesmo tempo não colidirem no índice
-    único. Devolve a URL pública."""
+    """Troca a imagem do uso (logo da conta): apaga a anterior e grava outra, com chave nova. Quem chama trava o dono
+    antes, para duas trocas ao mesmo tempo não colidirem no índice único. Devolve a URL pública. (Os logos de
+    formulário, desde a etapa 5l, usam `gravar_do_formulario`, que não apaga o anterior.)"""
     dono = Imagem.formulario_id == formulario_id if uso == "logo_formulario" else Imagem.conta_id == conta_id
     s.execute(delete(Imagem).where(Imagem.conta_id == conta_id, Imagem.uso == uso, dono))
     imagem = nova_imagem(conta_id, uso, dados, tipo, formulario_id=formulario_id)
@@ -151,18 +161,78 @@ def gravar(s: Session, uso: str, dados: bytes, tipo: str, conta_id: int, formula
     return url_publica(imagem.chave)
 
 
-def copiar_para_formulario(s: Session, url: str | None, conta_id: int, formulario_id: int) -> str | None:
-    """Formulário copiado: se `url` é um logo enviado à plataforma por esta conta, grava uma cópia como logo do
-    formulário novo (chave nova) e devolve a URL dela; senão None (endereço de fora — e imagem do banco de imagens, que
-    não muda nem passa a valer como logo de 300 KB — fica como está)."""
-    chave = chave_da_url(url)
-    if chave is None:
-        return None
-    original = s.scalar(select(Imagem).where(Imagem.conta_id == conta_id, Imagem.chave == chave,
-                                             Imagem.uso != "banco"))
-    if original is None:
-        return None
-    return gravar(s, "logo_formulario", original.dados, original.tipo, conta_id, formulario_id)
+def gravar_do_formulario(s: Session, uso: str, dados: bytes, tipo: str, conta_id: int, formulario_id: int,
+                         **campos) -> Imagem:
+    """Grava uma imagem do formulário (logo ou conteúdo) sem apagar as anteriores. Quem chama trava o formulário antes
+    (a contagem não corre). 409 `limite_imagens` com 60 imagens guardadas no formulário."""
+    assert uso in USOS_DO_FORMULARIO
+    total = s.scalar(select(func.count()).select_from(Imagem)
+                     .where(Imagem.conta_id == conta_id, Imagem.formulario_id == formulario_id))
+    if total >= LIMITE_POR_FORMULARIO:
+        raise AppError(409, "limite_imagens", MSG_LIMITE_FORMULARIO)
+    imagem = nova_imagem(conta_id, uso, dados, tipo, formulario_id=formulario_id, **campos)
+    s.add(imagem)
+    s.flush()
+    return imagem
+
+
+def chaves_citadas(*textos: str | None) -> list[str]:
+    """As chaves das imagens da plataforma citadas nos textos (URL no logo do tema ou `src` no HTML), sem repetir."""
+    padrao = re.compile(re.escape(prefixo_publico()) + r"([A-Za-z0-9_-]{32,128})")
+    return list(dict.fromkeys(m for t in textos if t for m in padrao.findall(t)))
+
+
+def copiar_para_formulario(s: Session, textos: list[str], conta_id: int, formulario_id: int) -> dict[str, str]:
+    """Formulário copiado: cada imagem da plataforma citada nos textos (logo e HTML, do publicado e do rascunho) que é
+    desta conta e não é do banco de imagens ganha uma cópia no formulário novo (chave nova): trocar ou limpar as de um
+    não mexe no outro. Devolve {url antiga: url nova}; endereço de fora e imagem do banco ficam como estão."""
+    trocas: dict[str, str] = {}
+    for chave in chaves_citadas(*textos):
+        original = s.scalar(select(Imagem).where(Imagem.conta_id == conta_id, Imagem.chave == chave,
+                                                 Imagem.uso != "banco"))
+        if original is None:
+            continue
+        uso = "conteudo_formulario" if original.uso == "conteudo_formulario" else "logo_formulario"
+        copia = nova_imagem(conta_id, uso, original.dados, original.tipo, formulario_id=formulario_id,
+                            nome=original.nome, largura=original.largura, altura=original.altura)
+        s.add(copia)
+        s.flush()
+        trocas[url_publica(chave)] = url_publica(copia.chave)
+    return trocas
+
+
+def limpar_do_formulario(s: Session, conta_id: int, formulario_id: int) -> int:
+    """Apaga as imagens do formulário (logo e conteúdo) que nenhum formulário da conta cita, no publicado ou no
+    rascunho (a chave é aleatória e longa: aparecer no JSON é estar citada). Devolve quantas saíram."""
+    return s.execute(text("""
+        DELETE FROM imagens i
+         WHERE i.conta_id = :conta AND i.formulario_id = :formulario
+           AND i.uso IN ('logo_formulario', 'conteudo_formulario')
+           AND NOT EXISTS (
+               SELECT 1 FROM formularios f
+                WHERE f.conta_id = :conta
+                  AND (strpos(f.tema::text, i.chave) > 0 OR strpos(f.perguntas::text, i.chave) > 0
+                       OR strpos(f.finais::text, i.chave) > 0 OR strpos(coalesce(f.rascunho::text, ''), i.chave) > 0))
+    """), {"conta": conta_id, "formulario": formulario_id}).rowcount
+
+
+def formulario_que_cita(s: Session, conta_id: int, chave: str) -> str | None:
+    """Nome de um formulário (não arquivado) que cita a imagem, no publicado ou no rascunho; None se nenhum."""
+    return s.scalar(text("""
+        SELECT nome FROM formularios
+         WHERE conta_id = :conta AND NOT arquivado
+           AND (strpos(tema::text, :chave) > 0 OR strpos(perguntas::text, :chave) > 0
+                OR strpos(finais::text, :chave) > 0 OR strpos(coalesce(rascunho::text, ''), :chave) > 0)
+         ORDER BY id LIMIT 1
+    """), {"conta": conta_id, "chave": chave})
+
+
+def citadas_em_formularios(s: Session, conta_id: int) -> str:
+    """Todo o JSON dos formulários não arquivados da conta (publicado e rascunho), para conferir várias chaves."""
+    return "\n".join(s.scalars(text("""
+        SELECT tema::text || perguntas::text || finais::text || coalesce(rascunho::text, '')
+          FROM formularios WHERE conta_id = :conta AND NOT arquivado
+    """), {"conta": conta_id}).all())
 
 
 def apagar_logo_conta(s: Session, conta_id: int) -> bool:

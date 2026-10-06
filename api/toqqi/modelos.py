@@ -265,6 +265,15 @@ class Formulario(Base):
     arquivado: Mapped[bool] = mapped_column(Boolean, server_default="false")
     criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
     atualizado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    # etapa 5l: finais publicados, rascunho ({perguntas, tema, finais} em edição) e publicação
+    finais: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
+    rascunho: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    rascunho_rev: Mapped[int] = mapped_column(Integer, server_default="0")
+    rascunho_em: Mapped[datetime | None] = mapped_column(TZ)
+    rascunho_por: Mapped[int | None] = mapped_column(BigInteger)
+    versao: Mapped[int] = mapped_column(Integer, server_default="1")
+    publicado_em: Mapped[datetime | None] = mapped_column(TZ, server_default=AGORA)
+    publicado_por: Mapped[int | None] = mapped_column(BigInteger)
 
 
 class Convite(Base):
@@ -343,6 +352,8 @@ class Resposta(Base):
         ARRAY(Text), Computed("temas_reclamacao(temas, ia_temas, ia_situacao, grupo)", persisted=True))
     temas_elogio: Mapped[list[str]] = mapped_column(
         ARRAY(Text), Computed("temas_elogio(temas, ia_temas, ia_situacao, grupo)", persisted=True))
+    # etapa 5l: a versão publicada do formulário quando a resposta chegou (nula nas antigas e nas importadas)
+    formulario_versao: Mapped[int | None] = mapped_column(Integer)
 
 
 class Importacao(Base):
@@ -559,12 +570,13 @@ class ConfigAcoes(Base):
 
 
 class Imagem(Base):
-    """Logo da conta ou de um formulário, ou imagem do banco de imagens da conta (etapa 5e). `dados` só é lido quando
-    pedido (deferred): os bytes não vêm junto nas buscas de URL."""
+    """Logo da conta ou de um formulário, imagem do banco de imagens da conta (etapa 5e) ou imagem de um bloco de
+    conteúdo de formulário (etapa 5l). `dados` só é lido quando pedido (deferred): os bytes não vêm junto nas buscas de
+    URL."""
     __tablename__ = "imagens"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
-    uso: Mapped[str] = mapped_column(Text)  # logo_conta | logo_formulario | banco
+    uso: Mapped[str] = mapped_column(Text)  # logo_conta | logo_formulario | banco | conteudo_formulario
     formulario_id: Mapped[int | None] = mapped_column(BigInteger)
     chave: Mapped[str] = mapped_column(Text)
     tipo: Mapped[str] = mapped_column(Text)

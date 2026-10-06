@@ -27,6 +27,7 @@ from urllib.parse import quote
 from toqqi.core.config import config
 from toqqi.core.email import Mensagem
 from toqqi.modulos.envios.descadastro import link_descadastro, link_um_clique
+from toqqi.modulos.formularios.logica import sem_citacoes
 from toqqi.modulos.formularios.validacao import pergunta_principal, tipo_principal
 from toqqi.modulos.respostas.registro import renderizar
 from toqqi.modulos.respostas.registro import variaveis as variaveis_formulario
@@ -195,7 +196,8 @@ def bloco_da_nota(perguntas: list[dict], link: str, v: dict, cor: str = COR_PADR
     if tipo == "personalizado":
         return _botao("Responder pesquisa", link, cor)
     p = pergunta_principal(perguntas)
-    titulo = renderizar(p.get("titulo") or "", v) or ""
+    # etapa 5l: citação de resposta anterior ({{ID}}) sai vazia, como na página antes de qualquer resposta
+    titulo = re.sub(r"[ \t]{2,}", " ", sem_citacoes(renderizar(p.get("titulo") or "", v) or "", "")).strip()
     if tipo == "nps":
         rmin, rmax = p.get("rotulo_min") or "Nada provável", p.get("rotulo_max") or "Muito provável"
     else:

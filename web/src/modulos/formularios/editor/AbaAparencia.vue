@@ -10,9 +10,12 @@ import { ACEITA_LOGO, conferirLogo, ehImagemDaPlataforma } from '@/utils/imagens
 import AreaTexto from '@/components/ui/AreaTexto.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Campo from '@/components/ui/Campo.vue'
+import type { Problema } from '../validacaoFormulario'
 import CampoVariaveis from './CampoVariaveis.vue'
 
-const props = defineProps<{ erros: Record<string, string>; formularioId: Id }>()
+// Etapa 5l: tudo daqui entra no rascunho (o que está no ar só muda ao publicar). O agradecimento (final padrão) foi
+// para a aba Perguntas, em "Finais".
+const props = defineProps<{ erros: Record<string, string>; formularioId: Id; problemas?: Problema[] }>()
 const tema = defineModel<Tema>('tema', { required: true })
 const descricao = defineModel<string | null>('descricao', { default: '' })
 const sessao = useSessaoStore()
@@ -64,7 +67,7 @@ watch(
   },
 )
 onBeforeUnmount(() => clearTimeout(esperaQuebrada))
-const erro = (c: string) => props.erros[`tema.${c}`] ?? null
+const erro = (c: string) => props.problemas?.find((p) => p.alvo.tipo === 'tema' && p.campo === c && !p.aviso)?.mensagem ?? props.erros[`tema.${c}`] ?? null
 
 function definirCor(c: string) {
   tema.value.cor = corValida(c)
@@ -82,8 +85,8 @@ function aoDigitarCor(v: string) {
 }
 
 /**
- * Envia o arquivo (POST /formularios/{id}/logo) e põe a URL devolvida no tema. A pesquisa só passa a usar o logo
- * novo quando o formulário é salvo; até lá, ele aparece só na pré-visualização.
+ * Envia o arquivo (POST /formularios/{id}/logo) e põe a URL devolvida no tema (no rascunho). A pesquisa só passa a
+ * usar o logo novo quando o formulário é publicado; até lá, ele aparece só na pré-visualização.
  */
 async function enviarLogo(f: File | undefined) {
   erroLogo.value = null
@@ -97,7 +100,7 @@ async function enviarLogo(f: File | undefined) {
   try {
     const r = await logoFormularioApi.enviar(props.formularioId, f)
     tema.value.logo_url = r.logo_url
-    avisar.sucesso('Imagem enviada. Salve o formulário para ela aparecer na pesquisa.')
+    avisar.sucesso('Imagem enviada. Ela aparece na pesquisa quando você publicar.')
   } catch (e) {
     erroLogo.value = e instanceof ApiError ? (e.campo('arquivo') ?? e.mensagem) : mensagemDoErro(e)
   } finally {
@@ -215,11 +218,10 @@ async function enviarLogo(f: File | undefined) {
         <h2 id="t-textos" class="font-bold text-texto">Textos</h2>
         <p class="text-sm text-texto-fraco">Use as variáveis para personalizar: {empresa} vira o nome da sua empresa, {nome} o primeiro nome do cliente.</p>
       </div>
-      <CampoVariaveis v-model="tema.titulo_abertura" rotulo="Título de boas-vindas" opcional :maximo="150" :erro="erro('titulo_abertura')" dica="Se preencher, aparece no alto da primeira pergunta, junto com o texto de boas-vindas." />
-      <CampoVariaveis v-model="tema.texto_abertura" rotulo="Texto de boas-vindas" opcional multilinha :maximo="600" :erro="erro('texto_abertura')" />
-      <CampoVariaveis v-model="tema.texto_botao" rotulo="Texto do botão de enviar" sem-variaveis :maximo="40" placeholder="Enviar" :erro="erro('texto_botao')" />
-      <CampoVariaveis v-model="tema.titulo_final" rotulo="Título do agradecimento" :maximo="150" placeholder="Obrigado!" :erro="erro('titulo_final')" />
-      <CampoVariaveis v-model="tema.texto_final" rotulo="Texto do agradecimento" multilinha :maximo="600" :erro="erro('texto_final')" />
+      <CampoVariaveis v-model="tema.titulo_abertura" rotulo="Título de boas-vindas" campo="titulo_abertura" opcional :maximo="120" :erro="erro('titulo_abertura')" dica="Se preencher, aparece no alto da primeira pergunta, junto com o texto de boas-vindas." />
+      <CampoVariaveis v-model="tema.texto_abertura" rotulo="Texto de boas-vindas" campo="texto_abertura" opcional multilinha :maximo="1000" :erro="erro('texto_abertura')" />
+      <CampoVariaveis v-model="tema.texto_botao" rotulo="Texto do botão de enviar" campo="texto_botao" sem-variaveis :maximo="40" placeholder="Enviar" :erro="erro('texto_botao')" />
+      <p class="text-sm text-texto-fraco" data-nota-final>O agradecimento do fim da pesquisa fica na aba Perguntas, em <strong class="text-texto">Finais</strong> (o final padrão e os finais por condição).</p>
     </section>
 
     <section class="cartao flex flex-col gap-3 p-5" aria-labelledby="t-desc">

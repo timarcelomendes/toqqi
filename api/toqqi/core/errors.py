@@ -15,6 +15,7 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DataError, DBAPIError
@@ -34,18 +35,25 @@ MSG_EMPRESA_PERDIDA = ("Esta empresa foi marcada como perdida. Para voltar a pes
 
 
 class AppError(Exception):
-    def __init__(self, status: int, codigo: str, mensagem: str, campos: dict[str, str] | None = None):
+    """`extra`: campos a mais no objeto `erro` (ex.: etapa 5l, `rascunho_desatualizado` leva {rev, salvo_em,
+    salvo_por_nome})."""
+
+    def __init__(self, status: int, codigo: str, mensagem: str, campos: dict[str, str] | None = None,
+                 extra: dict | None = None):
         super().__init__(mensagem)
         self.status = status
         self.codigo = codigo
         self.mensagem = mensagem
         self.campos = campos or {}
+        self.extra = extra or {}
 
 
-def resposta_erro(status: int, codigo: str, mensagem: str, campos: dict | None = None, headers=None):
+def resposta_erro(status: int, codigo: str, mensagem: str, campos: dict | None = None, headers=None,
+                  extra: dict | None = None):
     return JSONResponse(
         status_code=status,
-        content={"erro": {"codigo": codigo, "mensagem": mensagem, "campos": campos or {}}},
+        content={"erro": {**jsonable_encoder(extra or {}), "codigo": codigo, "mensagem": mensagem,
+                          "campos": campos or {}}},
         headers=headers,
     )
 
@@ -150,7 +158,7 @@ async def resposta_500(request: Request, exc: BaseException, rid: str | None) ->
 def registrar_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError):
-        return resposta_erro(exc.status, exc.codigo, exc.mensagem, exc.campos)
+        return resposta_erro(exc.status, exc.codigo, exc.mensagem, exc.campos, extra=exc.extra)
 
     @app.exception_handler(RequestValidationError)
     async def _validacao(_: Request, exc: RequestValidationError):

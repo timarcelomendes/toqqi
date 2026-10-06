@@ -3,7 +3,16 @@ import { computed, nextTick, ref } from 'vue'
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-vue-next'
 import { mover } from '../tiposPergunta'
 
-const props = defineProps<{ erro?: string | null; rotuloPergunta: string }>()
+const props = defineProps<{
+  erro?: string | null
+  rotuloPergunta: string
+  /** Etapa 5l: renomear uma opção (ao sair do campo) atualiza as condições que usam a opção. */
+  aoRenomear?: (antiga: string, nova: string) => void
+  /** Etapa 5l: antes de excluir uma opção usada em condições (confirmação). */
+  antesDeRemover?: (opcao: string) => Promise<boolean>
+  /** Etapa 5l: a opção saiu (tira das condições). */
+  aoRemover?: (opcao: string) => void
+}>()
 const opcoes = defineModel<string[]>({ required: true })
 const campos = ref<HTMLInputElement[]>([])
 const anuncio = ref('')
@@ -33,16 +42,38 @@ function atualizar(i: number, v: string) {
   opcoes.value = nova
 }
 
+// Renomear vale ao sair do campo (com o texto de quando ele ganhou o foco): no meio da digitação, o texto pode bater
+// por um instante com o de outra opção (ex.: "Sim, muito" → "Sim" → "Si…"), e as condições dela não podem ir junto.
+const aoFocarTexto = new Map<number, string>()
+function aoFocar(i: number) {
+  aoFocarTexto.set(i, opcoes.value[i] ?? '')
+}
+function aoSair(i: number) {
+  const antes = aoFocarTexto.get(i)
+  const agora = opcoes.value[i] ?? ''
+  aoFocarTexto.set(i, agora)
+  if (antes !== undefined && antes.trim() && agora.trim() && antes !== agora) props.aoRenomear?.(antes, agora)
+}
+
 function adicionar(depois = opcoes.value.length - 1) {
   if (opcoes.value.length >= 30) return
+  // Enter numa opção: o renomear dela vale antes de a lista mudar.
+  if (aoFocarTexto.has(depois)) aoSair(depois)
+  aoFocarTexto.clear()
   const nova = [...opcoes.value]
   nova.splice(depois + 1, 0, '')
   opcoes.value = nova
   focar(depois + 1)
 }
 
-function remover(i: number) {
+async function remover(i: number) {
+  // Opção apagada até ficar vazia (Backspace): vale o texto que ela tinha (as condições ainda usam esse).
+  const atual = opcoes.value[i] ?? ''
+  const opcao = atual.trim() ? atual : (aoFocarTexto.get(i) ?? '')
+  if (opcao.trim() && props.antesDeRemover && !(await props.antesDeRemover(opcao))) return
+  aoFocarTexto.clear()
   opcoes.value = opcoes.value.filter((_, j) => j !== i)
+  props.aoRemover?.(opcao)
   anuncio.value = 'Opção removida.'
   focar(Math.max(0, i - 1))
 }
@@ -50,6 +81,7 @@ function remover(i: number) {
 function moverOpcao(i: number, d: number) {
   const j = i + d
   if (j < 0 || j >= opcoes.value.length) return
+  aoFocarTexto.clear()
   opcoes.value = mover(opcoes.value, i, j)
   anuncio.value = `Opção movida para a posição ${j + 1}.`
   focar(j)
@@ -61,7 +93,7 @@ function aoTeclar(e: KeyboardEvent, i: number) {
     adicionar(i)
   } else if (e.key === 'Backspace' && !opcoes.value[i] && opcoes.value.length > 1) {
     e.preventDefault()
-    remover(i)
+    void remover(i)
   }
 }
 
@@ -95,6 +127,8 @@ function aoColar(e: ClipboardEvent, i: number) {
           :class="repetidas.has(i) ? 'border-erro focus:ring-erro/20' : 'border-borda-forte focus:border-marca focus:ring-marca/20'"
           placeholder="Escreva a opção"
           @input="atualizar(i, ($event.target as HTMLInputElement).value)"
+          @focus="aoFocar(i)"
+          @change="aoSair(i)"
           @keydown="aoTeclar($event, i)"
           @paste="aoColar($event, i)"
         />

@@ -5,6 +5,10 @@ A conta é descoberta em modo sistema só pela busca do hash do token (convite) 
 
 Etapa 5f: cada envio de resposta (convite e link público) e de indicação grava o registro de acesso (`core.acessos`,
 com o IP do cliente) na mesma transação; abrir as páginas não grava.
+
+Etapa 5l: o formulário vai com a lógica, o HTML dos blocos de conteúdo (variáveis escapadas), `prefixo_imagens` e
+`tem_finais` (dentro de `formulario`, e repetidos no topo da resposta); ao responder, a API descarta o que ficou fora do
+caminho, escolhe o final (`final_id`, `html_final`, `botao_final`) e grava a versão publicada na resposta.
 """
 import hashlib
 import re
@@ -26,7 +30,7 @@ from toqqi.modulos.respostas.convites import CANAL_RESPOSTA, limpar_contexto
 from toqqi.modulos.respostas.registro import (
     formulario_publico,
     gravar_resposta,
-    texto_final,
+    tela_final,
     validar_respostas,
     variaveis,
 )
@@ -87,17 +91,25 @@ def _dados_convite(s, c: Convite) -> tuple[Formulario, Contato | None, dict]:
     return f, contato, v
 
 
+def _pagina(dados: dict, **extra) -> dict:
+    """{formulario, variaveis, ...}, com `prefixo_imagens` e `tem_finais` também no topo (como no `formulario`)."""
+    return {**dados, **extra, "prefixo_imagens": dados["formulario"]["prefixo_imagens"],
+            "tem_finais": dados["formulario"]["tem_finais"]}
+
+
 def abrir_convite(token: str) -> dict:
     conta_id, convite_id = _achar_convite(token)
     with em_conta(conta_id) as s:
         c = s.get(Convite, convite_id)
         f, _, v = _dados_convite(s, c)
-        return {"formulario": _publico(s, conta_id, f, v), "variaveis": v, "ja_respondido": c.respondido_em is not None}
+        return _pagina({"formulario": _publico(s, conta_id, f, v), "variaveis": v},
+                       ja_respondido=c.respondido_em is not None)
 
 
 def responder_convite(token: str, respostas: dict, ip: str | None) -> dict:
-    """{titulo_final, texto_final, indicacao}: `indicacao` = {titulo, texto, recompensa} do convite de indicação
-    (etapa 5c) quando a nota dá direito e as indicações estão ligadas na conta liberada; senão null."""
+    """{titulo_final, texto_final, final_id, html_final, botao_final, indicacao, depoimento}: o final escolhido pela
+    lógica (`registro.tela_final`); `indicacao` = {titulo, texto, recompensa} do convite de indicação (etapa 5c)
+    quando a nota dá direito e as indicações estão ligadas na conta liberada; senão null."""
     conta_id, convite_id = _achar_convite(token)
     with em_conta(conta_id) as s:
         c = s.get(Convite, convite_id, with_for_update=True)  # uma resposta por convite, mesmo em corrida
@@ -108,7 +120,7 @@ def responder_convite(token: str, respostas: dict, ip: str | None) -> dict:
                             convite_id=c.id, contexto=c.contexto, referencia=c.referencia, ip_hash=ip_hash(ip))
         c.respondido_em = func.now()
         acessos.registrar(s, "resposta", conta_id=conta_id, item_id=r.id)
-        return {**texto_final(f, v), "indicacao": indicacoes.convite_de_indicacao(s, r, v),
+        return {**tela_final(f, v, r.respostas), "indicacao": indicacoes.convite_de_indicacao(s, r, v),
                 "depoimento": depoimentos.tela_final(s, r, v.get("empresa") or "")}
 
 
@@ -163,7 +175,7 @@ def abrir_formulario(codigo: str, referencia: str | None = None) -> dict:
     with em_conta(conta_id) as s:
         f = _form_publico(s, form_id)
         v = variaveis(_nome_conta(s), referencia=(referencia or "")[:120] or None)
-        return {"formulario": _publico(s, conta_id, f, v), "variaveis": v}
+        return _pagina({"formulario": _publico(s, conta_id, f, v), "variaveis": v})
 
 
 def responder_formulario(codigo: str, dados, ip: str | None) -> dict:
@@ -182,8 +194,8 @@ def responder_formulario(codigo: str, dados, ip: str | None) -> dict:
             )))
             if repetida:  # mesma resposta, mesmo IP, há pouco: responde igual e não grava de novo
                 acessos.registrar(s, "resposta", conta_id=conta_id)
-                return texto_final(f, v)
+                return tela_final(f, v, validadas[0])
         r = gravar_resposta(s, f, dados.respostas, dados.canal, v, contexto=limpar_contexto(dados.contexto),
                             referencia=dados.referencia, ip_hash=h, respostas_validadas=validadas)
         acessos.registrar(s, "resposta", conta_id=conta_id, item_id=r.id)
-        return texto_final(f, v)
+        return tela_final(f, v, r.respostas)

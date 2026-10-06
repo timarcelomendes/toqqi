@@ -394,7 +394,8 @@ describe('a prévia do editor e o botão no site seguem a página', () => {
     await w.get('form').trigger('submit')
     await flushPromises()
     expect(w.find('[data-abertura]').exists()).toBe(false)
-    await w.findAll('button').find((b) => b.text().includes('Recomeçar'))!.trigger('click')
+    // Etapa 5l: "Recomeçar" virou "Reiniciar" (docs/api-etapa-5l.md §5.3).
+    await w.findAll('button').find((b) => b.text().includes('Reiniciar'))!.trigger('click')
     await flushPromises()
     expect(w.find('[data-abertura]').exists()).toBe(true)
     expect(w.findAll('button').map((b) => b.text())).not.toContain('Voltar')

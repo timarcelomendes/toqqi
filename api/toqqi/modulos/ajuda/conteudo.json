@@ -53,11 +53,11 @@
       "atalho": "formularios",
       "como": [
         "Em Formulários, abra a “Pesquisa NPS”, que já vem pronta, ou clique em “Novo formulário”, escolha um modelo e clique em “Criar formulário”.",
-        "Na aba Perguntas, ajuste o texto de cada pergunta e use “Adicionar pergunta” para incluir outras.",
-        "Na aba Aparência, escolha a cor principal, o logo e os textos de boas-vindas e de agradecimento.",
-        "Confira na pré-visualização (“Pré-visualizar” ou o painel ao lado, em tela grande) a página, o e-mail e o WhatsApp, e clique em “Salvar”."
+        "Na aba Perguntas, ajuste o texto de cada pergunta e use “+ Adicionar” para incluir outras perguntas e blocos de conteúdo.",
+        "Na aba Aparência, escolha a cor principal, o logo e os textos de boas-vindas. O agradecimento fica em Perguntas, na seção Finais.",
+        "Confira na prévia, no celular e no computador, e clique em “Publicar”."
       ],
-      "resultado": "O formulário fica salvo (o alto da tela mostra “Salvo em”, com a data e a hora) e com “Recebendo respostas” ligado. Um formulário novo só vai no convite dos envios quando o administrador o escolhe em Configurações › Envios, em “Formulário do convite”.",
+      "resultado": "A pesquisa no ar passa a ser a versão publicada (o alto da tela mostra “Publicado”, com a versão); as mudanças seguintes ficam num rascunho, salvo sozinho, até você publicar de novo. Um formulário novo só vai no convite dos envios quando o administrador o escolhe em Configurações › Envios, em “Formulário do convite”.",
       "veja": [
         "formularios#criar-um-formulario",
         "formularios#perguntas-do-formulario",
@@ -76,7 +76,9 @@
         "boas-vindas",
         "pré-visualizar",
         "nota nps",
-        "csat"
+        "csat",
+        "publicar",
+        "rascunho"
       ]
     },
     {
@@ -1140,7 +1142,7 @@
     {
       "id": "formularios",
       "titulo": "Formulários",
-      "resumo": "As pesquisas que seus clientes respondem: criar, editar as perguntas, mudar o visual e compartilhar.",
+      "resumo": "As pesquisas que seus clientes respondem: criar, editar as perguntas e a lógica, publicar, mudar o visual e compartilhar.",
       "secoes": [
         {
           "id": "criar-um-formulario",
@@ -1156,7 +1158,12 @@
             "pós-atendimento",
             "duplicar formulário",
             "formulário em branco",
-            "criar pesquisa"
+            "criar pesquisa",
+            "modelo com lógica",
+            "esforço do cliente",
+            "ces",
+            "csat com motivo",
+            "nps por segmento"
           ],
           "blocos": [
             {
@@ -1167,13 +1174,17 @@
               "tipo": "passos",
               "itens": [
                 "Em Formulários, clique em “Novo formulário”.",
-                "Dê um nome (só a sua equipe vê) e escolha um modelo. O quadro “Como fica” mostra a prévia.",
-                "Clique em “Criar formulário” e ajuste as perguntas do seu jeito."
+                "Dê um nome (só a sua equipe vê) e escolha um modelo. Cada cartão mostra a prévia do modelo.",
+                "Clique em “Criar formulário”. Ele já nasce publicado; ajuste as perguntas do seu jeito e clique em “Publicar”."
               ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "Os modelos são: NPS simples, Satisfação pós-entrega, Pós-atendimento, NPS distribuidora, Pesquisa rápida e Em branco. Para fazer uma variação de um formulário que já existe, use “Duplicar” no menu do cartão."
+              "texto": "Os modelos são: NPS simples, Satisfação pós-entrega, Pós-atendimento, NPS distribuidora, Pesquisa rápida, NPS com acompanhamento e finais por segmento, Esforço do cliente (CES), CSAT com motivo e Em branco. Os que já trazem perguntas que só aparecem para alguns clientes, ou finais diferentes por segmento, têm a etiqueta “Com lógica”."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Para fazer uma variação de um formulário que já existe, use “Duplicar” no menu do cartão. A cópia leva as perguntas publicadas, as alterações ainda não publicadas e as imagens."
             },
             {
               "tipo": "paragrafo",
@@ -1183,7 +1194,7 @@
         },
         {
           "id": "perguntas-do-formulario",
-          "titulo": "Perguntas: tipos e como editar",
+          "titulo": "Perguntas: adicionar, editar e organizar",
           "somente_admin": false,
           "atalho": "formularios",
           "palavras": [
@@ -1197,72 +1208,214 @@
             "ordem das perguntas",
             "arrastar",
             "apagar pergunta",
-            "salvar formulário",
+            "duplicar pergunta",
+            "desfazer",
+            "refazer",
+            "atalhos",
+            "ctrl z",
             "ctrl s",
             "carinhas",
-            "resposta curta"
+            "resposta curta",
+            "lista suspensa",
+            "embaralhar opções",
+            "máximo de opções",
+            "texto de exemplo"
           ],
           "blocos": [
             {
+              "tipo": "paragrafo",
+              "texto": "Abra o formulário e fique na aba Perguntas. Em tela grande, a lista dos itens fica à esquerda, a edição do item escolhido ao centro e a prévia à direita, com “Celular” e “Computador”. Em telas menores, a prévia abre por um botão."
+            },
+            {
               "tipo": "passos",
               "itens": [
-                "Abra o formulário (clique no cartão) e vá na aba Perguntas.",
-                "Clique em “Adicionar pergunta” e escolha o tipo.",
-                "Escreva a pergunta e ajuste as opções. Arraste para mudar a ordem, ou use Subir e Descer.",
-                "Clique em “Salvar” (ou use Ctrl+S)."
+                "Clique em “+ Adicionar”, no fim da lista, ou no “+” que aparece entre dois itens.",
+                "Escolha o tipo no menu. Dá para buscar pelo nome e andar com as setas e o Enter. O item novo entra depois do que está selecionado.",
+                "Escreva o título e ajuste o resto no centro da tela: descrição, opções, faixa da escala, formato e “Obrigatória”.",
+                "As mudanças são salvas sozinhas num rascunho. Quando estiver tudo certo, clique em “Publicar”."
               ]
             },
             {
               "tipo": "lista",
               "itens": [
-                "Nota de 0 a 10 (NPS), Carinhas de 1 a 5 (CSAT), Estrelas de 1 a 5 e Escala numérica (começa em 0 ou 1 e vai até 10).",
-                "Comentário (texto livre) e Resposta curta (texto, e-mail, telefone ou número).",
-                "Escolha uma opção e Escolha várias opções (de 2 a 30 opções).",
-                "Sim ou não e Data.",
-                "Quebra de página, para dividir a pesquisa quando ela é mostrada em páginas."
+                "Notas: NPS (0 a 10), CSAT (carinhas de 1 a 5), Estrelas (1 a 5) e Escala (começa em 0 ou 1 e vai até 10).",
+                "Escolhas: Única, Múltipla (de 2 a 30 opções) e Sim ou não. Na única dá para “Mostrar como lista suspensa”; nas duas, “Embaralhar a ordem”; na múltipla, limitar o “Máximo de opções”.",
+                "Texto: Resposta curta, Comentário, E-mail, Telefone e Número, com um texto de exemplo opcional dentro do campo.",
+                "Data; Conteúdo (Texto e imagem, ou HTML), para mostrar avisos e imagens; e Quebra de página, para dividir a pesquisa quando ela é mostrada em páginas."
               ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "Cada formulário aceita até 60 perguntas. Se você tentar sair sem salvar, o Toqqi avisa antes de perder as mudanças."
+              "texto": "Para mudar a ordem, arraste o item pela alça (também no celular) ou use “Mover para…”. No item também ficam Duplicar e Excluir. Ao excluir uma pergunta usada em alguma condição, o Toqqi mostra onde ela é usada e oferece remover essas condições junto. O menu “Tipo” troca o tipo da pergunta e mantém o título e a descrição."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Atalhos: Ctrl+Z desfaz e Ctrl+Shift+Z (ou Ctrl+Y) refaz; Ctrl+S salva o rascunho na hora; Ctrl+D duplica o item; Alt com as setas move o item; a barra (/) abre o menu de adicionar; e a interrogação (?) mostra todos os atalhos. No Mac, use Cmd no lugar de Ctrl."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Cada formulário aceita até 60 perguntas e 30 blocos de conteúdo."
+            }
+          ]
+        },
+        {
+          "id": "rascunho-e-publicacao",
+          "titulo": "Rascunho e publicação",
+          "somente_admin": false,
+          "atalho": "formularios",
+          "palavras": [
+            "rascunho",
+            "publicar",
+            "salvar formulário",
+            "salvo automaticamente",
+            "descartar alterações",
+            "alterações não publicadas",
+            "versão",
+            "outra aba",
+            "link já enviado",
+            "problemas"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O editor salva sozinho, num rascunho, a cada mudança. O alto da tela mostra “Salvando…” e depois “Rascunho salvo”. Quem responde continua vendo a versão publicada até você clicar em “Publicar”."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Faça as mudanças: elas vão para o rascunho e aparece a etiqueta “Alterações não publicadas”.",
+                "Clique em “Publicar”. Se algo precisar de ajuste, abre o painel “Problemas”; clique num problema para ir direto ao item.",
+                "Pronto: aparece “Publicado. Quem abrir o link agora vê esta versão.” e o número da versão sobe."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "“Descartar alterações” apaga o rascunho e volta para a versão publicada. O Toqqi pede confirmação antes."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Quem já recebeu o link não precisa de outro: ao abrir depois da publicação, vê a versão nova. As respostas que já chegaram não mudam, e cada resposta guarda a versão que estava no ar."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Se outra pessoa (ou você, em outra aba) mudar o mesmo formulário, o editor avisa e oferece “Recarregar”. Sem internet, aparece “Não foi possível salvar”, com a opção de tentar de novo."
             }
           ]
         },
         {
           "id": "variaveis-condicoes-e-nota-principal",
-          "titulo": "Variáveis, perguntas condicionais e nota principal",
+          "titulo": "Lógica: mostrar se, pular, finais e citações",
           "somente_admin": false,
           "atalho": "formularios",
           "palavras": [
+            "lógica",
+            "condição",
+            "mostrar só para",
+            "pergunta condicional",
+            "pular pergunta",
+            "ir para",
+            "fim da pesquisa",
+            "final",
+            "tela final",
+            "agradecimento por segmento",
+            "citação",
+            "resposta anterior",
             "variável",
             "personalizar texto",
-            "mostrar só para",
-            "condição",
-            "pergunta condicional",
-            "lógica",
-            "nota principal",
-            "obrigatória",
             "nome do cliente",
-            "número do pedido"
+            "número do pedido",
+            "nota principal",
+            "obrigatória"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Nos textos, o Toqqi troca as variáveis: {nome} vira o primeiro nome do cliente, {empresa} vira o nome da sua empresa, {assunto} vira o assunto do envio (padrão: “o nosso atendimento”) e {referencia} vira a referência, como o número do pedido."
+              "texto": "Na edição de cada item, a seção “Lógica” decide quando ele aparece e para onde a pesquisa vai depois. As regras só olham para as perguntas anteriores e só pulam para a frente."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "“Quando mostrar”: “Sempre” ou “Só se…”. Monte as condições em frases, como “NPS está no grupo Detratores”, e escolha se valem todas ou qualquer uma. “+ Condição” inclui outra.",
+                "“Depois desta pergunta”: regras que mandam, se as condições valerem, para um item mais adiante ou para o “Fim da pesquisa”. Vale a primeira regra que combinar; senão, a pesquisa segue para a próxima. “+ Regra” inclui outra.",
+                "Comparações: é, não é, é menor que, é no máximo, é maior que, é pelo menos, está entre, está no grupo, foi respondida e não foi respondida; nas escolhas, é uma de, não é nenhuma de, inclui alguma de, inclui todas e não inclui nenhuma de; nos textos, contém, não contém, começa com e termina com; nas datas, antes de e depois de."
+              ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "A nota principal é a primeira pergunta de NPS do formulário. Sem NPS, é a primeira de carinhas ou estrelas. Ela define o tipo do formulário (NPS, CSAT ou personalizado) e o grupo de cada resposta: promotor, neutro ou detrator; ou satisfeito, neutro ou insatisfeito."
+              "texto": "Pergunta escondida ou pulada conta como sem resposta: para ela, só “não foi respondida” vale. O que a pessoa respondeu numa pergunta que saiu do caminho é descartado, e a resposta obrigatória só é cobrada quando a pergunta aparece."
             },
             {
               "tipo": "paragrafo",
-              "texto": "Em cada pergunta, “Resposta obrigatória” faz a pessoa só avançar depois de responder. “Mostrar só para” faz a pergunta aparecer só para alguns grupos (por exemplo, só detratores) ou pela nota (até ou a partir de um valor). Isso só vale para perguntas depois da nota principal."
+              "texto": "Finais: na seção Finais (abaixo das perguntas), cada final tem nome (só a sua equipe vê), título, texto, um botão opcional e “Mostrar este final quando…”. Ao terminar, vale o primeiro final que combinar, na ordem da lista; se nenhum combinar, vale o “Final padrão”. Um final sem condição pega todos os casos: deixe-o por último."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Citações: no menu “Inserir”, “Respostas anteriores” coloca no texto a resposta que a pessoa deu numa pergunta anterior, como em “Você deu nota 9. O que podemos melhorar?”. Sem resposta, a citação sai vazia. No mesmo menu ficam as variáveis: Nome da empresa, Nome do contato (só o primeiro nome), Assunto (padrão: “o nosso atendimento”) e Referência, como o número do pedido."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A nota principal é a primeira pergunta de NPS do formulário; sem NPS, é a primeira de CSAT ou de estrelas. Ela define o tipo do formulário e o grupo de cada resposta (promotor, neutro ou detrator; ou satisfeito, neutro ou insatisfeito), que alimentam o painel, os relatórios e a nota clicada no e-mail. Por isso ela sempre aparece: não pode ter condição, e as perguntas antes dela não podem pular."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Na nota principal, “Criar acompanhamento por segmento” cria as perguntas de comentário para cada grupo, e “Criar finais por segmento” cria os finais de promotores e detratores (ou de satisfeitos e insatisfeitos)."
+            }
+          ]
+        },
+        {
+          "id": "blocos-de-conteudo-e-html",
+          "titulo": "Blocos de conteúdo e HTML",
+          "somente_admin": false,
+          "atalho": "formularios",
+          "palavras": [
+            "conteúdo",
+            "texto e imagem",
+            "html",
+            "imagem na pesquisa",
+            "aviso",
+            "termos",
+            "link na pesquisa",
+            "texto formatado",
+            "negrito",
+            "tabela",
+            "script",
+            "segurança",
+            "removemos por segurança"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O bloco de conteúdo mostra um texto formatado no meio da pesquisa: um aviso, um termo, uma explicação, uma imagem ou um link. Ele não é pergunta: não recebe resposta nem aparece nos resultados."
+            },
+            {
+              "tipo": "passos",
+              "itens": [
+                "Em Perguntas, clique em “+ Adicionar” e escolha Conteúdo: Texto e imagem, ou HTML.",
+                "Na aba “Visual”, escreva e formate: negrito, itálico, títulos, listas, citação, link, alinhamento e linha. Na aba “HTML”, cole ou edite o código.",
+                "Para pôr uma imagem, use “Enviar imagem” (PNG ou JPG de até 1 MB) ou, se você tem acesso ao banco de imagens, “Escolher do banco”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Ficam no HTML: parágrafos, títulos, negrito, itálico, sublinhado, listas, citações, linhas, tabelas, links e imagens enviadas ao Toqqi. Os links abrem em outra aba."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Por segurança, o Toqqi tira scripts, estilos, formulários, vídeos, quadros de outros sites e imagens de fora antes de gravar. A pesquisa abre no mesmo endereço do Toqqi, e um código desses poderia agir em nome de quem está com o app aberto; imagens de fora avisariam outro site de quem abriu a pesquisa. Quando algo sai, o bloco mostra o aviso “Removemos por segurança”, com o que saiu."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Parte de um HTML, como uma tabela, só pode ser editada na aba HTML. Nesses casos a aba Visual fica desligada, para nada se perder."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O bloco também pode ter “Quando mostrar”, como as perguntas, mas não pula para outro item. Uma imagem do banco de imagens usada num formulário só pode ser excluída do banco depois de sair do formulário."
             }
           ]
         },
         {
           "id": "aparencia-do-formulario",
-          "titulo": "Aparência e textos do formulário",
+          "titulo": "Aparência do formulário",
           "somente_admin": false,
           "atalho": "formularios",
           "palavras": [
@@ -1272,31 +1425,35 @@
             "tema",
             "layout",
             "texto de boas-vindas",
-            "agradecimento",
             "botão enviar",
             "uma pergunta por vez",
             "páginas",
             "pré-visualizar",
-            "marca"
+            "marca",
+            "agradecimento"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Na aba Aparência você muda o visual da pesquisa:"
+              "texto": "Na aba Aparência você muda o visual da pesquisa. Tudo entra no rascunho e só chega a quem responde quando você publica."
             },
             {
               "tipo": "lista",
               "itens": [
                 "Cor principal: escolha a cor ou digite o código dela.",
-                "Logo (opcional): envie uma imagem PNG ou JPG de até 300 KB, ou informe o endereço dela. Sem logo aqui, vale o logo da empresa (Configurações › Empresa).",
+                "Logo (opcional): envie uma imagem PNG ou JPG de até 300 KB, ou informe o endereço dela. Sem logo aqui, vale o logo da empresa (Configurações › Empresa). Trocar o logo não muda a pesquisa no ar até você publicar.",
                 "Jeito de mostrar: “Uma pergunta por vez” (mais rápido no celular) ou “Em páginas” (use Quebra de página para dividir).",
-                "Textos: Título de boas-vindas, Texto de boas-vindas, Texto do botão de enviar, Título do agradecimento e Texto do agradecimento. Dá para usar as variáveis.",
+                "Textos: Título de boas-vindas, Texto de boas-vindas e Texto do botão de enviar. Dá para usar as variáveis.",
                 "Descrição: uma anotação interna, que só a sua equipe vê."
               ]
             },
             {
+              "tipo": "paragrafo",
+              "texto": "O título e o texto de agradecimento ficam na aba Perguntas, na seção Finais, como “Final padrão”."
+            },
+            {
               "tipo": "dica",
-              "texto": "Use “Pré-visualizar” (ou o painel à direita, em tela grande) para ver como o cliente enxerga: em “Página”, a pesquisa; em “E-mail”, o convite como chega na caixa de entrada; em “WhatsApp”, a mensagem com o link. E-mail e WhatsApp usam os textos de Configurações › Envios. Nada é gravado."
+              "texto": "A prévia mostra como o cliente vê a pesquisa, já com as mudanças do rascunho. Nada é enviado a ninguém."
             }
           ]
         },
@@ -1357,7 +1514,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "O formulário padrão é o que vai quando você não escolhe outro, nos envios e nos links gerados para um contato. Há um padrão de NPS e um de CSAT. Para trocar, abra o outro formulário, vá em Compartilhar e clique em “Usar como padrão de NPS” ou “Usar como padrão de CSAT”. Salve as alterações antes."
+              "texto": "O formulário padrão é o que vai quando você não escolhe outro, nos envios e nos links gerados para um contato. Há um padrão de NPS e um de CSAT. Para trocar, abra o outro formulário, vá em Compartilhar e clique em “Usar como padrão de NPS” ou “Usar como padrão de CSAT”. Publique as alterações antes."
             },
             {
               "tipo": "paragrafo",
@@ -1392,6 +1549,10 @@
             {
               "tipo": "paragrafo",
               "texto": "“Baixar planilha (CSV)” baixa as respostas do período escolhido. Para olhar todas as respostas juntas, com filtros, use a tela Respostas."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Os blocos de conteúdo não aparecem nos resultados. Nos títulos, a citação de uma resposta anterior aparece como reticências."
             }
           ]
         }

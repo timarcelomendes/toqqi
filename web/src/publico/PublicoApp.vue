@@ -149,7 +149,9 @@ onMounted(carregar)
       </template>
     </section>
 
-    <footer v-if="!params.embed && estado !== 'carregando'" class="pb-6 text-center text-xs text-slate-400">
+    <!-- Com a pesquisa na tela, quem mostra "Pesquisa feita com Toqqi" é a própria pesquisa (etapa 5i: respeita a conta
+         que tirou a menção); aqui fica só nas telas de já respondido, link inválido e erro. -->
+    <footer v-if="!params.embed && estado !== 'carregando' && estado !== 'pronto'" class="pb-6 text-center text-xs text-slate-400">
       Pesquisa feita com <a href="https://toqqi.com" class="font-semibold text-slate-500 hover:text-slate-700" target="_blank" rel="noopener">toqqi</a>
     </footer>
   </main>

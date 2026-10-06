@@ -1,4 +1,7 @@
-"""Validação das respostas de um formulário, variáveis nos textos e gravação da resposta."""
+"""Validação das respostas de um formulário, variáveis nos textos e gravação da resposta.
+
+Etapa 5l: as respostas passam pela lógica do formulário (`formularios/logica.py`): só valem as do caminho (as de fora
+são descartadas), a obrigatória só é cobrada no caminho e o final sai de `escolher_final` (`tela_final`)."""
 import copy
 import re
 from datetime import date
@@ -9,8 +12,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from toqqi.core.errors import AppError
+from toqqi.core.html_seguro import proteger_citacoes, renderizar_html
 from toqqi.core.texto import so_digitos
 from toqqi.modelos import Contato, Formulario, Resposta
+from toqqi.modulos.formularios.logica import caminho, escolher_final, respondivel, sem_citacoes
 from toqqi.modulos.formularios.validacao import (
     LIMITE_TEXTO,
     TIPOS_NOTA,
@@ -18,8 +23,8 @@ from toqqi.modulos.formularios.validacao import (
     grupo_da_nota,
     pergunta_principal,
     tipo_nota_de,
-    visivel,
 )
+from toqqi.modulos.imagens.servico import prefixo_publico
 from toqqi.modulos.respostas.eventos import ao_registrar_resposta
 from toqqi.modulos.respostas.temas import detectar
 
@@ -41,9 +46,11 @@ def variaveis(empresa: str, nome_contato: str | None = None, assunto: str | None
 
 def renderizar(texto: str | None, v: dict) -> str | None:
     """Troca as variáveis de `v` (ex.: {empresa} {nome} {assunto} {referencia}). Variável vazia some junto
-    com o espaço antes; {nome} vazio também leva a vírgula: "Olá, {nome}!" → "Olá!"."""
+    com o espaço antes; {nome} vazio também leva a vírgula: "Olá, {nome}!" → "Olá!". As citações `{{ID}}` (etapa 5l)
+    ficam como estão: quem troca é o navegador, com as respostas que tem."""
     if not texto or "{" not in texto:
         return texto
+    texto, restaurar = proteger_citacoes(texto, v.values())
     for chave in v:
         marca = "{" + chave + "}"
         if marca not in texto:
@@ -59,22 +66,48 @@ def renderizar(texto: str | None, v: dict) -> str | None:
             if inicio and texto:
                 texto = texto[0].upper() + texto[1:]
         texto = re.sub(r"[ \t]*" + re.escape(marca), "", texto)
-    return re.sub(r"[ \t]{2,}", " ", texto).strip()
+    return restaurar(re.sub(r"[ \t]{2,}", " ", texto).strip())
 
 
 def formulario_publico(f: Formulario, v: dict) -> dict:
+    """O formulário da página pública (etapa 5l, §4.3): com a lógica; títulos e descrições com as variáveis (as
+    citações `{{ID}}` ficam para o navegador); blocos de conteúdo com o HTML e as variáveis escapadas (o nome interno
+    do bloco não vai); `prefixo_imagens` (o DOMPurify do site só aceita imagens da plataforma) e `tem_finais`. Os
+    finais não vão: quem escolhe é a API, ao receber a resposta."""
     perguntas = copy.deepcopy(f.perguntas)
     for p in perguntas:
+        if p.get("tipo") == "conteudo":
+            p["titulo"] = ""
+            p["html"] = renderizar_html(p.get("html") or "", v)
+            continue
         p["titulo"] = renderizar(p.get("titulo"), v)
         p["descricao"] = renderizar(p.get("descricao"), v)
     tema = {k: renderizar(x, v) if isinstance(x, str) else x for k, x in (f.tema or {}).items()}
-    return {"nome": f.nome, "perguntas": perguntas, "tema": tema}
+    return {"nome": f.nome, "perguntas": perguntas, "tema": tema, "prefixo_imagens": prefixo_publico(),
+            "tem_finais": bool(f.finais)}
 
 
 def texto_final(f: Formulario, v: dict) -> dict:
+    """O final padrão (o do tema)."""
     tema = f.tema or {}
     return {"titulo_final": renderizar(tema.get("titulo_final") or "Obrigado!", v),
             "texto_final": renderizar(tema.get("texto_final") or "", v)}
+
+
+def tela_final(f: Formulario, v: dict, respostas: dict) -> dict:
+    """{titulo_final, texto_final, final_id, html_final, botao_final} (§4.3): o 1º final da lista cuja condição vale
+    com as respostas do caminho. No final escolhido, `titulo_final` é o título dele (as citações ficam para o
+    navegador), `texto_final` é "" e `html_final` é o HTML dele com as variáveis escapadas ("" se não tiver). Nenhum
+    final vale: o padrão do tema, com `final_id`, `html_final` e `botao_final` nulos."""
+    final_id = escolher_final(f.finais, f.perguntas, respostas)
+    final = next((x for x in f.finais or [] if x.get("id") == final_id), None) if final_id else None
+    if final is None:
+        return {**texto_final(f, v), "final_id": None, "html_final": None, "botao_final": None}
+    botao = final.get("botao")
+    return {"titulo_final": renderizar(final.get("titulo") or "", v), "texto_final": "", "final_id": final_id,
+            "html_final": renderizar_html(final.get("html") or "", v),
+            "botao_final": {"texto": renderizar(botao.get("texto") or "", v), "url": botao.get("url")}
+            if botao else None}
 
 
 # ---- validação --------------------------------------------------------------
@@ -123,7 +156,11 @@ def _valor(p: dict, v: Any) -> Any:
     if tipo == "escolha_multipla":
         if not isinstance(v, list) or any(x not in p.get("opcoes", []) for x in v):
             raise ValueError("Escolha entre as opções.")
-        return [o for o in p["opcoes"] if o in v]
+        marcadas = [o for o in p["opcoes"] if o in v]
+        maximo = p.get("max_selecoes")
+        if maximo and len(marcadas) > maximo:
+            raise ValueError(f"Escolha no máximo {maximo} opções.")
+        return marcadas
     if tipo == "sim_nao":
         if not isinstance(v, bool):
             raise ValueError("Responda sim ou não.")
@@ -140,14 +177,15 @@ def _valor(p: dict, v: Any) -> Any:
 
 
 def validar_respostas(perguntas: list[dict], brutas: Any) -> tuple[dict, int | None, str | None, str | None]:
-    """Devolve (respostas limpas, nota, tipo_nota, grupo). Respostas de perguntas escondidas pela
-    lógica são descartadas. Levanta 422 com campos por id de pergunta."""
+    """Devolve (respostas limpas, nota, tipo_nota, grupo). Valida o tipo de cada valor enviado (ids desconhecidos e
+    itens que não são pergunta são ignorados), calcula o caminho com os valores válidos, cobra só os itens do caminho
+    (valor inválido ou obrigatória sem resposta) e descarta as respostas fora dele. Levanta 422 com campos por id de
+    pergunta. A nota sai da nota principal (sempre no caminho)."""
     if not isinstance(brutas, dict):
         raise AppError(422, "dados_invalidos", "Confira as respostas.", {"respostas": "Formato inválido."})
-    principal = pergunta_principal(perguntas)
-    campos: dict[str, str] = {}
+    erros_de_valor: dict[str, str] = {}
     valores: dict[str, Any] = {}
-    reais = [p for p in perguntas if p["tipo"] != "quebra_pagina"]
+    reais = [p for p in perguntas if respondivel(p.get("tipo"))]
     for p in reais:
         v = brutas.get(p["id"])
         if _vazio(v):
@@ -155,21 +193,25 @@ def validar_respostas(perguntas: list[dict], brutas: Any) -> tuple[dict, int | N
         try:
             valores[p["id"]] = _valor(p, v)
         except ValueError as e:
-            campos[p["id"]] = str(e)
-    nota = valores.get(principal["id"]) if principal else None
+            erros_de_valor[p["id"]] = str(e)
+    no_caminho = set(caminho(perguntas, valores))
+    campos: dict[str, str] = {}
     limpas: dict[str, Any] = {}
     for p in reais:
-        if not visivel(p, principal, nota):
-            campos.pop(p["id"], None)
+        if p["id"] not in no_caminho:
             continue
-        if p["id"] in valores:
+        if p["id"] in erros_de_valor:
+            campos[p["id"]] = erros_de_valor[p["id"]]
+        elif p["id"] in valores:
             limpas[p["id"]] = valores[p["id"]]
-        elif p.get("obrigatoria") and p["id"] not in campos:
+        elif p.get("obrigatoria"):
             campos[p["id"]] = "Responda esta pergunta."
     if campos:
         raise AppError(422, "dados_invalidos", "Confira as respostas destacadas.", campos)
     if not limpas:
         raise AppError(422, "dados_invalidos", "Responda pelo menos uma pergunta.")
+    principal = pergunta_principal(perguntas)
+    nota = limpas.get(principal["id"]) if principal else None
     tipo_nota = tipo_nota_de(principal) if nota is not None else None
     return limpas, nota, tipo_nota, grupo_da_nota(tipo_nota, nota)
 
@@ -190,9 +232,9 @@ def resumo(perguntas: list[dict], respostas: dict, v: dict) -> str:
     principal = pergunta_principal(perguntas)
     partes = []
     for p in perguntas:
-        if p["tipo"] == "quebra_pagina" or p is principal or p["id"] not in respostas:
+        if not respondivel(p["tipo"]) or p is principal or p["id"] not in respostas:
             continue
-        titulo = renderizar(p["titulo"], v).strip()
+        titulo = sem_citacoes(renderizar(p["titulo"], v)).strip()
         # "Pergunta?: resposta" fica estranho; pontuação no fim dispensa os dois-pontos
         sep = " " if titulo.endswith(("?", "!", ":", ".")) else ": "
         partes.append((titulo, f"{titulo}{sep}{formatar_valor(respostas[p['id']])}", formatar_valor(respostas[p["id"]])))
@@ -293,6 +335,7 @@ def gravar_resposta(
         comentario=comentario, comentario_cliente=cliente, respostas=limpas, contexto=contexto or {},
         referencia=referencia or None, ip_hash=ip_hash, origem=origem, respondida_em=respondida_em,
         registrada_por=registrada_por, temas=temas_da_resposta(cliente, None, f.perguntas, limpas),
+        formulario_versao=f.versao,
     )
     s.add(r)
     s.flush()

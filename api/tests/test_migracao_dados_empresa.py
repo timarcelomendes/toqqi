@@ -63,11 +63,11 @@ def test_restricoes_de_imagens(client, dono):
     inserir(chave="d" * 43, uso="logo_formulario", formulario_id=f["id"])
     with pytest.raises(IntegrityError):  # um logo por conta
         inserir(chave="e" * 43)
-    with pytest.raises(IntegrityError):  # um logo por formulário
-        inserir(chave="f" * 43, uso="logo_formulario", formulario_id=f["id"])
+    # etapa 5l (0026): o formulário pode guardar outro logo (o do rascunho), sem apagar o publicado
+    inserir(chave="f" * 43, uso="logo_formulario", formulario_id=f["id"])
     with pytest.raises(IntegrityError):  # chave única
         inserir(chave="d" * 43, uso="logo_formulario", formulario_id=form_padrao(client, a["h"], "csat")["id"])
-    assert sql(dono, "select count(*) from imagens")[0][0] == 2
+    assert sql(dono, "select count(*) from imagens")[0][0] == 3
 
 
 def test_descer_e_subir_a_0006(client, dono):

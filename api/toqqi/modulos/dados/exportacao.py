@@ -76,6 +76,7 @@ from toqqi.modulos.crescimento.indicacoes import telefone_legivel
 from toqqi.modulos.envios import configuracao as config_envios
 from toqqi.modulos.envios.mensagens import link_formulario_publico
 from toqqi.modulos.formularios.servico import ROTULOS_CONTEXTO, _celula
+from toqqi.modulos.formularios.logica import respondivel, sem_citacoes
 from toqqi.modulos.formularios.validacao import tipo_principal
 from toqqi.modulos.relatorios.regras import FUSO, Numero, num
 from toqqi.modulos.respostas import servico as respostas
@@ -123,8 +124,8 @@ ARQUIVOS: list[tuple[str, list[str], str]] = [
                       "Código externo", "Recebe pesquisas", "Ativo", "Última nota", "Último envio", "Próximo envio",
                       "Criado em"], "Contatos que recebem as pesquisas."),
     ("formularios.csv", ["ID", "Nome", "Descrição", "Tipo", "Ativo", "Público", "Padrão", "Arquivado", "Link público",
-                         "Criado em", "Atualizado em", "Perguntas (JSON)", "Tema (JSON)"],
-     "Formulários de pesquisa, com as perguntas e o tema em JSON."),
+                         "Criado em", "Atualizado em", "Perguntas (JSON)", "Tema (JSON)", "Finais (JSON)"],
+     "Formulários de pesquisa (a versão publicada), com as perguntas, o tema e os finais em JSON."),
     ("respostas.csv", ["ID", "Formulário", "ID do contato", "ID da empresa", "ID do convite", *respostas.CABECALHO_CSV,
                        "Data de entrada"],
      "Todas as respostas, inclusive as arquivadas (as colunas do CSV de Respostas, com os ids)."),
@@ -275,7 +276,7 @@ def _formularios(formularios: list[Formulario]):
     for f in formularios:
         yield [f.id, f.nome, f.descricao, ROTULOS_TIPO_FORM[tipo_principal(f.perguntas)], f.ativo, f.publico,
                f.padrao_nps or f.padrao_csat, f.arquivado, link_formulario_publico(f.codigo_publico), f.criado_em,
-               f.atualizado_em, _json(f.perguntas), _json(f.tema)]
+               f.atualizado_em, _json(f.perguntas), _json(f.tema), _json(f.finais or [])]
 
 
 def _respostas(s: Session, c: int):
@@ -290,8 +291,8 @@ def _respostas(s: Session, c: int):
 
 def _respostas_perguntas(s: Session, c: int, formularios: list[Formulario], conta_nome: str):
     v = variaveis(conta_nome)
-    por_form = {f.id: (f.nome, [(p["id"], renderizar(p["titulo"], v) or p["id"]) for p in f.perguntas
-                                if p.get("tipo") != "quebra_pagina"]) for f in formularios}
+    por_form = {f.id: (f.nome, [(p["id"], sem_citacoes(renderizar(p["titulo"], v)) or p["id"]) for p in f.perguntas
+                                if respondivel(p.get("tipo"))]) for f in formularios}
     for rid, formulario_id, dadas in _aos_poucos(s, select(Resposta.id, Resposta.formulario_id, Resposta.respostas)
                                                  .where(Resposta.conta_id == c).order_by(Resposta.id)):
         nome, perguntas = por_form.get(formulario_id, ("", []))

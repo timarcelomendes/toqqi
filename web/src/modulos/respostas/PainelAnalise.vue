@@ -130,7 +130,9 @@ const contexto = computed(() => {
 const perguntas = computed(() => {
   const r = detalhe.value
   if (!r?.perguntas?.length) return []
-  return r.origem === 'pesquisa' ? r.perguntas : r.perguntas.filter((p) => p.resposta !== null && p.resposta !== '')
+  // Etapa 5l: blocos de conteúdo não têm resposta (a API já tira; aqui, por garantia).
+  const lista = r.perguntas.filter((p) => p.tipo !== 'conteudo' && p.tipo !== 'quebra_pagina')
+  return r.origem === 'pesquisa' ? lista : lista.filter((p) => p.resposta !== null && p.resposta !== '')
 })
 
 function alternarTema(chave: string) {

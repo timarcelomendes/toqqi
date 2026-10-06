@@ -77,7 +77,8 @@ describe('Editor › Aparência: logo do formulário', () => {
     expect(temEndereco(w)).toBe(false)
     expect(w.text()).toContain('Trocar imagem')
     expect(w.get('img[alt="Logo do formulário"]').attributes('src')).toBe(LOGO_FORM)
-    expect(avisos.at(-1)?.mensagem).toContain('Salve o formulário')
+    // Etapa 5l: o logo entra no rascunho; a pesquisa muda ao publicar.
+    expect(avisos.at(-1)?.mensagem).toContain('quando você publicar')
   })
 
   it('SVG, WebP ou GIF não são aceitos (nem chegam à API)', async () => {

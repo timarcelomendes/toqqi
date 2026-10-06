@@ -86,7 +86,8 @@ describe('pré-visualização por canal no editor de formulários', () => {
     const { w, api } = await montar(['formularios.editar'])
     expect(w.find('[data-canais-previa]').exists()).toBe(false)
     expect(api.chamadas).toHaveLength(0)
-    expect(w.text()).toContain('Recomeçar')
+    // Etapa 5l: o botão da barra da prévia agora se chama "Reiniciar" (docs/api-etapa-5l.md §5.3).
+    expect(w.text()).toContain('Reiniciar')
   })
 
   it('falha ao buscar as mensagens mostra o erro e deixa tentar de novo', async () => {

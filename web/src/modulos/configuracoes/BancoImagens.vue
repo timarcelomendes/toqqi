@@ -25,7 +25,11 @@ import {
   textoQuantidadeImagens,
 } from './bancoImagens'
 
-const props = defineProps<{ escolhidaId?: Id | null }>()
+const props = defineProps<{
+  escolhidaId?: Id | null
+  /** Etapa 5l: o texto do topo da janela (o editor de formulário usa o banco para as imagens do conteúdo). */
+  descricao?: string
+}>()
 const aberto = defineModel<boolean>('aberto', { default: false })
 const emit = defineEmits<{ escolher: [imagem: ImagemBanco]; excluida: [id: Id] }>()
 
@@ -159,7 +163,7 @@ async function excluir(i: ImagemBanco) {
 </script>
 
 <template>
-  <Modal v-model:aberto="aberto" titulo="Banco de imagens" descricao="Escolha a imagem do topo dos e-mails ou envie uma nova." tamanho="lg">
+  <Modal v-model:aberto="aberto" titulo="Banco de imagens" :descricao="descricao ?? 'Escolha a imagem do topo dos e-mails ou envie uma nova.'" tamanho="lg">
     <div ref="corpo" class="flex flex-col gap-4" data-banco-imagens>
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex flex-col gap-1">

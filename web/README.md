@@ -40,7 +40,7 @@ O build gera **duas páginas**:
 | Arquivo | O que é | Carrega |
 |---|---|---|
 | `dist/index.html` | na raiz (`/`), a **página do site**; em qualquer outro endereço, o app (área logada e telas de acesso) | na raiz, só `site.ts` e `site.css` (sem Vue); nos outros, Vue, router, Pinia, ícones, telas |
-| `dist/responder.html` | a pesquisa pública (`/r/:token` e `/f/:codigo`) e a página para sair da lista (`/sair/:token`) | só Vue, o cliente fetch e o componente da pesquisa (~45 KB gzip de JS) |
+| `dist/responder.html` | a pesquisa pública (`/r/:token` e `/f/:codigo`) e a página para sair da lista (`/sair/:token`) | só Vue, o cliente fetch e o componente da pesquisa (~60 KB gzip de JS); o limpador de HTML (DOMPurify, ~11 KB gzip) só desce quando a pesquisa tem conteúdo ou final com texto formatado |
 
 A página pública é separada de propósito: abre rápido no 4G e não baixa nada da área logada.
 
@@ -94,6 +94,30 @@ Exemplo Netlify (`public/_redirects`) ou equivalente em outro host:
 `/widget.js` não leva hash no nome (é colado no site dos clientes): sirva com cache curto (ex.: 1 hora).
 A página pública pode ser aberta dentro de um iframe (widget, `embed=1`): não envie `X-Frame-Options: DENY`
 nem `frame-ancestors` restritivo para `responder.html`.
+
+**CSP nas páginas de pesquisa (etapa 5l).** `/r/*`, `/f/*` e `/sair/*` mostram HTML escrito no editor (blocos de
+conteúdo e finais) e dividem a origem com o app logado (o token fica no armazenamento do navegador). Além da limpeza
+(`src/pesquisa/html.ts`: todo HTML passa por `limparHtml` e só `src/pesquisa/BlocoHtml.vue` usa `v-html`), o servidor
+manda este cabeçalho nesses três caminhos (no Render, em `headers` do `render.yaml`):
+
+```
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.toqqi.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *
+```
+
+- `responder.html` não pode ter `<script>` inline (o `<style>` inline pode): todo script sai de `/assets/`.
+- `connect-src` leva o endereço da API (`VITE_API_URL`): trocou o domínio da API, troque aqui também.
+- `img-src https:` mantém os logos de fora; `frame-ancestors *` mantém o widget.
+- Para conferir: `npm run build` e sirva `dist/` com esse cabeçalho nesses caminhos; a pesquisa abre e envia sem
+  "Refused to …" no console, e o widget continua abrindo em iframe.
+
+Com nginx, por exemplo:
+
+```nginx
+location ~ ^/(r|f|sair)/ {
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.toqqi.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *" always;
+  try_files $uri /responder.html;
+}
+```
 
 ## Widget no site do cliente
 

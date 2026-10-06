@@ -67,6 +67,11 @@ LIMITES_DE_CORPO = [
     ("POST", rf"{PREFIXO}/imagens", 1024 * 1024 + _FOLGA_MULTIPART),
     ("PUT", rf"{PREFIXO}/conta/logo", 300 * 1024 + _FOLGA_MULTIPART),
     ("POST", rf"{PREFIXO}/formularios/[^/]+/logo", 300 * 1024 + _FOLGA_MULTIPART),
+    ("POST", rf"{PREFIXO}/formularios/[^/]+/imagens", 1024 * 1024 + _FOLGA_MULTIPART),  # etapa 5l: conteúdo
+    # etapa 5l: o documento do formulário (perguntas, HTML dos blocos e dos finais) vai até 1 MB
+    ("POST", rf"{PREFIXO}/formularios(/.*)?", 1024 * 1024),
+    ("PATCH", rf"{PREFIXO}/formularios/[^/]+", 1024 * 1024),
+    ("PUT", rf"{PREFIXO}/formularios/[^/]+/rascunho", 1024 * 1024),
     ("POST", rf"{PREFIXO}/importacao/analisar", 5 * 1024 * 1024 + _FOLGA_MULTIPART),
     ("POST", rf"{PREFIXO}/publico/erros", 4 * 1024),  # etapa 5h: erros do site (tipo, mensagem, local, pilha, versão)
 ]

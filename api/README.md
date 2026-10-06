@@ -685,6 +685,28 @@ validação, formato e cache) e `modulos/plataforma/parametros.py` (serviço e r
 - `VERSAO_DOCUMENTOS = 6` (Termos: preço da contratação, limites e cotas que podem mudar com aviso, análises da IA
   conforme o nível).
 
+## Etapa 5l: construtor de formulários (lógica, conteúdo/HTML, finais, rascunho e publicação)
+Contrato em `../docs/api-etapa-5l.md` (casos da lógica, iguais aos do site: `../docs/casos-logica-5l.json`); decisões
+e desvios em `../docs/api-etapa-5l-notas-api.md`; migração `0026_formularios_v2`; dependência nova `nh3`.
+- **Documento**: itens (perguntas, blocos `conteudo` com HTML limpo e quebras), `logica` (`mostrar_se` e `pular`),
+  `finais` e campos novos (`aleatorizar`, `exibicao`, `max_selecoes`, `placeholder`). `formularios/validacao.py`
+  (`normalizar_documento(..., estrito)`): estrito em criar, PATCH e publicar (422 com `campos`); no rascunho só o
+  estrutural dá 422 e o resto volta em `problemas` (mais os avisos de citação). A `condicao` antiga é convertida na
+  entrada e pela migração; a saída nunca a tem.
+- **Motor** (`formularios/logica.py`): caminho (só para frente, uma passada), finais e formato antigo; o envio público
+  descarta o que ficou fora do caminho, cobra a obrigatória só no caminho, escolhe o final (`final_id`, `html_final`,
+  `botao_final`) e grava `respostas.formulario_versao`.
+- **HTML** (`core/html_seguro.py`): lista permitida (nh3) em toda entrada de HTML; imagens só da plataforma; links com
+  `target="_blank"` e `rel` forçados; `renderizar_html` troca as variáveis escapando; `renderizar` não toca em `{{…}}`.
+- **Rascunho e publicação**: `PUT /formularios/{id}/rascunho` (com `rev`; 409 `rascunho_desatualizado`),
+  `POST /formularios/{id}/publicar` (409 `sem_rascunho`, versão +1, auditoria `formulario_publicado`),
+  `DELETE /formularios/{id}/rascunho`; `PATCH` com perguntas, tema ou finais publica direto.
+- **Imagens**: `POST /formularios/{id}/imagens` (`conteudo_formulario`, até 1 MB); o logo novo não apaga o publicado;
+  ao publicar e ao descartar saem as imagens do formulário que nenhum formulário da conta cita; até 60 guardadas por
+  formulário entre uma limpeza e outra (409 `limite_imagens`); imagem do banco citada num formulário fica em uso.
+- **Telas internas** (resultados, CSV, detalhe, exportação, resumo da resposta) pulam os blocos de conteúdo e mostram
+  "…" no lugar das citações; a exportação da conta ganha "Finais (JSON)" em `formularios.csv`.
+
 ## Estrutura
 ```
 toqqi/
@@ -708,7 +730,8 @@ toqqi/
   modulos/empresas/       empresas (clientes da conta)
   modulos/contatos/       contatos e link de pesquisa manual
   modulos/importacao/     leitura de planilhas, nomes equivalentes, conferir e importar (contatos e respostas)
-  modulos/formularios/    modelos prontos, validação das perguntas, padrões, resultados, CSV
+  modulos/formularios/    modelos prontos, validação do documento (perguntas, tema, finais), lógica (logica.py),
+                          rascunho e publicação, padrões, resultados, CSV
   modulos/respostas/      convites, validação/gravação de respostas, variáveis, "resposta registrada",
                           temas (palavras-chave), indicadores (NPS/CSAT), tela Respostas (lista, análise, CSV)
   modulos/acoes/          planos de ação: quadro, regras (selo, urgência), ação automática + alerta, prazos
@@ -735,6 +758,8 @@ alembic/versions/0014_emails.py   visual dos e-mails, banco de imagens e `emails
 alembic/versions/0015_dados_conta.py   `registros_acesso` (RLS só de gravação), aviso de exclusão em `contas`, índices
 alembic/versions/0016_parametros.py   `parametros` e `parametros_historico` (RLS só sistema; limites de contatos em
                                    conta), `limite_contatos` STABLE lendo a tabela
+alembic/versions/0026_formularios_v2.py   finais, rascunho e publicação em `formularios`, versão na resposta, imagens
+                                   de conteúdo, `condicao` → `logica`
 scripts/asaas_falso.py             Asaas falso (desenvolvimento local e testes)
 tests/                             pytest
 ```

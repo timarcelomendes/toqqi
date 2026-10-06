@@ -29,6 +29,7 @@ from toqqi.modelos import (
 from toqqi.modulos.acoes.regras import prazo_selo
 from toqqi.modulos.empresas.servico import ref
 from toqqi.modulos.formularios.servico import ROTULOS_CONTEXTO, _celula
+from toqqi.modulos.formularios.logica import respondivel, sem_citacoes
 from toqqi.modulos.formularios.validacao import grupo_da_nota, pergunta_principal
 from toqqi.modulos.ia.regras import ORIGENS as ORIGENS_IA
 from toqqi.modulos.ia.regras import ia_ativa, texto_qualifica
@@ -233,15 +234,16 @@ def listar(ctx: Contexto, f, pg: Pagina) -> dict:
 
 
 def _perguntas(perguntas: list[dict], respostas: dict, v: dict) -> list[dict]:
-    """Todas as perguntas do formulário com a resposta em texto pronto (None se não respondida); respostas de
-    perguntas que saíram do formulário vêm no fim."""
+    """Todas as perguntas do formulário (sem blocos de conteúdo nem quebras de página) com a resposta em texto pronto
+    (None se não respondida; citações `{{ID}}` no título saem como "…"); respostas de perguntas que saíram do
+    formulário vêm no fim."""
     saida, ids = [], set()
     for p in perguntas:
-        if p.get("tipo") == "quebra_pagina":
+        if not respondivel(p.get("tipo")):
             continue
         ids.add(p["id"])
         valor = respostas.get(p["id"])
-        saida.append({"id": p["id"], "titulo": renderizar(p.get("titulo"), v), "tipo": p["tipo"],
+        saida.append({"id": p["id"], "titulo": sem_citacoes(renderizar(p.get("titulo"), v)), "tipo": p["tipo"],
                       "resposta": None if valor is None else formatar_valor(valor)})
     for pid, valor in respostas.items():
         if pid not in ids:

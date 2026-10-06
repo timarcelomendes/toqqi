@@ -1,5 +1,5 @@
 // Tipos do contrato da API (docs/api-etapa-1.md, -2, -3, -3b, -4a, -4b, -5a, -5b, -5c, -5d, -5e e -5f).
-import type { Contexto, GrupoNota, Pergunta, Tema } from '@/pesquisa/tipos'
+import type { Contexto, Final, GrupoNota, Pergunta, Tema } from '@/pesquisa/tipos'
 
 export type Perfil = 'admin' | 'gestor' | 'consulta'
 export type SituacaoUsuario = 'ativo' | 'pendente' | 'bloqueado'
@@ -354,14 +354,25 @@ export interface ErroPlataforma {
 // ───────────────────────── Etapa 2 (docs/api-etapa-2.md) ─────────────────────────
 
 export type {
+  BotaoFinal,
+  Condicao,
   CondicaoPergunta,
   Contexto,
+  ExibicaoEscolha,
+  Final,
   FormatoTexto,
+  Grupo,
   GrupoNota,
+  Juncao,
+  Logica,
+  ModoConteudo,
   ModoTema,
+  Operador,
   Pergunta,
+  Regra,
   Tema,
   TipoPergunta,
+  ValorCondicao,
 } from '@/pesquisa/tipos'
 
 export type Id = number | string
@@ -609,11 +620,40 @@ export interface FormularioResumo {
   padrao_csat: boolean
   respostas: number
   atualizado_em: string
+  /** Etapa 5l: há alterações salvas no rascunho que ainda não foram publicadas. */
+  tem_rascunho?: boolean
+  /** Etapa 5l: a versão publicada (sobe a cada publicação). */
+  versao?: number
+  publicado_em?: string | null
+  /** Etapa 5l: quantas perguntas (sem blocos de conteúdo nem quebras de página). */
+  perguntas_total?: number
+}
+
+/** Etapa 5l: o documento que o editor salva no rascunho e publica. */
+export interface DocumentoFormulario {
+  perguntas: Pergunta[]
+  tema: Tema
+  finais: Final[]
+}
+
+/** Etapa 5l: o rascunho guardado (null = sem alterações pendentes). */
+export interface RascunhoFormulario extends DocumentoFormulario {
+  salvo_em?: string | null
+  salvo_por_nome?: string | null
 }
 
 export interface Formulario extends FormularioResumo {
   perguntas: Pergunta[]
   tema: Tema
+  /** Etapa 5l: os finais publicados (em ordem; vale o 1º cuja condição vale). */
+  finais?: Final[]
+  publicado_por_nome?: string | null
+  /** Etapa 5l: as alterações em edição, ou null. */
+  rascunho?: RascunhoFormulario | null
+  /** Etapa 5l: controle de concorrência do rascunho (sobe a cada gravação, publicação e descarte). */
+  rascunho_rev?: number
+  /** Etapa 5l: o começo das URLs das imagens da plataforma (só essas entram no HTML). */
+  prefixo_imagens?: string | null
 }
 
 export interface DadosFormulario {
@@ -621,8 +661,37 @@ export interface DadosFormulario {
   descricao?: string | null
   perguntas?: Pergunta[]
   tema?: Tema
+  finais?: Final[]
   ativo?: boolean
   publico?: boolean
+}
+
+/** Etapa 5l: resposta de PUT /formularios/{id}/rascunho. `rascunho` já normalizado (ids gerados, HTML limpo). */
+export interface RespostaRascunho {
+  rev: number
+  salvo_em: string | null
+  /** Mesmas chaves da validação (`perguntas.<i>.<campo>`, `finais.<i>.<campo>`, `tema.<campo>`), mais os avisos de citação. */
+  problemas?: Record<string, string> | null
+  /** As chaves de `problemas` que são só aviso (citação que sai vazia): não bloqueiam publicar. */
+  avisos?: Record<string, string> | null
+  /** O servidor guardou rascunho? (`false` quando o documento normalizado ficou igual ao publicado) */
+  tem_rascunho?: boolean
+  /** O documento normalizado (ids gerados, HTML limpo), para o editor aplicar. */
+  rascunho: DocumentoFormulario | null
+}
+
+/** Etapa 5l: 409 `rascunho_desatualizado` (o `erro` traz quem salvou e quando). */
+export interface ConflitoRascunho {
+  rev?: number | null
+  salvo_em?: string | null
+  salvo_por_nome?: string | null
+}
+
+/** Etapa 5l: imagem de um bloco de conteúdo (POST /formularios/{id}/imagens). */
+export interface ImagemConteudo {
+  url: string
+  largura?: number | null
+  altura?: number | null
 }
 
 export interface ModeloFormulario {
@@ -631,6 +700,8 @@ export interface ModeloFormulario {
   descricao: string
   perguntas: Pergunta[]
   tema: Tema
+  /** Etapa 5l: os modelos com finais por segmento. */
+  finais?: Final[]
 }
 
 export interface ResultadoPergunta {

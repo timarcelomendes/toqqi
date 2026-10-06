@@ -21,6 +21,8 @@ declare module 'vue-router' {
     manterRolagem?: boolean
     /** A tela leva à seção da âncora sozinha (ex.: /privacidade#cookies): o router não rola quando há âncora. */
     ancoras?: boolean
+    /** Etapa 5l: a tela usa a largura toda (o editor de formulário, em 3 colunas). */
+    larguraTotal?: boolean
   }
 }
 
@@ -54,7 +56,7 @@ const rotas: RouteRecordRaw[] = [
       { path: 'contatos/:id', name: 'contato', component: () => import('@/modulos/contatos/ContatoView.vue'), meta: { titulo: 'Contato', permissao: 'contatos.ver' } },
       { path: 'envios', name: 'envios', component: () => import('@/modulos/envios/EnviosView.vue'), meta: { titulo: 'Envios', permissao: 'envios.ver' } },
       { path: 'formularios', name: 'formularios', component: () => import('@/modulos/formularios/FormulariosView.vue'), meta: { titulo: 'Formulários', permissao: 'formularios.ver' } },
-      { path: 'formularios/:id', name: 'formulario', component: () => import('@/modulos/formularios/EditorFormularioView.vue'), meta: { titulo: 'Formulário', permissao: 'formularios.ver' } },
+      { path: 'formularios/:id', name: 'formulario', component: () => import('@/modulos/formularios/EditorFormularioView.vue'), meta: { titulo: 'Formulário', permissao: 'formularios.ver', larguraTotal: true } },
       { path: 'respostas', name: 'respostas', component: () => import('@/modulos/respostas/RespostasView.vue'), meta: { titulo: 'Respostas', permissao: 'respostas.ver' } },
       // Um registro só (com :id opcional): abrir e fechar o painel de uma ação não recria a tela.
       { path: 'planos-de-acao/:id?', name: 'planos-de-acao', component: () => import('@/modulos/acoes/PlanosAcaoView.vue'), meta: { titulo: 'Planos de ação', permissao: 'acoes.ver', manterRolagem: true } },

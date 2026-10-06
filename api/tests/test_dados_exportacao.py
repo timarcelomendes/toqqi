@@ -41,7 +41,8 @@ CABECALHOS = {
                      "Código externo", "Recebe pesquisas", "Ativo", "Última nota", "Último envio", "Próximo envio",
                      "Criado em"],
     "formularios.csv": ["ID", "Nome", "Descrição", "Tipo", "Ativo", "Público", "Padrão", "Arquivado", "Link público",
-                        "Criado em", "Atualizado em", "Perguntas (JSON)", "Tema (JSON)"],
+                        "Criado em", "Atualizado em", "Perguntas (JSON)", "Tema (JSON)",
+                        "Finais (JSON)"],  # etapa 5l: os finais do formulário
     "respostas.csv": ["ID", "Formulário", "ID do contato", "ID da empresa", "ID do convite", "Data", "Contato",
                       "E-mail", "Empresa", "Grupo de empresas", "Perfil", "Tipo", "Nota", "Categoria", "Temas",
                       "Comentário", "O que faltou", "O que combinamos", "Canal", "Origem", "Referência", *CONTEXTO,

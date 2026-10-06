@@ -117,7 +117,7 @@ async function definirPadrao(uso: 'nps' | 'csat') {
 
 <template>
   <div class="flex flex-col gap-5">
-    <Alerta v-if="alterado" tom="info">Você tem alterações não salvas. O link mostra a última versão salva.</Alerta>
+    <Alerta v-if="alterado" tom="info" data-alerta-rascunho>Há alterações não publicadas. O link, o QR Code e o widget mostram a versão publicada até você clicar em Publicar.</Alerta>
     <Alerta v-if="!formulario.ativo" tom="atencao" titulo="Formulário desativado">Ninguém consegue responder enquanto ele estiver desativado. Ative no topo da página.</Alerta>
 
     <!-- Link público -->
@@ -214,15 +214,15 @@ async function definirPadrao(uso: 'nps' | 'csat') {
       <div class="flex flex-wrap items-center gap-2">
         <template v-if="formulario.tipo_principal === 'nps'">
           <Etiqueta v-if="formulario.padrao_nps" tom="sucesso"><Star class="size-3" aria-hidden="true" /> Padrão de NPS</Etiqueta>
-          <Botao v-else-if="podeEditar" variante="secundario" :desabilitado="alterado || !formulario.ativo" :carregando="definindo === 'nps'" @click="definirPadrao('nps')">Usar como padrão de NPS</Botao>
+          <Botao v-else-if="podeEditar" variante="secundario" :desabilitado="!formulario.ativo" :carregando="definindo === 'nps'" @click="definirPadrao('nps')">Usar como padrão de NPS</Botao>
         </template>
         <template v-else-if="formulario.tipo_principal === 'csat'">
           <Etiqueta v-if="formulario.padrao_csat" tom="sucesso"><Star class="size-3" aria-hidden="true" /> Padrão de CSAT</Etiqueta>
-          <Botao v-else-if="podeEditar" variante="secundario" :desabilitado="alterado || !formulario.ativo" :carregando="definindo === 'csat'" @click="definirPadrao('csat')">Usar como padrão de CSAT</Botao>
+          <Botao v-else-if="podeEditar" variante="secundario" :desabilitado="!formulario.ativo" :carregando="definindo === 'csat'" @click="definirPadrao('csat')">Usar como padrão de CSAT</Botao>
         </template>
         <p v-else class="text-sm text-texto-fraco">Só formulários com nota NPS ou CSAT podem ser padrão.</p>
       </div>
-      <p v-if="alterado && podeEditar" class="text-xs text-texto-fraco">Salve as alterações antes de mudar o padrão.</p>
+      <p v-if="alterado && podeEditar" class="text-xs text-texto-fraco">O padrão usa a versão publicada (a nota principal dela).</p>
     </section>
   </div>
 </template>

@@ -155,13 +155,17 @@ async function sair() {
     <AvisoCobranca />
 
     <!-- Com o botão do assistente no canto, o fim do conteúdo ganha folga para ele não cobrir a última ação. -->
+    <!-- Etapa 5l: telas com `larguraTotal` (o editor de formulário, em 3 colunas) usam a largura toda. -->
     <main
       id="conteudo"
       tabindex="-1"
-      class="mx-auto w-full max-w-6xl px-4 py-6 focus:outline-none sm:px-6 sm:py-8 lg:px-10"
-      :class="assistente.visivel ? 'pb-24 sm:pb-28 print:pb-6' : ''"
+      class="mx-auto w-full px-4 py-6 focus:outline-none sm:px-6 sm:py-8"
+      :class="[rota.meta.larguraTotal ? 'max-w-none lg:px-6' : 'max-w-6xl lg:px-10', assistente.visivel ? 'pb-24 sm:pb-28 print:pb-6' : '']"
     >
-      <RouterView />
+      <!-- O editor de formulário guarda o documento por id: de um formulário direto para outro, monta de novo. -->
+      <RouterView v-slot="{ Component, route: atual }">
+        <component :is="Component" :key="atual.name === 'formulario' ? `formulario-${String(atual.params.id)}` : undefined" />
+      </RouterView>
     </main>
 
     <!-- Etapa 5b: botão do assistente (canto inferior direito) e o painel da conversa -->

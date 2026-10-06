@@ -217,6 +217,37 @@ const FORMATOS: Record<string, Record<string, Formato>> = {
   },
 }
 
+// ── Formulário publicado (etapa 5l): {formulario: {id, nome}, versao, perguntas, finais} ──
+
+interface Resumo {
+  campos: CampoDetalhe[]
+  /** As chaves que o resumo já mostrou (não vão para o genérico). */
+  chaves: string[]
+}
+
+/** Eventos cujo detalhe vira uma linha só, juntando várias chaves. */
+const RESUMOS: Record<string, (d: Detalhe) => Resumo | null> = {
+  formulario_publicado: (d) => {
+    const campos: CampoDetalhe[] = []
+    const chaves: string[] = []
+    const f = d.formulario
+    if (ehObjeto(f) && typeof f.nome === 'string' && f.nome) {
+      campos.push({ rotulo: 'Formulário', valor: f.nome })
+      chaves.push('formulario')
+    }
+    // "Versão 3 · 5 perguntas · 2 finais"
+    const partes: string[] = []
+    if (ehNumero(d.versao)) partes.push(`Versão ${formatarNumero(d.versao)}`)
+    if (ehNumero(d.perguntas)) partes.push(plural(d.perguntas, 'pergunta', 'perguntas'))
+    if (ehNumero(d.finais)) partes.push(plural(d.finais, 'final', 'finais'))
+    if (partes.length) {
+      campos.push({ rotulo: 'Publicação', valor: partes.join(' · ') })
+      chaves.push(...['versao', 'perguntas', 'finais'].filter((k) => ehNumero(d[k])))
+    }
+    return campos.length ? { campos, chaves } : null
+  },
+}
+
 /** As linhas do detalhe de um registro (sem o grupo, o evento e o IP, que a tela acrescenta). */
 export function camposDetalhe(item: Pick<ItemAuditoria, 'evento' | 'detalhe'>): CampoDetalhe[] {
   const d = item.detalhe
@@ -225,6 +256,11 @@ export function camposDetalhe(item: Pick<ItemAuditoria, 'evento' | 'detalhe'>): 
   const formatos = daTabela(FORMATOS, item.evento) ?? {}
   const campos: CampoDetalhe[] = []
   const tratadas = new Set<string>()
+  const resumo = daTabela(RESUMOS, item.evento)?.(detalhe)
+  if (resumo) {
+    campos.push(...resumo.campos)
+    for (const k of resumo.chaves) tratadas.add(k)
+  }
   for (const [chave, formatar] of Object.entries(formatos)) {
     if (!Object.hasOwn(detalhe, chave)) continue
     const r = formatar(detalhe[chave])

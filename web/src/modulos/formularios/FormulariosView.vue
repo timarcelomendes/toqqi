@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Copy, FilePlus2, FileText, Globe, Lock, MessageSquareText, MoreHorizontal, Pencil, Trash2 } from 'lucide-vue-next'
+import { Copy, FilePlus2, FileText, Globe, ListChecks, Lock, MessageSquareText, MoreHorizontal, Pencil, Trash2 } from 'lucide-vue-next'
 import { formulariosApi, mensagemDoErro, type FormularioResumo, type Id } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
@@ -141,9 +141,11 @@ onMounted(carregar)
         <Etiqueta v-if="f.padrao_nps" tom="sucesso">Padrão NPS</Etiqueta>
         <Etiqueta v-if="f.padrao_csat" tom="sucesso">Padrão CSAT</Etiqueta>
         <Etiqueta v-if="!f.ativo" tom="neutro" ponto>Desativado</Etiqueta>
+        <Etiqueta v-if="f.tem_rascunho" tom="atencao" ponto data-tem-rascunho>Alterações não publicadas</Etiqueta>
       </div>
       <div class="flex-1" />
       <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-borda pt-3 text-sm text-texto-fraco">
+        <span v-if="typeof f.perguntas_total === 'number'" class="inline-flex items-center gap-1.5" data-perguntas-total><ListChecks class="size-4" aria-hidden="true" /> {{ plural(f.perguntas_total, 'pergunta', 'perguntas') }}</span>
         <span class="inline-flex items-center gap-1.5"><MessageSquareText class="size-4" aria-hidden="true" /> {{ plural(f.respostas, 'resposta', 'respostas') }}</span>
         <span class="inline-flex items-center gap-1.5">
           <Globe v-if="f.publico" class="size-4" aria-hidden="true" /><Lock v-else class="size-4" aria-hidden="true" />

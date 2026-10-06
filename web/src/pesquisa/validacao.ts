@@ -1,5 +1,7 @@
-import { faixa } from './logica'
+import { dataValida, faixa, numeroDoTexto, respondivel } from './logica'
 import type { Pergunta, ValorResposta } from './tipos'
+
+export { dataValida }
 
 export const LIMITE_TEXTO_CURTO = 300
 export const LIMITE_COMENTARIO = 4000
@@ -15,20 +17,19 @@ export function emailValido(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim())
 }
 
-export function dataValida(v: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false
-  const [a, m, d] = v.split('-').map(Number) as [number, number, number]
-  const dt = new Date(Date.UTC(a, m - 1, d))
-  return dt.getUTCFullYear() === a && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d
+/** Número como a API lê (docs/api-etapa-5l.md §2.1): "1.250,5", "12,5", "-3" e "12.5" valem. */
+export function numeroValido(v: string): boolean {
+  const n = numeroDoTexto(v)
+  return n !== null && Number.isFinite(n)
 }
 
 /**
  * Valida uma resposta como o servidor valida: obrigatória, faixa das notas,
- * formatos (e-mail, número, telefone com 8+ dígitos, data AAAA-MM-DD) e opções existentes.
- * Devolve a mensagem para mostrar ou null.
+ * formatos (e-mail, número, telefone com 8+ dígitos, data AAAA-MM-DD), opções existentes e o máximo de opções.
+ * Devolve a mensagem para mostrar ou null. Conteúdo e quebra de página não têm resposta.
  */
 export function validarResposta(p: Pergunta, v: ValorResposta | null | undefined): string | null {
-  if (p.tipo === 'quebra_pagina') return null
+  if (!respondivel(p.tipo)) return null
   if (respostaVazia(v)) {
     if (!p.obrigatoria) return null
     if (p.tipo === 'escolha_multipla') return 'Escolha pelo menos uma opção.'
@@ -48,7 +49,7 @@ export function validarResposta(p: Pergunta, v: ValorResposta | null | undefined
       const t = String(v).trim()
       if (t.length > LIMITE_TEXTO_CURTO) return `Use no máximo ${LIMITE_TEXTO_CURTO} caracteres.`
       if (p.formato === 'email' && !emailValido(t)) return 'Confira o e-mail: parece que falta alguma parte.'
-      if (p.formato === 'numero' && !/^-?\d+([.,]\d+)?$/.test(t)) return 'Digite só números.'
+      if (p.formato === 'numero' && !numeroValido(t)) return 'Digite só números.'
       if (p.formato === 'telefone' && t.replace(/\D/g, '').length < 8) return 'Confira o telefone: faltam números.'
       return null
     }
@@ -56,8 +57,11 @@ export function validarResposta(p: Pergunta, v: ValorResposta | null | undefined
       return String(v).length > LIMITE_COMENTARIO ? `Use no máximo ${LIMITE_COMENTARIO} caracteres.` : null
     case 'escolha_unica':
       return typeof v === 'string' && (p.opcoes ?? []).includes(v) ? null : 'Escolha uma das opções.'
-    case 'escolha_multipla':
-      return Array.isArray(v) && v.every((x) => (p.opcoes ?? []).includes(x)) ? null : 'Escolha entre as opções da lista.'
+    case 'escolha_multipla': {
+      if (!Array.isArray(v) || !v.every((x) => (p.opcoes ?? []).includes(x))) return 'Escolha entre as opções da lista.'
+      const max = p.max_selecoes
+      return typeof max === 'number' && max > 0 && v.length > max ? `Escolha no máximo ${max} opções.` : null
+    }
     case 'sim_nao':
       return typeof v === 'boolean' ? null : 'Escolha sim ou não.'
     case 'data':

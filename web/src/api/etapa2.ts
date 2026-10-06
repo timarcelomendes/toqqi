@@ -12,10 +12,12 @@ import type {
   DadosEmpresa,
   DadosFormulario,
   DadosResponsavel,
+  DocumentoFormulario,
   Empresa,
   Formulario,
   FormularioResumo,
   Id,
+  ImagemConteudo,
   MarcoEmpresa,
   ItemCadastro,
   LinkPesquisa,
@@ -26,6 +28,7 @@ import type {
   Pergunta,
   Responsavel,
   Resposta,
+  RespostaRascunho,
   ResultadoImportacao,
   Resultados,
   Tema,
@@ -135,7 +138,8 @@ export interface Periodo {
 export const formulariosApi = {
   listar: () => api.get<FormularioResumo[]>('/formularios'),
   modelos: () => api.get<ModeloFormulario[]>('/formularios/modelos'),
-  criar: (dados: { nome: string; modelo?: string; perguntas?: Pergunta[]; tema?: Tema }) => api.post<Formulario>('/formularios', dados),
+  criar: (dados: { nome: string; modelo?: string; perguntas?: Pergunta[]; tema?: Tema; finais?: DocumentoFormulario['finais'] }) =>
+    api.post<Formulario>('/formularios', dados),
   obter: (id: Id) => api.get<Formulario>(`/formularios/${seg(id)}`),
   atualizar: (id: Id, dados: DadosFormulario) => api.patch<Formulario>(`/formularios/${seg(id)}`, dados),
   duplicar: (id: Id) => api.post<Formulario>(`/formularios/${seg(id)}/duplicar`),
@@ -148,4 +152,20 @@ export const formulariosApi = {
     api.get<Pagina<Resposta>>(`/formularios/${seg(id)}/respostas`, { query: { ...periodo } }),
   baixarRespostasCsv: (id: Id, periodo: Periodo = {}) =>
     baixarArquivo(`/formularios/${seg(id)}/respostas.csv`, 'respostas.csv', { ...periodo }),
+  /**
+   * Etapa 5l: grava o rascunho (o que está no ar só muda ao publicar). `rev` diferente do servidor → 409
+   * `rascunho_desatualizado` (com `rev`, `salvo_em` e `salvo_por_nome` no `erro`); 422 só para o estrutural.
+   */
+  salvarRascunho: (id: Id, dados: DocumentoFormulario & { rev: number }) =>
+    api.put<RespostaRascunho>(`/formularios/${seg(id)}/rascunho`, dados),
+  /** Etapa 5l: publica o rascunho (422 com `campos`; 409 `sem_rascunho` ou `rascunho_desatualizado`). Devolve o formulário. */
+  publicar: (id: Id, rev: number) => api.post<Formulario>(`/formularios/${seg(id)}/publicar`, { rev }),
+  /** Etapa 5l: descarta o rascunho (204); o editor volta ao publicado. */
+  descartarRascunho: (id: Id) => api.delete(`/formularios/${seg(id)}/rascunho`),
+  /** Etapa 5l: imagem de um bloco de conteúdo ou final (multipart `arquivo`, PNG/JPEG até 1 MB) → {url, largura, altura}. */
+  enviarImagem: (id: Id, arquivo: File) => {
+    const corpo = new FormData()
+    corpo.append('arquivo', arquivo)
+    return api.post<ImagemConteudo>(`/formularios/${seg(id)}/imagens`, corpo)
+  },
 }

@@ -316,9 +316,19 @@ def test_logo_do_formulario_e_salvar_o_formulario(client, admin, dono):
     r = client.post(f"{API}/formularios", headers=h, json={"nome": "Com logo", "modelo": "nps_simples",
                                                           "tema": {"logo_url": url}})
     assert r.status_code == 201 and r.json()["tema"]["logo_url"] == url
-    # trocar: chave nova, a anterior some
+    # trocar (etapa 5l): chave nova, e o logo publicado continua no ar até a troca ser publicada
     nova = _logo_form(client, gestor["h"], f["id"], png(2)).json()["logo_url"]
-    assert nova != url and client.get(caminho_imagem(url)).status_code == 404
+    assert nova != url and client.get(caminho_imagem(url)).status_code == 200
+    assert sql(dono, "select count(*) from imagens where formulario_id = :f", f=f["id"])[0][0] == 2
+    assert client.patch(f"{API}/formularios/{f['id']}", headers=gestor["h"],
+                        json={"tema": {"logo_url": nova}}).status_code == 200
+    # publicou: o anterior ainda está no tema do formulário "Com logo", então fica
+    assert client.get(caminho_imagem(url)).status_code == 200
+    com_logo = next(x for x in client.get(f"{API}/formularios", headers=h).json() if x["nome"] == "Com logo")
+    assert client.delete(f"{API}/formularios/{com_logo['id']}", headers=h).status_code == 204
+    assert client.patch(f"{API}/formularios/{f['id']}", headers=gestor["h"],
+                        json={"tema": {"logo_url": nova}}).status_code == 200
+    assert client.get(caminho_imagem(url)).status_code == 404  # ninguém mais cita: saiu ao publicar
     assert sql(dono, "select count(*) from imagens where formulario_id = :f", f=f["id"])[0][0] == 1
     consulta = membro(client, h, "caio@alfa.com.br", "consulta")
     assert _logo_form(client, consulta["h"], f["id"], png()).status_code == 403
@@ -344,7 +354,8 @@ def test_copiar_formulario_copia_o_logo(client, admin, dono):
     assert client.get(f"{API}/formularios/{copia['id']}", headers=h).json()["tema"]["logo_url"] == url_copia
     _logo_form(client, h, f["id"], png(5))  # troca o do original
     assert client.get(caminho_imagem(url_copia)).status_code == 200
-    assert sql(dono, "select count(*) from imagens where uso = 'logo_formulario'")[0][0] == 2
+    # etapa 5l: o logo publicado do original fica até a troca ser publicada (2 no original + 1 na cópia)
+    assert sql(dono, "select count(*) from imagens where uso = 'logo_formulario'")[0][0] == 3
     # endereço de fora é copiado como está
     externo = "https://cdn.alfa.com.br/logo.png"
     client.patch(f"{API}/formularios/{f['id']}", headers=h, json={"tema": {"logo_url": externo}})
@@ -391,7 +402,7 @@ def test_tema_logo_url_em_producao(client, admin, monkeypatch):
 
 # ---- onde o logo aparece ------------------------------------------------------
 
-def test_pagina_da_pesquisa_usa_o_logo_do_formulario_ou_o_da_conta(client, admin):
+def test_pagina_da_pesquisa_usa_o_logo_do_formulario_ou_o_da_conta(client, admin, dono):
     h = admin["h"]
     nps = form_padrao(client, h)
     c = criar_contato(client, h, nome="Paula Lima", email="paula@cliente.com.br")
@@ -411,8 +422,11 @@ def test_pagina_da_pesquisa_usa_o_logo_do_formulario_ou_o_da_conta(client, admin
     do_form = _logo_form(client, h, nps["id"], png(2)).json()["logo_url"]
     client.patch(f"{API}/formularios/{nps['id']}", headers=h, json={"tema": {"logo_url": do_form}})
     assert logos() == (do_form, do_form)
-    # trocou o logo no editor sem salvar: a URL salva não existe mais → o da conta, não uma imagem quebrada
+    # etapa 5l: trocou o logo no editor sem publicar: o publicado continua no ar
     _logo_form(client, h, nps["id"], png(3))
+    assert logos() == (do_form, do_form)
+    # a URL salva aponta para uma imagem que não existe mais → o da conta, não uma imagem quebrada
+    sql(dono, "delete from imagens where chave = :k", k=do_form.rsplit("/", 1)[1])
     assert logos() == (da_conta, da_conta)
     # o formulário guardado não muda
     assert client.get(f"{API}/formularios/{nps['id']}", headers=h).json()["tema"]["logo_url"] == do_form
