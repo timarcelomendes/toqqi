@@ -65,8 +65,7 @@ quem chegou por anúncio mantém a origem do anúncio (vale o primeiro link da v
 dados fictícios; os guias não citam preços nem dias de teste (mudam em Plataforma › Parâmetros). Texto novo: só recurso que
 existe no código. `tests/guias.test.ts` confere o HTML, as regras do Render e os links.
 O endereço público vai no `<link rel="canonical">` (marca `<!-- canonical -->`, também no `index.html`) e no sitemap:
-`SITE_URL` ou, sem ela, o `RENDER_EXTERNAL_URL` do build. Quando o domínio toqqi.com estiver no ar, ponha
-`SITE_URL=https://toqqi.com` no toqqi-web e publique de novo. Para um guia novo: o HTML, uma linha em `GUIAS`, uma regra
+`SITE_URL` ou, sem ela, o `RENDER_EXTERNAL_URL` do build. No Render, `SITE_URL=https://toqqi.com` vem do `render.yaml`. Para um guia novo: o HTML, uma linha em `GUIAS`, uma regra
 no `render.yaml` e o cartão em `guias.html`.
 
 Em `npm run dev` e `npm run preview` o próprio Vite já faz o redirecionamento. **Em produção, configure no servidor:**

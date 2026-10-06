@@ -101,8 +101,8 @@ respondem (um `SELECT 1` de até 3 s); com o banco fora, **503** com `ok` e `ban
 publicado (`RENDER_GIT_COMMIT`, curto; "local" fora do Render): mostra se o deploy subiu. Ligue um monitor grátis que
 confira a cada 5 minutos e mande e-mail quando cair (ação do Marcelo; escolha um dos dois):
 - **UptimeRobot** (uptimerobot.com, plano grátis): *New monitor* › tipo *HTTP(s)*, URL
-  `https://toqqi-api.onrender.com/api/v1/saude`, intervalo de 5 minutos e tempo limite de 30 s; em *Alert contacts*, o
-  seu e-mail. Para o site, outro monitor do tipo *Keyword* em `https://toqqi-web.onrender.com/` (ou no domínio do site)
+  `https://api.toqqi.com/api/v1/saude`, intervalo de 5 minutos e tempo limite de 30 s; em *Alert contacts*, o
+  seu e-mail. Para o site, outro monitor do tipo *Keyword* em `https://toqqi.com/`
   com a palavra `Toqqi`, alertando quando ela **não** aparecer (assim uma página de erro do Render também conta como
   fora do ar).
 - **Better Stack Uptime** (betterstack.com, plano grátis): *Monitors* › *Create monitor* › "Alert us when the URL

@@ -1,6 +1,9 @@
 # Blueprint do Render: cria banco, API e site de uma vez (Dashboard > New > Blueprint > este repositório).
-# Se o Render der outro endereço aos serviços (nome já usado), ajuste FRONTEND_URL, ALLOWED_ORIGINS,
-# API_PUBLIC_URL e VITE_API_URL e publique de novo.
+# Domínios (06/10/2026): o site e o app em https://toqqi.com (www.toqqi.com redireciona para lá) e a API em
+# https://api.toqqi.com, cadastrados em Settings > Custom Domains de cada serviço; o DNS fica no GoDaddy
+# (A @ 216.24.57.1, CNAME www toqqi-web.onrender.com, CNAME api toqqi-api.onrender.com). Os endereços
+# *.onrender.com continuam respondendo. Trocou de domínio: ajuste FRONTEND_URL, ALLOWED_ORIGINS, API_PUBLIC_URL,
+# VITE_API_URL e SITE_URL e publique de novo.
 
 databases:
   - name: toqqi-db
@@ -36,12 +39,12 @@ services:
         generateValue: true
       - key: JWT_SECRET
         generateValue: true
-      - key: FRONTEND_URL
-        value: https://toqqi-web.onrender.com
-      - key: ALLOWED_ORIGINS
-        value: https://toqqi-web.onrender.com
-      - key: API_PUBLIC_URL
-        value: https://toqqi-api.onrender.com
+      - key: FRONTEND_URL           # links dos e-mails, das pesquisas e do WhatsApp
+        value: https://toqqi.com
+      - key: ALLOWED_ORIGINS        # o endereço antigo do site continua liberado
+        value: https://toqqi.com,https://www.toqqi.com,https://toqqi-web.onrender.com
+      - key: API_PUBLIC_URL         # webhooks (WhatsApp, RD Station, Omie), descadastro em 1 clique e imagens dos e-mails
+        value: https://api.toqqi.com
       - key: EMAIL_PROVIDER         # "console" até configurar o ZeptoMail; depois "zeptomail" + ZEPTOMAIL_TOKEN
         value: zeptomail
       - key: AMBIENTE
@@ -146,7 +149,9 @@ services:
       paths: ["web/**"]
     envVars:
       - key: VITE_API_URL
-        value: https://toqqi-api.onrender.com/api/v1
+        value: https://api.toqqi.com/api/v1
+      - key: SITE_URL               # endereço público no <link rel="canonical">, no sitemap.xml e no robots.txt
+        value: https://toqqi.com
     routes:
       - type: rewrite
         source: /r/*
