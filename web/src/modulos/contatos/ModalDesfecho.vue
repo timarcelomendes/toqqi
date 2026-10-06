@@ -19,7 +19,7 @@ import Modal from '@/components/ui/Modal.vue'
 import Selecao from '@/components/ui/Selecao.vue'
 import { MOTIVOS_PERDA } from './desfecho'
 
-const props = defineProps<{ empresa: Empresa | null; modo: 'perda' | 'retorno' }>()
+const props = defineProps<{ empresa: Empresa | null; modo: 'perda' | 'retorno' | 'corrigir' }>()
 const aberto = defineModel<boolean>('aberto', { default: false })
 const emit = defineEmits<{ salvo: [Empresa] }>()
 
@@ -41,10 +41,11 @@ watch(aberto, (v) => {
   limpar()
   for (const k of Object.keys(locais)) delete locais[k]
   const e = props.empresa
+  const corrigir = props.modo === 'corrigir'
   Object.assign(dados, {
-    perdida_em: hoje,
-    motivo_perda: '',
-    motivo_detalhe: '',
+    perdida_em: corrigir ? (e?.perdida_em?.slice(0, 10) ?? hoje) : hoje,
+    motivo_perda: corrigir ? (e?.motivo_perda ?? '') : '',
+    motivo_detalhe: corrigir ? (e?.motivo_detalhe ?? '') : '',
     valor_mensal: formatarDecimal(e?.valor_mensal),
     renovacao_em: e?.renovacao_em?.slice(0, 10) ?? '',
     reativar: true,
@@ -57,12 +58,26 @@ const erro = (campo: string) => locais[campo] || erros[campo] || undefined
 async function salvar() {
   const e = props.empresa
   if (!e) return
-  if (props.modo === 'perda') {
+  if (props.modo !== 'retorno') {
     locais.motivo_perda = dados.motivo_perda ? undefined : 'Escolha o motivo.'
     locais.motivo_detalhe =
       dados.motivo_perda === 'outro' && dados.motivo_detalhe.trim().length < 3 ? 'Conte em poucas palavras o motivo.' : undefined
     locais.perdida_em = !dados.perdida_em ? 'Informe a data.' : dados.perdida_em > hoje ? 'A data não pode ser no futuro.' : undefined
     if (Object.values(locais).some(Boolean)) return
+    if (props.modo === 'corrigir') {
+      const c = await executar(() =>
+        empresasApi.corrigirPerda(e.id, {
+          perdida_em: dados.perdida_em,
+          motivo_perda: dados.motivo_perda as MotivoPerda,
+          motivo_detalhe: dados.motivo_detalhe.trim() || null,
+        }),
+      )
+      if (!c) return
+      emit('salvo', c)
+      avisar.sucesso(`A perda de ${c.nome} foi corrigida.`)
+      aberto.value = false
+      return
+    }
     const r = await executar(() =>
       empresasApi.perder(e.id, {
         perdida_em: dados.perdida_em,
@@ -99,7 +114,7 @@ async function salvar() {
 <template>
   <Modal
     v-model:aberto="aberto"
-    :titulo="modo === 'perda' ? 'Marcar como perdida' : 'Voltou a ser cliente'"
+    :titulo="modo === 'perda' ? 'Marcar como perdida' : modo === 'corrigir' ? 'Corrigir a perda' : 'Voltou a ser cliente'"
     :descricao="empresa?.nome"
     :bloqueado="enviando"
   >
@@ -108,7 +123,7 @@ async function salvar() {
         {{ erroGeral }}
         <RouterLink v-if="codigoErro === 'limite_do_plano' && sessao.pode('assinatura.gerenciar')" to="/assinatura" class="link">Ver planos</RouterLink>
       </Alerta>
-      <template v-if="modo === 'perda'">
+      <template v-if="modo !== 'retorno'">
         <div class="grid gap-4 sm:grid-cols-2">
           <Selecao v-model="dados.motivo_perda" rotulo="Motivo" :opcoes="MOTIVOS_PERDA" vazio="Escolha" :erro="erro('motivo_perda')" />
           <Campo v-model="dados.perdida_em" rotulo="Deixou de ser cliente em" tipo="date" :max="hoje" :erro="erro('perdida_em')" />
@@ -123,7 +138,7 @@ async function salvar() {
           placeholder="Ex.: fechou com outro fornecedor pelo preço."
           :erro="erro('motivo_detalhe')"
         />
-        <Alerta tom="info">
+        <Alerta v-if="modo === 'perda'" tom="info">
           <template v-if="contatos > 0">Os contatos ativos desta empresa ficam inativos e param de receber pesquisas. </template>
           Ela sai do Início, das oportunidades e da carteira ativa, e entra em Relatórios › Desfecho.
         </Alerta>
@@ -143,7 +158,7 @@ async function salvar() {
     <template #rodape>
       <Botao variante="secundario" :desabilitado="enviando" @click="aberto = false">Cancelar</Botao>
       <Botao tipo="submit" form="form-desfecho" :variante="modo === 'perda' ? 'perigo' : 'primario'" :carregando="enviando">
-        {{ modo === 'perda' ? 'Marcar como perdida' : 'Voltou a ser cliente' }}
+        {{ modo === 'perda' ? 'Marcar como perdida' : modo === 'corrigir' ? 'Salvar correção' : 'Voltou a ser cliente' }}
       </Botao>
     </template>
   </Modal>

@@ -569,6 +569,8 @@ export interface ConferenciaImportacao {
 }
 
 export interface ResultadoImportacao {
+  /** Etapa 5i: empresas marcadas como perdidas pela coluna "Perdida em" (só vem quando > 0). */
+  empresas_perdidas?: number
   novos: number
   atualizados: number
   ignorados: number

@@ -2679,7 +2679,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Quando um cliente deixar de comprar, abra Contatos › Empresas, clique nos três pontos da empresa e escolha “Marcar como perdida”. Informe o motivo e a data. Os contatos ativos dela ficam inativos e param de receber pesquisas. Se ela voltar, use “Voltou a ser cliente” no mesmo menu: os contatos voltam a receber pesquisas."
+              "texto": "Quando um cliente deixar de comprar, abra Contatos › Empresas, clique nos três pontos da empresa e escolha “Marcar como perdida”. Informe o motivo e a data. Os contatos ativos dela ficam inativos e param de receber pesquisas. Se ela voltar, use “Voltou a ser cliente” no mesmo menu: os contatos voltam a receber pesquisas. Errou a data ou o motivo? Use “Corrigir a perda”. Para marcar várias de uma vez, importe uma planilha com as colunas “Perdida em” (a data) e “Motivo da perda”: a empresa da linha vira perdida (com “Atualizar quem já existe” ligado, para as que já estão cadastradas)."
             },
             {
               "tipo": "paragrafo",

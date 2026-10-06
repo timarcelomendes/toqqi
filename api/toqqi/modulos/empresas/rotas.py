@@ -6,7 +6,7 @@ from toqqi.core.deps import Contexto, requer
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.modulos.empresas import servico
 from toqqi.modulos.empresas import desfecho
-from toqqi.modulos.empresas.esquemas import EmpresaAlterarIn, EmpresaIn, PerdaIn, RetornoIn
+from toqqi.modulos.empresas.esquemas import EmpresaAlterarIn, EmpresaIn, PerdaAlterarIn, PerdaIn, RetornoIn
 from toqqi.modulos.respostas.rotas import csv_resposta
 
 router = APIRouter(prefix="/empresas", tags=["empresas"])
@@ -76,6 +76,12 @@ def excluir(empresa_id: int, ctx: Contexto = Depends(requer("contatos.excluir"))
 def perder(empresa_id: int, dados: PerdaIn, ctx: Contexto = Depends(requer("contatos.editar"))):
     """Marca a empresa como perdida (motivo e data) e desativa os contatos ativos dela."""
     return desfecho.perder(ctx, empresa_id, dados)
+
+
+@router.patch("/{empresa_id}/perda")
+def corrigir_perda(empresa_id: int, dados: PerdaAlterarIn, ctx: Contexto = Depends(requer("contatos.editar"))):
+    """Corrige a data, o motivo ou o detalhe da perda."""
+    return desfecho.corrigir_perda(ctx, empresa_id, dados)
 
 
 @router.get("/{empresa_id}/historico")

@@ -591,6 +591,10 @@ onMounted(() => {
           <dd class="text-2xl font-extrabold text-texto">{{ formatarNumero(resultado.ignorados || qtdProblemas(resultado)) }}</dd>
         </div>
       </dl>
+      <p v-if="resultado.empresas_perdidas" class="mx-auto mt-3 max-w-md text-sm text-texto-suave" data-empresas-perdidas>
+        {{ resultado.empresas_perdidas === 1 ? '1 empresa foi marcada como perdida' : `${formatarNumero(resultado.empresas_perdidas)} empresas foram marcadas como perdidas` }}
+        e os contatos dela pararam de receber pesquisas. Veja em Relatórios › Desfecho.
+      </p>
       <p v-if="tipo === 'respostas'" class="mx-auto mt-2 max-w-md text-sm text-texto-suave">
         As respostas entraram no histórico de cada contato e já contam no painel. Nenhuma ação foi criada e ninguém recebeu e-mail.
       </p>

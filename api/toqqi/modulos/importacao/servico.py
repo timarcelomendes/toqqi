@@ -8,6 +8,7 @@ from email_validator import EmailNotValidError, validate_email
 from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.orm import Session
 
+from toqqi.core import relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.db import em_conta, modo_sistema, travar
 from toqqi.core.deps import Contexto
@@ -19,9 +20,11 @@ from toqqi.core.texto import (
     interpretar_valor,
     normalizar_documento,
     normalizar_telefone,
+    sem_acento,
 )
 from toqqi.modelos import Cargo, Contato, Empresa, Grupo, Importacao, PerfilContato, Responsavel, Segmento
 from toqqi.modulos.contatos.servico import novo_codigo
+from toqqi.modulos.empresas.desfecho import _avisar as avisar_perda
 from toqqi.modulos.empresas.desfecho import marcar
 from toqqi.modulos.importacao import planilha
 from toqqi.modulos.importacao import respostas as importacao_respostas
@@ -38,7 +41,29 @@ PLURAIS = {"empresa": "empresas", "grupo": "grupos", "segmento": "segmentos", "c
            "perfil": "perfis", "responsavel": "responsáveis"}
 MAX_NOMES_AVISO = 5
 LIMITES_TEXTO = {"nome": 120, "empresa": 200, "cargo": 80, "perfil": 80, "grupo": 80, "segmento": 80,
-                 "responsavel": 120, "codigo_externo": 100}
+                 "responsavel": 120, "codigo_externo": 100, "motivo_perda": 300}
+
+# etapa 5i: o motivo da perda escrito na planilha → a chave do Toqqi (o resto vira "outro", com o texto no detalhe)
+_MOTIVOS_PLANILHA = (
+    ("preco", ("preco", "caro", "valor", "custo", "orcamento")),
+    ("concorrente", ("concorrente", "concorrencia")),
+    ("atendimento", ("atendimento", "qualidade", "suporte", "servico")),
+    ("produto", ("produto", "nao atendeu", "funcionalidade")),
+    ("encerrou", ("encerrou", "fechou", "falencia", "encerramento", "fim da atividade")),
+)
+SEM_MOTIVO = "Sem motivo na planilha"
+
+
+def motivo_da_planilha(texto: str | None) -> tuple[str, str | None]:
+    """(motivo, detalhe): "Preço" → (preco, None); "Mudou de cidade" → (outro, "Mudou de cidade")."""
+    t = (texto or "").strip()
+    if not t:
+        return "outro", SEM_MOTIVO
+    chave = sem_acento(t).lower()
+    for motivo, palavras in _MOTIVOS_PLANILHA:
+        if any(p in chave for p in palavras):
+            return motivo, (t if chave not in palavras else None)
+    return ("outro", t) if len(t) >= 3 else ("outro", SEM_MOTIVO)
 
 
 # modelo de respostas antigas: cabeçalho + uma linha de exemplo
@@ -168,12 +193,18 @@ def _ler_linha(bruta: dict) -> tuple[dict, list[str]]:
         ("valor_mensal", interpretar_valor, "Valor mensal inválido."),
         ("cliente_desde", interpretar_data, "Data inválida em cliente desde (use dd/mm/aaaa)."),
         ("renovacao_em", interpretar_data, "Data inválida em renovação do contrato (use dd/mm/aaaa)."),
+        ("perdida_em", interpretar_data, "Data inválida em perdida em (use dd/mm/aaaa)."),
     ):
         try:
             v[campo] = funcao(bruta.get(campo) or "")
         except ValueError:
             v[campo] = None
             motivos.append(msg)
+    if v.get("perdida_em"):
+        if v["perdida_em"] > relogio.hoje():
+            motivos.append("A data da perda não pode ser no futuro.")
+        elif not v.get("empresa"):
+            motivos.append("Data da perda sem empresa.")
     try:
         # vazio = não informado: contato novo entra ativo, existente mantém como está
         v["ativo"] = interpretar_booleano(bruta.get("ativo"), padrao=None)
@@ -274,6 +305,12 @@ def _planejar(s: Session, imp: Importacao, corpo) -> Plano:
         plano.avisos.append(f"{quem} (ligue \"Atualizar quem já existe\" para trocar os dados).")
     for campo, nomes in plano.criar.items():
         plano.avisos.append(aviso_criados(campo, nomes))
+    perdas = {linha.valores["empresa"].lower() for linha in usados if linha.valores.get("perdida_em")}
+    if perdas:
+        n = len(perdas)
+        plano.avisos.append(("1 empresa será marcada como perdida" if n == 1 else
+                             f"{n} empresas serão marcadas como perdidas") +
+                            " (as que ainda estão ativas), e os contatos dela param de receber pesquisas.")
     if plano.limite is not None and plano.ativos_depois > plano.limite:
         plano.avisos.append(f"Esta importação deixaria a conta com {plano.ativos_depois} contatos ativos, "
                             f"mas o seu plano permite até {plano.limite}.")
@@ -440,6 +477,28 @@ def importar(ctx: Contexto, imp_id: uuid.UUID, corpo) -> dict:
                 for v in (linha.valores for linha in plano.novos)
             ])
 
+        # etapa 5i: a perda pela planilha (a primeira linha da empresa com a data; só empresa nova ou com "atualizar
+        # existentes", como os outros dados; a que já está perdida não muda)
+        perdas: dict[str, tuple] = {}
+        for linha in usados:
+            v = linha.valores
+            chave = (v.get("empresa") or "").lower()
+            if v.get("perdida_em") and chave in definidos and chave not in perdas:
+                perdas[chave] = (v["perdida_em"], *motivo_da_planilha(v.get("motivo_perda")))
+        perdidas = 0
+        for chave, (data, motivo, detalhe) in perdas.items():
+            e = empresas[chave]
+            if e.perdida_em is not None:
+                continue
+            ativos = list(s.scalars(select(Contato.id).where(Contato.empresa_id == e.id, Contato.ativo.is_(True))))
+            marcar(s, "importacao", ctx.usuario_id, ativos)
+            if ativos:
+                s.execute(update(Contato).where(Contato.id.in_(ativos)).values(ativo=False))
+            e.ativa, e.perdida_em, e.motivo_perda, e.motivo_detalhe = False, data, motivo, detalhe
+            s.flush()
+            avisar_perda(s, "empresa.perdida", e)
+            perdidas += 1
+
         ignorados = len(plano.problemas) + len(plano.mantidos)
         registrar(s, "importacao", "sucesso", {
             "arquivo": imp.arquivo_nome, "novos": len(plano.novos), "atualizados": len(plano.atualizar),
@@ -447,4 +506,5 @@ def importar(ctx: Contexto, imp_id: uuid.UUID, corpo) -> dict:
         }, usuario_id=ctx.usuario_id)
         s.delete(imp)
         return {"novos": len(plano.novos), "atualizados": len(plano.atualizar), "ignorados": ignorados,
-                "problemas": [p for p in plano.problemas if p is not None]}
+                "problemas": [p for p in plano.problemas if p is not None],
+                **({"empresas_perdidas": perdidas} if perdidas else {})}

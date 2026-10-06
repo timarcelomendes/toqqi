@@ -94,6 +94,46 @@ def perder(ctx: Contexto, empresa_id: int, dados, origem: str = "tela") -> dict:
         return _uma(s, e.id) | {"contatos_desativados": len(ativos)}
 
 
+def corrigir_perda(ctx: Contexto, empresa_id: int, dados, origem: str = "tela") -> dict:
+    """Corrige a data, o motivo ou o detalhe de uma perda já marcada. O histórico (a linha da perda) acompanha pelo
+    gatilho do banco; os contatos não mudam."""
+    from toqqi.modulos.empresas.servico import _uma
+
+    enviados = dados.model_fields_set
+    hoje = relogio.hoje()
+    with em_conta(ctx.conta_id) as s:
+        e = _empresa(s, empresa_id)
+        if not e.perdida_em:
+            raise AppError(409, "nao_perdida", "Esta empresa não está marcada como perdida.")
+        data = dados.perdida_em if "perdida_em" in enviados and dados.perdida_em else e.perdida_em
+        motivo = dados.motivo_perda if "motivo_perda" in enviados and dados.motivo_perda else e.motivo_perda
+        detalhe = ((dados.motivo_detalhe or "").strip() or None) if "motivo_detalhe" in enviados else e.motivo_detalhe
+        campos = {}
+        if data > hoje:
+            campos["perdida_em"] = "A data não pode ser no futuro."
+        elif e.cliente_desde and data < e.cliente_desde:
+            campos["perdida_em"] = "A data não pode ser antes de “Cliente desde”."
+        else:
+            linha = s.scalar(select(func.max(EmpresaHistorico.id)).where(EmpresaHistorico.empresa_id == e.id,
+                                                                         EmpresaHistorico.tipo == "perdida"))
+            anterior = s.scalar(select(func.max(EmpresaHistorico.data)).where(
+                EmpresaHistorico.empresa_id == e.id, EmpresaHistorico.id < (linha or 0)))
+            if anterior and data < anterior:
+                campos["perdida_em"] = f"A data não pode ser antes de {anterior.strftime('%d/%m/%Y')}, a mudança anterior da empresa."
+        if motivo == "outro" and len(detalhe or "") < 3:
+            campos["motivo_detalhe"] = "Conte em poucas palavras o motivo."
+        if campos:
+            raise _invalido(campos)
+        if (data, motivo, detalhe) != (e.perdida_em, e.motivo_perda, e.motivo_detalhe):
+            marcar(s, origem, ctx.usuario_id)
+            e.perdida_em, e.motivo_perda, e.motivo_detalhe = data, motivo, detalhe
+            s.flush()
+            registrar(s, "empresa_perda_corrigida", "info",
+                      {"empresa": {"id": e.id, "nome": e.nome}, "motivo": motivo, "perdida_em": data.isoformat()},
+                      usuario_id=ctx.usuario_id)
+        return _uma(s, e.id)
+
+
 def voltar(ctx: Contexto, empresa_id: int, dados, origem: str = "tela") -> dict:
     from toqqi.modulos.empresas.servico import _uma
 

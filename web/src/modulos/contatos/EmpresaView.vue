@@ -41,7 +41,7 @@ const carregando = ref(true)
 const erro = ref<string | null>(null)
 const naoExiste = ref(false)
 const editarAberto = ref(false)
-const desfecho = ref<{ aberto: boolean; modo: 'perda' | 'retorno' }>({ aberto: false, modo: 'perda' })
+const desfecho = ref<{ aberto: boolean; modo: 'perda' | 'retorno' | 'corrigir' }>({ aberto: false, modo: 'perda' })
 
 const podeEditar = computed(() => sessao.pode('contatos.editar'))
 const podeNumeros = computed(() => sessao.pode('painel.ver') || sessao.pode('relatorios.ver'))
@@ -71,7 +71,7 @@ async function carregar() {
   }
 }
 
-function abrirDesfecho(modo: 'perda' | 'retorno') {
+function abrirDesfecho(modo: 'perda' | 'retorno' | 'corrigir') {
   desfecho.value = { aberto: true, modo }
 }
 
@@ -114,6 +114,7 @@ onMounted(carregar)
           </Botao>
           <Botao v-if="podeEditar" variante="secundario" @click="editarAberto = true"><Pencil class="size-4" aria-hidden="true" /> Editar</Botao>
           <Botao v-if="podeEditar && perdida" variante="secundario" @click="abrirDesfecho('retorno')"><RotateCcw class="size-4" aria-hidden="true" /> Voltou a ser cliente</Botao>
+          <Botao v-if="podeEditar && perdida" variante="secundario" @click="abrirDesfecho('corrigir')"><Pencil class="size-4" aria-hidden="true" /> Corrigir a perda</Botao>
           <Botao v-else-if="podeEditar" variante="perigo-suave" @click="abrirDesfecho('perda')"><UserX class="size-4" aria-hidden="true" /> Marcar como perdida</Botao>
         </div>
       </header>

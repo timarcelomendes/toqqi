@@ -92,6 +92,7 @@ ROTULOS = {
     "indicacao_excluida": "Indicação excluída (pedido da pessoa indicada)",
     "config_crescimento": "Configurações de crescimento alteradas",
     "depoimento_alterado": "Depoimento aprovado ou ocultado",
+    "empresa_perda_corrigida": "Perda de uma empresa corrigida (data ou motivo)",
     "imagem_enviada": "Imagem enviada ao banco de imagens",
     "imagem_excluida": "Imagem excluída do banco de imagens",
     # etapa 5f
@@ -144,7 +145,8 @@ def _grupo(evento: str) -> str:
         return "envios"
     if evento.startswith(("importacao", "exportacao_")) or evento in (
             "resposta_editada", "indicacao_registrada", "indicacao_atualizada", "acoes_detratores_criadas",
-            "empresa_perdida", "empresa_reativada", "depoimento_alterado"):
+            "empresa_perdida", "empresa_reativada", "depoimento_alterado",
+            "empresa_perda_corrigida"):
         return "dados"
     if evento.startswith(("chave_", "webhook_", "whatsapp_", "conector_")):
         return "integracoes"

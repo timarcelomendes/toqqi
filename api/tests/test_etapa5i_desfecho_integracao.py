@@ -111,3 +111,50 @@ def test_toqqiai_perdas_e_saude(client, dono, admin):
     r = ferramentas.executar(ctx, "saude_empresas", {})
     assert "erro" not in r, r
     assert "Padaria Sol" in str(r) or r.get("faixas")
+
+
+def test_perda_pela_planilha(client, dono, admin):
+    h = admin["h"]
+    linhas = [["Nome", "E-mail", "Empresa", "Data do cancelamento", "Motivo do cancelamento"],
+              ["Ana", "ana@lua.com.br", "Loja Lua", "01/09/2026", "Achou caro"],
+              ["Bia", "bia@lua.com.br", "Loja Lua", "", ""],
+              ["Caio", "caio@sol.com.br", "Sol Ltda", "02/09/2026", "Mudou de ramo"],
+              ["Duda", "duda@x.com.br", "", "02/09/2026", ""]]
+    conteudo = "\r\n".join(";".join(x) for x in linhas).encode("utf-8-sig")
+    d = client.post(f"{API}/importacao/analisar", headers=h, files={"arquivo": ("c.csv", conteudo)}).json()
+    assert d["mapeamento_sugerido"]["Data do cancelamento"] == "perdida_em"
+    assert d["mapeamento_sugerido"]["Motivo do cancelamento"] == "motivo_perda"
+    corpo = {"mapeamento": d["mapeamento_sugerido"], "chave": "email", "ignorar_com_problema": True}
+    c = client.post(f"{API}/importacao/{d['id']}/conferir", headers=h, json=corpo).json()
+    assert any("2 empresas serão marcadas como perdidas" in a for a in c["avisos"])
+    assert any("sem empresa" in p["motivo"] for p in c["problemas"])
+    r = client.post(f"{API}/importacao/{d['id']}/importar", headers=h, json=corpo)
+    assert r.status_code == 200, r.text
+    assert r.json()["empresas_perdidas"] == 2
+    emp = {n: (str(p), m, det) for n, p, m, det in sql(
+        dono, "select nome, perdida_em, motivo_perda, motivo_detalhe from empresas order by nome")}
+    assert emp["Loja Lua"] == ("2026-09-01", "preco", "Achou caro")
+    assert emp["Sol Ltda"] == ("2026-09-02", "outro", "Mudou de ramo")
+    assert sql(dono, "select count(*) from contatos where ativo")[0][0] == 0
+    origens = {o for (o,) in sql(dono, "select origem from empresa_historico where tipo = 'perdida'")}
+    assert origens == {"importacao"}
+
+
+def test_corrigir_a_perda(client, dono, admin):
+    h = admin["h"]
+    e = criar_empresa(client, h, nome="Mercado Azul")
+    _antigo(dono, e["id"])
+    client.post(f"{API}/empresas/{e['id']}/perda", headers=h, json={"motivo_perda": "preco"})
+    r = client.patch(f"{API}/empresas/{e['id']}/perda", headers=h,
+                     json={"perdida_em": "2026-08-01", "motivo_perda": "concorrente", "motivo_detalhe": "Foi para a X"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["perdida_em"], r.json()["motivo_perda"]) == ("2026-08-01", "concorrente")
+    (data, motivo, n), = sql(dono, "select max(data)::text, max(motivo), count(*) from empresa_historico "
+                                   "where empresa_id = :e and tipo = 'perdida'", e=e["id"])
+    assert (data, motivo, n) == ("2026-08-01", "concorrente", 1)  # a mesma linha, corrigida
+    assert client.patch(f"{API}/empresas/{e['id']}/perda", headers=h, json={"perdida_em": "2024-01-01"}).status_code == 422
+    assert client.patch(f"{API}/empresas/{e['id']}/perda", headers=h, json={"motivo_perda": "outro",
+                                                                          "motivo_detalhe": ""}).status_code == 422
+    outra = criar_empresa(client, h, nome="Ativa")
+    assert client.patch(f"{API}/empresas/{outra['id']}/perda", headers=h, json={"motivo_perda": "preco"}).status_code == 409
+    assert sql(dono, "select count(*) from auditoria where evento = 'empresa_perda_corrigida'")[0][0] == 1

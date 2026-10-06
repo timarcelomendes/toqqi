@@ -73,6 +73,9 @@ export const empresasApi = {
   /** Etapa 5i: "Marcar como perdida" (desativa os contatos ativos da empresa). */
   perder: (id: Id, dados: { perdida_em?: string; motivo_perda: MotivoPerda; motivo_detalhe?: string | null }) =>
     api.post<Empresa & { contatos_desativados: number }>(`/empresas/${seg(id)}/perda`, dados),
+  /** Corrige a data, o motivo ou o detalhe da perda (os contatos não mudam). */
+  corrigirPerda: (id: Id, dados: { perdida_em?: string; motivo_perda?: MotivoPerda; motivo_detalhe?: string | null }) =>
+    api.patch<Empresa>(`/empresas/${seg(id)}/perda`, dados),
   /** Etapa 5i: "Voltou a ser cliente" (reativa os contatos que a perda desativou). */
   voltar: (id: Id, dados: { valor_mensal?: number | null; renovacao_em?: string | null; reativar_contatos?: boolean }) =>
     api.post<Empresa & { contatos_reativados: number }>(`/empresas/${seg(id)}/retorno`, dados),

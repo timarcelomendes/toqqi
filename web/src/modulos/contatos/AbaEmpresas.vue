@@ -154,8 +154,8 @@ function editar(e: Empresa) {
   modalAberto.value = true
 }
 // Etapa 5i: desfecho ("Marcar como perdida" / "Voltou a ser cliente").
-const desfecho = reactive<{ aberto: boolean; modo: 'perda' | 'retorno'; empresa: Empresa | null }>({ aberto: false, modo: 'perda', empresa: null })
-function abrirDesfecho(e: Empresa, modo: 'perda' | 'retorno') {
+const desfecho = reactive<{ aberto: boolean; modo: 'perda' | 'retorno' | 'corrigir'; empresa: Empresa | null }>({ aberto: false, modo: 'perda', empresa: null })
+function abrirDesfecho(e: Empresa, modo: 'perda' | 'retorno' | 'corrigir') {
   Object.assign(desfecho, { aberto: true, modo, empresa: e })
 }
 function aoSalvar(e: Empresa) {
@@ -296,6 +296,7 @@ defineExpose({ novo })
           <ItemMenu v-if="podeVerHistorico" :icone="History" :para="{ path: '/relatorios/historico', query: { empresa_id: String(e.id) } }">Ver histórico</ItemMenu>
           <ItemMenu v-if="podeEditar" :icone="Pencil" @click="editar(e)">Editar</ItemMenu>
           <ItemMenu v-if="podeEditar && situacaoEmpresa(e) === 'perdida'" :icone="RotateCcw" @click="abrirDesfecho(e, 'retorno')">Voltou a ser cliente</ItemMenu>
+          <ItemMenu v-if="podeEditar && situacaoEmpresa(e) === 'perdida'" :icone="Pencil" @click="abrirDesfecho(e, 'corrigir')">Corrigir a perda</ItemMenu>
           <ItemMenu v-else-if="podeEditar" :icone="UserX" @click="abrirDesfecho(e, 'perda')">Marcar como perdida</ItemMenu>
           <ItemMenu v-if="podeExcluir" :icone="Trash2" perigo @click="excluir(e)">Excluir</ItemMenu>
         </MenuSuspenso>

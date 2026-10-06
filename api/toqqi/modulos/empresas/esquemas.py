@@ -45,6 +45,13 @@ class PerdaIn(BaseModel):
     motivo_detalhe: TextoAte(300) = None
 
 
+class PerdaAlterarIn(BaseModel):
+    """Corrigir a perda já marcada (data, motivo, detalhe): só os campos enviados mudam."""
+    perdida_em: date | None = None
+    motivo_perda: Motivo | None = None
+    motivo_detalhe: TextoAte(300) = None
+
+
 class RetornoIn(BaseModel):
     """Etapa 5i: "Voltou a ser cliente" (campos ausentes ficam como estão)."""
     valor_mensal: Valor | None = None
