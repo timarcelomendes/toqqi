@@ -29,8 +29,11 @@ def contatos_do_plano(plano: str) -> int | None:
 
 
 def planos_json() -> list[dict]:
-    """[{chave, nome, preco, contatos}] com o preço e o limite atuais."""
-    return [{"chave": c, "nome": n, "preco": preco(c), "contatos": contatos_do_plano(c)} for c, n in PLANOS]
+    """[{chave, nome, preco, contatos, ia_cota, ia_teto, whatsapp}] com os valores atuais (etapa 5k: a cota do ToqqiAI,
+    o teto de comentários lidos pela IA e a franquia do WhatsApp, null = sem franquia, para a tela comparar os planos)."""
+    v = parametros.valor
+    return [{"chave": c, "nome": n, "preco": preco(c), "contatos": contatos_do_plano(c), "ia_cota": v(f"ia.cota.{c}"),
+             "ia_teto": v(f"ia.teto.{c}"), "whatsapp": v(f"whatsapp.franquia.{c}")} for c, n in PLANOS]
 
 
 def limite_contatos(s: Session, plano: str, situacao: str) -> int | None:

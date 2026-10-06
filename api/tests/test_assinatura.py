@@ -64,9 +64,13 @@ def test_planos_para_qualquer_logado(client, admin):
     consulta = membro(client, admin["h"], "caio@alfa.com.br", "consulta")
     r = client.get(f"{API}/assinatura/planos", headers=consulta["h"])
     assert r.status_code == 200
-    assert r.json() == [{"chave": "essencial", "nome": "Essencial", "preco": 149.0, "contatos": 300},
-                        {"chave": "profissional", "nome": "Profissional", "preco": 349.0, "contatos": 1500},
-                        {"chave": "empresa", "nome": "Empresa", "preco": 799.0, "contatos": 5000}]
+    comuns = {"whatsapp": None}  # 5k: sem franquia
+    assert r.json() == [
+        {"chave": "essencial", "nome": "Essencial", "preco": 149.0, "contatos": 300, "ia_cota": 100, "ia_teto": 1000, **comuns},
+        {"chave": "profissional", "nome": "Profissional", "preco": 349.0, "contatos": 1500, "ia_cota": 500, "ia_teto": 5000,
+         **comuns},
+        {"chave": "empresa", "nome": "Empresa", "preco": 799.0, "contatos": 5000, "ia_cota": 2000, "ia_teto": 15000,
+         **comuns}]
     assert client.get(f"{API}/assinatura/planos").status_code == 401
 
 

@@ -17,7 +17,8 @@ import Modal from '@/components/ui/Modal.vue'
 import EscolhaPlano from './EscolhaPlano.vue'
 import { contatosSugeridos, descontosDe, efeitoTroca, exibido, planoPersonalizado, planoPorChave, tabelaDe, type PlanoExibido } from './logica'
 
-const props = defineProps<{ estado: EstadoAssinatura }>()
+/** `inicial`: o plano já escolhido ao abrir (o "Trocar para este" da comparação dos planos). */
+const props = defineProps<{ estado: EstadoAssinatura; inicial?: string | null }>()
 const aberto = defineModel<boolean>('aberto', { default: false })
 const emit = defineEmits<{ trocado: [EstadoAssinatura]; recarregar: [] }>()
 
@@ -48,7 +49,7 @@ function recarregarPagina() {
 watch(aberto, (v) => {
   if (!v) return
   limpar()
-  escolhido.value = atual.value
+  escolhido.value = props.inicial ?? atual.value
   const a = props.estado.assinatura
   contatosPers.value = a?.plano === 'personalizado' && a.contatos ? a.contatos : contatosSugeridos(props.estado.contatos_ativos, tabela.value)
   cotaPers.value = a?.plano === 'personalizado' && a.cota_ia ? a.cota_ia : 500

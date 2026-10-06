@@ -32,6 +32,7 @@ import Medidor from '@/components/ui/Medidor.vue'
 import BotoesSegmentados from '@/components/ui/BotoesSegmentados.vue'
 import type { Ciclo, Forma } from '@/utils/precos'
 import CamposCobranca from './CamposCobranca.vue'
+import ComparativoPlanos from './ComparativoPlanos.vue'
 import EscolhaPlano from './EscolhaPlano.vue'
 import HistoricoCobrancas from './HistoricoCobrancas.vue'
 import ModalDadosCobranca from './ModalDadosCobranca.vue'
@@ -251,6 +252,25 @@ const plano = computed<PlanoExibido | null>(() => {
   if (planoEscolhido.value === 'personalizado') return persExibido.value
   return planoPorChave(planosExibidos.value, planoEscolhido.value)
 })
+/** Com assinatura: os planos no ciclo e na forma dela (a comparação mostra o que cada um custaria hoje). */
+const planosDaAssinatura = computed<PlanoExibido[]>(() =>
+  dados.value && assinatura.value
+    ? dados.value.planos.map((p) => exibido(p, cicloAtual.value, assinatura.value!.forma ?? 'qualquer', descontos.value))
+    : [],
+)
+const persDaAssinatura = computed<PlanoExibido | null>(() => {
+  const a = assinatura.value
+  if (!a) return null
+  const contatos = a.plano === 'personalizado' && a.contatos ? a.contatos : contatosPers.value
+  const cota = a.plano === 'personalizado' && a.cota_ia ? a.cota_ia : cotaPers.value
+  const p = planoPersonalizado(tabela.value, contatos, cota)
+  return p ? { ...exibido(p, cicloAtual.value, a.forma ?? 'qualquer', descontos.value), cota_ia: p.cota_ia } : null
+})
+const trocaInicial = ref<string | null>(null)
+function trocarPara(chave: string | null) {
+  trocaInicial.value = chave
+  trocarAberto.value = true
+}
 const plano_cabe = computed(() => !plano.value || plano.value.contatos === null || dados.value!.contatos_ativos <= plano.value.contatos)
 const resumo = computed(() => (dados.value && plano.value ? resumoPrimeiraFatura(plano.value, dados.value.conta, new Date(), plano.value.ciclo) : null))
 const emTeste = computed(() => dados.value?.conta.situacao === 'teste')
@@ -464,7 +484,7 @@ onBeforeUnmount(() => {
       </p>
 
       <div v-if="assinatura" class="flex flex-col gap-2 border-t border-borda pt-4 sm:flex-row sm:flex-wrap">
-        <Botao variante="secundario" :desabilitado="!dados.disponivel" @click="trocarAberto = true">
+        <Botao variante="secundario" :desabilitado="!dados.disponivel" @click="trocarPara(null)">
           <ArrowRightLeft class="size-4" aria-hidden="true" /> Trocar de plano
         </Botao>
         <Botao variante="perigo-suave" :carregando="cancelando" :desabilitado="!dados.disponivel" @click="cancelar">
@@ -518,6 +538,31 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
+    <!-- Com assinatura: todos os planos, com o atual marcado (etapa 5k) -->
+    <section v-if="assinatura" class="flex flex-col gap-4" aria-labelledby="t-comparar" data-planos-assinada>
+      <div>
+        <h2 id="t-comparar" class="text-lg font-bold text-texto">Planos</h2>
+        <p class="mt-1 text-sm text-texto-suave">
+          {{
+            cicloAtual === 'anual'
+              ? 'Valores no anual, como a sua assinatura. Na assinatura anual, a troca de plano é feita pela equipe Toqqi.'
+              : assinatura.forma === 'pix'
+                ? 'Valores no mensal com Pix, como a sua assinatura. Trocar vale para as próximas faturas e as pendentes.'
+                : 'Valores no mensal, como a sua assinatura. Trocar vale para as próximas faturas e as pendentes.'
+          }}
+        </p>
+      </div>
+      <ComparativoPlanos
+        :planos="planosDaAssinatura"
+        :tabela="tabela"
+        :personalizado="persDaAssinatura"
+        :atual="assinatura.plano"
+        personalizado-contratado
+        :pode-trocar="dados.disponivel && cicloAtual === 'mensal'"
+        @trocar="trocarPara"
+      />
+    </section>
+
     <!-- Sem assinatura: planos e formulário de cobrança -->
     <template v-if="!assinatura && !cortesia">
       <section class="flex flex-col gap-4" aria-labelledby="t-planos">
@@ -552,6 +597,12 @@ onBeforeUnmount(() => {
           :desabilitado="!dados.disponivel || enviando"
           @escolheu="aoEscolherPlano"
         />
+        <details class="group" data-comparar-planos>
+          <summary class="link w-fit cursor-pointer text-sm font-semibold">Comparar os planos em detalhe</summary>
+          <div class="mt-4">
+            <ComparativoPlanos :planos="planosExibidos" :tabela="tabela" :personalizado="persExibido" :atual="emTeste ? dados.conta.plano : null" rotulo-atual="Plano do seu teste" />
+          </div>
+        </details>
       </section>
 
       <section v-if="plano && resumo" ref="secaoForm" class="cartao p-5 sm:p-6" aria-labelledby="t-cobranca" data-form-assinar>
@@ -626,6 +677,6 @@ onBeforeUnmount(() => {
     </section>
   </div>
 
-  <ModalTrocarPlano v-if="dados?.assinatura" v-model:aberto="trocarAberto" :estado="dados" @trocado="aoMudarAssinatura" @recarregar="atualizar" />
+  <ModalTrocarPlano v-if="dados?.assinatura" v-model:aberto="trocarAberto" :estado="dados" :inicial="trocaInicial" @trocado="aoMudarAssinatura" @recarregar="atualizar" />
   <ModalDadosCobranca v-if="dados?.assinatura" v-model:aberto="dadosAberto" :dados="dados.assinatura.dados" :disponivel="dados.disponivel" @salvo="aplicar" />
 </template>

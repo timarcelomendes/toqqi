@@ -455,6 +455,28 @@ describe('Assinatura: com assinatura', () => {
     expect(w.find('[data-proximo-vencimento]').exists()).toBe(false)
   })
 
+  it('com assinatura, os planos continuam à vista: comparação com o atual marcado e "Trocar para este" (5k)', async () => {
+    entrar(['assinatura.gerenciar'])
+    const planos = PLANOS.map((p) => ({ ...p, ia_cota: { essencial: 100, profissional: 500, empresa: 2000 }[p.chave as string], ia_teto: 1000, whatsapp: null }))
+    apiFalsa({ 'GET /assinatura': () => ({ ...ASSINADA_NO_TESTE(), planos }), 'GET /eu': () => DADOS_EU() })
+    const w = await abrir('/assinatura', AssinaturaView)
+    const sec = w.get('[data-planos-assinada]')
+    expect(sec.findAll('thead [data-coluna]').map((c) => c.attributes('data-coluna'))).toEqual(['essencial', 'profissional', 'empresa', 'personalizado'])
+    expect(t(sec.get('[data-coluna="profissional"]').text())).toContain('Seu plano')
+    expect(t(sec.get('[data-coluna="essencial"]').text())).toContain('R$ 149,00')
+    expect(t(sec.get('[data-coluna="personalizado"]').text())).toContain('R$ 117,00')
+    const texto = t(sec.text())
+    for (const trecho of ['Perguntas ao ToqqiAI', '2.000 por mês', 'Comentários lidos pela IA', 'WhatsApp automático', 'Sem franquia', 'Sem limite']) {
+      expect(texto).toContain(trecho)
+    }
+    expect(sec.find('[data-trocar-para="profissional"]').exists()).toBe(false)
+    await sec.get('[data-trocar-para="empresa"]').trigger('click')
+    await flushPromises()
+    const janela = w.get('[role="dialog"]')
+    expect(janela.get<HTMLInputElement>('input[value="empresa"]').element.checked).toBe(true)
+    expect(t(janela.get('[data-efeito]').text())).toContain('O valor passa de R$ 349,00 para R$ 799,00 por mês.')
+  })
+
   it('trocar de plano: mostra o novo valor e o efeito na fatura; plano menor com contatos demais avisa e não deixa', async () => {
     entrar(['assinatura.gerenciar', 'contatos.ver'])
     const api = apiFalsa({

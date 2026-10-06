@@ -1682,6 +1682,11 @@ export interface PlanoAssinatura {
   preco: ValorDecimal
   /** Contatos ativos permitidos; null = sem limite. */
   contatos: number | null
+  /** Etapa 5k (ausentes no servidor antigo): perguntas ao ToqqiAI por mês, comentários lidos pela IA por mês e a franquia
+   * do WhatsApp automático (null = sem franquia). */
+  ia_cota?: number
+  ia_teto?: number
+  whatsapp?: number | null
 }
 
 /** Dados de cobrança (cliente no Asaas). Documento e telefone só com dígitos. */

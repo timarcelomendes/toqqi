@@ -93,3 +93,8 @@ cota_ia preenchidos). `contas`: `contatos_personalizado` integer, `cota_ia_perso
   calculadora (`utils/precos.ts`), com a tabela de `GET /publico/planos`.
 - **Atenção ao subir**: o `render.yaml` troca `IA_ASSISTENTE_MODELO` para gpt-6-luna e `IA_COTA_CORTESIA` para 200 na
   próxima sincronização do Blueprint. Os outros padrões são do código (nada salvo em Plataforma › Parâmetros hoje).
+- 06/10 (pedido do Marcelo, 00h55): com a assinatura vigente, os planos continuam à vista. A seção "Planos" compara os
+  quatro (preço no ciclo e na forma da assinatura, contatos, perguntas ao ToqqiAI, comentários lidos pela IA, WhatsApp,
+  usuários) com o atual marcado e "Trocar para este" (no mensal), que abre a troca já com o plano escolhido. Sem
+  assinatura, a mesma comparação fica em "Comparar os planos em detalhe", abaixo dos cartões. `planos` (GET /assinatura e
+  /assinatura/planos) ganhou `ia_cota`, `ia_teto` e `whatsapp`. No celular, um cartão por plano.
