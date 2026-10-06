@@ -157,6 +157,16 @@ services:
       - type: rewrite
         source: /sair/*
         destination: /responder.html
+      # Guias do site (web/src/site/guias.ts): cada endereço serve o seu HTML. Antes da regra geral, que manda ao app.
+      - type: rewrite
+        source: /reduzir-churn
+        destination: /reduzir-churn.html
+      - type: rewrite
+        source: /clientes-insatisfeitos
+        destination: /clientes-insatisfeitos.html
+      - type: rewrite
+        source: /customer-success
+        destination: /customer-success.html
       - type: rewrite
         source: /*
         destination: /index.html

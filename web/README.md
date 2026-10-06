@@ -54,6 +54,20 @@ sistema, as animações param e a conversa de exemplo aparece completa. Os núme
 dos dados fictícios); preços e limites dos planos precisam acompanhar `api/toqqi/core/planos.py`,
 `api/toqqi/modulos/whatsapp/franquia.py`, `api/toqqi/modulos/ia/regras.py` e a cota da etapa 5b (o teste
 `tests/site.test.ts` confere os valores escritos na página).
+**Guias do site.** Três páginas de conteúdo para a busca e para os anúncios: `/reduzir-churn`,
+`/clientes-insatisfeitos` e `/customer-success`. Cada uma é um HTML pronto na raiz de `web/` (`reduzir-churn.html` etc.),
+com a entrada leve `src/site/guia.ts` (fonte, `site.css` + `guia.css`, origem da visita e "Abrir o Toqqi"), sem Vue, sem
+chamar a API e sem nada de terceiros. A lista fica em `src/site/guias.ts` e alimenta as entradas do build, o
+redirecionamento do Vite, o `robots.txt` e o `sitemap.xml`; no Render, as regras do `render.yaml` mandam cada endereço ao
+seu HTML **antes** da regra geral do app. Os botões levam a `/cadastro?utm_source=toqqi&utm_medium=guia&utm_campaign=<guia>`;
+quem chegou por anúncio mantém a origem do anúncio (vale o primeiro link da visita). Números marcados "Exemplo" são os dos
+dados fictícios; os guias não citam preços nem dias de teste (mudam em Plataforma › Parâmetros). Texto novo: só recurso que
+existe no código. `tests/guias.test.ts` confere o HTML, as regras do Render e os links.
+O endereço público vai no `<link rel="canonical">` (marca `<!-- canonical -->`, também no `index.html`) e no sitemap:
+`SITE_URL` ou, sem ela, o `RENDER_EXTERNAL_URL` do build. Quando o domínio toqqi.com estiver no ar, ponha
+`SITE_URL=https://toqqi.com` no toqqi-web e publique de novo. Para um guia novo: o HTML, uma linha em `GUIAS` e uma regra
+no `render.yaml`.
+
 Em `npm run dev` e `npm run preview` o próprio Vite já faz o redirecionamento. **Em produção, configure no servidor:**
 
 1. `/r/*`, `/f/*` e `/sair/*` → servir `responder.html` (sem mudar a URL);

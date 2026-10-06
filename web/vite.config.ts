@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, type Connect, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
+import { GUIAS, guiaDoEndereco, robots, sitemap, urlDoSite } from './src/site/guias'
 
 const raiz = (caminho: string) => fileURLToPath(new URL(caminho, import.meta.url))
 
@@ -15,6 +16,13 @@ function paginasPublicas(): Plugin {
     if (req.url && /^\/(r|f|sair)\/[^/]/.test(req.url)) {
       const i = req.url.indexOf('?')
       req.url = '/responder.html' + (i >= 0 ? req.url.slice(i) : '')
+    } else if (req.url) {
+      // Guias do site: /reduzir-churn → reduzir-churn.html (no Render, as regras do render.yaml).
+      const guia = guiaDoEndereco(req.url)
+      if (guia && !(req.url.split('?')[0] ?? '').endsWith('.html')) {
+        const i = req.url.indexOf('?')
+        req.url = `/${guia.caminho}.html` + (i >= 0 ? req.url.slice(i) : '')
+      }
     }
     next()
   }
@@ -30,13 +38,38 @@ function paginasPublicas(): Plugin {
 }
 
 /**
+ * Guias do site: o endereço público (SITE_URL ou, no Render, RENDER_EXTERNAL_URL) entra no `<link rel="canonical">`
+ * de cada HTML (marca `<!-- canonical -->`) e no `sitemap.xml`; o `robots.txt` sai sempre. Sem endereço (build local),
+ * a marca some e não há sitemap.
+ */
+function guiasDoSite(): Plugin {
+  const site = urlDoSite(process.env)
+  return {
+    name: 'toqqi-guias',
+    transformIndexHtml(html, ctx) {
+      const guia = guiaDoEndereco(ctx.path)
+      const caminho = guia ? `/${guia.caminho}` : ctx.path === '/index.html' ? '/' : null
+      const tag = site && caminho ? `<link rel="canonical" href="${site}${caminho}" />` : ''
+      return html.replace('<!-- canonical -->', tag)
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robots(site) })
+      if (site) {
+        const hoje = new Date().toISOString().slice(0, 10)
+        this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemap(site, hoje) })
+      }
+    },
+  }
+}
+
+/**
  * Etapa 5h (aviso de erros): a versão do site vai junto de cada erro mandado à API (`src/utils/erros.ts`). No Render, o
  * commit do build (`RENDER_GIT_COMMIT`, curto, como a da API em GET /saude); fora dele, "local".
  */
 const versaoSite = (process.env.RENDER_GIT_COMMIT ?? '').replace(/[^0-9A-Za-z]/g, '').slice(0, 7) || 'local'
 
 export default defineConfig({
-  plugins: [paginasPublicas(), vue(), tailwindcss()],
+  plugins: [paginasPublicas(), guiasDoSite(), vue(), tailwindcss()],
   define: { __TOQQI_VERSAO__: JSON.stringify(versaoSite) },
   resolve: {
     alias: { '@': raiz('./src') },
@@ -46,6 +79,7 @@ export default defineConfig({
       input: {
         app: raiz('./index.html'),
         responder: raiz('./responder.html'),
+        ...Object.fromEntries(GUIAS.map((g) => [g.caminho, raiz(`./${g.caminho}.html`)])),
       },
     },
   },
