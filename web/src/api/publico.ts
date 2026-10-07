@@ -15,6 +15,11 @@ export interface PesquisaPublica {
   formulario: FormularioPublico
   variaveis: Partial<Variaveis>
   ja_respondido?: boolean
+  /**
+   * Convite já respondido que o cliente ainda pode mudar (formulário com a edição ligada, até 7 dias): as respostas de
+   * antes, quando respondeu e até quando dá (docs/api-editar-resposta.md). Null ou ausente: não dá.
+   */
+  edicao?: { ate: string; respondida_em: string; respostas: Respostas } | null
 }
 
 const publico = { autenticar: false, semTratamentoGlobal: true } as const
@@ -40,6 +45,9 @@ export const publicoApi = {
     codigo: string,
     dados: { respostas: Respostas; canal?: CanalPublico; referencia?: string; contexto?: Contexto },
   ) => api.post<TelaFinal | undefined>(`/publico/formularios/${seg(codigo)}/responder`, dados, publico),
+  /** Link público: muda a resposta enviada há pouco, com a chave devolvida no envio (409 `edicao_indisponivel`). */
+  editarFormulario: (codigo: string, dados: { chave: string; respostas: Respostas }) =>
+    api.post<TelaFinal | undefined>(`/publico/formularios/${seg(codigo)}/editar`, dados, publico),
   /**
    * Etapa 5g: preços e limites atuais dos planos, o teste e as análises por nível (sem login; 60/min por IP; cache de
    * 60 s). O site da raiz troca os números do HTML por estes; Cadastro e Plataforma leem os dias do teste.

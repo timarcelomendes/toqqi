@@ -574,6 +574,7 @@ onBeforeUnmount(() => {
               <span class="block whitespace-nowrap text-texto-suave">{{ formatarData(r.data) }}</span>
               <span class="block text-xs text-texto-fraco">{{ CANAIS[r.canal] ?? r.canal }}</span>
               <span v-if="r.arquivada" class="mt-1 block"><Etiqueta tom="neutro">Arquivada</Etiqueta></span>
+              <span v-if="r.edicoes" class="mt-1 block"><Etiqueta tom="info">Editada</Etiqueta></span>
             </template>
             <template #cel-contato="{ linha: r }">
               <div class="min-w-0">
@@ -647,8 +648,9 @@ onBeforeUnmount(() => {
               </MenuSuspenso>
             </div>
             <p v-if="r.comentario" class="line-clamp-3 text-sm text-texto">{{ r.comentario }}</p>
-            <div v-if="r.temas?.length || r.arquivada || analisada(r.ia)" class="flex flex-wrap gap-1">
+            <div v-if="r.temas?.length || r.arquivada || r.edicoes || analisada(r.ia)" class="flex flex-wrap gap-1">
               <Etiqueta v-if="r.arquivada" tom="neutro">Arquivada</Etiqueta>
+              <Etiqueta v-if="r.edicoes" tom="info">Editada</Etiqueta>
               <SeloSentimento :ia="r.ia" />
               <Etiqueta v-for="t in r.temas" :key="t" tom="info">{{ rotuloTema(t, temas) }}</Etiqueta>
             </div>

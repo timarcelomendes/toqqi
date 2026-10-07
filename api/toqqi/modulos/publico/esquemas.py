@@ -15,6 +15,12 @@ class ResponderLinkIn(ResponderIn):
     contexto: Annotated[dict[str, Any], Field(max_length=20)] | None = None
 
 
+class EditarLinkIn(ResponderIn):
+    """POST /publico/formularios/{codigo}/editar (docs/api-editar-resposta.md): a chave devolvida ao enviar e as respostas
+    novas."""
+    chave: Annotated[str, Field(min_length=3, max_length=200)]
+
+
 class ErroSiteIn(BaseModel):
     """POST /publico/erros (etapa 5h): um erro do site. O corpo inteiro vai até 4 KB (`main.LIMITES_DE_CORPO`); a API
     limpa e corta cada texto (`core.erros`) antes de gravar."""

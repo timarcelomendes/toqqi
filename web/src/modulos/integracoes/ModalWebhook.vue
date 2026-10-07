@@ -19,7 +19,7 @@ const emit = defineEmits<{ criado: [w: WebhookCriado]; salvo: [w: Webhook] }>()
 const { enviando, erroGeral, erros, executar, limpar } = useFormulario()
 const dados = reactive({
   url: '',
-  eventos: { 'resposta.criada': true, 'contato.descadastrado': false, 'indicacao.criada': false, 'indicacao.atualizada': false, 'empresa.perdida': false, 'empresa.reativada': false } as Record<EventoWebhook, boolean>,
+  eventos: { 'resposta.criada': true, 'contato.descadastrado': false, 'indicacao.criada': false, 'indicacao.atualizada': false, 'empresa.perdida': false, 'empresa.reativada': false, 'resposta.atualizada': false } as Record<EventoWebhook, boolean>,
 })
 const editando = computed(() => !!props.webhook)
 const eventos = Object.keys(EVENTOS_WEBHOOK) as EventoWebhook[]

@@ -30,6 +30,7 @@ class FormularioAlterarIn(BaseModel):
     finais: list[Any] | None = None
     ativo: bool | None = None
     publico: bool | None = None
+    permite_editar: bool | None = None  # o cliente pode mudar a resposta (docs/api-editar-resposta.md)
 
 
 class RascunhoIn(BaseModel):

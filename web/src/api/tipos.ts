@@ -620,6 +620,8 @@ export interface FormularioResumo {
   padrao_csat: boolean
   respostas: number
   atualizado_em: string
+  /** O cliente pode mudar a resposta até 7 dias depois (docs/api-editar-resposta.md). Pode faltar na API antiga. */
+  permite_editar?: boolean
   /** Etapa 5l: há alterações salvas no rascunho que ainda não foram publicadas. */
   tem_rascunho?: boolean
   /** Etapa 5l: a versão publicada (sobe a cada publicação). */
@@ -664,6 +666,7 @@ export interface DadosFormulario {
   finais?: Final[]
   ativo?: boolean
   publico?: boolean
+  permite_editar?: boolean
 }
 
 /** Etapa 5l: resposta de PUT /formularios/{id}/rascunho. `rascunho` já normalizado (ids gerados, HTML limpo). */
@@ -925,6 +928,7 @@ export type EventoWebhook =
   | 'indicacao.atualizada'
   | 'empresa.perdida'
   | 'empresa.reativada'
+  | 'resposta.atualizada'
 
 export interface Webhook {
   id: Id
@@ -1040,6 +1044,9 @@ export interface RespostaItem extends Omit<Resposta, 'contato' | 'empresa' | 'gr
   analisada_por: Referencia | null
   registrada_por: Referencia | null
   arquivada: boolean
+  /** O cliente mudou a resposta (a última vez e quantas vezes); pode faltar na API antiga. */
+  editada_em?: string | null
+  edicoes?: number
   contato: { id: Id; nome: string; email: string | null; perfil: Referencia | null } | null
   empresa: { id: Id; nome: string; grupo: Referencia | null } | null
   acao: AcaoDaResposta | null
@@ -1173,6 +1180,9 @@ export interface Acao {
   /** Melhoria 4: quando o cliente foi avisado do que foi feito (uma vez) e o texto enviado. */
   retorno_em?: string | null
   retorno_texto?: string | null
+  /** O cliente mudou a nota da resposta depois do plano criado: a nota nova e quando (null = não mudou). */
+  nota_editada?: number | null
+  nota_editada_em?: string | null
 }
 
 export interface TotaisQuadro {

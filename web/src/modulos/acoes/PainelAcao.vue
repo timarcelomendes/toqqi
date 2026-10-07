@@ -295,6 +295,11 @@ const origem = computed(() => {
     <Alerta v-else-if="erroCarga && !acao" tom="erro">{{ erroCarga }}</Alerta>
 
     <div v-else-if="acao" class="flex flex-col gap-6">
+      <!-- O cliente mudou a nota da resposta depois do plano criado (docs/api-editar-resposta.md): o plano fica aberto. -->
+      <Alerta v-if="acao.nota_editada !== null && acao.nota_editada !== undefined" tom="info" titulo="O cliente mudou a nota" data-nota-editada>
+        De {{ acao.nota }} para {{ acao.nota_editada }}<template v-if="acao.nota_editada_em">, em {{ formatarDataHora(acao.nota_editada_em) }}</template>.
+        O plano continua como está: veja se ainda precisa tratar ou se já dá para concluir.
+      </Alerta>
       <Alerta v-if="faltasConcluir.length && edicao.situacao === 'concluida'" tom="atencao" titulo="Para concluir, falta pouco">
         <ul class="list-disc pl-4">
           <li v-for="f in faltasConcluir" :key="f">{{ f }}</li>

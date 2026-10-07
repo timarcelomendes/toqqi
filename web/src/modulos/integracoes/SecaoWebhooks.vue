@@ -222,7 +222,9 @@ onMounted(carregar)
           Cada aviso é um <code class="font-mono text-xs">POST</code> em JSON com
           <code class="font-mono text-xs">{"id", "evento", "criado_em", "conta": {"id", "nome"}, "dados": {...}}</code>.
           Em <code class="font-mono text-xs">resposta.criada</code>, <code class="font-mono text-xs">dados</code> traz a resposta e
-          <code class="font-mono text-xs">convite: {evento, referencia}</code>; em <code class="font-mono text-xs">contato.descadastrado</code>,
+          <code class="font-mono text-xs">convite: {evento, referencia}</code>; em <code class="font-mono text-xs">resposta.atualizada</code> (o cliente
+          mudou a resposta), o mesmo, com <code class="font-mono text-xs">editada_em</code>, <code class="font-mono text-xs">edicoes</code> e
+          <code class="font-mono text-xs">nota_anterior</code>; em <code class="font-mono text-xs">contato.descadastrado</code>,
           traz <code class="font-mono text-xs">{email_mascarado, contato_id, origem}</code>.
         </p>
         <p data-formato-indicacoes>

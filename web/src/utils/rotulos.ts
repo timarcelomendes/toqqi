@@ -143,6 +143,11 @@ export const CANAIS_CONFIG: Record<CanalConfig, { rotulo: string; descricao: str
 /** Eventos dos avisos para outros sistemas (webhooks). */
 export const EVENTOS_WEBHOOK: Record<EventoWebhook, { rotulo: string; descricao: string }> = {
   'resposta.criada': { rotulo: 'Nova resposta', descricao: 'Quando um cliente responde uma pesquisa.' },
+  // O cliente mudou a resposta (docs/api-editar-resposta.md)
+  'resposta.atualizada': {
+    rotulo: 'Cliente mudou a resposta',
+    descricao: 'Quando um cliente muda a resposta (nos formulários em que isso está ligado).',
+  },
   'contato.descadastrado': { rotulo: 'Cliente saiu da lista', descricao: 'Quando alguém pede para não receber mais pesquisas.' },
   // Etapa 5c
   'indicacao.criada': { rotulo: 'Nova indicação', descricao: 'Quando chega uma indicação nova, feita pela pesquisa ou registrada pela equipe.' },

@@ -108,7 +108,7 @@ def resposta_json(x, hoje: date) -> dict:
         "temas_manuais": r.temas_manuais, "o_que_faltou": r.o_que_faltou, "o_que_combinamos": r.o_que_combinamos,
         "analisada_em": r.analisada_em, "analisada_por": ref(r.analisada_por, x.analista_nome),
         "registrada_por": ref(r.registrada_por, x.registrou_nome), "arquivada": r.arquivada,
-        "arquivada_em": r.arquivada_em,
+        "arquivada_em": r.arquivada_em, "editada_em": r.editada_em, "edicoes": r.edicoes,
         "acao": ({"id": x.acao_id, "situacao": x.acao_situacao, "prazo": x.acao_prazo,
                   "prazo_selo": prazo_selo(x.acao_situacao, x.acao_prazo, hoje)} if x.acao_id else None),
         "ia": ia_json(r),

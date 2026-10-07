@@ -39,9 +39,14 @@ describe('Pesquisa (uma por vez)', () => {
     expect(w.text()).toContain('O que deu errado?')
   })
 
-  it('?nota=N começa depois da nota principal e envia só o que está visível', async () => {
+  it('?nota=N abre na pergunta da nota, com ela marcada; segue e envia só o que está visível', async () => {
     const enviar = vi.fn(async () => ({ titulo_final: 'Valeu, {nome}!', texto_final: 'Até mais.' }))
     const w = mount(Pesquisa, { props: { formulario: formulario(), variaveis: { nome: 'Ana Lima' }, notaInicial: 10, enviar } })
+    await flushPromises()
+    expect(w.text()).toContain('Recomendaria')
+    expect((w.get('input[type="radio"][value="10"]').element as HTMLInputElement).checked).toBe(true)
+    expect(w.get('[data-dica-nota]').text()).toContain('Marcamos a nota 10')
+    await w.find('form').trigger('submit')
     await flushPromises()
     expect(w.text()).toContain('Voltaria a comprar?')
     expect(w.text()).toContain('Mandar')
@@ -56,6 +61,8 @@ describe('Pesquisa (uma por vez)', () => {
     const enviar = vi.fn().mockRejectedValueOnce({ mensagem: 'Sem conexão.' }).mockResolvedValueOnce({ titulo_final: 'Ok', texto_final: '' })
     const w = mount(Pesquisa, { props: { formulario: formulario(), notaInicial: 9, enviar } })
     await flushPromises()
+    await w.find('form').trigger('submit') // a nota (já marcada pelo link) → a próxima pergunta
+    await flushPromises()
     await w.find('form').trigger('submit')
     await flushPromises()
     expect(w.text()).toContain('Sem conexão.')
@@ -69,6 +76,8 @@ describe('Pesquisa (uma por vez)', () => {
   it('erro 422 do servidor volta para a pergunta certa', async () => {
     const enviar = vi.fn().mockRejectedValueOnce({ mensagem: 'Confira', campos: { 'respostas.nota': 'Nota fora da faixa.' } })
     const w = mount(Pesquisa, { props: { formulario: formulario(), notaInicial: 9, enviar } })
+    await flushPromises()
+    await w.find('form').trigger('submit') // a nota (já marcada pelo link) → a próxima pergunta
     await flushPromises()
     await w.find('form').trigger('submit')
     await flushPromises()

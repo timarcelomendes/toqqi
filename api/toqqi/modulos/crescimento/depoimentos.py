@@ -6,6 +6,8 @@
 - `POST /publico/convites/{token}/depoimento`: o cliente autoriza (uma vez; repetir responde igual). O depoimento entra
   `pendente`; a equipe aprova (pode publicar) ou oculta em Crescimento › Depoimentos.
 - A assinatura do depoimento é o primeiro nome do contato e o nome da empresa dele ("Ana, Mercado Azul").
+- O cliente mudou a resposta (docs/api-editar-resposta.md) e o comentário ou a categoria mudou: o depoimento autorizado
+  volta a `pendente` (a equipe confere o texto novo antes de publicar).
 """
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -20,6 +22,7 @@ from toqqi.modelos import Contato, Conta, Empresa, Resposta
 from toqqi.modulos.assinatura.regras import liberada
 from toqqi.modulos.crescimento.configuracao import obter
 from toqqi.modulos.crescimento.indicacoes import da_direito
+from toqqi.modulos.respostas.eventos import GANCHOS_EDICAO
 
 SITUACOES = ("pendente", "aprovado", "oculto")
 MSG_OBRIGADO = "Obrigado! Seu comentário pode ajudar outras empresas a nos conhecer."
@@ -108,3 +111,14 @@ def alterar(ctx: Contexto, resposta_id: int, situacao: str) -> dict:
             registrar(s, "depoimento_alterado", "info", {"resposta_id": r.id, "situacao": situacao},
                       usuario_id=ctx.usuario_id)
         return _json(*linha)
+
+
+def _ao_editar_resposta(s: Session, r: Resposta, antes: dict) -> None:
+    if r.depoimento_em is None or r.depoimento_situacao == "pendente":
+        return
+    if antes["comentario_cliente"] != r.comentario_cliente or antes["grupo"] != r.grupo:
+        r.depoimento_situacao = "pendente"
+        s.flush()
+
+
+GANCHOS_EDICAO.append(_ao_editar_resposta)

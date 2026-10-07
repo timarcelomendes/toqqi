@@ -62,7 +62,7 @@ from toqqi.modulos.assinatura.regras import liberada
 from toqqi.modulos.ia import cota
 from toqqi.modulos.ia.regras import MIN_LETRAS, ia_ativa, passa_pela_ia, teto_mensal, texto_qualifica
 from toqqi.modulos.respostas import temas as temas_mod
-from toqqi.modulos.respostas.eventos import GANCHOS
+from toqqi.modulos.respostas.eventos import GANCHOS, GANCHOS_EDICAO
 from toqqi.modulos.respostas.registro import escolhas_do_cliente, temas_da_resposta
 
 log = logging.getLogger("toqqi.ia")
@@ -142,6 +142,23 @@ def _ao_registrar_resposta(s: Session, r: Resposta) -> None:
 
 
 GANCHOS.append(_ao_registrar_resposta)
+
+
+def _ao_editar_resposta(s: Session, r: Resposta, antes: dict) -> None:
+    """O cliente mudou a resposta (docs/api-editar-resposta.md): com o texto, a nota ou as opções diferentes, a análise
+    anterior não vale mais — passa pela IA de novo ou, sem texto que qualifique, fica sem análise."""
+    if (antes["comentario_cliente"] == r.comentario_cliente and antes["nota"] == r.nota
+            and antes["respostas"] == r.respostas):
+        return
+    conta = s.get(Conta, r.conta_id)
+    if conta is not None and passa_pela_ia(conta, r):
+        marcar_pendente(s, r)
+    elif r.ia_situacao is not None:
+        limpar_analise(r, None)
+        s.flush()
+
+
+GANCHOS_EDICAO.append(_ao_editar_resposta)
 
 
 # ---- processamento --------------------------------------------------------------

@@ -153,19 +153,26 @@ describe('páginas: o caminho agrupado pelas quebras, ao vivo', () => {
 })
 
 describe('?nota= (a nota tocada no e-mail)', () => {
-  it('sem obrigatória antes: começa no item do caminho depois da nota, com a nota marcada', async () => {
+  it('abre na pergunta da nota, com ela marcada; o caminho segue a nota do link', async () => {
     const itens = [p('nota', 'nps'), p('ruim', 'comentario', { titulo: 'Conte mais', logica: { mostrar_se: g({ fonte: 'nota', op: 'menor_igual', valor: 6 }) } }), p('fim', 'sim_nao', { titulo: 'Voltaria?' })]
     const detrator = mount(Pesquisa, { props: { formulario: formulario(itens), notaInicial: 2 } })
+    expect(titulo(detrator)).toContain('Título nota')
+    expect((detrator.get('input[value="2"]').element as HTMLInputElement).checked).toBe(true)
+    await enviarForm(detrator)
     expect(titulo(detrator)).toContain('Conte mais')
     const promotor = mount(Pesquisa, { props: { formulario: formulario(itens), notaInicial: 10 } })
+    expect(titulo(promotor)).toContain('Título nota')
+    await enviarForm(promotor)
     expect(titulo(promotor)).toContain('Voltaria?')
-    await clicar(promotor, 'Voltar')
-    expect((promotor.get('input[value="10"]').element as HTMLInputElement).checked).toBe(true)
   })
 
-  it('com obrigatória antes da nota: começa pela primeira delas (a nota já marcada adiante)', async () => {
+  it('com itens antes da nota: começa no primeiro passo, e a nota já está marcada quando chega nela', async () => {
     const itens = [p('intro', 'conteudo', { html: '<p>Oi</p>' }), p('livre', 'texto_curto', { titulo: 'Apelido' }), p('pedido', 'texto_curto', { titulo: 'Número do pedido', obrigatoria: true }), p('nota', 'nps'), p('fim', 'comentario', { titulo: 'Algo mais?' })]
     const w = mount(Pesquisa, { props: { formulario: formulario(itens), notaInicial: 9 }, attachTo: document.body })
+    expect(w.find('[data-conteudo]').exists()).toBe(true)
+    await enviarForm(w)
+    expect(titulo(w)).toContain('Apelido')
+    await enviarForm(w)
     expect(titulo(w)).toContain('Número do pedido')
     await enviarForm(w)
     expect(w.text()).toContain('Responda esta pergunta para continuar.')
@@ -188,6 +195,7 @@ describe('final', () => {
       botao_final: { texto: 'Avaliar no Google', url: 'https://g.page/r/abc' },
     }))
     const w = mount(Pesquisa, { props: { formulario: formulario(itens), enviar, notaInicial: 10 }, attachTo: document.body })
+    await enviarForm(w) // a nota (já marcada pelo link) → "Por quê?"
     await w.get('textarea').setValue('<b>ótimo</b> & rápido')
     await enviarForm(w)
     await esperarHtml()
@@ -208,6 +216,7 @@ describe('final', () => {
   it('sem html_final: o texto do final como antes (e botão sem https não vira link)', async () => {
     const enviar = vi.fn(async () => ({ titulo_final: 'Obrigado!', texto_final: 'Até mais.', final_id: null, html_final: null, botao_final: { texto: 'X', url: 'javascript:alert(1)' } }))
     const w = mount(Pesquisa, { props: { formulario: formulario(itens), enviar, notaInicial: 7 } })
+    await enviarForm(w) // a nota → "Por quê?"
     await enviarForm(w)
     expect(w.get('h1').text()).toBe('Obrigado!')
     expect(w.text()).toContain('Até mais.')

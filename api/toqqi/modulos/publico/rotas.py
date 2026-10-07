@@ -29,7 +29,7 @@ from toqqi.modulos.ia.servico import coletar_analises
 from toqqi.modulos.imagens import servico as imagens
 from toqqi.modulos.integracoes.webhooks import coletar_entregas, entregar_lista
 from toqqi.modulos.publico import servico
-from toqqi.modulos.publico.esquemas import ErroSiteIn, ResponderIn, ResponderLinkIn
+from toqqi.modulos.publico.esquemas import EditarLinkIn, ErroSiteIn, ResponderIn, ResponderLinkIn
 
 router = APIRouter(prefix="/publico", tags=["publico"])
 
@@ -92,6 +92,20 @@ def responder_formulario(request: Request, codigo: str, dados: ResponderLinkIn, 
     tarefas.add_task(processar_lista, envios)
     tarefas.add_task(entregar_lista, entregas)
     tarefas.add_task(enviar_alertas, alertas)
+    tarefas.add_task(analisar_com_ia, analises)
+    tarefas.add_task(sugerir_passos, passos)
+    return resultado
+
+
+@router.post("/formularios/{codigo}/editar")
+@limiter.limit(LIMITE_RESPONDER_LINK)
+def editar_formulario(request: Request, codigo: str, dados: EditarLinkIn, tarefas: BackgroundTasks):
+    """Link público: o cliente muda a resposta que acabou de enviar (docs/api-editar-resposta.md), com a chave."""
+    with (coletar_entregas() as entregas, coletar_alertas() as alertas, coletar_analises() as analises,
+          coletar_passos() as passos):
+        resultado = servico.editar_formulario(codigo, dados, _ip(request))
+    tarefas.add_task(entregar_lista, entregas)  # resposta.atualizada
+    tarefas.add_task(enviar_alertas, alertas)  # a nota nova pediu um plano de ação alto
     tarefas.add_task(analisar_com_ia, analises)
     tarefas.add_task(sugerir_passos, passos)
     return resultado

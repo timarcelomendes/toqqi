@@ -1,14 +1,17 @@
 """Validação das respostas de um formulário, variáveis nos textos e gravação da resposta.
 
 Etapa 5l: as respostas passam pela lógica do formulário (`formularios/logica.py`): só valem as do caminho (as de fora
-são descartadas), a obrigatória só é cobrada no caminho e o final sai de `escolher_final` (`tela_final`)."""
+são descartadas), a obrigatória só é cobrada no caminho e o final sai de `escolher_final` (`tela_final`).
+
+O cliente pode mudar a resposta (docs/api-editar-resposta.md): com `formularios.permite_editar`, até 7 dias depois de
+responder (`PRAZO_EDICAO`, contado de `criada_em`), `editar_resposta` troca os valores na mesma linha."""
 import copy
 import re
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from email_validator import EmailNotValidError, validate_email
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from toqqi.core.errors import AppError
@@ -25,7 +28,7 @@ from toqqi.modulos.formularios.validacao import (
     tipo_nota_de,
 )
 from toqqi.modulos.imagens.servico import prefixo_publico
-from toqqi.modulos.respostas.eventos import ao_registrar_resposta
+from toqqi.modulos.respostas.eventos import ao_editar_resposta, ao_registrar_resposta
 from toqqi.modulos.respostas.temas import detectar
 
 ASSUNTO_PADRAO = "o nosso atendimento"
@@ -342,4 +345,47 @@ def gravar_resposta(
     if contato is not None and nota is not None:
         atualizar_ultima_nota(s, contato.id)
     ao_registrar_resposta(s, r)
+    return r
+
+
+# ---- o cliente muda a resposta (docs/api-editar-resposta.md) ----------------------------------------------------
+
+PRAZO_EDICAO = timedelta(days=7)
+
+
+def prazo_edicao(r: Resposta) -> datetime:
+    """Até quando o cliente pode mudar a resposta: 7 dias depois de responder (a primeira vez)."""
+    return r.criada_em + PRAZO_EDICAO
+
+
+def pode_editar(f: Formulario, r: Resposta | None, agora: datetime) -> bool:
+    """Formulário com a edição ligada, resposta de pesquisa (não a registrada à mão nem a importada), não arquivada e
+    ainda dentro do prazo."""
+    return (bool(f.permite_editar) and r is not None and r.origem == "pesquisa" and not r.arquivada
+            and agora < prazo_edicao(r))
+
+
+def editar_resposta(s: Session, f: Formulario, r: Resposta, brutas: Any, v: dict) -> Resposta:
+    """O cliente mudou a resposta: valida como uma nova (a lógica do formulário publicado hoje), troca respostas, nota,
+    grupo, comentário, temas (menos os temas escolhidos à mão) e a versão do formulário na mesma linha; data, convite,
+    contato, empresa, canal, contexto e referência ficam. Marca `editada_em`/`edicoes`, acerta a última nota do contato
+    e chama o ponto único `ao_editar_resposta` com os valores de antes. Deve rodar dentro de em_conta, com quem chama já
+    conferindo `pode_editar`."""
+    limpas, nota, tipo_nota, grupo = validar_respostas(f.perguntas, brutas)
+    antes = {"nota": r.nota, "grupo": r.grupo, "tipo_nota": r.tipo_nota, "comentario_cliente": r.comentario_cliente,
+             "respostas": copy.deepcopy(r.respostas)}
+    cliente = comentario_do_cliente(f.perguntas, limpas)
+    r.respostas = limpas
+    r.nota, r.tipo_nota, r.grupo = nota, tipo_nota, grupo
+    r.comentario = resumo(f.perguntas, limpas, v)
+    r.comentario_cliente = cliente
+    if not r.temas_manuais:
+        r.temas = temas_da_resposta(cliente, r.o_que_faltou, f.perguntas, limpas)
+    r.formulario_versao = f.versao
+    r.editada_em = func.now()
+    r.edicoes = (r.edicoes or 0) + 1
+    s.flush()
+    if r.contato_id is not None and nota != antes["nota"]:
+        atualizar_ultima_nota(s, r.contato_id)
+    ao_editar_resposta(s, r, antes)
     return r

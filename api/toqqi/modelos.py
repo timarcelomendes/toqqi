@@ -274,6 +274,8 @@ class Formulario(Base):
     versao: Mapped[int] = mapped_column(Integer, server_default="1")
     publicado_em: Mapped[datetime | None] = mapped_column(TZ, server_default=AGORA)
     publicado_por: Mapped[int | None] = mapped_column(BigInteger)
+    # o cliente pode mudar a resposta até 7 dias depois (docs/api-editar-resposta.md)
+    permite_editar: Mapped[bool] = mapped_column(Boolean, server_default="false")
 
 
 class Convite(Base):
@@ -354,6 +356,11 @@ class Resposta(Base):
         ARRAY(Text), Computed("temas_elogio(temas, ia_temas, ia_situacao, grupo)", persisted=True))
     # etapa 5l: a versão publicada do formulário quando a resposta chegou (nula nas antigas e nas importadas)
     formulario_versao: Mapped[int | None] = mapped_column(Integer)
+    # o cliente mudou a resposta (docs/api-editar-resposta.md): a última vez, quantas vezes e, no link público, o
+    # sha256 da chave de edição devolvida ao enviar
+    editada_em: Mapped[datetime | None] = mapped_column(TZ)
+    edicoes: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    edicao_hash: Mapped[str | None] = mapped_column(Text)
 
 
 class Importacao(Base):
@@ -557,6 +564,9 @@ class Acao(Base):
     # melhoria 4: retorno ao cliente ("você falou, nós fizemos"), enviado uma vez depois de concluída
     retorno_texto: Mapped[str | None] = mapped_column(Text)
     retorno_em: Mapped[datetime | None] = mapped_column(TZ)
+    # o cliente mudou a nota da resposta depois do plano criado (docs/api-editar-resposta.md): a nota nova e quando
+    nota_editada: Mapped[int | None] = mapped_column(SmallInteger)
+    nota_editada_em: Mapped[datetime | None] = mapped_column(TZ)
 
 
 class ConfigAcoes(Base):

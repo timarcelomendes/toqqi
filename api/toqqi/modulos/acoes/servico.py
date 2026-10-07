@@ -70,6 +70,8 @@ def acao_json(x, hoje) -> dict:
         "ia_passos": a.ia_passos, "ia_passos_situacao": a.ia_passos_situacao,
         # melhoria 4: retorno ao cliente
         "retorno_em": a.retorno_em, "retorno_texto": a.retorno_texto,
+        # o cliente mudou a nota da resposta depois do plano criado (docs/api-editar-resposta.md)
+        "nota_editada": a.nota_editada, "nota_editada_em": a.nota_editada_em,
     }
 
 

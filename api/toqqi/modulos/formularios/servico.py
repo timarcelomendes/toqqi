@@ -74,6 +74,7 @@ def _json(s: Session | None, f: Formulario, respostas: int, completo: bool = Tru
     d = {
         "id": f.id, "nome": f.nome, "descricao": f.descricao, "tipo_principal": tipo_principal(f.perguntas),
         "tema": f.tema, "ativo": f.ativo, "publico": f.publico, "codigo_publico": f.codigo_publico,
+        "permite_editar": f.permite_editar,
         "padrao_nps": f.padrao_nps, "padrao_csat": f.padrao_csat, "respostas": respostas,
         "perguntas_total": len(perguntas_respondiveis(f.perguntas)), "atualizado_em": f.atualizado_em,
         "tem_rascunho": f.rascunho is not None, "versao": f.versao, "publicado_em": f.publicado_em,
@@ -256,7 +257,7 @@ def alterar(ctx: Contexto, formulario_id: int, dados) -> dict:
                 raise erro_padrao(f"Este é o formulário padrão de {ROTULO_USO[uso]} e não pode ser desativado. "
                                   "Escolha outro formulário como padrão antes.")
             f.ativo = dados.ativo
-        for campo in ("nome", "descricao", "publico"):
+        for campo in ("nome", "descricao", "publico", "permite_editar"):
             if campo in campos and getattr(dados, campo) is not None:
                 setattr(f, campo, getattr(dados, campo))
         if conteudo:
@@ -348,7 +349,7 @@ def duplicar(ctx: Contexto, formulario_id: int) -> dict:
         f = Formulario(conta_id=ctx.conta_id, nome=f"Cópia de {o.nome}"[:120], descricao=o.descricao,
                        perguntas=copy.deepcopy(o.perguntas), tema=copy.deepcopy(o.tema),
                        finais=copy.deepcopy(o.finais or []), rascunho=copy.deepcopy(o.rascunho), ativo=True,
-                       publico=o.publico, publicado_por=ctx.usuario_id,
+                       publico=o.publico, permite_editar=o.permite_editar, publicado_por=ctx.usuario_id,
                        rascunho_por=ctx.usuario_id if o.rascunho is not None else None,
                        rascunho_em=func.now() if o.rascunho is not None else None)
         _inserir(s, f)
@@ -556,7 +557,7 @@ def resposta_json(linha) -> dict:
         "empresa": {"id": r.empresa_id, "nome": empresa_nome} if r.empresa_id else None,
         "canal": r.canal, "nota": r.nota, "tipo_nota": r.tipo_nota, "grupo": r.grupo, "comentario": r.comentario,
         "respostas": r.respostas, "contexto": r.contexto, "referencia": r.referencia, "criada_em": r.criada_em,
-        "data": r.data_resposta, "origem": r.origem,
+        "data": r.data_resposta, "origem": r.origem, "editada_em": r.editada_em, "edicoes": r.edicoes,
     }
 
 

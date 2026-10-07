@@ -190,6 +190,11 @@ export interface TelaFinal {
   indicacao?: ConviteIndicacao | null
   /** Melhoria 5: o pedido de depoimento e o link para avaliar a empresa (só para nota alta, no convite individual). */
   depoimento?: TelaFinalDepoimento | null
+  /**
+   * O cliente pode mudar a resposta até `ate` (formulário com a edição ligada): a tela final mostra "Editar minha
+   * resposta". No link público vem a `chave` que a página guarda para mudar (docs/api-editar-resposta.md).
+   */
+  edicao?: { ate: string; chave?: string } | null
 }
 
 export interface TelaFinalDepoimento {

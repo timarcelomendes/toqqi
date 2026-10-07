@@ -308,16 +308,16 @@ describe('abertura no alto da primeira pergunta', () => {
 // ───────────── ?nota=N ─────────────
 
 describe('?nota=N (a nota tocada no e-mail)', () => {
-  it('começa depois da nota, sem a abertura; "Voltar" leva à primeira pergunta, com a abertura e a nota marcada', async () => {
+  it('abre na primeira pergunta, com a abertura e a nota marcada (desde 07/10/2026; antes começava depois dela)', async () => {
     const w = montar({ notaInicial: 9 })
     await flushPromises()
-    expect(w.text()).toContain('O que mais pesou na sua nota?')
-    expect(w.text()).toContain('Pergunta 2 de 2')
-    expect(w.find('[data-abertura]').exists()).toBe(false)
-    await w.findAll('button').find((b) => b.text() === 'Voltar')!.trigger('click')
-    await flushPromises()
     expect(w.get('[data-abertura] h1').text()).toBe('Olá, Ana!')
+    expect(w.text()).toContain('Pergunta 1 de 2')
     expect((w.get('input[value="9"]').element as HTMLInputElement).checked).toBe(true)
+    expect(w.get('[data-dica-nota]').text()).toContain('Marcamos a nota 9')
+    // mudou a nota: a dica sai
+    await w.get('input[value="7"]').setValue(true)
+    expect(w.find('[data-dica-nota]').exists()).toBe(false)
   })
 
   it('nota fora da faixa é ignorada: começa na primeira pergunta, com a abertura e nada marcado', async () => {

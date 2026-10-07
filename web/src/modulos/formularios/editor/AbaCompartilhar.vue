@@ -22,6 +22,7 @@ const origem = window.location.origin
 const link = computed(() => `${origem}/f/${props.formulario.codigo_publico}`)
 const linkQr = computed(() => `${link.value}?canal=qr`)
 const mudandoPublico = ref(false)
+const mudandoEdicao = ref(false)
 const gerandoCodigo = ref(false)
 const definindo = ref<'nps' | 'csat' | null>(null)
 
@@ -66,6 +67,20 @@ const snippet = computed(() => {
 const contexto = reactive<ValoresLinkContexto>({})
 const canalContexto = ref<'qr' | 'widget' | ''>('')
 const linkContexto = computed(() => montarLinkComContexto(origem, props.formulario.codigo_publico, { ...contexto, canal: canalContexto.value }))
+
+/** O cliente pode mudar a resposta (docs/api-editar-resposta.md): vale na hora, sem publicar. */
+async function mudarEdicao(v: boolean) {
+  mudandoEdicao.value = true
+  try {
+    const f = await formulariosApi.atualizar(props.formulario.id, { permite_editar: v })
+    emit('atualizado', { permite_editar: f?.permite_editar ?? v, atualizado_em: f?.atualizado_em })
+    avisar.sucesso(v ? 'Pronto: quem responder pode mudar a resposta por 7 dias.' : 'Pronto: a resposta enviada não muda mais.')
+  } catch (e) {
+    avisar.erro(mensagemDoErro(e))
+  } finally {
+    mudandoEdicao.value = false
+  }
+}
 
 async function mudarPublico(v: boolean) {
   mudandoPublico.value = true
@@ -145,6 +160,19 @@ async function definirPadrao(uso: 'nps' | 'csat') {
           <Botao variante="fantasma" tamanho="sm" :carregando="gerandoCodigo" @click="novoCodigo"><RefreshCw class="size-4" aria-hidden="true" /> Gerar novo link</Botao>
         </div>
       </template>
+    </section>
+
+    <!-- Depois de responder: o cliente pode mudar a resposta (vale para o convite e para o link público) -->
+    <section class="cartao flex flex-col gap-3 p-5" aria-labelledby="t-edicao" data-secao-edicao>
+      <h2 id="t-edicao" class="font-bold text-texto">Depois de responder</h2>
+      <Interruptor
+        :model-value="!!formulario.permite_editar"
+        rotulo="O cliente pode mudar a resposta"
+        descricao="Até 7 dias depois de responder. No convite (e-mail ou WhatsApp), ele abre o link de novo e vê as respostas preenchidas; no link público, o botão “Editar minha resposta” aparece logo depois de enviar. A resposta muda, sem criar outra."
+        :desabilitado="!podeEditar || mudandoEdicao"
+        data-permite-editar
+        @update:model-value="mudarEdicao"
+      />
     </section>
 
     <template v-if="formulario.publico">

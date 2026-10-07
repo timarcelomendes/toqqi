@@ -29,6 +29,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import timedelta
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from toqqi.core import email, relogio
@@ -39,7 +40,7 @@ from toqqi.modulos.acoes.configuracao import obter
 from toqqi.modulos.envios.configuracao import provedor_ok
 from toqqi.modulos.formularios.servico import ROTULOS_CONTEXTO
 from toqqi.modulos.respostas.convites import CHAVES_CONTEXTO
-from toqqi.modulos.respostas.eventos import GANCHOS
+from toqqi.modulos.respostas.eventos import GANCHOS, GANCHOS_EDICAO
 from toqqi.modulos.respostas.indicadores import ROTULOS_GRUPO, ROTULOS_TIPO
 from toqqi.modulos.respostas.registro import SEPARADOR_COMENTARIOS, escolhas_do_cliente
 
@@ -201,3 +202,24 @@ def _ao_registrar_resposta(s: Session, r: Resposta) -> None:
 
 
 GANCHOS.append(_ao_registrar_resposta)
+
+
+def _ao_editar_resposta(s: Session, r: Resposta, antes: dict) -> None:
+    """O cliente mudou a nota (docs/api-editar-resposta.md): o plano de ação da resposta, se há, fica como está e guarda
+    a nota nova (a tela mostra "o cliente mudou a nota de N para M"; voltando à nota do plano, a marca sai); sem plano,
+    a nota nova pode pedir um, como numa resposta nova (com o alerta)."""
+    if r.nota == antes["nota"]:
+        return
+    acao = s.scalar(select(Acao).where(Acao.resposta_id == r.id).order_by(Acao.id.desc()).limit(1))
+    if acao is None:
+        criar_acao_automatica(s, r)
+        return
+    if r.nota is None or r.nota == acao.nota:
+        acao.nota_editada = acao.nota_editada_em = None
+    else:
+        acao.nota_editada, acao.nota_editada_em = r.nota, func.now()
+    acao.atualizada_em = func.now()
+    s.flush()
+
+
+GANCHOS_EDICAO.append(_ao_editar_resposta)

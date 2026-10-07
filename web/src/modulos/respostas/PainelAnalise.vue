@@ -257,12 +257,16 @@ function aoCriarAcao(a: Acao) {
             </Etiqueta>
             <Etiqueta v-if="detalhe.tipo_nota" tom="neutro">{{ detalhe.tipo_nota === 'csat' ? 'CSAT (1 a 5)' : 'NPS (0 a 10)' }}</Etiqueta>
             <Etiqueta v-if="detalhe.arquivada" tom="neutro">Arquivada</Etiqueta>
+            <Etiqueta v-if="detalhe.edicoes" tom="info" data-editada>Editada pelo cliente</Etiqueta>
           </div>
           <!-- Com data informada (à mão ou importada), a hora não quer dizer nada: só o dia. -->
           <p class="mt-1.5 text-sm text-texto-suave">{{ quandoFoiResposta(detalhe) }} · {{ CANAIS[detalhe.canal] ?? detalhe.canal }}</p>
           <p class="text-xs text-texto-fraco">
             {{ ORIGENS_RESPOSTA[detalhe.origem] ?? detalhe.origem }}<template v-if="detalhe.registrada_por"> ({{ detalhe.registrada_por.nome }})</template>
             <template v-if="detalhe.formulario?.nome"> · {{ detalhe.formulario.nome }}</template>
+          </p>
+          <p v-if="detalhe.edicoes && detalhe.editada_em" class="text-xs text-texto-fraco" data-quando-editada>
+            O cliente mudou a resposta {{ detalhe.edicoes === 1 ? 'uma vez' : `${detalhe.edicoes} vezes` }}, a última em {{ formatarDataHora(detalhe.editada_em) }}.
           </p>
         </div>
       </div>

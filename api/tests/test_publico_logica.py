@@ -95,14 +95,15 @@ def test_final_escolhido_e_final_padrao(client, admin):
     assert r.status_code == 201
     assert r.json() == {"titulo_final": "Valeu, Alfa & Cia!", "texto_final": "", "final_id": promo["id"],
                         "html_final": "<p>Avalie a Alfa &amp; Cia &amp; conte para {{p_nota}} amigos.</p>",
-                        "botao_final": {"texto": "Avaliar no Google", "url": "https://g.page/r/abc/review"}}
+                        "botao_final": {"texto": "Avaliar no Google", "url": "https://g.page/r/abc/review"},
+                        "edicao": None}
     r = responder_link(client, f["codigo_publico"], {"p_nota": 2})
     assert r.json() == {"titulo_final": "Obrigado pela sinceridade", "texto_final": "", "final_id": detr["id"],
-                        "html_final": "", "botao_final": None}
+                        "html_final": "", "botao_final": None, "edicao": None}
     # neutro: nenhum final da lista vale → o padrão do tema
     r = responder_link(client, f["codigo_publico"], {"p_nota": 7})
     assert r.json() == {"titulo_final": "Muito obrigado!", "texto_final": "Até logo, Alfa & Cia.", "final_id": None,
-                        "html_final": None, "botao_final": None}
+                        "html_final": None, "botao_final": None, "edicao": None}
     # a mesma resposta repetida (mesmo IP) responde igual, com o mesmo final
     r1 = responder_link(client, f["codigo_publico"], {"p_nota": 9}, ip="203.0.113.9")
     r2 = responder_link(client, f["codigo_publico"], {"p_nota": 9}, ip="203.0.113.9")
@@ -113,7 +114,8 @@ def test_formulario_sem_finais_como_antes(client, admin):
     f = _form(client, admin["h"], [NPS])
     r = responder_link(client, f["codigo_publico"], {"p_nota": 10})
     assert r.json() == {"titulo_final": "Obrigado!", "final_id": None, "html_final": None, "botao_final": None,
-                        "texto_final": "Sua resposta foi registrada. Ela ajuda a Alfa & Cia a melhorar a cada dia."}
+                        "texto_final": "Sua resposta foi registrada. Ela ajuda a Alfa & Cia a melhorar a cada dia.",
+                        "edicao": None}
 
 
 def test_convite_com_final_versao_e_indicacao(client, admin, dono):

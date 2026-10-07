@@ -37,12 +37,12 @@ from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.segredos import cifrar, decifrar
 from toqqi.modelos import Contato, Conta, Convite, Empresa, Formulario, Resposta, Webhook, WebhookEntrega
 from toqqi.modulos.formularios.servico import resposta_json
-from toqqi.modulos.respostas.eventos import GANCHOS
+from toqqi.modulos.respostas.eventos import GANCHOS, GANCHOS_EDICAO
 
 log = logging.getLogger("toqqi.webhooks")
 
 EVENTOS = ("resposta.criada", "contato.descadastrado", "indicacao.criada", "indicacao.atualizada", "empresa.perdida",
-           "empresa.reativada")
+           "empresa.reativada", "resposta.atualizada")
 MAX_POR_CONTA = 5
 ESPERAS = (timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=30), timedelta(hours=2), timedelta(hours=6))
 MAX_FALHAS_SEGUIDAS = 10
@@ -138,25 +138,39 @@ def enfileirar(s: Session, evento: str, dados: dict) -> None:
         lista.extend(novas)
 
 
-def _ao_registrar_resposta(s: Session, r: Resposta) -> None:
-    if r.origem == "importacao":
-        return  # histórico importado não vira evento
-    if not s.scalar(select(func.count()).select_from(Webhook)
-                    .where(Webhook.ativo.is_(True), Webhook.eventos.any("resposta.criada"))):
-        return
+def _dados_resposta(s: Session, r: Resposta) -> dict:
     linha = s.execute(
         select(Resposta, Formulario.nome, Contato.nome, Contato.email, Empresa.nome)
         .join(Formulario, Formulario.id == Resposta.formulario_id)
         .outerjoin(Contato, Contato.id == Resposta.contato_id)
         .outerjoin(Empresa, Empresa.id == Resposta.empresa_id)
-        .where(Resposta.id == r.id)).one()
+        .where(Resposta.id == r.id).execution_options(populate_existing=True)).one()
     convite = s.get(Convite, r.convite_id) if r.convite_id else None
-    enfileirar(s, "resposta.criada", {
-        **resposta_json(linha),
-        "convite": {"evento": convite.evento, "referencia": convite.referencia} if convite else None})
+    return {**resposta_json(linha),
+            "convite": {"evento": convite.evento, "referencia": convite.referencia} if convite else None}
+
+
+def _algum_webhook(s: Session, evento: str) -> bool:
+    return bool(s.scalar(select(func.count()).select_from(Webhook)
+                         .where(Webhook.ativo.is_(True), Webhook.eventos.any(evento))))
+
+
+def _ao_registrar_resposta(s: Session, r: Resposta) -> None:
+    if r.origem == "importacao":
+        return  # histórico importado não vira evento
+    if _algum_webhook(s, "resposta.criada"):
+        enfileirar(s, "resposta.criada", _dados_resposta(s, r))
+
+
+def _ao_editar_resposta(s: Session, r: Resposta, antes: dict) -> None:
+    """O cliente mudou a resposta (docs/api-editar-resposta.md): `resposta.atualizada` com a resposta como ficou (o
+    mesmo formato de `resposta.criada`, com `editada_em` e `edicoes`) e a nota de antes (`nota_anterior`)."""
+    if _algum_webhook(s, "resposta.atualizada"):
+        enfileirar(s, "resposta.atualizada", {**_dados_resposta(s, r), "nota_anterior": antes["nota"]})
 
 
 GANCHOS.append(_ao_registrar_resposta)
+GANCHOS_EDICAO.append(_ao_editar_resposta)
 
 
 ENVELOPE = ("id", "evento", "criado_em", "conta")  # o que fica no corpo de uma entrega esquecida (sem os dados)

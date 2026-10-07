@@ -1498,6 +1498,45 @@
           ]
         },
         {
+          "id": "cliente-muda-a-resposta",
+          "titulo": "Deixar o cliente mudar a resposta",
+          "somente_admin": false,
+          "atalho": "formularios",
+          "palavras": [
+            "editar resposta",
+            "mudar a resposta",
+            "corrigir a nota",
+            "cliente errou a nota",
+            "responder de novo",
+            "já respondi",
+            "alterar resposta",
+            "trocar a nota",
+            "você já respondeu"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Na aba Compartilhar, ligue “O cliente pode mudar a resposta”. Vale até 7 dias depois de responder e muda a mesma resposta, sem criar outra."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Convite (e-mail ou WhatsApp): quem já respondeu abre o link de novo (ou clica outra nota no e-mail) e vê as respostas preenchidas, com o aviso de até quando dá para mudar.",
+                "Link público: o botão “Editar minha resposta” aparece na tela final, logo depois de enviar. Abrir o link de novo começa outra resposta.",
+                "Desligada (o padrão): quem abre o convite de novo vê “Você já respondeu esta pesquisa”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Respostas, a resposta mudada aparece como “Editada pelo cliente”. Se a nota mudar e já houver plano de ação, ele fica aberto e mostra a nota nova para a equipe decidir; se a nota nova pedir um plano, ele é criado como numa resposta nova, com o alerta."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Ao clicar numa nota do e-mail, a pesquisa abre na primeira pergunta com essa nota já marcada: o cliente confere ou muda e segue."
+            }
+          ]
+        },
+        {
           "id": "padrao-ativar-arquivar-e-excluir",
           "titulo": "Formulário padrão, ativar, arquivar e excluir",
           "somente_admin": false,
@@ -3481,7 +3520,7 @@
               "itens": [
                 "Chave de integração: a “senha” que o seu sistema usa para pedir uma pesquisa ao Toqqi.",
                 "Como conectar: o passo a passo e os exemplos prontos para o técnico.",
-                "Avisos (webhooks): o Toqqi avisa o seu sistema quando um cliente responde ou sai da lista e quando chega ou muda uma indicação.",
+                "Avisos (webhooks): o Toqqi avisa o seu sistema quando um cliente responde, muda a resposta ou sai da lista e quando chega ou muda uma indicação.",
                 "WhatsApp automático: as pesquisas saem do número da sua empresa, pela plataforma oficial da Meta."
               ]
             },
@@ -3728,12 +3767,13 @@
             "testar aviso",
             "falhas",
             "desligado por falhas",
-            "evento"
+            "evento",
+            "resposta alterada"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "O Toqqi avisa o seu sistema (ou o Zapier, o Make, o n8n) assim que um cliente responde ou sai da lista, quando chega uma indicação e quando a situação de uma indicação muda. Serve, por exemplo, para abrir um chamado quando chega uma nota baixa. Cada conta pode ter até 5 avisos."
+              "texto": "O Toqqi avisa o seu sistema (ou o Zapier, o Make, o n8n) assim que um cliente responde, muda a resposta ou sai da lista, quando chega uma indicação e quando a situação de uma indicação muda. Serve, por exemplo, para abrir um chamado quando chega uma nota baixa. Cada conta pode ter até 5 avisos."
             },
             {
               "tipo": "passos",

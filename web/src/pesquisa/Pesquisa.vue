@@ -51,8 +51,15 @@ const props = withDefaults(
   defineProps<{
     formulario: FormularioPublico
     variaveis?: Partial<Variaveis>
-    /** ?nota=N: já marca a nota principal e começa depois dela (ou na 1ª obrigatória antes dela). */
+    /**
+     * ?nota=N (a nota clicada no e-mail ou no WhatsApp): já marca a nota principal, e a pesquisa começa no primeiro passo
+     * (a pessoa vê a nota escolhida, confere ou muda e segue). Até 06/10/2026 ela começava depois da nota principal.
+     */
     notaInicial?: number | null
+    /** O cliente muda a resposta (docs/api-editar-resposta.md): as respostas de antes, já preenchidas. */
+    respostasIniciais?: Respostas | null
+    /** Faixa no alto do primeiro passo (ex.: "Você respondeu em 06/10. Pode mudar suas respostas até 13/10."). */
+    aviso?: string | null
     /** Envia as respostas. Devolve a tela final, ou null se quem chamou assumiu (ex.: "já respondido"). Sem ela: pré-visualização. */
     enviar?: (respostas: Respostas) => Promise<TelaFinal | null>
     /** Dentro de iframe (embed=1): sem margens de fora. */
@@ -80,6 +87,8 @@ const props = withDefaults(
   {
     variaveis: () => ({}),
     notaInicial: null,
+    respostasIniciais: null,
+    aviso: null,
     compacto: false,
     previa: false,
     indicar: undefined,
@@ -130,6 +139,11 @@ const depoimento = ref<TelaFinalDepoimento | null>(null)
 let pedidoExemplo = 0
 const raiz = ref<HTMLElement | null>(null)
 const anuncio = ref('')
+/** A nota que veio no link (?nota=), enquanto ela continua marcada: a dica embaixo da pergunta principal. */
+const notaDoLink = ref<number | null>(null)
+/** Faixa do "Editar minha resposta" (a da página, `aviso`, vale até a pessoa enviar). */
+const avisoLocal = ref<string | null>(null)
+const avisoAtual = computed(() => avisoLocal.value ?? props.aviso ?? null)
 let temporizador: ReturnType<typeof setTimeout> | null = null
 
 /** O caminho com as respostas de agora (recalculado a cada resposta). */
@@ -226,26 +240,63 @@ function iniciar() {
   pedidoExemplo++
   etapa.value = 'perguntas'
   anuncio.value = ''
-  primeiroPasso()
+  notaDoLink.value = null
+  avisoLocal.value = null
+  // O cliente muda a resposta: as de antes, já preenchidas (só as das perguntas que ainda existem).
+  for (const [id, valor] of Object.entries(props.respostasIniciais ?? {})) {
+    const q = porId.value.get(id)
+    if (q && respondivel(q.tipo) && valor !== null && valor !== undefined) respostas[id] = valor as ValorResposta
+  }
   const p = principal.value
   const n = props.notaInicial
   if (p && typeof n === 'number') {
     const { min, max } = faixa(p)
     if (Number.isInteger(n) && n >= min && n <= max) {
       respostas[p.id] = n
-      // ?nota=: começa no item do caminho depois da nota; havendo obrigatória antes dela, começa pela primeira (com a
-      // nota já marcada), para ela não ficar sem resposta.
-      const ids = caminhoIds.value
-      const ip = ids.indexOf(p.id)
-      if (ip >= 0) {
-        const obrigatoria = ids.slice(0, ip).find((id) => {
-          const q = porId.value.get(id)
-          return !!q && respondivel(q.tipo) && q.obrigatoria
-        })
-        irPara(obrigatoria ?? ids[ip + 1] ?? ids[ip]!)
-      }
+      notaDoLink.value = n
     }
   }
+  // Sempre do primeiro passo do caminho (com a nota do link já marcada, a pessoa vê o que escolheu e segue).
+  primeiroPasso()
+}
+
+/** A dica embaixo da pergunta principal enquanto a nota do link continua marcada. */
+function mostrarDicaNota(p: Pergunta): boolean {
+  return notaDoLink.value !== null && principal.value?.id === p.id && respostas[p.id] === notaDoLink.value
+}
+
+/** "06/10" no fuso de São Paulo. */
+function dia(iso: string | null | undefined): string {
+  const d = iso ? new Date(iso) : null
+  return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' }) : ''
+}
+
+/** Até quando o cliente pode mudar a resposta enviada ("" quando não pode). */
+const editavelAte = computed(() => {
+  const ate = telaFinal.value?.edicao?.ate
+  if (props.previa || !ate || !props.enviar) return ''
+  const fim = new Date(ate)
+  return Number.isNaN(fim.getTime()) || fim.getTime() <= Date.now() ? '' : dia(ate)
+})
+
+/** "Editar minha resposta": volta às perguntas com o que acabou de enviar; o próximo envio troca a resposta. */
+function editarDeNovo() {
+  const anteriores = { ...enviadas.value }
+  const ate = editavelAte.value // antes de sair da tela final (o prazo vem dela)
+  cancelarAvanco()
+  limparObjeto(respostas)
+  limparObjeto(erros)
+  for (const [id, valor] of Object.entries(anteriores)) if (porId.value.has(id)) respostas[id] = valor
+  erroEnvio.value = null
+  telaFinal.value = null
+  indicacao.value = null
+  depoimento.value = null
+  notaDoLink.value = null
+  etapa.value = 'perguntas'
+  avisoLocal.value = ate ? `Mude o que quiser e envie de novo. Dá para mudar até ${ate}.` : 'Mude o que quiser e envie de novo.'
+  primeiroPasso()
+  anunciarPasso()
+  focarTopo()
 }
 
 /** Prévia: vai para o item (ou final) em foco; fora do caminho, ele aparece mesmo assim. */
@@ -423,12 +474,14 @@ async function enviarTudo() {
     enviadas.value = corpo
     indicacao.value = lerConviteIndicacao(r?.indicacao)
     depoimento.value = lerDepoimento(r?.depoimento)
+    avisoLocal.value = null
     mostrarFinal({
       titulo_final: r?.titulo_final || tema.value.titulo_final,
       texto_final: r?.texto_final ?? tema.value.texto_final,
       final_id: r?.final_id ?? null,
       html_final: r?.html_final ?? null,
       botao_final: r?.botao_final ?? null,
+      edicao: r?.edicao ?? null,
     })
   } catch (err) {
     const erro = (err ?? {}) as ErroEnvio
@@ -591,6 +644,17 @@ defineExpose({ recomecar: iniciar, irParaPergunta })
           </a>
           <CartaoDepoimento v-if="depoimento" class="mt-3" :dados="depoimento" :autorizar="autorizarDepoimento" />
           <CartaoIndicacao v-if="indicacao" class="mt-3" :convite="indicacao" :empresa="variaveis.empresa ?? ''" :enviar="indicar" />
+          <div v-if="editavelAte" class="mt-4 flex flex-col items-center gap-1" data-editar-resposta>
+            <button
+              type="button"
+              class="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold text-slate-700 ring-1 ring-slate-300 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+              @click="editarDeNovo"
+            >
+              <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+              Editar minha resposta
+            </button>
+            <p class="text-xs text-slate-500">Dá para mudar até {{ editavelAte }}.</p>
+          </div>
           <button v-if="previa" type="button" class="mt-4 text-sm font-semibold text-slate-600 underline underline-offset-4 hover:text-slate-900" @click="reiniciar">
             Ver de novo
           </button>
@@ -598,6 +662,14 @@ defineExpose({ recomecar: iniciar, irParaPergunta })
 
         <!-- Perguntas -->
         <form v-else novalidate @submit.prevent="avancar">
+          <!-- O cliente muda a resposta: a faixa no alto do primeiro passo (docs/api-editar-resposta.md) -->
+          <p
+            v-if="avisoAtual && indice === 0"
+            class="mb-5 rounded-xl bg-[var(--cor-suave)] px-4 py-3 text-sm font-medium text-slate-700"
+            data-aviso-edicao
+          >
+            {{ avisoAtual }}
+          </p>
           <!-- Abertura: no alto da primeira pergunta, na mesma tela (sem a antiga tela "Começar") -->
           <div v-if="mostrarAbertura" class="mb-6 border-b border-slate-100 pb-6" data-abertura>
             <h1 v-if="tituloAbertura" tabindex="-1" data-titulo-tela class="text-2xl font-extrabold leading-tight text-slate-900 focus:outline-none">
@@ -633,6 +705,9 @@ defineExpose({ recomecar: iniciar, irParaPergunta })
                   @update:model-value="(valor) => atualizar(p, valor)"
                   @escolheu="aoEscolher(p)"
                 />
+                <p v-if="mostrarDicaNota(p)" class="-mt-5 text-sm text-slate-600" data-dica-nota>
+                  Marcamos a nota {{ notaDoLink }}, a que você escolheu. Se quiser, mude antes de continuar.
+                </p>
               </template>
             </div>
 

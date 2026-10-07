@@ -19,6 +19,17 @@ const rota = (() => {
 const estado = ref<Estado>('carregando')
 const mensagemErro = ref('')
 const dados = ref<PesquisaPublica | null>(null)
+// O cliente muda a resposta (docs/api-editar-resposta.md): no convite já respondido, as respostas de antes e a faixa;
+// no link público, a chave devolvida pelo envio (só nesta página: reabrir o link começa outra resposta).
+const respostasIniciais = ref<Respostas | null>(null)
+const aviso = ref<string | null>(null)
+const chaveEdicao = ref<string | null>(null)
+
+/** "06/10" no fuso de São Paulo. */
+function dia(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+}
 
 if (params.embed) document.documentElement.classList.add('embed')
 
@@ -34,7 +45,14 @@ async function carregar() {
     const r = rota.tipo === 'r' ? await publicoApi.convite(rota.chave) : await publicoApi.formulario(rota.chave)
     dados.value = r
     document.title = r.formulario?.nome || 'Pesquisa'
-    estado.value = r.ja_respondido ? 'ja_respondido' : 'pronto'
+    if (r.ja_respondido && r.edicao) {
+      // já respondeu e ainda pode mudar: a pesquisa abre preenchida (a nota clicada no e-mail, se veio, vale por cima)
+      respostasIniciais.value = r.edicao.respostas ?? null
+      aviso.value = `Você respondeu em ${dia(r.edicao.respondida_em)}. Pode mudar suas respostas até ${dia(r.edicao.ate)}.`
+      estado.value = 'pronto'
+    } else {
+      estado.value = r.ja_respondido ? 'ja_respondido' : 'pronto'
+    }
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.codigo === 'link_invalido')) estado.value = 'invalido'
     else {
@@ -52,12 +70,15 @@ async function enviar(respostas: Respostas): Promise<TelaFinal | null> {
     const r =
       rota!.tipo === 'r'
         ? await publicoApi.responderConvite(rota!.chave, respostas)
-        : await publicoApi.responderFormulario(rota!.chave, {
-            respostas,
-            canal: params.canal,
-            ...(params.referencia ? { referencia: params.referencia } : {}),
-            ...(Object.keys(params.contexto).length ? { contexto: params.contexto } : {}),
-          })
+        : chaveEdicao.value
+          ? await publicoApi.editarFormulario(rota!.chave, { chave: chaveEdicao.value, respostas })
+          : await publicoApi.responderFormulario(rota!.chave, {
+              respostas,
+              canal: params.canal,
+              ...(params.referencia ? { referencia: params.referencia } : {}),
+              ...(Object.keys(params.contexto).length ? { contexto: params.contexto } : {}),
+            })
+    if (r && typeof r === 'object' && r.edicao?.chave) chaveEdicao.value = r.edicao.chave
     // 200 silencioso (resposta repetida) pode vir sem corpo: usa os textos do tema.
     return r && typeof r === 'object' ? r : ({ titulo_final: '', texto_final: '' } as TelaFinal)
   } catch (e) {
@@ -113,6 +134,8 @@ onMounted(carregar)
       :formulario="dados.formulario"
       :variaveis="dados.variaveis"
       :nota-inicial="params.nota"
+      :respostas-iniciais="respostasIniciais"
+      :aviso="aviso"
       :compacto="params.embed"
       :enviar="enviar"
       :indicar="rota?.tipo === 'r' ? indicar : undefined"
