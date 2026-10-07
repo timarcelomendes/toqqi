@@ -13,6 +13,7 @@ import BotaoTema from '@/components/app/BotaoTema.vue'
 import ItemMenu from '@/components/app/ItemMenu.vue'
 import MenuSuspenso from '@/components/ui/MenuSuspenso.vue'
 import AssistenteFlutuante from '@/modulos/assistente/AssistenteFlutuante.vue'
+import ModalFeedback from '@/modulos/feedback/ModalFeedback.vue'
 import BarraLateral from './BarraLateral.vue'
 
 const sessao = useSessaoStore()
@@ -170,5 +171,8 @@ async function sair() {
 
     <!-- Etapa 5b: botão do assistente (canto inferior direito) e o painel da conversa -->
     <AssistenteFlutuante />
+
+    <!-- Feedback: a janela "Enviar feedback" (aberta pelo menu e pelas telas de feedback) -->
+    <ModalFeedback />
   </div>
 </template>

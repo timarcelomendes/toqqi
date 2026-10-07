@@ -38,6 +38,8 @@ from toqqi.modulos.empresas.rotas import router_csv as empresas_csv
 from toqqi.modulos.envios.rotas import router as envios
 from toqqi.modulos.envios.rotas import router_interno as interno
 from toqqi.modulos.equipe.rotas import router as equipe
+from toqqi.modulos.feedback.rotas import router as feedback
+from toqqi.modulos.feedback.rotas import router_plataforma as feedback_plataforma
 from toqqi.modulos.formularios.rotas import router as formularios
 from toqqi.modulos.imagens.rotas import router as imagens
 from toqqi.modulos.importacao.rotas import router as importacao
@@ -74,6 +76,11 @@ LIMITES_DE_CORPO = [
     ("PUT", rf"{PREFIXO}/formularios/[^/]+/rascunho", 1024 * 1024),
     ("POST", rf"{PREFIXO}/importacao/analisar", 5 * 1024 * 1024 + _FOLGA_MULTIPART),
     ("POST", rf"{PREFIXO}/publico/erros", 4 * 1024),  # etapa 5h: erros do site (tipo, mensagem, local, pilha, versão)
+    # feedback: até 3 imagens de 1 MB, o texto (até 5.000 caracteres) e o contexto da tela (diagnóstico até 64 KB)
+    ("POST", rf"{PREFIXO}/feedback", 3 * 1024 * 1024 + 128 * 1024),
+    ("POST", rf"{PREFIXO}/feedback/[^/]+/mensagens", 3 * 1024 * 1024 + 64 * 1024),
+    ("POST", rf"{PREFIXO}/plataforma/feedback/[^/]+/mensagens", 64 * 1024),
+    ("PATCH", rf"{PREFIXO}/plataforma/feedback/[^/]+", 64 * 1024),
 ]
 log = logging.getLogger("toqqi")
 logs.configurar()  # mensagens da aplicação (inclusive INFO) aparecem no log do Render
@@ -132,7 +139,8 @@ def create_app() -> FastAPI:
     # o mais externo (adicionado por último): todos os de dentro já recebem o IP do cliente em scope["client"]
     app.add_middleware(IpDoCliente, cabecalho=config().IP_CLIENTE_CABECALHO)
 
-    for r in (acesso, equipe, conta, auditoria, parametros, plataforma, cadastros, empresas_csv, empresas,
+    for r in (acesso, equipe, conta, auditoria, parametros, feedback_plataforma, plataforma, feedback, cadastros,
+              empresas_csv, empresas,
               contatos_csv, contatos, importacao,
               formularios, imagens, conectores_publico, publico, envios, interno, conectores, integracoes, whatsapp,
               integracao, whatsapp_publico,

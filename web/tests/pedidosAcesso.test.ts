@@ -53,12 +53,15 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
+// Feedback: a barra também lê GET /feedback/novidades a cada troca de página; aqui contam só os pedidos de acesso.
+const pendentes = (api: { chamadas: { caminho: string; metodo: string }[] }) => api.chamadas.filter((c) => c.caminho === '/equipe/pendentes')
+
 describe('número de pedidos de acesso ao lado de Equipe', () => {
   it('mostra o número (e o texto para leitores de tela); sem pedidos, nada', async () => {
     entrar(['equipe.gerenciar'])
     const api = apiFalsa({ 'GET /equipe/pendentes': () => ({ total: 2 }) })
     const { w } = await montarMenu()
-    expect(api.chamadas.map((c) => `${c.metodo} ${c.caminho}`)).toEqual(['GET /equipe/pendentes'])
+    expect(pendentes(api).map((c) => `${c.metodo} ${c.caminho}`)).toEqual(['GET /equipe/pendentes'])
     const equipe = linkEquipe(w)
     expect(equipe.get('[data-contador-menu]').text()).toBe('2')
     expect(equipe.text()).toContain('2 pedidos de acesso')
@@ -80,17 +83,17 @@ describe('número de pedidos de acesso ao lado de Equipe', () => {
     total = 3
     await router.push('/envios')
     await flushPromises()
-    expect(api.chamadas).toHaveLength(1) // dentro dos 60 s
+    expect(pendentes(api)).toHaveLength(1) // dentro dos 60 s
     agora.mockReturnValue(1_000_000 + 61_000)
     await router.push('/contatos')
     await flushPromises()
-    expect(api.chamadas).toHaveLength(2)
+    expect(pendentes(api)).toHaveLength(2)
     expect(linkEquipe(w).get('[data-contador-menu]').text()).toBe('3')
     falhar = true
     agora.mockReturnValue(1_000_000 + 130_000)
     await router.push('/inicio')
     await flushPromises()
-    expect(api.chamadas).toHaveLength(3)
+    expect(pendentes(api)).toHaveLength(3)
     expect(linkEquipe(w).get('[data-contador-menu]').text()).toBe('3')
   })
 
@@ -108,7 +111,7 @@ describe('número de pedidos de acesso ao lado de Equipe', () => {
     entrar(['respostas.ver'])
     const api = apiFalsa({ 'GET /equipe/pendentes': () => ({ total: 5 }) })
     const { w } = await montarMenu()
-    expect(api.chamadas).toHaveLength(0)
+    expect(pendentes(api)).toHaveLength(0)
     expect(w.find('[data-contador-menu]').exists()).toBe(false)
   })
 

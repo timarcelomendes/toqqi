@@ -619,7 +619,7 @@ describe('Plataforma: abas e acesso', () => {
     const api = apiParametros({ 'GET /plataforma/contas': () => [CONTA] })
     await abrir('/plataforma/contas')
     const abas = $$('[role="tab"]')
-    expect(abas.map((a) => t(a.textContent))).toEqual(['Visão geral', 'Contas', 'Parâmetros', 'Erros'])
+    expect(abas.map((a) => t(a.textContent))).toEqual(['Visão geral', 'Contas', 'Parâmetros', 'Erros', 'Feedback'])
     expect(abas[1]!.getAttribute('aria-selected')).toBe('true')
     expect(chamadasDe(api, 'GET', '/plataforma/parametros')).toHaveLength(0)
     await clicar(abas[2]!)

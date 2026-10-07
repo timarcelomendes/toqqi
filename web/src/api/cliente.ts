@@ -1,3 +1,4 @@
+import { registrarPedidoQueFalhou } from '@/utils/diagnostico'
 import { ApiError, erroDeConexao, lerErroApi } from './erros'
 
 export const API_URL: string = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').replace(/\/+$/, '')
@@ -77,12 +78,18 @@ export async function requisitar<T>(caminho: string, opcoes: OpcoesRequisicao = 
     })
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') throw e
+    registrarPedidoQueFalhou({ metodo, caminho, status: 0, codigo: 'sem_conexao' })
     throw erroDeConexao()
   }
 
   const dados = await lerCorpo(resposta)
   if (resposta.ok) return dados as T
-  throw tratarErro(resposta.status, dados, !!token, semTratamentoGlobal)
+  const erro = tratarErro(resposta.status, dados, !!token, semTratamentoGlobal)
+  // Diagnóstico do feedback de erro (utils/diagnostico): o pedido que falhou, com o código e o request id da API.
+  if (resposta.status !== 401) {
+    registrarPedidoQueFalhou({ metodo, caminho, status: resposta.status, codigo: erro.codigo, requestId: resposta.headers?.get?.('X-Request-ID') })
+  }
+  throw erro
 }
 
 function tratarErro(status: number, dados: unknown, comToken: boolean, semTratamentoGlobal: boolean): ApiError {
@@ -132,6 +139,23 @@ export async function baixarArquivo(
   const blob = await resposta.blob()
   const nome = nomeDoArquivo(resposta.headers.get('Content-Disposition'), nomePadrao)
   salvarBlob(blob, nome)
+}
+
+/**
+ * Busca um arquivo da API como blob, com o token no cabeçalho (ex.: as imagens privadas do feedback, que não têm URL
+ * pública). Erros viram ApiError, sem os tratamentos globais (a tela mostra a imagem que não carregou).
+ */
+export async function obterBlob(caminho: string, sinal?: AbortSignal): Promise<Blob> {
+  const token = ganchos.obterToken()
+  let resposta: Response
+  try {
+    resposta = await fetch(montarUrl(caminho), { headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: sinal })
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') throw e
+    throw erroDeConexao()
+  }
+  if (!resposta.ok) throw tratarErro(resposta.status, await lerCorpo(resposta), !!token, true)
+  return resposta.blob()
 }
 
 /** Dispara o download de um blob já pronto. */

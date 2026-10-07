@@ -15,7 +15,8 @@ lotes ({emails_apagados}). Etapa 5f: também os registros de acesso com mais de 
 `core.acessos`) e, a partir das 9h, uma vez por dia, a exclusão automática das contas encerradas ({encerradas}: o
 resumo da rodada, ou null quando ela pulou; `assinatura.exclusao`, com o parâmetro `teste.exclusao_automatica`
 (etapa 5g, Plataforma › Parâmetros; padrão: `EXCLUSAO_AUTOMATICA`) = ligada para agir; simular só conta). Etapa 5h:
-também os erros com a última ocorrência há mais de 30 dias ({erros_apagados}, `core.erros`).
+também os erros com a última ocorrência há mais de 30 dias ({erros_apagados}, `core.erros`). Feedback: as imagens dos
+feedbacks concluídos ou encerrados sem atividade há mais de 180 dias ({feedback_imagens_apagadas}).
 
 Etapa 5h (aviso de erros):
 - Cada tarefa roda no seu try/except: a exceção de uma vai para o log e para Plataforma › Erros (origem `tarefa`,
@@ -38,6 +39,7 @@ from toqqi.modulos.assinatura import conferencia as assinaturas
 from toqqi.modulos.assinatura import exclusao
 from toqqi.modulos.auditoria import emails as emails_enviados
 from toqqi.modulos.envios import automacao
+from toqqi.modulos.feedback import servico as feedback
 from toqqi.modulos.ia import servico as ia
 from toqqi.modulos.conectores import servico as conectores
 from toqqi.modulos.integracoes import webhooks
@@ -57,10 +59,11 @@ def _ia() -> dict:
 
 def limpeza() -> dict:
     """Tarefa `limpeza`: apaga o que passou do prazo de guarda (e-mails enviados com mais de 90 dias, registros de
-    acesso com mais de 184, erros sem ocorrência há mais de 30) e roda a exclusão automática das contas encerradas (uma
-    vez por dia, a partir das 9h)."""
+    acesso com mais de 184, erros sem ocorrência há mais de 30, imagens dos feedbacks concluídos ou encerrados há mais
+    de 180) e roda a exclusão automática das contas encerradas (uma vez por dia, a partir das 9h)."""
     return {"emails_apagados": emails_enviados.limpar(), "acessos_apagados": acessos.limpar(),
-            "encerradas": exclusao.executar(), "erros_apagados": erros.limpar_antigos()}
+            "encerradas": exclusao.executar(), "erros_apagados": erros.limpar_antigos(),
+            "feedback_imagens_apagadas": feedback.limpar_imagens_antigas()}
 
 
 def _passos() -> list[tuple[str, Callable[[], object]]]:

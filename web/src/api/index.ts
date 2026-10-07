@@ -22,7 +22,7 @@ import type { ErroPlataforma, OrigemErro, SituacaoErros, VisaoPlataforma } from 
 
 export * from './tipos'
 export { ApiError, mensagemDoErro } from './erros'
-export { API_URL, baixarArquivo, configurarCliente, salvarBlob } from './cliente'
+export { API_URL, baixarArquivo, configurarCliente, obterBlob, salvarBlob } from './cliente'
 export * from './etapa2'
 export * from './etapa3'
 export * from './etapa3b'
@@ -36,6 +36,7 @@ export * from './etapa5e'
 export * from './etapa5f'
 export * from './etapa5g'
 export * from './empresa'
+export * from './feedback'
 
 const publico = { autenticar: false } as const
 

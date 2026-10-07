@@ -749,6 +749,7 @@
                 "Início, Contatos, Envios, Formulários, Respostas, Planos de ação, Crescimento e Relatórios: o dia a dia.",
                 "Administração: Equipe, Configurações, Integrações, Assinatura e Auditoria. Cada item só aparece para quem tem a permissão.",
                 "Ajuda: no rodapé da barra, acima de “Recolher menu”. Ela abre nas Jornadas: onde fica, como fazer e o resultado de cada funcionalidade. Use o campo “Buscar na ajuda” para achar um assunto.",
+                "Feedback: logo abaixo de Ajuda. Para contar à equipe Toqqi um erro, uma ideia, uma melhoria ou um elogio, e acompanhar as respostas.",
                 "Menu da sua conta: no topo da tela, com “Minha conta” e “Sair”.",
                 "ToqqiAI: botão no canto inferior direito, para tirar dúvidas de uso e perguntar sobre os resultados."
               ]
@@ -5019,7 +5020,7 @@
     {
       "id": "minha-conta",
       "titulo": "Minha conta",
-      "resumo": "Seus dados, quem administra a conta, sua senha, os e-mails que você recebe e os aparelhos onde você está conectado.",
+      "resumo": "Seus dados, quem administra a conta, sua senha, os e-mails que você recebe, os aparelhos onde você está conectado e o feedback para a equipe Toqqi.",
       "secoes": [
         {
           "id": "abrir-minha-conta-e-editar-seus-dados",
@@ -5210,6 +5211,51 @@
             {
               "tipo": "paragrafo",
               "texto": "Quanto tempo você fica conectado depende da configuração da empresa (Configurações › Segurança, de 30 minutos a 24 horas). Quem marca “Lembrar de mim neste aparelho” ao entrar fica conectado por 30 dias."
+            }
+          ]
+        },
+        {
+          "id": "enviar-feedback-a-equipe-toqqi",
+          "titulo": "Enviar feedback à equipe Toqqi",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "feedback",
+            "relatar um erro",
+            "reportar erro",
+            "bug",
+            "sugestão",
+            "ideia",
+            "melhoria",
+            "elogio",
+            "falar com o suporte",
+            "suporte do toqqi",
+            "problema no sistema",
+            "print da tela",
+            "seus feedbacks"
+          ],
+          "blocos": [
+            {
+              "tipo": "passos",
+              "itens": [
+                "No rodapé do menu, embaixo de Ajuda, clique em “Feedback”.",
+                "Escolha o tipo: “Algo deu errado”, “Tenho uma ideia”, “Dá para melhorar” ou “Gostei!”.",
+                "Conte o que aconteceu ou o que você pensou. No erro, diga se ele impede o seu trabalho.",
+                "Se ajudar, anexe até 3 imagens: cole um print com Ctrl+V (⌘V no Mac), arraste ou escolha o arquivo.",
+                "Clique em “Enviar”."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "O feedback leva junto a tela em que você estava. No erro, “Enviar detalhes técnicos” também manda o navegador, o tamanho da tela, a versão do Toqqi e os últimos erros da página, sem nada do que você digitou: clique em “Ver o que vai junto” para conferir, ou desmarque."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "A resposta da equipe chega por e-mail e fica em “Seus feedbacks”, com a situação: Recebido, Em análise, Planejado, Concluído ou Encerrado. Quando há resposta nova, aparece um número ao lado de “Feedback” no menu. Para mandar mais detalhes, abra a conversa e escreva."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Só você e a equipe Toqqi veem o que você mandou. No elogio, dá para autorizar a equipe a usar o texto no site do Toqqi, com o seu nome e o da empresa, e retirar a autorização depois, na conversa. As imagens são apagadas 180 dias depois de o feedback ser concluído ou encerrado."
             }
           ]
         }

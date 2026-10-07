@@ -37,9 +37,9 @@ beforeEach(() => vi.useFakeTimers({ now: AGORA, toFake: ['Date'] }))
 afterEach(() => vi.useRealTimers())
 
 describe('abas da Plataforma', () => {
-  it('quatro, nesta ordem, cada uma com o seu endereço', () => {
-    expect(ABAS_PLATAFORMA.map((a) => a.rotulo)).toEqual(['Visão geral', 'Contas', 'Parâmetros', 'Erros'])
-    expect(ABAS_PLATAFORMA.map((a) => caminhoDaAba(a.valor))).toEqual(['/plataforma', '/plataforma/contas', '/plataforma/parametros', '/plataforma/erros'])
+  it('cinco, nesta ordem, cada uma com o seu endereço (Feedback desde docs/api-feedback.md)', () => {
+    expect(ABAS_PLATAFORMA.map((a) => a.rotulo)).toEqual(['Visão geral', 'Contas', 'Parâmetros', 'Erros', 'Feedback'])
+    expect(ABAS_PLATAFORMA.map((a) => caminhoDaAba(a.valor))).toEqual(['/plataforma', '/plataforma/contas', '/plataforma/parametros', '/plataforma/erros', '/plataforma/feedback'])
   })
 
   it('a aba do endereço: o parâmetro da rota, o último pedaço do caminho ou a Visão geral', () => {

@@ -326,7 +326,7 @@ def test_rota_interna_de_tarefas(client, monkeypatch):
                         "erros": r.json()["erros"],  # 5h: e-mail diário de erros, depende da hora
                         "limpeza": {"emails_apagados": 0, "acessos_apagados": 0,  # etapa 5e: por último
                                     "encerradas": r.json()["limpeza"]["encerradas"],  # 5f: depende da hora
-                                    "erros_apagados": 0}}  # 5h
+                                    "erros_apagados": 0, "feedback_imagens_apagadas": 0}}  # 5h; feedback
     encerradas = r.json()["limpeza"]["encerradas"]
     assert encerradas is None or encerradas["modo"] == "simular"
     assert r.json()["erros"] in (None, {"erros": 0, "emails": 0})  # sem erro aberto, nenhum e-mail

@@ -12,6 +12,7 @@
 import type { App } from 'vue'
 import { API_URL } from '@/api/cliente'
 import { ApiError } from '@/api/erros'
+import { registrarErroDoSite } from '@/utils/diagnostico'
 
 export const VERSAO_SITE: string = typeof __TOQQI_VERSAO__ === 'string' && __TOQQI_VERSAO__ ? __TOQQI_VERSAO__ : 'local'
 export const MAX_POR_CARREGAMENTO = 5
@@ -168,8 +169,11 @@ export function criarAvisoDeErros(opcoes: OpcoesAviso = {}): AvisoDeErros {
 
   function avisar(erro: unknown, arquivo = ''): boolean {
     try {
-      if (enviados >= MAX_POR_CARREGAMENTO || deveIgnorar(erro, origem(), arquivo)) return false
+      if (deveIgnorar(erro, origem(), arquivo)) return false
       const { tipo, mensagem, pilha } = descrever(erro)
+      // o feedback de erro leva os últimos erros deste carregamento (utils/diagnostico), mesmo os que não foram à API
+      registrarErroDoSite({ tipo, mensagem, local: localDaTela(caminho()) })
+      if (enviados >= MAX_POR_CARREGAMENTO) return false
       const chave = `${tipo}: ${mensagem}`
       if (vistos.has(chave)) return false
       vistos.add(chave)

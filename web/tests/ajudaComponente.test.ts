@@ -314,7 +314,7 @@ describe('Ajuda na navegação', () => {
     await flushPromises()
     const rodape = w.get('button[aria-controls="menu-lateral"]').element.parentElement!
     const itens = Array.from(rodape.children).map((el) => (el.textContent ?? '').trim())
-    expect(itens).toEqual(['Ajuda', 'Recolher menu'])
+    expect(itens).toEqual(['Ajuda', 'Feedback', 'Recolher menu']) // Feedback: abaixo de Ajuda
     const ajuda = w.findAll('a').find((a) => t(a.text()) === 'Ajuda')!
     expect(ajuda.attributes('href')).toBe('/ajuda')
     expect(ajuda.attributes('aria-current')).toBe('page')

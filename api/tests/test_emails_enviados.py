@@ -274,7 +274,8 @@ def test_tarefa_limpeza(client, admin, dono, monkeypatch):
     # a linha de 89 dias e 23h55 saía quando o teste rodava antes das 11h55)
     monkeypatch.setattr(relogio, "agora", lambda: datetime.now(relogio.FUSO))
     assert tarefas.executar("limpeza") == {"limpeza": {"emails_apagados": 6, "acessos_apagados": 0,
-                                                       "encerradas": None, "erros_apagados": 0}}  # 5h: erros
+                                                       "encerradas": None, "erros_apagados": 0,  # 5h: erros
+                                                       "feedback_imagens_apagadas": 0}}
     assert sql(dono, "select count(*) from emails_enviados")[0][0] == 3
     assert tarefas.executar("limpeza")["limpeza"]["emails_apagados"] == 0
     assert tarefas.main(["limpeza"]) == 0
@@ -292,4 +293,5 @@ def test_tipos_e_rotulos():
         "boas_vindas": "Boas-vindas", "alerta_risco": "Alerta de risco", "resumo_semanal": "Resumo semanal",
         "pico": "Pico de reclamações", "indicacao": "Nova indicação", "aviso": "Aviso aos administradores",
         "cobranca": "Cobrança", "retorno": "Retorno ao cliente",  # melhoria 4
+        "feedback": "Resposta da equipe Toqqi",  # feedback: a equipe respondeu
     }

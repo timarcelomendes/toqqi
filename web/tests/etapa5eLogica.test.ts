@@ -338,7 +338,7 @@ describe('Auditoria › E-mails enviados (§5 e §6.3)', () => {
     expect(rotuloTipoEmail({ tipo: 'novo_tipo' })).toBe('novo_tipo')
     // Cobrança fica fora do filtro (nenhum e-mail sai com ele hoje); a linha que vier ainda tem rótulo.
     // Boas-vindas entrou com o e-mail de pedido de acesso aprovado.
-    expect(TIPOS_EMAIL).toHaveLength(13) // + retorno ao cliente (melhoria 4) + boas-vindas (pedido aprovado)
+    expect(TIPOS_EMAIL).toHaveLength(14) // + retorno ao cliente (melhoria 4) + boas-vindas (pedido aprovado) + feedback
     expect(TIPOS_EMAIL.map((t) => t.valor)).toContain('boas_vindas')
     expect(TIPOS_EMAIL.map((t) => t.valor)).not.toContain('cobranca')
     expect(rotuloTipoEmail({ tipo: 'cobranca', tipo_rotulo: 'Cobrança' })).toBe('Cobrança')

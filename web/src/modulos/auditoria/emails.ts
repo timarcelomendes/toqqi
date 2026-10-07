@@ -53,6 +53,7 @@ export const TIPOS_EMAIL: { valor: TipoEmailEnviado; rotulo: string }[] = [
   { valor: 'pico', rotulo: 'Pico de reclamações' },
   { valor: 'indicacao', rotulo: 'Nova indicação' },
   { valor: 'aviso', rotulo: 'Aviso aos administradores' },
+  { valor: 'feedback', rotulo: 'Resposta da equipe Toqqi' },
 ]
 
 export const SITUACOES_EMAIL: Record<SituacaoEmailEnviado, { rotulo: string; tom: Tom }> = {

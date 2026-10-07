@@ -888,3 +888,63 @@ class Conector(Base):
     erro: Mapped[str | None] = mapped_column(Text)
     criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
     atualizado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+# ---- feedback: erros, sugestões, melhorias e elogios para a equipe Toqqi (docs/api-feedback.md) ------------------------
+
+class Feedback(Base):
+    """Um relato de quem usa o Toqqi (erro, sugestão, melhoria ou elogio) e a situação dele para a equipe Toqqi
+    (`modulos/feedback`). A conversa fica em `FeedbackMensagem` (a primeira mensagem é o relato)."""
+    __tablename__ = "feedbacks"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger)  # nulo quando a pessoa saiu da conta (Equipe)
+    tipo: Mapped[str] = mapped_column(Text)  # erro | sugestao | melhoria | elogio
+    situacao: Mapped[str] = mapped_column(Text, server_default="recebido")  # recebido | em_analise | planejado | concluido | encerrado
+    impacto: Mapped[str | None] = mapped_column(Text)  # só erro: bloqueia | atrapalha | detalhe
+    autoriza_depoimento: Mapped[bool] = mapped_column(Boolean, server_default="false")  # só elogio
+    pagina: Mapped[str | None] = mapped_column(Text)
+    pagina_titulo: Mapped[str | None] = mapped_column(Text)
+    navegador: Mapped[str | None] = mapped_column(Text)
+    tela: Mapped[str | None] = mapped_column(Text)
+    versao_site: Mapped[str | None] = mapped_column(Text)
+    diagnostico: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
+    nota_interna: Mapped[str] = mapped_column(Text, server_default="")
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    atualizado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    ultima_do_usuario_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    ultima_da_equipe_em: Mapped[datetime | None] = mapped_column(TZ)
+    visto_pelo_usuario_em: Mapped[datetime | None] = mapped_column(TZ)
+    visto_pela_equipe_em: Mapped[datetime | None] = mapped_column(TZ)
+
+
+class FeedbackMensagem(Base):
+    """Mensagem da conversa de um feedback: do usuário (`usuario_id`) ou da equipe Toqqi (`autor_nome`, o nome de quem
+    respondeu no momento). `situacao`: a mudança de situação feita pela equipe junto com a mensagem (texto pode ser vazio)."""
+    __tablename__ = "feedback_mensagens"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    feedback_id: Mapped[int] = mapped_column(BigInteger)
+    autor: Mapped[str] = mapped_column(Text)  # usuario | equipe
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger)
+    autor_nome: Mapped[str | None] = mapped_column(Text)
+    texto: Mapped[str] = mapped_column(Text, server_default="")
+    situacao: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+
+
+class FeedbackImagem(Base):
+    """Imagem anexada a uma mensagem de feedback (PNG ou JPG de até 1 MB), privada: sai só pelas rotas do autor e da
+    Plataforma. `dados` só é lido quando pedido (deferred)."""
+    __tablename__ = "feedback_imagens"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    feedback_id: Mapped[int] = mapped_column(BigInteger)
+    mensagem_id: Mapped[int] = mapped_column(BigInteger)
+    tipo: Mapped[str] = mapped_column(Text)
+    dados: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
+    tamanho: Mapped[int] = mapped_column(Integer)
+    largura: Mapped[int | None] = mapped_column(Integer)
+    altura: Mapped[int | None] = mapped_column(Integer)
+    nome: Mapped[str | None] = mapped_column(Text)
+    criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)

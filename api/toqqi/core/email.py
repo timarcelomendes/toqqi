@@ -56,6 +56,7 @@ TIPOS = {
     "indicacao": "Nova indicação",
     "aviso": "Aviso aos administradores",
     "cobranca": "Cobrança",
+    "feedback": "Resposta da equipe Toqqi",  # feedback: a equipe respondeu o feedback da pessoa
 }
 MAX_ASSUNTO_REGISTRO = 300
 MAX_ERRO_REGISTRO = 500

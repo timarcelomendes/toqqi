@@ -2323,6 +2323,7 @@ export type TipoEmailEnviado =
   | 'indicacao'
   | 'aviso'
   | 'cobranca'
+  | 'feedback'
   | (string & {})
 
 /** `enviado`: o provedor aceitou (devoluções da caixa de quem recebe não aparecem); `falhou`: com o erro em texto simples. */

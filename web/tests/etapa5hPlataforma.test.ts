@@ -192,7 +192,7 @@ describe('Plataforma: quatro abas e os endereços', () => {
     })
     await abrir('/plataforma')
     const abas = $$('[role="tab"]')
-    expect(abas.map((a) => t(a.textContent))).toEqual(['Visão geral', 'Contas', 'Parâmetros', 'Erros'])
+    expect(abas.map((a) => t(a.textContent))).toEqual(['Visão geral', 'Contas', 'Parâmetros', 'Erros', 'Feedback'])
     expect(abas[0]!.getAttribute('aria-selected')).toBe('true')
     expect(chamadasDe(api, 'GET', '/plataforma/visao')).toHaveLength(1)
     expect(chamadasDe(api, 'GET', '/plataforma/erros')).toHaveLength(0)

@@ -30,8 +30,9 @@ export interface ItemNavegacao {
   prefixo?: string
   /** Ainda não existe nesta etapa. */
   emBreve?: boolean
-  /** Número ao lado do item (ex.: pedidos de acesso esperando aprovação, em Equipe). */
-  contador?: 'pedidosAcesso'
+  /** Número ao lado do item (ex.: pedidos de acesso esperando aprovação, em Equipe; feedbacks que pedem atenção, em
+   *  Plataforma). */
+  contador?: 'pedidosAcesso' | 'feedbackPlataforma'
 }
 
 export const navegacaoPrincipal: ItemNavegacao[] = [
@@ -52,7 +53,7 @@ export const navegacaoAdministracao: ItemNavegacao[] = [
   { rotulo: 'Integrações', para: '/integracoes', icone: Plug, admin: true },
   { rotulo: 'Assinatura', para: '/assinatura', icone: CreditCard, permissao: 'assinatura.gerenciar' },
   { rotulo: 'Auditoria', para: '/auditoria', icone: History, permissao: 'auditoria.ver' },
-  { rotulo: 'Plataforma', para: '/plataforma', icone: Building2, superadmin: true },
+  { rotulo: 'Plataforma', para: '/plataforma', icone: Building2, superadmin: true, contador: 'feedbackPlataforma' },
 ]
 
 /** Etapa 5b: no rodapé da barra, acima de "Recolher menu" (para todos os logados). */

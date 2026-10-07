@@ -71,6 +71,9 @@ const rotas: RouteRecordRaw[] = [
       // Etapa 5b: tópicos e seções da ajuda (/ajuda/contatos#importar-planilha); trocar de tópico não rola a página (a tela cuida).
       { path: 'ajuda/:topico?', name: 'ajuda', component: () => import('@/modulos/ajuda/AjudaView.vue'), meta: { titulo: 'Ajuda', manterRolagem: true } },
       { path: 'minha-conta', name: 'minha-conta', component: () => import('@/modulos/conta/MinhaContaView.vue'), meta: { titulo: 'Minha conta' } },
+      // Feedback (docs/api-feedback.md): o que a pessoa mandou para a equipe Toqqi e cada conversa (link do e-mail).
+      { path: 'feedback', name: 'feedbacks', component: () => import('@/modulos/feedback/FeedbacksView.vue'), meta: { titulo: 'Seus feedbacks' } },
+      { path: 'feedback/:id(\\d+)', name: 'feedback', component: () => import('@/modulos/feedback/FeedbackView.vue'), meta: { titulo: 'Feedback' } },
       { path: 'equipe', name: 'equipe', component: () => import('@/modulos/equipe/EquipeView.vue'), meta: { titulo: 'Equipe', permissao: 'equipe.gerenciar' } },
       {
         path: 'configuracoes',
@@ -106,13 +109,20 @@ const rotas: RouteRecordRaw[] = [
         component: () => import('@/modulos/auditoria/AuditoriaView.vue'),
         meta: { titulo: 'Auditoria', permissao: 'auditoria.ver', manterRolagem: true },
       },
-      // Etapa 5h: abas "Visão geral" (/plataforma), "Contas" (/plataforma/contas), "Parâmetros" (/plataforma/parametros)
-      // e "Erros" (/plataforma/erros); só superadmin.
+      // Etapa 5h: abas "Visão geral" (/plataforma), "Contas" (/plataforma/contas), "Parâmetros" (/plataforma/parametros),
+      // "Erros" (/plataforma/erros) e "Feedback" (/plataforma/feedback); só superadmin.
       {
-        path: 'plataforma/:aba(contas|parametros|erros)?',
+        path: 'plataforma/:aba(contas|parametros|erros|feedback)?',
         name: 'plataforma',
         component: () => import('@/modulos/plataforma/PlataformaView.vue'),
         meta: { titulo: 'Plataforma', superadmin: true, manterRolagem: true },
+      },
+      // Feedback: um feedback na Plataforma (link dos e-mails da equipe).
+      {
+        path: 'plataforma/feedback/:id(\\d+)',
+        name: 'plataforma-feedback',
+        component: () => import('@/modulos/plataforma/FeedbackPlataformaView.vue'),
+        meta: { titulo: 'Feedback', superadmin: true },
       },
     ],
   },

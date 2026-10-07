@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next'
+import { MessageSquareHeart, PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next'
 import { useSessaoStore } from '@/stores/sessao'
 import { useMenuLateral } from '@/composables/menuLateral'
 import { textoPedidos, usarPedidosAcesso } from '@/composables/pedidosAcesso'
+import { usarFeedback } from '@/composables/feedback'
+import { textoAtencao, textoNovidades } from '@/modulos/feedback/logica'
 import logo from '@/assets/logo.svg'
 import Marca from '@/components/app/Marca.vue'
 import { filtrarNavegacao, itemAtivo, navegacaoAdministracao, navegacaoPrincipal, navegacaoRodape, type ItemNavegacao } from './navegacao'
@@ -27,9 +29,26 @@ const administracao = computed(() => filtrarNavegacao(navegacaoAdministracao, se
 
 // Pedidos de acesso esperando aprovação: o número ao lado de Equipe (relido a cada troca de página, no máximo a cada 60 s).
 const pedidos = usarPedidosAcesso()
-watch(() => rota.fullPath, () => void pedidos.atualizar(sessao.pode('equipe.gerenciar')), { immediate: true })
+// Feedback: as respostas novas da equipe Toqqi (botão "Feedback", para todos) e, para a equipe, os feedbacks que pedem
+// atenção (ao lado de Plataforma). Mesmo ritmo dos pedidos de acesso.
+const feedback = usarFeedback()
+watch(
+  () => rota.fullPath,
+  () => {
+    void pedidos.atualizar(sessao.pode('equipe.gerenciar'))
+    void feedback.atualizarNovidades()
+    void feedback.atualizarAtencao(sessao.superadmin)
+  },
+  { immediate: true },
+)
 function contagem(i: ItemNavegacao): number {
-  return i.contador === 'pedidosAcesso' ? pedidos.total.value : 0
+  if (i.contador === 'pedidosAcesso') return pedidos.total.value
+  if (i.contador === 'feedbackPlataforma') return feedback.atencao.value
+  return 0
+}
+function textoContagem(i: ItemNavegacao): string {
+  const n = contagem(i)
+  return i.contador === 'feedbackPlataforma' ? textoAtencao(n) : textoPedidos(n)
 }
 
 function classes(ativo: boolean) {
@@ -89,7 +108,7 @@ const classeDica =
               <a :href="href" :class="classes(ativoNa(item, isActive))" :aria-current="ativoNa(item, isActive) ? 'page' : undefined" @click="(e) => { navigate(e); $emit('navegou') }">
                 <component :is="item.icone" class="size-5 shrink-0" aria-hidden="true" />
                 <span :class="compacto ? 'sr-only' : 'flex-1'">
-                  {{ item.rotulo }}<span v-if="contagem(item) > 0" class="sr-only">, {{ textoPedidos(contagem(item)) }}</span>
+                  {{ item.rotulo }}<span v-if="contagem(item) > 0" class="sr-only">, {{ textoContagem(item) }}</span>
                 </span>
                 <span
                   v-if="contagem(item) > 0 && !compacto"
@@ -104,7 +123,7 @@ const classeDica =
                   data-contador-menu
                 />
                 <span v-if="compacto" aria-hidden="true" :class="classeDica">
-                  {{ item.rotulo }}<template v-if="contagem(item) > 0"> · {{ textoPedidos(contagem(item)) }}</template>
+                  {{ item.rotulo }}<template v-if="contagem(item) > 0"> · {{ textoContagem(item) }}</template>
                 </span>
               </a>
             </RouterLink>
@@ -121,6 +140,28 @@ const classeDica =
           <span v-if="compacto" aria-hidden="true" :class="classeDica">{{ item.rotulo }}</span>
         </a>
       </RouterLink>
+      <!-- Feedback: abre a janela por cima da tela atual (leva o caminho e o título dela). -->
+      <button type="button" :class="classes(false)" class="w-full" data-botao-feedback @click="feedback.abrir(); $emit('navegou')">
+        <MessageSquareHeart class="size-5 shrink-0" aria-hidden="true" />
+        <span :class="compacto ? 'sr-only' : 'flex-1 text-left'">
+          Feedback<span v-if="feedback.novidades.value > 0" class="sr-only">, {{ textoNovidades(feedback.novidades.value) }}</span>
+        </span>
+        <span
+          v-if="feedback.novidades.value > 0 && !compacto"
+          class="min-w-5 rounded-full bg-marca-forte px-1.5 text-center text-xs font-bold text-white"
+          aria-hidden="true"
+          data-contador-feedback
+        >{{ feedback.novidades.value }}</span>
+        <span
+          v-else-if="feedback.novidades.value > 0"
+          class="absolute right-2 top-1.5 size-2 rounded-full bg-marca-forte ring-2 ring-superficie"
+          aria-hidden="true"
+          data-contador-feedback
+        />
+        <span v-if="compacto" aria-hidden="true" :class="classeDica">
+          Feedback<template v-if="feedback.novidades.value > 0"> · {{ textoNovidades(feedback.novidades.value) }}</template>
+        </span>
+      </button>
       <button
         v-if="recolhivel"
         type="button"
