@@ -9,6 +9,7 @@ import AreaTexto from '@/components/ui/AreaTexto.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Campo from '@/components/ui/Campo.vue'
 import Modal from '@/components/ui/Modal.vue'
+import { PAGINA_SAIR } from './logica'
 
 const aberto = defineModel<boolean>('aberto', { default: false })
 const emit = defineEmits<{ registrado: [] }>()
@@ -53,8 +54,8 @@ async function registrar() {
       <Campo v-model="email" rotulo="E-mail do cliente" tipo="email" autocomplete="off" obrigatorio :erro="erros.email" />
       <AreaTexto v-model="motivo" rotulo="Motivo" opcional :maximo="300" :linhas="2" :erro="erros.motivo" placeholder="Ex.: pediu por telefone em 12/03" />
       <Alerta tom="info">
-        Depois de registrado, a sua equipe não consegue desfazer. Só a própria pessoa volta a receber, pelo link
-        "Não quero mais receber pesquisas" de um e-mail antigo.
+        Depois de registrado, a sua equipe não consegue desfazer. Só a própria pessoa volta a receber: pelo link de um
+        e-mail de pesquisa, pedindo um link novo em {{ PAGINA_SAIR.texto }} ou respondendo VOLTAR no WhatsApp.
       </Alerta>
     </form>
     <template #rodape>

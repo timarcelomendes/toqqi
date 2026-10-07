@@ -36,6 +36,15 @@ export const ORIGENS_ENVIO: Record<OrigemEnvio, string> = {
   resposta: 'Depois da resposta',
 }
 
+/**
+ * A página pública /sair (sem login), onde a pessoa pede por e-mail o link para sair da lista ou voltar a receber
+ * (docs/api-voltar-a-receber.md): o endereço deste site, como a equipe vai passar ao cliente ("toqqi.com/sair").
+ */
+export const PAGINA_SAIR = {
+  url: `${typeof window === 'undefined' ? '' : window.location.origin}/sair`,
+  texto: `${typeof window === 'undefined' ? 'toqqi.com' : window.location.host}/sair`,
+}
+
 export const ORIGENS_DESCADASTRO: Record<string, string> = {
   link: 'Pelo link do e-mail',
   um_clique: 'Pelo botão do programa de e-mail',

@@ -181,7 +181,10 @@ const botao =
             <svg viewBox="0 0 24 24" class="size-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5" /><path d="M12 7.5v5.5M12 16.5v.3" /></svg>
           </span>
           <h1 id="titulo-sair" ref="titulo" tabindex="-1" class="text-xl font-extrabold text-slate-900 focus:outline-none">Este link não está valendo</h1>
-          <p class="text-slate-600">O endereço pode ter vindo incompleto. Abra de novo o link "Não quero mais receber pesquisas" direto do e-mail que você recebeu.</p>
+          <p class="text-slate-600">
+            O endereço pode ter vindo incompleto. Abra de novo o link "Não quero mais receber pesquisas" direto do e-mail que você recebeu ou
+            <a href="/sair" class="font-semibold text-slate-900 underline underline-offset-4" data-pedir-link>peça um link novo</a>.
+          </p>
         </div>
 
         <!-- Erro de conexão -->

@@ -155,6 +155,11 @@ class DescadastroManualIn(BaseModel):
     motivo: TextoAte(300) = None
 
 
+class PedirLinkIn(BaseModel):
+    """Página /sair sem token: o e-mail que recebe o link de cada empresa."""
+    email: Email
+
+
 class DescadastroPublicoIn(BaseModel):
     motivo: TextoAte(300) = None
     voltar: bool = False

@@ -1900,7 +1900,10 @@
             "pediu para sair",
             "sair",
             "parar",
-            "stop"
+            "stop",
+            "voltar a receber",
+            "voltar",
+            "recadastrar"
           ],
           "blocos": [
             {
@@ -1909,14 +1912,14 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Quem saiu da lista não recebe mais nenhuma pesquisa da sua empresa, nem por e-mail nem por WhatsApp, e importar o contato de novo não o coloca de volta. Só a própria pessoa pode voltar a receber."
+              "texto": "Quem saiu da lista não recebe mais nenhuma pesquisa da sua empresa, nem por e-mail nem por WhatsApp, e importar o contato de novo não o coloca de volta. Só a própria pessoa pode voltar a receber: pelo link de qualquer e-mail de pesquisa, pedindo um link novo na página toqqi.com/sair (ela digita o e-mail e recebe um link para cada empresa que lhe manda pesquisas pelo Toqqi) ou respondendo VOLTAR no WhatsApp automático. Quem volta por um canal volta em todos."
             },
             {
               "tipo": "passos",
               "itens": [
                 "Para registrar um pedido feito por telefone ou pessoalmente, abra Envios e a aba Descadastros.",
                 "Clique em “Registrar descadastro”, informe o E-mail do cliente e, se quiser, o Motivo.",
-                "Confirme em “Registrar descadastro”. A equipe não consegue desfazer depois."
+                "Confirme em “Registrar descadastro”. A equipe não consegue desfazer depois: se o cliente quiser voltar, indique a página toqqi.com/sair."
               ]
             }
           ]
@@ -3829,7 +3832,7 @@
             },
             {
               "tipo": "dica",
-              "texto": "O modelo precisa dizer como parar de receber: sem a palavra SAIR no corpo ou no rodapé, o Toqqi não aceita a conexão. Quem responde SAIR (ou PARAR, STOP, CANCELAR, “Quero sair”, “Não quero mais receber”) sai da lista na hora e recebe uma confirmação."
+              "texto": "O modelo precisa dizer como parar de receber: sem a palavra SAIR no corpo ou no rodapé, o Toqqi não aceita a conexão. Quem responde SAIR (ou PARAR, STOP, CANCELAR, “Quero sair”, “Não quero mais receber”) sai da lista na hora e recebe uma confirmação, que ensina a responder VOLTAR para voltar a receber."
             }
           ]
         },
@@ -3894,7 +3897,7 @@
                 "Interruptor “Enviar pesquisas pelo WhatsApp”: desligado, as pesquisas vão por e-mail e a conexão continua salva.",
                 "“Enviar um teste”: informe o seu celular e clique em “Enviar teste” para ver como a mensagem chega.",
                 "Se aparecer “O último envio pelo WhatsApp deu erro”, o motivo vem escrito no aviso.",
-                "O cliente pode responder SAIR, PARAR, STOP ou CANCELAR para sair da lista. Entregue e Lido aparecem no Histórico de envios.",
+                "O cliente pode responder SAIR, PARAR, STOP ou CANCELAR para sair da lista, e VOLTAR para voltar a receber. Entregue e Lido aparecem no Histórico de envios.",
                 "“Desconectar WhatsApp” apaga o token guardado e as pesquisas voltam a ir por e-mail. Para voltar, cole os dados de novo."
               ]
             }

@@ -49,6 +49,7 @@ LIMITE_PUBLICO_ABRIR = "30/minute"       # abrir página pública de pesquisa
 LIMITE_RESPONDER_CONVITE = "10/minute"   # responder convite individual
 LIMITE_RESPONDER_LINK = "5/minute"       # responder link público do formulário
 LIMITE_DESCADASTRO = "20/minute"       # página pública de descadastro (abrir e confirmar)
+LIMITE_PEDIR_LINK = "3/minute;20/hour"  # /sair sem token: pedir o link por e-mail (e o limite por e-mail no serviço)
 LIMITE_ERROS_SITE = "10/minute"        # POST /publico/erros (etapa 5h: erros do site, sem login)
 LIMITE_SAUDE = "60/minute"             # GET /saude (etapa 5h: monitor externo)
 LIMITE_INTEGRACAO = "120/minute"       # rotas da chave de integração (por chave)

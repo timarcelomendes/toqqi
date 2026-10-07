@@ -1,5 +1,6 @@
 """WhatsApp, "responda SAIR" (etapa 5f): variações aceitas e recusadas (mensagem inteira normalizada, até 40
-caracteres), resposta de botão (do modelo e interativo) e o modelo sem SAIR no corpo nem no rodapé → 422."""
+caracteres), resposta de botão (do modelo e interativo) e o modelo sem SAIR no corpo nem no rodapé → 422. E o VOLTAR
+(docs/api-voltar-a-receber.md): só com o telefone fora da lista, e volta em todos os canais."""
 import pytest
 from util import (
     API,
@@ -14,7 +15,7 @@ from util import (
     sql,
 )
 
-from toqqi.modulos.whatsapp.webhook import pede_para_sair
+from toqqi.modulos.whatsapp.webhook import pede_para_sair, pede_para_voltar
 
 ACEITAS = ["sair", "SAIR", "  Sáir! ", "Sair da lista", "sair da lista.", "Quero sair", "PARAR", "pare", "Stop",
            "cancelar", "Descadastrar", "Não quero mais", "nao quero mais receber", "NÃO QUERO MAIS RECEBER!!!",
@@ -25,9 +26,27 @@ RECUSADAS = ["Oi, tudo bem?", "sair agora", "quero sair dessa lista", "não", "p
              "não quero"]
 
 
+ACEITAS_VOLTAR = ["voltar", "VOLTAR", " Voltar! ", "Quero voltar", "voltar a receber", "Quero voltar a receber.",
+                  "quero receber", "Quero receber de novo", "receber novamente"]
+RECUSADAS_VOLTAR = ["volta", "voltei", "vou voltar a comprar", "quero receber o boleto", "receber", "sim", "",
+                    "voltar " * 10]
+
+
 @pytest.mark.parametrize("texto", ACEITAS)
 def test_variacoes_aceitas(texto):
     assert pede_para_sair(texto) is True
+    assert pede_para_voltar(texto) is False
+
+
+@pytest.mark.parametrize("texto", ACEITAS_VOLTAR)
+def test_variacoes_aceitas_voltar(texto):
+    assert pede_para_voltar(texto) is True
+    assert pede_para_sair(texto) is False
+
+
+@pytest.mark.parametrize("texto", [*RECUSADAS_VOLTAR, None, 123])
+def test_variacoes_recusadas_voltar(texto):
+    assert pede_para_voltar(texto) is False
 
 
 @pytest.mark.parametrize("texto", [*RECUSADAS, None, 123])
@@ -100,3 +119,37 @@ def test_modelo_precisa_de_sair(client, dono, meta, componentes, aceito):
             "O modelo precisa dizer como parar de receber, por exemplo no rodapé: “Para não receber mais pesquisas, "
             "responda SAIR.”")
         assert client.get(f"{API}/integracoes/whatsapp", headers=a["h"]).json()["conectado"] is False
+
+
+def test_voltar_pelo_whatsapp(client, admin, meta, dono):
+    # sem estar fora da lista, VOLTAR é uma mensagem qualquer: sem resposta
+    antes = len(meta.mensagens)
+    assert aviso_meta(client, aviso_mensagem("5511987654321", "voltar")).status_code == 200
+    assert len(meta.mensagens) == antes
+    aviso_meta(client, aviso_mensagem("5511987654321", "sair"))
+    assert meta.mensagens[-1]["text"]["body"] == ("Pronto! Você não vai mais receber pesquisas da Alfa Distribuidora. "
+                                                  "Se mudar de ideia, responda VOLTAR.")
+    assert sql(dono, "select count(*) from descadastros")[0][0] == 1
+    # o WhatsApp manda o celular sem o nono dígito
+    assert aviso_meta(client, aviso_mensagem("551187654321", "Quero voltar")).status_code == 200
+    assert sql(dono, "select count(*) from descadastros")[0][0] == 0
+    assert meta.mensagens[-1]["text"]["body"] == ("Pronto! Você volta a receber as pesquisas da Alfa Distribuidora. "
+                                                  "Para parar, responda SAIR.")
+    assert meta.mensagens[-1]["to"] == "551187654321"
+    assert sql(dono, "select detalhe->>'origem', detalhe->>'telefone' from auditoria "
+                     "where evento = 'descadastro_desfeito'") == [("whatsapp", "***4321")]
+    # de novo: já recebe, sem resposta
+    antes = len(meta.mensagens)
+    aviso_meta(client, aviso_mensagem("5511987654321", "voltar"))
+    assert len(meta.mensagens) == antes
+
+
+def test_voltar_pelo_whatsapp_tira_tambem_o_email_do_mesmo_contato(client, admin, meta, dono):
+    h = admin["h"]
+    criar_contato(client, h, nome="Bia", email="bia@cliente.com.br", telefone="11976543210")
+    # saiu pelo link do e-mail; o telefone dela não está na lista
+    r = client.post(f"{API}/envios/descadastros", headers=h, json={"email": "bia@cliente.com.br"})
+    assert r.status_code == 201, r.text
+    aviso_meta(client, aviso_mensagem("5511976543210", "VOLTAR"))
+    assert sql(dono, "select count(*) from descadastros")[0][0] == 0
+    assert meta.mensagens[-1]["text"]["body"].startswith("Pronto! Você volta a receber")

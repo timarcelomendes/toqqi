@@ -162,6 +162,10 @@ services:
       - type: rewrite
         source: /sair/*
         destination: /responder.html
+      # /sair sem token: pedir por e-mail o link de cada empresa (sair da lista ou voltar a receber)
+      - type: rewrite
+        source: /sair
+        destination: /responder.html
       # Guias do site (web/src/site/guias.ts): cada endereço serve o seu HTML. Antes da regra geral, que manda ao app.
       - type: rewrite
         source: /guias
@@ -196,5 +200,8 @@ services:
         name: Content-Security-Policy
         value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.toqqi.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *"
       - path: /sair/*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.toqqi.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *"
+      - path: /sair
         name: Content-Security-Policy
         value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.toqqi.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *"

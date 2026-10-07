@@ -349,7 +349,7 @@ def test_sair_pelo_whatsapp_descadastra_o_telefone(client, admin, meta, dono, de
     resposta = meta.mensagens[-1]
     assert resposta == {"messaging_product": "whatsapp", "recipient_type": "individual", "to": "551187654321",
                         "type": "text", "text": {"body": "Pronto! Você não vai mais receber pesquisas da "
-                                                         "Alfa Distribuidora."}}
+                                                         "Alfa Distribuidora. Se mudar de ideia, responda VOLTAR."}}
     corpo = json.loads(destino.recebidos[0]["corpo"])
     assert corpo["dados"] == {"email_mascarado": "jo***@cliente.com.br", "contato_id": c["id"], "origem": "whatsapp"}
 

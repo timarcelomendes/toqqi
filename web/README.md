@@ -40,7 +40,7 @@ O build gera **duas páginas**:
 | Arquivo | O que é | Carrega |
 |---|---|---|
 | `dist/index.html` | na raiz (`/`), a **página do site**; em qualquer outro endereço, o app (área logada e telas de acesso) | na raiz, só `site.ts` e `site.css` (sem Vue); nos outros, Vue, router, Pinia, ícones, telas |
-| `dist/responder.html` | a pesquisa pública (`/r/:token` e `/f/:codigo`) e a página para sair da lista (`/sair/:token`) | só Vue, o cliente fetch e o componente da pesquisa (~60 KB gzip de JS); o limpador de HTML (DOMPurify, ~11 KB gzip) só desce quando a pesquisa tem conteúdo ou final com texto formatado |
+| `dist/responder.html` | a pesquisa pública (`/r/:token` e `/f/:codigo`), a página para sair da lista (`/sair/:token`) e a de pedir esse link por e-mail (`/sair`) | só Vue, o cliente fetch e o componente da pesquisa (~60 KB gzip de JS); o limpador de HTML (DOMPurify, ~11 KB gzip) só desce quando a pesquisa tem conteúdo ou final com texto formatado |
 
 A página pública é separada de propósito: abre rápido no 4G e não baixa nada da área logada.
 
@@ -70,7 +70,7 @@ no `render.yaml` e o cartão em `guias.html`.
 
 Em `npm run dev` e `npm run preview` o próprio Vite já faz o redirecionamento. **Em produção, configure no servidor:**
 
-1. `/r/*`, `/f/*` e `/sair/*` → servir `responder.html` (sem mudar a URL);
+1. `/r/*`, `/f/*`, `/sair/*` e `/sair` → servir `responder.html` (sem mudar a URL);
 2. arquivos existentes (`/assets/*`, `/widget.js`, `/favicon.svg`) → servir o arquivo;
 3. qualquer outra rota → `index.html` (SPA com histórico HTML5).
 
@@ -78,6 +78,7 @@ Exemplo com nginx:
 
 ```nginx
 location ~ ^/(r|f|sair)/ { try_files $uri /responder.html; }
+location = /sair { try_files /responder.html =404; }
 location / { try_files $uri $uri/ /index.html; }
 location = /widget.js { add_header Cache-Control "public, max-age=3600"; }
 ```
@@ -88,6 +89,7 @@ Exemplo Netlify (`public/_redirects`) ou equivalente em outro host:
 /r/*  /responder.html  200
 /f/*  /responder.html  200
 /sair/*  /responder.html  200
+/sair  /responder.html  200
 /*    /index.html      200
 ```
 
@@ -95,10 +97,10 @@ Exemplo Netlify (`public/_redirects`) ou equivalente em outro host:
 A página pública pode ser aberta dentro de um iframe (widget, `embed=1`): não envie `X-Frame-Options: DENY`
 nem `frame-ancestors` restritivo para `responder.html`.
 
-**CSP nas páginas de pesquisa (etapa 5l).** `/r/*`, `/f/*` e `/sair/*` mostram HTML escrito no editor (blocos de
+**CSP nas páginas de pesquisa (etapa 5l).** `/r/*`, `/f/*` e `/sair/*` (e `/sair`) mostram HTML escrito no editor (blocos de
 conteúdo e finais) e dividem a origem com o app logado (o token fica no armazenamento do navegador). Além da limpeza
 (`src/pesquisa/html.ts`: todo HTML passa por `limparHtml` e só `src/pesquisa/BlocoHtml.vue` usa `v-html`), o servidor
-manda este cabeçalho nesses três caminhos (no Render, em `headers` do `render.yaml`):
+manda este cabeçalho nesses caminhos (no Render, em `headers` do `render.yaml`):
 
 ```
 Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.toqqi.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *

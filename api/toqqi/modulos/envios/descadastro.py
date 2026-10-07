@@ -3,28 +3,43 @@
 O token leva conta_id e e-mail, assinados com HMAC(JWT_SECRET); não expira. A página pública só confia
 na conta que vem de um token com assinatura válida e trabalha dentro de em_conta(conta).
 O descadastro por telefone vem do WhatsApp ("SAIR"). Um contato com o e-mail ou o telefone descadastrado
-sai da lista: não recebe nada da conta, em nenhum canal.
+sai da lista: não recebe nada da conta, em nenhum canal. Voltar (o botão da página /sair/{token} ou VOLTAR no
+WhatsApp) também vale em todos: tira o e-mail ou o telefone e os dos contatos com ele (`desfazer`).
+
+Página /sair sem token (pedido do Marcelo, 07/10/2026; docs/api-voltar-a-receber.md): a pessoa digita o e-mail e a
+Toqqi manda a ele um link por empresa que já lhe mandou pesquisas (ou de cuja lista ela saiu), para sair ou voltar
+a receber. A resposta é sempre a mesma (não revela de quem a pessoa é cliente); limite por IP na rota e por e-mail
+aqui.
 """
 import base64
 import binascii
 import hashlib
 import hmac
+from urllib.parse import urlparse
 
-from sqlalchemy import String, and_, cast, delete, exists, func, or_, select, true
+from limits import parse_many
+from sqlalchemy import String, and_, cast, delete, exists, false, func, or_, select, true
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
+from toqqi.core import email as emails
 from toqqi.core.auditoria import registrar
 from toqqi.core.config import config
-from toqqi.core.db import em_conta
+from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.deps import Contexto
+from toqqi.core.email import Link
 from toqqi.core.errors import AppError
 from toqqi.core.paginacao import Pagina
+from toqqi.core.rate_limit import limiter
 from toqqi.core.texto import RE_CELULAR_SEM_NOVE, telefone_canonico
 from toqqi.modelos import Conta, Contato, Descadastro
 from toqqi.modulos.integracoes.webhooks import enfileirar
 
 _MAX_TOKEN = 600
+MSG_LINK = ("Se este e-mail já recebeu pesquisas pelo Toqqi, o link chega em alguns minutos. Não achou? Olhe também "
+            "no spam.")
+LIMITE_LINK_POR_EMAIL = "3/hour;6/day"  # e-mails com o link para o mesmo endereço (o pedido sempre responde igual)
+MAX_EMPRESAS_LINK = 20
 
 
 def _b64(b: bytes) -> str:
@@ -93,6 +108,43 @@ def esta_descadastrado(s: Session, email: str | None, telefone: str | None = Non
     return bool(conds) and bool(s.scalar(select(exists().where(or_(*conds)))))
 
 
+def _do_mesmo_contato(s: Session, email: str | None, telefone: str | None) -> tuple[set[str], set[str]]:
+    """O e-mail (ou o telefone canônico) e os e-mails e telefones dos contatos com ele."""
+    emails_ = {email.lower()} if email else set()
+    telefones = {telefone} if telefone else set()
+    cond = Contato.email == email if email else telefone_sql(Contato.telefone) == telefone
+    for e, t in s.execute(select(Contato.email, telefone_sql(Contato.telefone)).where(cond)):
+        if e:
+            emails_.add(e.lower())
+        if t:
+            telefones.add(t)
+    return emails_, telefones
+
+
+def _fora(emails_: set[str], telefones: set[str]):
+    conds = []
+    if emails_:
+        conds.append(Descadastro.email.in_(sorted(emails_)))
+    if telefones:
+        conds.append(Descadastro.telefone.in_(sorted(telefones)))
+    return or_(*conds) if conds else false()
+
+
+def fora_da_lista(s: Session, email: str | None = None, telefone: str | None = None) -> bool:
+    """A pessoa não recebe nada da conta: o e-mail (ou o telefone) dela, ou um dos contatos com ele, saiu da lista."""
+    return bool(s.scalar(select(exists().where(_fora(*_do_mesmo_contato(s, email, telefone))))))
+
+
+def desfazer(s: Session, origem: str, email: str | None = None, telefone: str | None = None) -> bool:
+    """Volta a receber: tira da lista o e-mail (ou o telefone canônico) e os dos contatos com ele (quem sai por um
+    canal sai de todos; quem volta por um, volta em todos). Audita sem o dado completo; False se não estava fora."""
+    apagados = s.execute(delete(Descadastro).where(_fora(*_do_mesmo_contato(s, email, telefone)))).rowcount
+    if apagados:
+        dado = {"email": mascarar(email)} if email else {"telefone": mascarar_telefone(telefone or "")}
+        registrar(s, "descadastro_desfeito", "info", {**dado, "origem": origem})
+    return bool(apagados)
+
+
 def _contato_de(s: Session, email: str | None, telefone: str | None) -> Contato | None:
     cond = Contato.email == email if email else telefone_sql(Contato.telefone) == telefone
     return s.scalar(select(Contato).where(cond).order_by(Contato.ativo.desc(), Contato.id).limit(1))
@@ -139,10 +191,12 @@ def _nome_conta(s: Session) -> str:
 
 
 def abrir(token: str) -> dict:
+    """`descadastrado`: a pessoa não recebe nada da conta (o e-mail saiu da lista, ou o telefone de um contato com
+    ele saiu pelo WhatsApp)."""
     conta_id, email = _abrir_token(token)
     with em_conta(conta_id) as s:
         return {"email_mascarado": mascarar(email), "empresa": _nome_conta(s),
-                "descadastrado": esta_descadastrado(s, email)}
+                "descadastrado": fora_da_lista(s, email)}
 
 
 def descadastrar(token: str, motivo: str | None, origem: str) -> dict:
@@ -158,9 +212,67 @@ def voltar(token: str) -> dict:
     conta_id, email = _abrir_token(token)
     with em_conta(conta_id) as s:
         _nome_conta(s)
-        if s.execute(delete(Descadastro).where(Descadastro.email == email)).rowcount:
-            registrar(s, "descadastro_desfeito", "info", {"email": mascarar(email)})
+        desfazer(s, "link", email=email)
     return {"descadastrado": False}
+
+
+# ---- pedir o link (página /sair, sem token) ---------------------------------
+
+def _chave_email(email: str) -> str:
+    return hashlib.sha256(f"link-sair|{email}".encode()).hexdigest()[:32]
+
+
+def contar_pedido(email: str) -> bool:
+    """Conta o pedido no limite por e-mail (`LIMITE_LINK_POR_EMAIL`, por processo, como os da rota); False se passou
+    (o pedido responde igual, sem mandar nada). Desligado com os limites (RATE_LIMIT_ENABLED=0)."""
+    if not limiter.enabled:
+        return True
+    return all(limiter.limiter.hit(item, "link-sair", _chave_email(email)) for item in parse_many(LIMITE_LINK_POR_EMAIL))
+
+
+def empresas_do_email(email: str) -> list[tuple[int, str, bool]]:
+    """(conta_id, nome, fora da lista) das contas que já mandaram pesquisa a um contato com este e-mail, ou de cuja
+    lista ele saiu (pelo e-mail, ou um contato com ele pelo WhatsApp), em ordem de nome (até `MAX_EMPRESAS_LINK`).
+    Modo sistema: o e-mail pode estar em várias contas."""
+    tel = aliased(Contato)
+    fora = or_(
+        exists().where(Descadastro.conta_id == Conta.id, Descadastro.email == email),
+        exists().where(Descadastro.conta_id == Conta.id, tel.conta_id == Conta.id, tel.email == email,
+                       Descadastro.telefone == telefone_sql(tel.telefone)),
+    )
+    recebeu = exists().where(Contato.conta_id == Conta.id, Contato.email == email, Contato.ultimo_envio.is_not(None))
+    with modo_sistema() as s:
+        linhas = s.execute(select(Conta.id, Conta.nome, fora).where(or_(recebeu, fora))
+                           .order_by(Conta.nome, Conta.id).limit(MAX_EMPRESAS_LINK)).all()
+    return [(conta_id, " ".join((nome or "").split()) or "Empresa", bool(f)) for conta_id, nome, f in linhas]
+
+
+def enviar_link(email: str) -> None:
+    """E-mail da Toqqi com a página /sair/{token} de cada empresa (`empresas_do_email`); nenhuma: não manda nada."""
+    empresas = empresas_do_email(email)
+    if not empresas:
+        return
+    pagina = f"{urlparse(config().FRONTEND_URL).netloc or 'toqqi.com'}/sair"
+    paragrafos: list[emails.Paragrafo] = [f"Você pediu, em {pagina}, para escolher as pesquisas que recebe."]
+    botao = None
+    if len(empresas) == 1:
+        conta_id, nome, fora = empresas[0]
+        if fora:
+            paragrafos.append(f"Você saiu da lista de pesquisas de {nome}. Se quiser voltar a receber, é só abrir o "
+                              "link abaixo.")
+            botao = ("Voltar a receber as pesquisas", link_descadastro(conta_id, email))
+        else:
+            paragrafos.append(f"{nome} manda pesquisas de satisfação para este e-mail pelo Toqqi. Se não quiser "
+                              "mais receber, é só abrir o link abaixo.")
+            botao = ("Não quero mais receber", link_descadastro(conta_id, email))
+    else:
+        paragrafos.append("Estas empresas mandam pesquisas de satisfação para este e-mail pelo Toqqi. Abra o link de "
+                          "cada uma para sair da lista ou voltar a receber:")
+        paragrafos += [Link(f"{nome} (você saiu da lista)" if fora else nome, link_descadastro(conta_id, email))
+                       for conta_id, nome, fora in empresas]
+    paragrafos.append("Não foi você que pediu? É só ignorar este e-mail: nada muda.")
+    emails.enviar(email, "Escolha as pesquisas que você recebe", paragrafos, botao,
+                  assunto_no_log="Link para escolher as pesquisas (página /sair)")
 
 
 # ---- tela interna -----------------------------------------------------------

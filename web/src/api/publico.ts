@@ -57,4 +57,10 @@ export const publicoApi = {
   /** Sair da lista (com motivo opcional) ou, com `voltar`, voltar a receber. */
   alterarDescadastro: (token: string, corpo: { motivo?: string } | { voltar: true }) =>
     api.post<{ descadastrado: boolean }>(`/publico/descadastro/${seg(token)}`, corpo, publico),
+  /**
+   * Página /sair sem token: a Toqqi manda ao e-mail um link por empresa que já lhe mandou pesquisas. Sempre a mesma
+   * `{mensagem}`, ache ou não o e-mail (422 com e-mail inválido; 429 depois de 3 pedidos no minuto).
+   */
+  pedirLinkDescadastro: (email: string) =>
+    api.post<{ mensagem: string }>('/publico/descadastro/pedir-link', { email }, publico),
 }

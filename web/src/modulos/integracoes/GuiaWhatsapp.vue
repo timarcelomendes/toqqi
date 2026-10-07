@@ -135,7 +135,8 @@ async function focarErro() {
           <BlocoCodigo :texto="modelo.rodape" rotulo="Copiar rodapé" quebrar><template #titulo>Rodapé (obrigatório)</template></BlocoCodigo>
           <p data-nota-sair>
             <strong class="text-texto">O rodapé com SAIR é obrigatório:</strong> é ele que diz ao cliente como parar de receber. Sem a palavra SAIR
-            no corpo ou no rodapé, o Toqqi não aceita o modelo. Quem responder SAIR sai da lista na hora e não recebe mais pesquisas.
+            no corpo ou no rodapé, o Toqqi não aceita o modelo. Quem responder SAIR sai da lista na hora e não recebe mais pesquisas; se
+            responder VOLTAR depois, volta a receber.
           </p>
           <p>Em "Botões", adicione <strong class="text-texto">Chamada para ação → Visitar site</strong>, com URL <strong class="text-texto">dinâmica</strong>:</p>
           <div class="grid gap-3 sm:grid-cols-2">

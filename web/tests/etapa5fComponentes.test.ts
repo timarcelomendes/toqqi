@@ -666,7 +666,7 @@ describe('Guia do WhatsApp: rodapé com SAIR obrigatório', () => {
     expect(texto).not.toContain('opcional, recomendado')
     expect(texto).toContain('Para não receber mais pesquisas, responda SAIR.')
     expect(t(w.get('[data-nota-sair]').text())).toBe(
-      'O rodapé com SAIR é obrigatório: é ele que diz ao cliente como parar de receber. Sem a palavra SAIR no corpo ou no rodapé, o Toqqi não aceita o modelo. Quem responder SAIR sai da lista na hora e não recebe mais pesquisas.',
+      'O rodapé com SAIR é obrigatório: é ele que diz ao cliente como parar de receber. Sem a palavra SAIR no corpo ou no rodapé, o Toqqi não aceita o modelo. Quem responder SAIR sai da lista na hora e não recebe mais pesquisas; se responder VOLTAR depois, volta a receber.',
     )
   })
 })

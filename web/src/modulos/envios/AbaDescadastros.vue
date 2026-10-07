@@ -12,7 +12,7 @@ import EstadoVazio from '@/components/ui/EstadoVazio.vue'
 import Paginacao from '@/components/ui/Paginacao.vue'
 import Tabela, { type Coluna } from '@/components/ui/Tabela.vue'
 import ModalDescadastro from './ModalDescadastro.vue'
-import { ORIGENS_DESCADASTRO, rotuloDe } from './logica'
+import { ORIGENS_DESCADASTRO, PAGINA_SAIR, rotuloDe } from './logica'
 
 const sessao = useSessaoStore()
 const linhas = ref<Descadastro[]>([])
@@ -70,7 +70,9 @@ onBeforeUnmount(() => {
   <div class="flex flex-col gap-4">
     <Alerta tom="info" titulo="Quem sai da lista não recebe mais nenhuma pesquisa da sua empresa">
       Nem por e-mail, nem pelo WhatsApp, mesmo que o contato seja importado de novo. Quem responde SAIR no WhatsApp automático também
-      entra nesta lista. Só a própria pessoa pode voltar a receber, pelo link "Não quero mais receber pesquisas" de um e-mail que recebeu.
+      entra nesta lista. Só a própria pessoa pode voltar a receber: pelo link de um e-mail de pesquisa, pedindo um link novo em
+      <a :href="PAGINA_SAIR.url" target="_blank" rel="noopener" class="link" data-pagina-sair>{{ PAGINA_SAIR.texto }}</a>
+      ou respondendo VOLTAR no WhatsApp.
     </Alerta>
 
     <div class="cartao">

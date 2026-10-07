@@ -11,6 +11,7 @@ from toqqi.core.rate_limit import (
     LIMITE_DESCADASTRO,
     LIMITE_ERROS_SITE,
     LIMITE_IMAGEM,
+    LIMITE_PEDIR_LINK,
     LIMITE_PUBLICO_ABRIR,
     LIMITE_RESPONDER_CONVITE,
     LIMITE_RESPONDER_LINK,
@@ -22,7 +23,7 @@ from toqqi.modulos.crescimento.esquemas import IndicacaoPublicaIn
 from toqqi.modulos.crescimento.indicacoes import coletar_avisos, enviar_avisos
 from toqqi.modulos.envios import descadastro
 from toqqi.modulos.envios.agradecimento import coletar_envios
-from toqqi.modulos.envios.esquemas import DescadastroPublicoIn
+from toqqi.modulos.envios.esquemas import DescadastroPublicoIn, PedirLinkIn
 from toqqi.modulos.envios.processamento import processar_lista
 from toqqi.modulos.ia.servico import analisar as analisar_com_ia
 from toqqi.modulos.ia.servico import coletar_analises
@@ -112,6 +113,17 @@ def editar_formulario(request: Request, codigo: str, dados: EditarLinkIn, tarefa
 
 
 # ---- descadastro (link do rodapé e List-Unsubscribe) -------------------------
+
+@router.post("/descadastro/pedir-link")
+@limiter.limit(LIMITE_PEDIR_LINK)
+def pedir_link_descadastro(request: Request, dados: PedirLinkIn, tarefas: BackgroundTasks):
+    """Página /sair sem token: manda ao e-mail um link por empresa que já lhe mandou pesquisas (ou de cuja lista ele
+    saiu). Sempre a mesma resposta, ache ou não o e-mail; a busca e o envio ficam para depois da resposta (o tempo
+    também não revela nada). Antes da rota com {token}."""
+    if descadastro.contar_pedido(dados.email):
+        tarefas.add_task(descadastro.enviar_link, dados.email)
+    return {"mensagem": descadastro.MSG_LINK}
+
 
 @router.get("/descadastro/{token}")
 @limiter.limit(LIMITE_DESCADASTRO)

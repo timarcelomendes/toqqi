@@ -122,7 +122,7 @@ describe.each(GUIAS.map((g) => [g.caminho]))('guia %s', (caminho) => {
     const ancoras = [...corpo.matchAll(/<li><a href="#([^"]+)">/g)].map((m) => m[1])
     expect(ancoras.length).toBeGreaterThanOrEqual(4)
     for (const a of ancoras) expect(corpo).toContain(`<section id="${a}"`)
-    const conhecidos = new Set(['/', '/entrar', '/termos', '/privacidade', ...PAGINAS.map((g) => `/${g.caminho}`)])
+    const conhecidos = new Set(['/', '/entrar', '/termos', '/privacidade', '/sair', ...PAGINAS.map((g) => `/${g.caminho}`)])
     for (const [, href] of corpo.matchAll(/href="(\/[^"#?]*)/g)) {
       if (href === '/cadastro') continue
       expect(conhecidos.has(href as string), href).toBe(true)

@@ -8,7 +8,11 @@ A conta é descoberta em modo sistema só pelo phone_number_id do aviso; o resto
   "quero sair", "parar", "pare", "stop", "cancelar", "descadastrar", "nao quero mais", "nao quero mais receber",
   "nao quero receber", "nao quero receber mais"); vale texto e resposta de botão (`button.text`,
   `interactive.button_reply.title`; ex.: a resposta rápida "Não quero receber" de um modelo): descadastro do telefone
-  (origem `whatsapp`) e confirmação por mensagem de sessão. Outra mensagem é ignorada, sem resposta.
+  (origem `whatsapp`) e confirmação por mensagem de sessão, que ensina o VOLTAR.
+- `messages` que pedem para voltar (`pede_para_voltar`, pedido do Marcelo em 07/10/2026), do mesmo jeito, iguais a uma
+  de `FRASES_VOLTAR` ("voltar", "quero voltar", "voltar a receber"...): com o telefone (ou um contato com ele) fora da
+  lista, volta a receber em todos os canais (`descadastro.desfazer`, origem `whatsapp`) e confirma; sem estar fora,
+  é ignorada. Outra mensagem é ignorada, sem resposta.
 O que fala com a rede (confirmação, e-mails de reserva, webhooks de saída) fica para depois da resposta.
 """
 import hashlib
@@ -25,13 +29,15 @@ from toqqi.core.errors import AppError
 from toqqi.core.segredos import decifrar
 from toqqi.core.texto import sem_acento, telefone_canonico
 from toqqi.modelos import Conta, Envio, WhatsappConta
-from toqqi.modulos.envios.descadastro import esta_descadastrado, gravar
+from toqqi.modulos.envios.descadastro import desfazer, esta_descadastrado, gravar
 from toqqi.modulos.envios.processamento import Pares, falha_whatsapp, processar_lista
 from toqqi.modulos.integracoes.webhooks import entregar_lista
 from toqqi.modulos.whatsapp import graph, modelo
 
 FRASES_SAIR = frozenset({"sair", "sair da lista", "quero sair", "parar", "pare", "stop", "cancelar", "descadastrar",
                          "nao quero mais", "nao quero mais receber", "nao quero receber", "nao quero receber mais"})
+FRASES_VOLTAR = frozenset({"voltar", "quero voltar", "voltar a receber", "quero voltar a receber", "quero receber",
+                           "quero receber de novo", "receber de novo", "quero receber novamente", "receber novamente"})
 MAX_FRASE = 40
 ORDEM = {"enviado": 0, "entregue": 1, "lido": 2}
 SITUACAO = {"delivered": "entregue", "read": "lido"}
@@ -84,11 +90,20 @@ def normalizar(texto: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", sem_acento(texto).lower()).strip()
 
 
-def pede_para_sair(texto) -> bool:
+def _frase(texto) -> str | None:
+    """A mensagem inteira normalizada, se for curta (até `MAX_FRASE`); senão None."""
     if not isinstance(texto, str) or len(texto) > 1000:
-        return False
+        return None
     frase = normalizar(texto)
-    return len(frase) <= MAX_FRASE and frase in FRASES_SAIR
+    return frase if len(frase) <= MAX_FRASE else None
+
+
+def pede_para_sair(texto) -> bool:
+    return _frase(texto) in FRASES_SAIR
+
+
+def pede_para_voltar(texto) -> bool:
+    return _frase(texto) in FRASES_VOLTAR
 
 
 def _texto(m: dict) -> str | None:
@@ -104,21 +119,28 @@ def _texto(m: dict) -> str | None:
 
 
 def _mensagem(s: Session, m: dict, phone_number_id: str) -> tuple[str, str, dict] | None:
-    if not pede_para_sair(_texto(m)):
+    texto = _texto(m)
+    sair = pede_para_sair(texto)
+    if not sair and not pede_para_voltar(texto):
         return None
     de = str(m.get("from") or "")
     telefone = telefone_canonico(de)
     if not 10 <= len(telefone) <= 13:
         return None
-    if not esta_descadastrado(s, None, telefone):
-        gravar(s, None, "whatsapp", None, telefone=telefone)
+    empresa = s.scalar(select(Conta.nome))
+    if sair:
+        if not esta_descadastrado(s, None, telefone):
+            gravar(s, None, "whatsapp", None, telefone=telefone)
+        corpo = f"Pronto! Você não vai mais receber pesquisas da {empresa}. Se mudar de ideia, responda VOLTAR."
+    else:
+        if not desfazer(s, "whatsapp", telefone=telefone):
+            return None  # não estava fora da lista: como uma mensagem qualquer, sem resposta
+        corpo = f"Pronto! Você volta a receber as pesquisas da {empresa}. Para parar, responda SAIR."
     wc = s.scalar(select(WhatsappConta))
     token = decifrar(wc.token_cifrado)
     if token is None:
         return None
-    empresa = s.scalar(select(Conta.nome))
-    return token, phone_number_id, modelo.corpo_texto(
-        de, f"Pronto! Você não vai mais receber pesquisas da {empresa}.")
+    return token, phone_number_id, modelo.corpo_texto(de, corpo)
 
 
 def receber(dados: dict) -> Depois:
@@ -143,11 +165,11 @@ def receber(dados: dict) -> Depois:
 
 
 def concluir(depois: Depois, entregas: list) -> None:
-    """Segundo plano: confirmações de descadastro, e-mails de reserva e webhooks de saída."""
+    """Segundo plano: confirmações de SAIR e VOLTAR, e-mails de reserva e webhooks de saída."""
     for token, phone_number_id, corpo in depois.mensagens:
         try:
             graph.enviar_mensagem(token, phone_number_id, corpo)
         except graph.FalhaGraph:
-            pass  # já registrado no log pela chamada; a pessoa já saiu da lista de qualquer forma
+            pass  # já registrado no log pela chamada; a pessoa já saiu (ou voltou) de qualquer forma
     processar_lista(depois.envios)
     entregar_lista(entregas)
