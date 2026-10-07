@@ -987,6 +987,20 @@ export interface WhatsappIntegracao {
   webhook_verificacao?: string | null
 }
 
+/**
+ * Situação do número na Meta, lida na hora (GET /integracoes/whatsapp/numero; docs/api-whatsapp-registro.md):
+ * `falta_registrar` é o "Pendente" do WhatsApp Manager (adicionado, mas sem o registro na Cloud API).
+ */
+export type SituacaoNumero = 'registrado' | 'falta_registrar' | 'atencao' | 'problema' | 'desconhecida'
+
+export interface NumeroWhatsapp {
+  situacao: SituacaoNumero
+  /** O `status` da Meta (CONNECTED, PENDING, FLAGGED...), ou null se ela não informou. */
+  status: string | null
+  /** O número foi confirmado com o código (SMS ou ligação); null se a Meta não informou. */
+  codigo_confirmado: boolean | null
+}
+
 export interface ConexaoWhatsapp {
   phone_number_id: string
   waba_id: string

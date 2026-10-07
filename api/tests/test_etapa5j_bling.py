@@ -13,6 +13,7 @@ from util import API, conta_pronta, form_padrao, ligar_envios, membro, sql
 
 from toqqi.core.config import config
 from toqqi.core.email import caixa_memoria
+from toqqi.core.segredos import decifrar
 from toqqi.modulos.conectores import bling
 
 SEGREDO_APP = "segredo-do-app-bling"
@@ -77,7 +78,10 @@ def test_autorizar_e_voltar(client, dono, admin, falso):
     b = client.get(f"{API}/integracoes/conectores", headers=h).json()["bling"]
     assert b["conectado"] and b["pesquisar_ao_faturar"] and b["disponivel"]
     (cifrado, opcoes), = sql(dono, "select token_cifrado, opcoes from conectores where provedor = 'bling'")
-    assert "r1" not in cifrado and opcoes["empresa_bling"] == "emp-123"
+    # cifrado de verdade: o texto guardado não é o token, e decifrado o contém ("r1" not in cifrado falhava ~4% das
+    # vezes, quando o texto aleatório da cifra trazia "r1" por acaso)
+    assert cifrado.startswith("gAAAAA") and "r1" in (decifrar(cifrado) or "")
+    assert opcoes["empresa_bling"] == "emp-123"
     r = client.get(f"{API}/publico/conectores/bling/retorno", params={"code": "c1", "state": "falso"},
                    follow_redirects=False)
     assert r.headers["location"].endswith("resultado=erro")

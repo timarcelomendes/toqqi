@@ -3812,7 +3812,11 @@
             "waba",
             "cloud api",
             "rodapé",
-            "sair"
+            "sair",
+            "pendente",
+            "registrar número",
+            "pin",
+            "verificação em duas etapas"
           ],
           "blocos": [
             {
@@ -3829,6 +3833,10 @@
                 "No painel do app da Meta, cole a URL de retorno e o token de verificação mostrados na aba.",
                 "Na aba, preencha o formulário e clique em “Conectar WhatsApp”. O Toqqi confere os dados com a Meta."
               ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Número “Pendente” no WhatsApp Manager: falta o registro na Meta, e o Toqqi faz isso por você. Depois de conectar, a aba mostra “Falta registrar o número na Meta”: digite um PIN de 6 números (ou clique em “Gerar PIN”) e clique em “Registrar o número”. O PIN vira a verificação em duas etapas do número e o Toqqi não guarda: anote junto com as suas senhas. Se o número já tinha verificação em duas etapas (por ter sido usado no app do WhatsApp), use o PIN dela. A Meta aceita até 10 tentativas a cada 3 dias."
             },
             {
               "tipo": "dica",

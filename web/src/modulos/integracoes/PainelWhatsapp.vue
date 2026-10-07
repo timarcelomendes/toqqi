@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // WhatsApp automático já conectado: número, modelo, ligar/desligar, franquia, excedente, teste e desconectar.
-import { computed, ref } from 'vue'
-import { CheckCircle2, Gauge, MessageCircle, Send, Unplug } from 'lucide-vue-next'
-import { mensagemDoErro, whatsappAutomaticoApi, type WhatsappIntegracao } from '@/api'
+// Situação do número na Meta (lida na hora) e, com o número "Pendente", o registro pelo Toqqi (RegistroNumero).
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { CheckCircle2, ExternalLink, Gauge, MessageCircle, Send, Unplug } from 'lucide-vue-next'
+import { mensagemDoErro, whatsappAutomaticoApi, type NumeroWhatsapp, type WhatsappIntegracao } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
 import { formatarMoeda, formatarNumero, telefoneWhatsapp } from '@/utils/formatos'
@@ -14,7 +15,8 @@ import Etiqueta from '@/components/ui/Etiqueta.vue'
 import Interruptor from '@/components/ui/Interruptor.vue'
 import BarraFranquia from './BarraFranquia.vue'
 import BlocoCodigo from './BlocoCodigo.vue'
-import { estadoFranquia, explicacaoFranquia } from './logica'
+import RegistroNumero from './RegistroNumero.vue'
+import { estadoFranquia, explicacaoFranquia, situacaoNumero } from './logica'
 
 const props = defineProps<{ dados: WhatsappIntegracao }>()
 const emit = defineEmits<{ atualizado: [w: WhatsappIntegracao]; desconectado: [] }>()
@@ -23,6 +25,42 @@ const ocupado = ref<'ativo' | 'excedente' | 'teste' | 'desconectar' | null>(null
 const telefone = ref('')
 const erroTelefone = ref<string | null>(null)
 const resultadoTeste = ref<{ ok: boolean; texto: string } | null>(null)
+
+// ── situação do número na Meta ───────────────────────────────────────────────
+const numero = ref<NumeroWhatsapp | null>(null)
+const estadoNumero = ref<'carregando' | 'pronto' | 'erro'>('carregando')
+const erroNumero = ref('')
+const mensagemRegistro = ref<string | null>(null)
+const situacao = computed(() => (numero.value ? situacaoNumero(numero.value) : null))
+let controleNumero: AbortController | null = null
+
+async function carregarNumero() {
+  controleNumero?.abort()
+  controleNumero = new AbortController()
+  estadoNumero.value = 'carregando'
+  try {
+    numero.value = await whatsappAutomaticoApi.numero(controleNumero.signal)
+    estadoNumero.value = 'pronto'
+  } catch (e) {
+    if (e instanceof DOMException) return
+    erroNumero.value = mensagemDoErro(e)
+    estadoNumero.value = 'erro'
+  }
+}
+
+async function aoRegistrar(n: NumeroWhatsapp, mensagem: string) {
+  numero.value = n
+  estadoNumero.value = 'pronto'
+  mensagemRegistro.value = mensagem
+  try {
+    emit('atualizado', await whatsappAutomaticoApi.obter()) // o erro "sem número registrado" do último envio sai
+  } catch {
+    /* a tela já mostra o registro; o resto atualiza ao abrir de novo */
+  }
+}
+
+onMounted(carregarNumero)
+onBeforeUnmount(() => controleNumero?.abort())
 
 const franquia = computed(() => estadoFranquia(props.dados.franquia))
 const valorExtra = computed(() => formatarMoeda(props.dados.franquia.valor_excedente ?? 1.5))
@@ -108,6 +146,18 @@ async function desconectar() {
 <template>
   <div class="flex flex-col gap-6">
     <Alerta v-if="dados.ultimo_erro" tom="erro" titulo="O último envio pelo WhatsApp deu erro">{{ dados.ultimo_erro }}</Alerta>
+    <Alerta v-if="mensagemRegistro" tom="sucesso" titulo="Número registrado" data-registrado>{{ mensagemRegistro }}</Alerta>
+    <RegistroNumero v-if="numero?.situacao === 'falta_registrar'" :numero="numero" @registrado="aoRegistrar" />
+    <Alerta
+      v-else-if="numero && situacao && (numero.situacao === 'atencao' || numero.situacao === 'problema')"
+      :tom="numero.situacao === 'problema' ? 'erro' : 'atencao'"
+      :titulo="situacao.rotulo"
+      data-aviso-numero
+    >
+      {{ numero.situacao === 'problema' ? 'Enquanto isso, as pesquisas não saem por este número.' : 'O envio pode ser limitado ou parar.' }}
+      Veja o motivo e o que fazer no
+      <a href="https://business.facebook.com/wa/manage/phone-numbers/" target="_blank" rel="noopener" class="link inline-flex items-center gap-1">WhatsApp Manager <ExternalLink class="size-3.5" aria-hidden="true" /></a>.
+    </Alerta>
 
     <!-- Conexão -->
     <section class="cartao grid gap-6 p-5 sm:p-6 md:grid-cols-3" aria-labelledby="t-wa-conexao">
@@ -133,6 +183,17 @@ async function desconectar() {
           <div>
             <dt class="text-texto-fraco">Identificação do número</dt>
             <dd class="break-all font-mono text-texto">{{ dados.phone_number_id || '—' }}</dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="text-texto-fraco">Situação na Meta</dt>
+            <dd class="mt-0.5 text-texto" data-situacao-numero :aria-busy="estadoNumero === 'carregando' || undefined">
+              <span v-if="estadoNumero === 'carregando'" class="text-texto-fraco">Conferindo na Meta…</span>
+              <span v-else-if="estadoNumero === 'erro'" class="text-texto-suave">
+                Não deu para conferir agora: {{ erroNumero }}
+                <button type="button" class="link ml-1" @click="carregarNumero">Tentar de novo</button>
+              </span>
+              <Etiqueta v-else-if="situacao" :tom="situacao.tom" ponto>{{ situacao.rotulo }}</Etiqueta>
+            </dd>
           </div>
         </dl>
         <Interruptor

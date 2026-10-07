@@ -41,3 +41,8 @@ def _obrigatorio(v: str | None) -> str:
 
 class TesteIn(BaseModel):
     telefone: Annotated[Telefone, AfterValidator(_obrigatorio)]
+
+
+class RegistrarIn(BaseModel):
+    """Registro do número na Meta: o PIN de 6 dígitos da verificação em duas etapas (não é guardado)."""
+    pin: Annotated[Texto, _padrao(r"[0-9]{6}", "O PIN tem 6 números.")]

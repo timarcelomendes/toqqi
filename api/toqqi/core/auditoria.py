@@ -63,6 +63,8 @@ ROTULOS = {
     "webhook_desativado": "Webhook desativado após falhas seguidas",
     "whatsapp_conectado": "WhatsApp automático conectado",
     "whatsapp_desconectado": "WhatsApp automático desconectado",
+    "whatsapp_numero_registrado": "Número do WhatsApp registrado na Meta",
+    "whatsapp_registro_recusado": "A Meta recusou o registro do número do WhatsApp",
     "resposta_editada": "Resposta alterada na análise",
     "resposta_excluida": "Resposta excluída",
     "importacao_respostas": "Planilha de respostas antigas importada",

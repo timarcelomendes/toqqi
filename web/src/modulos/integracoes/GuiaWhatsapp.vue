@@ -99,6 +99,10 @@ async function focarErro() {
             <strong class="text-texto">Atenção:</strong> o número não pode estar em uso no aplicativo do WhatsApp (nem no WhatsApp Business do celular). Use um número novo ou apague a conta dele no celular antes.
           </p>
           <p>Anote a <strong class="text-texto">Identificação do número de telefone</strong> e a <strong class="text-texto">Identificação da conta do WhatsApp Business</strong>: elas aparecem em "Configuração da API" e vão no formulário lá embaixo.</p>
+          <p data-nota-registro>
+            O número vai aparecer como <strong class="text-texto">Pendente</strong> no WhatsApp Manager até ser registrado. Não precisa fazer nada lá:
+            depois de conectar aqui, o Toqqi registra para você, com um PIN de 6 números que você digita ou gera na hora.
+          </p>
         </div>
       </li>
 

@@ -269,6 +269,11 @@ class MetaFalsa:
         self.erro_envio = None       # (status, {"code": ..., "message": ...})
         self.erro_numero = None
         self._n = 0
+        # situação do número (GET /{phone_number_id}) e o registro na Cloud API (POST /{phone_number_id}/register)
+        self.numero = {"status": "CONNECTED", "platform_type": "CLOUD_API", "code_verification_status": "VERIFIED",
+                       "name_status": "APPROVED"}
+        self.registros = []          # corpos dos POST /register
+        self.erro_registro = None    # (status, {"code": ..., "message": ...})
 
     def __call__(self, request):
         import httpx
@@ -284,11 +289,18 @@ class MetaFalsa:
             return httpx.Response(200, json={"messages": [{"id": f"wamid.{self._n}"}]})
         if partes[-1] == "message_templates":
             return httpx.Response(200, json={"data": self.modelos})
+        if request.method == "POST" and partes[-1] == "register":
+            self.registros.append(json.loads(request.content))
+            if self.erro_registro:
+                status, erro = self.erro_registro
+                return httpx.Response(status, json={"error": erro})
+            self.numero = {**self.numero, "status": "CONNECTED", "platform_type": "CLOUD_API"}
+            return httpx.Response(200, json={"success": True})
         if self.erro_numero:
             status, erro = self.erro_numero
             return httpx.Response(status, json={"error": erro})
         return httpx.Response(200, json={"display_phone_number": "+55 11 4000-1234",
-                                         "verified_name": "Alfa Distribuidora", "id": partes[0]})
+                                         "verified_name": "Alfa Distribuidora", "id": partes[0], **self.numero})
 
 
 def conectar_whatsapp(client, h: dict, pnid: str = PNID, **extra):

@@ -8,6 +8,7 @@ import type {
   EventoWebhook,
   Id,
   Mensagem,
+  NumeroWhatsapp,
   Pagina,
   ResultadoTesteWebhook,
   Webhook,
@@ -43,4 +44,11 @@ export const whatsappAutomaticoApi = {
   atualizar: (dados: { ativo?: boolean; excedente_ativo?: boolean }) => api.patch<WhatsappIntegracao>('/integracoes/whatsapp', dados),
   desconectar: () => api.delete('/integracoes/whatsapp'),
   enviarTeste: (telefone: string) => api.post<Mensagem | undefined>('/integracoes/whatsapp/teste', { telefone }),
+  /** Situação do número na Meta, lida na hora (409 `falha_meta` se a Meta não respondeu ou recusou o token). */
+  numero: (sinal?: AbortSignal) => api.get<NumeroWhatsapp>('/integracoes/whatsapp/numero', { sinal }),
+  /**
+   * Registra o número na Cloud API com o token salvo e o PIN de 6 dígitos (que não fica guardado). 409
+   * `registro_recusado` com o motivo em texto simples, ou `muitas_tentativas_registro` (8 em 72 horas).
+   */
+  registrarNumero: (pin: string) => api.post<Mensagem & { numero: NumeroWhatsapp }>('/integracoes/whatsapp/registrar', { pin }),
 }

@@ -4,6 +4,7 @@ import type {
   CanalConfig,
   EntregaWebhook,
   FranquiaWhatsapp,
+  NumeroWhatsapp,
   Pagina,
   Webhook,
   WhatsappIntegracao,
@@ -295,4 +296,66 @@ export function modeloSugerido(enderecoApp: string) {
     botaoUrl: `${base}/r/{{1}}`,
     exemplos: { '{{1}}': 'Maria', '{{2}}': 'nome da sua empresa', '{{3}}': 'seu pedido 48213' },
   }
+}
+
+// ── Situação do número na Meta (docs/api-whatsapp-registro.md) ─────────────────
+
+/** O `status` da Meta em palavras (o que aparece no WhatsApp Manager). */
+export const STATUS_NUMERO: Record<string, string> = {
+  CONNECTED: 'Conectado',
+  PENDING: 'Pendente',
+  UNVERIFIED: 'Não confirmado',
+  FLAGGED: 'Sinalizado',
+  RESTRICTED: 'Restrito',
+  RATE_LIMITED: 'Com limite de envio',
+  DISCONNECTED: 'Desconectado',
+  BANNED: 'Banido',
+  DELETED: 'Excluído',
+  MIGRATED: 'Levado para outra conta',
+  UNKNOWN: 'Desconhecido',
+}
+
+/** O que a tela mostra em "Situação na Meta": o texto e o tom. */
+export function situacaoNumero(n: NumeroWhatsapp): { rotulo: string; tom: Tom } {
+  const status = n.status ? (STATUS_NUMERO[n.status] ?? n.status) : null
+  switch (n.situacao) {
+    case 'registrado':
+      return { rotulo: 'Registrado e pronto para enviar', tom: 'sucesso' }
+    case 'falta_registrar':
+      return { rotulo: 'Pendente: falta registrar o número', tom: 'atencao' }
+    case 'atencao':
+      return { rotulo: status ? `Registrado, mas a Meta marcou como "${status}"` : 'Registrado, com aviso da Meta', tom: 'atencao' }
+    case 'problema':
+      return { rotulo: status ? `A Meta marcou como "${status}"` : 'Com problema na Meta', tom: 'erro' }
+    default:
+      return { rotulo: 'A Meta não informou', tom: 'neutro' }
+  }
+}
+
+/** Só os 6 números do PIN (o que for colado ou digitado além disso sai). */
+export const soPin = (v: string) => v.replace(/\D/g, '').slice(0, 6)
+
+/** PIN fácil de adivinhar: o mesmo número (111111) ou uma sequência, subindo ou descendo (123456, 890123, 654321). */
+export function pinFraco(pin: string): boolean {
+  if (!/^\d{6}$/.test(pin)) return false
+  const d = [...pin].map(Number)
+  const passos = d.slice(1).map((x, i) => (x - d[i]! + 10) % 10)
+  return passos.every((p) => p === passos[0]) && [0, 1, 9].includes(passos[0]!)
+}
+
+/** Um número de 0 a 9 do sorteio seguro do navegador (sem o viés do resto da divisão). */
+function digitoSeguro(): number {
+  const a = new Uint32Array(1)
+  do crypto.getRandomValues(a)
+  while (a[0]! >= 4_294_967_290)
+  return a[0]! % 10
+}
+
+/** PIN de 6 números sorteado, que não seja fácil de adivinhar (`pinFraco`). */
+export function gerarPin(digito: () => number = digitoSeguro): string {
+  for (let i = 0; i < 1000; i++) {
+    const pin = Array.from({ length: 6 }, () => String(digito())).join('')
+    if (!pinFraco(pin)) return pin
+  }
+  throw new Error('Não foi possível sortear um PIN.')
 }

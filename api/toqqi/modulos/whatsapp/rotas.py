@@ -7,9 +7,10 @@ from fastapi.responses import PlainTextResponse
 
 from toqqi.core.deps import Contexto, requer, requer_admin
 from toqqi.core.errors import AppError
+from toqqi.core.rate_limit import LIMITE_REGISTRO_WHATSAPP, limite_por_usuario, limiter
 from toqqi.modulos.integracoes.webhooks import coletar_entregas
 from toqqi.modulos.whatsapp import servico, webhook
-from toqqi.modulos.whatsapp.esquemas import AlterarIn, ConectarIn, TesteIn
+from toqqi.modulos.whatsapp.esquemas import AlterarIn, ConectarIn, RegistrarIn, TesteIn
 
 router = APIRouter(prefix="/integracoes/whatsapp", tags=["integracoes"])
 router_publico = APIRouter(prefix="/publico/whatsapp", tags=["publico"])
@@ -39,6 +40,19 @@ def desconectar(ctx: Contexto = Depends(requer_admin)):
 @router.post("/teste")
 def teste(dados: TesteIn, ctx: Contexto = Depends(requer_admin)):
     return servico.testar(ctx, dados.telefone)
+
+
+@router.get("/numero")
+def numero(ctx: Contexto = Depends(requer_admin)):
+    """Situação do número na Meta (lida na hora): {situacao, status, codigo_confirmado}."""
+    return servico.numero(ctx)
+
+
+@router.post("/registrar")
+@limiter.limit(LIMITE_REGISTRO_WHATSAPP, key_func=limite_por_usuario)
+def registrar(request: Request, dados: RegistrarIn, ctx: Contexto = Depends(requer_admin)):
+    """Registra o número na Cloud API com o token salvo e o PIN de 6 dígitos (não guardado)."""
+    return servico.registrar_numero(ctx, dados.pin)
 
 
 # ---- webhook da Meta ----------------------------------------------------------
