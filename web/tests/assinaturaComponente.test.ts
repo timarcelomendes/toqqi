@@ -706,7 +706,7 @@ describe('Plataforma (etapa 5a)', () => {
     const w = await abrir('/plataforma/contas', PlataformaView)
     expect(t(linha(w, 'Assinante').text())).toContain('Ativa')
     expect(t(linha(w, 'Assinante').text())).toContain('Profissional · R$ 349,00/mês')
-    expect(t(linha(w, 'Assinante').find('td:nth-child(3)').text())).toBe('ProfissionalR$ 349,00/mês')
+    expect(t(linha(w, 'Assinante').find('td:nth-child(4)').text())).toBe('ProfissionalR$ 349,00/mês') // depois de Empresa, Risco e Situação
     expect(t(linha(w, 'Assinante').text())).toContain('Pago até 14/11/2026')
     expect(t(linha(w, 'Devedora').text())).toContain('Atrasada')
     expect(t(linha(w, 'Devedora').text())).toContain('Vencida em 28/09/2026')

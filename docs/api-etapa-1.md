@@ -62,7 +62,8 @@ Permissões (strings): `painel.ver`, `painel.exportar`, `contatos.ver`, `contato
 ## Plataforma (superadmin)
 - `GET /plataforma/contas` → `[{id, nome, plano, situacao, teste_ate, usuarios, criada_em, admins}]`; `admins` = os
   administradores da conta, o mais antigo primeiro (`[{nome, email, email_confirmado}]`; também nas respostas de criar,
-  "+14 dias" e cortesia). A tela mostra o e-mail do primeiro, marca "Sua conta" e busca por empresa ou e-mail.
+  "+14 dias" e cortesia). A tela mostra o e-mail do primeiro, marca "Sua conta" e busca por empresa ou e-mail. Desde
+  08/10/2026, cada conta da listagem traz também o `risco` (nota de 0 a 100 e os sinais): `docs/api-plataforma-risco.md`.
 - Conta inicial (`ADMIN_INICIAL_EMAIL`/`ADMIN_INICIAL_SENHA`, na subida): só é criada com o banco vazio; trocar o e-mail
   depois não cria outra conta (as demais saem da Plataforma).
 - `POST /plataforma/contas` `{empresa, admin_nome, admin_email, admin_senha, situacao: "teste"|"cortesia"}` → 201.

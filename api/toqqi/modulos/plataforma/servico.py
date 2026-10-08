@@ -68,6 +68,7 @@ from toqqi.modelos import (
 from toqqi.modulos.assinatura import regras
 from toqqi.modulos.assinatura import servico as assinaturas
 from toqqi.modulos.formularios.semear import semear_conta
+from toqqi.modulos.plataforma import risco
 
 
 def _conta_json(c: Conta, usuarios: int, a: Assinatura | None = None, admins: list[dict] | None = None) -> dict:
@@ -101,6 +102,7 @@ def _admins(s, conta_id: int | None = None) -> dict[int, list[dict]]:
 
 
 def listar() -> list[dict]:
+    """As contas, das mais novas às mais antigas, cada uma com o `risco` (`risco.calcular`; null nas da equipe)."""
     contagem = (
         select(Usuario.conta_id, func.count().label("n")).group_by(Usuario.conta_id).subquery()
     )
@@ -113,7 +115,8 @@ def listar() -> list[dict]:
             .order_by(Conta.criada_em.desc(), Conta.id.desc())
         ).all()
         admins = _admins(s)
-    return [_conta_json(c, n, a, admins.get(c.id)) for c, n, a in linhas]
+        notas = risco.calcular(s)
+    return [{**_conta_json(c, n, a, admins.get(c.id)), "risco": notas.get(c.id)} for c, n, a in linhas]
 
 
 def criar_conta(ctx: Contexto, dados) -> dict:

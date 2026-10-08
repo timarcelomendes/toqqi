@@ -216,7 +216,44 @@ export interface ContaPlataforma {
   admins?: AdminPlataforma[]
   /** Etapa 5f: dia (AAAA-MM-DD) da exclusão automática já avisada aos administradores; null fora disso. */
   exclusao_em?: string | null
+  /** A nota de risco (docs/api-plataforma-risco.md); null nas contas da equipe. Só na listagem. */
+  risco?: RiscoConta | null
 }
+
+/** Risco da conta: a soma dos pontos dos sinais (0 a 100). `alto` 60 ou mais, `medio` 30 a 59. */
+export interface RiscoConta {
+  pontos: number
+  nivel: 'baixo' | 'medio' | 'alto'
+  sinais: SinalRisco[]
+}
+
+/** Outra conta citada num sinal de repetido (até 3; `total` diz quantas são). */
+export interface ContaCitada {
+  id: number | string
+  nome: string
+}
+
+type Repetido = { pontos: number; contas: ContaCitada[]; total: number }
+
+export type SinalRisco =
+  | { tipo: 'email_temporario' | 'email_pessoal'; pontos: number; dominio: string }
+  | { tipo: 'email_nao_confirmado'; pontos: number; dias: number }
+  | { tipo: 'nome_de_teste'; pontos: number }
+  | ({ tipo: 'documento_repetido'; documento: 'cpf' | 'cnpj' } & Repetido)
+  | ({ tipo: 'telefone_repetido' | 'nome_repetido' } & Repetido)
+  | ({ tipo: 'dominio_repetido'; dominio: string } & Repetido)
+  | { tipo: 'descadastros'; pontos: number; saidas: number; destinatarios: number; taxa: number }
+  | { tipo: 'invalidos'; pontos: number; invalidos: number; tentativas: number; taxa: number }
+  | { tipo: 'sem_respostas'; pontos: number; convites: number; respostas: number }
+  | { tipo: 'volume_inicio'; pontos: number; dias: number; envios: number }
+  | {
+      tipo: 'formulario_sensivel'
+      pontos: number
+      formulario: { id: number | string; nome: string }
+      termo: 'senha' | 'cartao' | 'banco' | 'codigo'
+      trecho: string
+    }
+  | { tipo: 'estorno'; pontos: number; quantas: number; ultima_em: string }
 
 export interface AdminPlataforma {
   nome: string
