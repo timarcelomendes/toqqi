@@ -78,6 +78,11 @@ export const PRIVACIDADE: DocumentoLegal = {
               'Informados por você ou pelo administrador da conta.',
             ],
             [
+              'Usuários do Toqqi (entrar com o Google)',
+              'Nome, e-mail e o identificador da sua conta do Google, que o Google nos envia quando você usa o botão “Entrar com o Google”. Não recebemos sua senha do Google nem acesso ao Gmail, ao Drive, à agenda ou aos contatos.',
+              'Enviados pelo Google, só se você escolher entrar com ele.',
+            ],
+            [
               'Usuários do Toqqi (uso)',
               'Endereço IP, navegador, data e hora de acessos, registros de auditoria (o que foi feito na conta e por quem), aceite dos termos.',
               'Gerados quando você usa o sistema.',
@@ -219,6 +224,7 @@ export const PRIVACIDADE: DocumentoLegal = {
             ['Resend', 'Envio de e-mails, como provedor alternativo', 'Estados Unidos', 'Nome e e-mail do destinatário, conteúdo da mensagem'],
             ['Meta (WhatsApp Cloud API)', 'Envio de pesquisas por WhatsApp, só se a empresa conectar o WhatsApp', 'Estados Unidos e outros países', 'Telefone e nome do destinatário, conteúdo da mensagem'],
             ['Webhooks de saída e Microsoft Teams', 'Avisos para sistemas da própria empresa e para o Teams, só por instrução da empresa assinante', 'Onde fica o sistema de destino configurado pela empresa', 'O que a empresa escolher enviar (por exemplo, dados de uma resposta ou de um alerta)'],
+            ['Google', 'Entrar com o Google (opcional), nas telas de entrar e de cadastro', 'Estados Unidos', 'Só se você usar o botão: o Google confirma quem você é e nos envia nome, e-mail e o identificador da conta'],
             ['GitHub', 'Agendamento de tarefas automáticas', 'Estados Unidos', 'Nenhum dado pessoal'],
             ['ViaCEP', 'Preencher o endereço a partir do CEP, consulta feita pelo seu navegador', 'Brasil', 'O CEP digitado e o IP do seu navegador'],
           ],
@@ -242,7 +248,7 @@ export const PRIVACIDADE: DocumentoLegal = {
         {
           tipo: 'p',
           texto: [
-            'Alguns fornecedores (como Render, OpenAI, ZeptoMail e Resend) ficam nos Estados Unidos. A transferência segue o art. 33 da LGPD: [a confirmar: mecanismo — cláusulas-padrão contratuais da ANPD (Resolução CD/ANPD nº 19/2024) nos contratos com os fornecedores]. Para os dados de quem usa o Toqqi, vale também a execução do contrato (art. 33, IX). Você pode pedir mais informações em ',
+            'Alguns fornecedores (como Render, OpenAI, ZeptoMail, Resend e Google) ficam nos Estados Unidos. A transferência segue o art. 33 da LGPD: [a confirmar: mecanismo — cláusulas-padrão contratuais da ANPD (Resolução CD/ANPD nº 19/2024) nos contratos com os fornecedores]. Para os dados de quem usa o Toqqi, vale também a execução do contrato (art. 33, IX). Você pode pedir mais informações em ',
             { texto: 'privacidade@toqqi.com', href: 'mailto:privacidade@toqqi.com' },
             '.',
           ],
@@ -319,7 +325,7 @@ export const PRIVACIDADE: DocumentoLegal = {
         {
           tipo: 'p',
           texto:
-            'A fonte das telas é servida pelo próprio Toqqi, sem chamar o Google Fonts. Você pode apagar esses dados quando quiser, nas configurações do navegador. O efeito é sair da conta e perder as preferências acima.',
+            'Nas telas de entrar e de cadastro, o botão “Entrar com o Google” é carregado do próprio Google, que pode usar cookies dele, conforme a política de privacidade do Google. Nas outras telas do sistema, o Toqqi não carrega nada do Google. A fonte das telas é servida pelo próprio Toqqi, sem chamar o Google Fonts. Você pode apagar esses dados quando quiser, nas configurações do navegador. O efeito é sair da conta e perder as preferências acima.',
         },
       ],
     },

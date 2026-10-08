@@ -25,6 +25,8 @@ GRAVIDADES = ("info", "sucesso", "atencao", "erro")
 ROTULOS = {
     "login_ok": "Entrou no sistema",
     "login_falhou": "Tentativa de entrada com senha errada",
+    "login_google_ligado": "Conta do Google ligada para entrar",
+    "login_google_recusado": "Entrada pelo Google recusada: o e-mail está ligado a outra conta do Google",
     "cadastro_conta": "Conta criada",
     "usuario_criado": "Usuário adicionado",
     "usuario_alterado": "Usuário alterado",

@@ -25,6 +25,10 @@ class Config(BaseSettings):
     # Protege POST /interno/tarefas (rodar as tarefas à mão). Vazio = rota desligada (404).
     TAREFAS_TOKEN: str = ""
     SUPERADMIN_EMAILS: str = ""
+    # Entrar com o Google (docs/api-login-google.md): o "ID do cliente OAuth" (tipo Aplicativo da Web) criado no Google
+    # Cloud, terminado em .apps.googleusercontent.com. Não é segredo (vai para o navegador). Vazio = sem o botão.
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CHAVES_URL: str = "https://www.googleapis.com/oauth2/v3/certs"
     # Cifra segredos guardados no banco (token do WhatsApp, segredos dos webhooks). Fora de produção,
     # vazio = derivada do JWT_SECRET.
     SEGREDOS_KEY: str = ""

@@ -2,6 +2,7 @@ import { api } from './cliente'
 import type {
   Aceite,
   AdministradorConta,
+  CadastroGooglePendente,
   ContaPlataforma,
   DadosSessao,
   Gravidade,
@@ -61,6 +62,19 @@ export const authApi = {
   pedirAcesso: (dados: { nome: string; email: string; senha: string }) =>
     api.post<Mensagem>('/auth/pedir-acesso', dados, publico),
   regrasSenha: () => api.get<RegrasSenha>('/auth/regras-senha', publico),
+  /** Entrar com o Google (docs/api-login-google.md): o ID do cliente para o botão; null = sem o botão. */
+  googleConfig: () => api.get<{ client_id: string | null }>('/auth/google/config', publico),
+  /** A sessão (como em `entrar`) ou, para quem ainda não tem conta, o token para terminar o cadastro. */
+  entrarGoogle: (credencial: string, lembrar: boolean) =>
+    api.post<Sessao | CadastroGooglePendente>('/auth/google', { credencial, lembrar }, publico),
+  cadastrarGoogle: (dados: {
+    cadastro: string
+    empresa: string
+    nome: string
+    telefone?: string
+    aceite_termos: true
+    origem?: Partial<Record<'utm_source' | 'utm_medium' | 'utm_campaign', string>> | null
+  }) => api.post<Sessao>('/auth/google/cadastro', dados, publico),
   /** Não aciona o tratamento global: se a sessão já caiu, sair continua valendo. */
   sair: () => api.post<void>('/auth/sair', undefined, { semTratamentoGlobal: true }),
 }

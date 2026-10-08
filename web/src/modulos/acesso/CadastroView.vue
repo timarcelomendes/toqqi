@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { MailCheck } from 'lucide-vue-next'
 import { authApi, mensagemDoErro } from '@/api'
 import { useFormulario } from '@/composables/formulario'
 import { usarDiasTeste } from '@/composables/planosPublicos'
+import { useSessaoStore } from '@/stores/sessao'
 import { apenasDigitos, emailValido, formatarTelefone } from '@/utils/validacao'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
 import Campo from '@/components/ui/Campo.vue'
 import CampoSenha from '@/components/ui/CampoSenha.vue'
 import CaixaSelecao from '@/components/ui/CaixaSelecao.vue'
+import BotaoGoogle from './BotaoGoogle.vue'
 import CabecalhoAcesso from './CabecalhoAcesso.vue'
 import { apagarOrigem, origemParaCadastro } from '@/site/origem'
 
-const { enviando, erroGeral, erros, executar } = useFormulario()
+const { enviando, erroGeral, codigoErro, erros, executar, limpar } = useFormulario()
+const sessao = useSessaoStore()
+const router = useRouter()
 const dados = reactive({ empresa: '', nome: '', email: '', telefone: '', senha: '', aceite: false })
 const senhaOk = ref(false)
 const locais = reactive<Record<string, string | undefined>>({})
@@ -21,6 +26,63 @@ const concluido = ref<string | null>(null)
 const reenvio = reactive({ enviando: false, mensagem: '' })
 /** Etapa 5g: os dias do teste vêm de Plataforma › Parâmetros (GET /publico/planos); carregando ou com falha, 14. */
 const diasTeste = usarDiasTeste()
+
+// Entrar com o Google (docs/api-login-google.md): quem não tem conta termina aqui, só com o nome da empresa (o e-mail
+// vem confirmado pelo Google). Vem do botão desta tela ou do de Entrar (o pendente fica na sessão, só em memória).
+const pendente = computed(() => sessao.googlePendente)
+const google = reactive({ empresa: '', nome: '', telefone: '', aceite: false })
+const entrandoGoogle = ref(false)
+watch(
+  pendente,
+  (p) => {
+    if (!p) return
+    google.nome = p.nome
+    for (const k of Object.keys(locais)) delete locais[k]
+  },
+  { immediate: true },
+)
+
+async function viaGoogle(credencial: string) {
+  entrandoGoogle.value = true
+  const r = await executar(() => sessao.entrarComGoogle(credencial, false))
+  entrandoGoogle.value = false
+  if (r === 'entrou') router.replace('/inicio') // já tinha conta: entra direto
+}
+
+function validarGoogle(): boolean {
+  locais.empresa = google.empresa.trim() ? undefined : 'Informe o nome da sua empresa.'
+  locais.nome = google.nome.trim() ? undefined : 'Informe seu nome.'
+  const tel = apenasDigitos(google.telefone)
+  locais.telefone = tel && (tel.length < 10 || tel.length > 11) ? 'Informe o número com DDD, ex.: (11) 91234-5678.' : undefined
+  locais.aceite_termos = google.aceite ? undefined : 'Para continuar, aceite os termos de uso e a política de privacidade.'
+  return !Object.values(locais).some(Boolean)
+}
+
+async function concluirGoogle() {
+  if (!validarGoogle()) return
+  const tel = apenasDigitos(google.telefone)
+  const ok = await executar(async () => {
+    await sessao.cadastrarComGoogle({
+      empresa: google.empresa.trim(),
+      nome: google.nome.trim(),
+      ...(tel ? { telefone: tel } : {}),
+      aceite_termos: true,
+      origem: origemParaCadastro(),
+    })
+    return true
+  })
+  if (ok) {
+    apagarOrigem()
+    router.replace('/inicio')
+  } else if (codigoErro.value === 'cadastro_vencido' || codigoErro.value === 'email_em_uso') {
+    sessao.googlePendente = null // o token venceu ou a conta já existe: volta ao começo, com o aviso
+  }
+}
+
+function usarOutroEmail() {
+  sessao.googlePendente = null
+  limpar()
+}
 
 function validar(): boolean {
   locais.empresa = dados.empresa.trim() ? undefined : 'Informe o nome da sua empresa.'
@@ -88,9 +150,44 @@ async function reenviar() {
     </div>
   </template>
 
+  <!-- Veio do Google e ainda não tem conta: falta só o nome da empresa -->
+  <template v-else-if="pendente">
+    <CabecalhoAcesso titulo="Falta pouco" :descricao="`Você entrou com o Google como ${pendente.email}. Diga o nome da sua empresa para criar a conta.`" />
+    <Alerta v-if="erroGeral" tom="erro" class="mb-5">{{ erroGeral }}</Alerta>
+    <form class="flex flex-col gap-4" novalidate data-cadastro-google @submit.prevent="concluirGoogle">
+      <Campo v-model="google.empresa" rotulo="Nome da empresa" autocomplete="organization" obrigatorio :erro="erro('empresa')" />
+      <Campo v-model="google.nome" rotulo="Seu nome" autocomplete="name" obrigatorio :erro="erro('nome')" />
+      <Campo
+        :model-value="google.telefone"
+        rotulo="WhatsApp"
+        opcional
+        tipo="tel"
+        autocomplete="tel-national"
+        inputmode="tel"
+        placeholder="(11) 91234-5678"
+        dica="Só para te ajudar, se precisar. Não enviamos propaganda."
+        :mascara="formatarTelefone"
+        :erro="erro('telefone')"
+        @update:model-value="(v: string) => (google.telefone = v)"
+      />
+      <div class="flex flex-col gap-1.5">
+        <CaixaSelecao v-model="google.aceite" rotulo="Li e aceito os termos">
+          Li e aceito os <RouterLink to="/termos" target="_blank" class="link">termos de uso</RouterLink> e a
+          <RouterLink to="/privacidade" target="_blank" class="link">política de privacidade</RouterLink>.
+        </CaixaSelecao>
+        <p v-if="erro('aceite_termos')" class="pl-8 text-sm font-medium text-erro">{{ erro('aceite_termos') }}</p>
+      </div>
+      <Botao tipo="submit" tamanho="lg" bloco :carregando="enviando" class="mt-2">Começar {{ diasTeste }} dias grátis</Botao>
+    </form>
+    <p class="mt-6 border-t border-borda pt-6 text-center text-sm text-texto-suave">
+      Não é você? <button type="button" class="link" @click="usarOutroEmail">Usar outro e-mail</button>
+    </p>
+  </template>
+
   <template v-else>
     <CabecalhoAcesso titulo="Crie sua conta" :descricao="`Em poucos minutos você começa a ouvir seus clientes. ${diasTeste} dias grátis, sem cartão.`" />
     <Alerta v-if="erroGeral" tom="erro" class="mb-5">{{ erroGeral }}</Alerta>
+    <BotaoGoogle texto="continue_with" divisor="ou cadastre com seu e-mail" :ocupado="entrandoGoogle" @credencial="viaGoogle" />
     <form class="flex flex-col gap-4" novalidate @submit.prevent="enviar">
       <Campo v-model="dados.empresa" rotulo="Nome da empresa" autocomplete="organization" obrigatorio :erro="erro('empresa')" />
       <Campo v-model="dados.nome" rotulo="Seu nome" autocomplete="name" obrigatorio :erro="erro('nome')" />

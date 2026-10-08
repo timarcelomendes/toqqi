@@ -59,6 +59,8 @@ services:
         sync: false
       - key: SUPERADMIN_EMAILS
         sync: false                 # o Render pergunta na criação
+      - key: GOOGLE_CLIENT_ID       # Entrar com o Google: o "ID do cliente OAuth" do Google Cloud (não é segredo);
+        sync: false                 # vazio = sem o botão (docs/api-login-google.md)
       # Etapa 5g: as quatro abaixo (modelo e esforço do nível Equilibrado, cota da cortesia e exclusão automática) são
       # só o padrão: o que a equipe Toqqi salvar em Plataforma › Parâmetros vale mais.
       - key: IA_ASSISTENTE_MODELO   # assistente (etapa 5b); a OPENAI_API_KEY fica só no painel do Render

@@ -11,11 +11,13 @@ from toqqi.core.rate_limit import (
     limiter,
 )
 from toqqi.core.security import SENHA_MAX, SENHA_MIN
-from toqqi.modulos.acesso import servico, termos
+from toqqi.modulos.acesso import google, servico, termos
 from toqqi.modulos.acesso.esquemas import (
     AceiteIn,
+    CadastroGoogleIn,
     CadastroIn,
     EmailIn,
+    EntrarGoogleIn,
     EntrarIn,
     EuAlterarIn,
     PedirAcessoIn,
@@ -46,6 +48,26 @@ def cadastro(request: Request, dados: CadastroIn):
 @limiter.limit(LIMITE_ENTRAR)
 def entrar(request: Request, dados: EntrarIn):
     return servico.entrar(dados, _ip(request), _agente(request))
+
+
+@router.get("/auth/google/config")
+def google_config(response: Response):
+    """O ID do cliente do Google para o botão "Entrar com o Google" (null = sem o botão). Não é segredo."""
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return {"client_id": google.client_id() or None}
+
+
+@router.post("/auth/google")
+@limiter.limit(LIMITE_ENTRAR)
+def entrar_google(request: Request, dados: EntrarGoogleIn):
+    """A sessão (como POST /auth/entrar) ou, para quem ainda não tem conta, {novo, cadastro, email, nome}."""
+    return servico.entrar_google(dados, _ip(request), _agente(request))
+
+
+@router.post("/auth/google/cadastro", status_code=201)
+@limiter.limit(LIMITE_SENSIVEL)
+def cadastro_google(request: Request, dados: CadastroGoogleIn):
+    return servico.cadastrar_google(dados, _ip(request), _agente(request))
 
 
 @router.post("/auth/confirmar-email")

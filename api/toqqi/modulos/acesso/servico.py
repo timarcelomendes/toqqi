@@ -1,11 +1,14 @@
 """Regras de acesso: cadastro, entrada, confirmação, senha, pedido de acesso, sessões.
 
 Etapa 5g: a conta nova começa com `teste.dias` de teste no plano `teste.plano` (parâmetros da plataforma; padrões 14
-dias e Profissional)."""
+dias e Profissional).
+Entrar com o Google (08/10/2026, docs/api-login-google.md): `entrar_google` e `cadastrar_google`; a sessão sai de
+`_abrir_sessao`, a mesma da entrada com senha."""
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import and_, exists, func, select, update
+from sqlalchemy import and_, exists, func, or_, select, update
 from sqlalchemy import null as sql_null
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
@@ -31,7 +34,7 @@ from toqqi.core.security import (
 )
 from toqqi.core.validacao import DOMINIOS_GRATUITOS, dominio_do_email
 from toqqi.modelos import Conta, DominioLiberado, PerfilPermissao, Sessao, TokenUsoUnico, Usuario
-from toqqi.modulos.acesso import emails, termos
+from toqqi.modulos.acesso import emails, google, termos
 from toqqi.modulos.formularios.semear import semear_conta
 from toqqi.modulos.imagens.servico import logo_da_conta
 
@@ -52,6 +55,9 @@ MSG_PEDIDO = (
     "você vai receber uma mensagem para confirmar o endereço. Depois, o administrador da conta aprova o seu acesso."
 )
 MSG_LINK_INVALIDO = "Este link não vale mais: ele expirou ou já foi usado. Peça um novo link."
+MSG_OUTRA_CONTA_GOOGLE = ("Este e-mail já entra no Toqqi por outra conta do Google. Use aquela conta do Google ou entre "
+                          "com e-mail e senha.")
+MSG_JA_TEM_CONTA = "Este e-mail já tem conta no Toqqi: entre pelo botão do Google na tela de entrada."
 
 def erro_credenciais() -> AppError:
     return AppError(401, "credenciais_invalidas", "E-mail ou senha incorretos.")
@@ -81,6 +87,26 @@ def permissoes_do_perfil(s: Session, perfil: str) -> list[str]:
 
 # ---- cadastro ---------------------------------------------------------------
 
+def _nova_conta(s: Session, empresa: str, origem, ip: str | None) -> Conta:
+    """A conta de um cadastro (com senha ou pelo Google): teste de `teste.dias` no plano `teste.plano`."""
+    conta = Conta(
+        # o fim do teste segue o relógio das regras que o leem (assinatura.regras); tokens e sessões seguem no
+        # relógio real
+        nome=empresa,
+        # sem origem: NULL de SQL (o JSONB gravaria 'null', que o CHECK da coluna recusa)
+        origem=planos.limpar_origem(origem) or sql_null(),
+        situacao="teste", teste_ate=relogio.agora() + timedelta(days=parametros.valor("teste.dias")),
+        plano=parametros.valor("teste.plano"),
+        termos_aceitos_em=_agora(), termos_ip=ip,
+        # registro da versão aceita no cadastro da conta; a fonte da versão é termos.VERSAO_DOCUMENTOS e a prova de
+        # cada pessoa fica em aceites_termos
+        termos_versao=str(termos.VERSAO_DOCUMENTOS),
+    )
+    s.add(conta)
+    s.flush()
+    return conta
+
+
 def cadastrar(dados, ip: str | None, agente: str | None = None) -> str:
     senha_hash = gerar_hash(dados.senha)  # antes de qualquer consulta: tempo igual nos dois caminhos
     aviso_existente: tuple[str, str, int] | None = None
@@ -92,23 +118,7 @@ def cadastrar(dados, ip: str | None, agente: str | None = None) -> str:
             if existente is not None:
                 aviso_existente = (existente.nome, existente.email, existente.conta_id)
             else:
-                agora = _agora()
-                dias = parametros.valor("teste.dias")
-                conta = Conta(
-                    # o fim do teste segue o relógio das regras que o leem (assinatura.regras); tokens e sessões
-                    # seguem no relógio real
-                    nome=dados.empresa,
-                    # sem origem: NULL de SQL (o JSONB gravaria 'null', que o CHECK da coluna recusa)
-                    origem=planos.limpar_origem(dados.origem) or sql_null(),
-                    situacao="teste", teste_ate=relogio.agora() + timedelta(days=dias),
-                    plano=parametros.valor("teste.plano"),
-                    termos_aceitos_em=agora, termos_ip=ip,
-                    # registro da versão aceita no cadastro da conta; a fonte da versão é termos.VERSAO_DOCUMENTOS
-                    # e a prova de cada pessoa fica em aceites_termos
-                    termos_versao=str(termos.VERSAO_DOCUMENTOS),
-                )
-                s.add(conta)
-                s.flush()
+                conta = _nova_conta(s, dados.empresa, dados.origem, ip)
                 u = Usuario(
                     conta_id=conta.id, nome=dados.nome, email=dados.email, senha_hash=senha_hash,
                     telefone=dados.telefone, perfil="admin", situacao="ativo", email_confirmado=False,
@@ -155,32 +165,44 @@ def entrar(dados, ip: str | None, agente: str | None) -> dict:
         recusa = AppError(403, "email_nao_confirmado",
                           "Confirme seu e-mail antes de entrar. Procure a mensagem que enviamos "
                           "(veja também o spam) ou peça um novo link.")
-    elif u.situacao == "pendente":
-        recusa = AppError(403, "acesso_pendente",
-                          "Seu acesso ainda não foi aprovado. O administrador da conta precisa liberar sua entrada.")
-    elif u.situacao == "bloqueado":
-        recusa = AppError(403, "acesso_bloqueado",
-                          "Seu acesso está bloqueado. Fale com o administrador da sua conta.")
+    else:
+        recusa = _recusa_situacao(u)
     if recusa is not None:
         with em_conta(u.conta_id) as s:
             acessos.registrar(s, "login_falhou", conta_id=u.conta_id, usuario_id=u.id)
         raise recusa
 
     novo_hash = gerar_hash(dados.senha) if precisa_rehash(u.senha_hash) else None
+    return _abrir_sessao(u, dados.lembrar, ip, agente, {"senha_hash": novo_hash} if novo_hash else {})
+
+
+def _recusa_situacao(u: Usuario) -> AppError | None:
+    if u.situacao == "pendente":
+        return AppError(403, "acesso_pendente",
+                        "Seu acesso ainda não foi aprovado. O administrador da conta precisa liberar sua entrada.")
+    if u.situacao == "bloqueado":
+        return AppError(403, "acesso_bloqueado", "Seu acesso está bloqueado. Fale com o administrador da sua conta.")
+    return None
+
+
+def _abrir_sessao(u: Usuario, lembrar: bool, ip: str | None, agente: str | None, valores: dict,
+                  metodo: str | None = None, ligou_google: bool = False) -> dict:
+    """A sessão de quem passou na entrada (senha ou Google): grava a sessão, o último acesso (e `valores` no usuário),
+    a auditoria e o registro de acesso, e devolve o que o site guarda."""
     with em_conta(u.conta_id) as s:
         conta = s.get(Conta, u.conta_id)
-        duracao = SESSAO_LEMBRAR if dados.lembrar else timedelta(minutes=conta.sessao_minutos)
+        duracao = SESSAO_LEMBRAR if lembrar else timedelta(minutes=conta.sessao_minutos)
         sessao = Sessao(
             conta_id=u.conta_id, usuario_id=u.id, expira_em=_agora() + duracao,
             ip=ip, agente=(agente or "")[:500] or None,
         )
         s.add(sessao)
-        valores = {"ultimo_acesso": func.now()}
-        if novo_hash:
-            valores["senha_hash"] = novo_hash
-        s.execute(update(Usuario).where(Usuario.id == u.id).values(**valores))
+        s.execute(update(Usuario).where(Usuario.id == u.id).values(ultimo_acesso=func.now(), **valores))
         s.flush()
-        registrar(s, "login_ok", "sucesso", {"aparelho": descrever_aparelho(agente)}, usuario_id=u.id)
+        if ligou_google:
+            registrar(s, "login_google_ligado", "info", {"email": u.email}, usuario_id=u.id)
+        registrar(s, "login_ok", "sucesso",
+                  {"aparelho": descrever_aparelho(agente), **({"metodo": metodo} if metodo else {})}, usuario_id=u.id)
         acessos.registrar(s, "login", conta_id=u.conta_id, usuario_id=u.id)
         usuario = s.get(Usuario, u.id, populate_existing=True)
         permissoes = permissoes_do_perfil(s, usuario.perfil)
@@ -191,6 +213,72 @@ def entrar(dados, ip: str | None, agente: str | None) -> dict:
             "conta": {**conta_json(conta), "logo_url": logo_da_conta(s, u.conta_id)},
             "permissoes": permissoes,
         }
+
+
+# ---- entrar com o Google ----------------------------------------------------
+
+def entrar_google(dados, ip: str | None, agente: str | None) -> dict:
+    """Com o token do Google: entra quem já tem usuário (pela conta do Google já ligada a ele ou, na primeira vez, pelo
+    e-mail, que fica ligado); quem não tem recebe {novo, cadastro, email, nome} para terminar o cadastro."""
+    g = google.verificar(dados.credencial)
+    with modo_sistema() as s:  # como na entrada com senha: ainda não se sabe a conta
+        u = s.scalar(select(Usuario).where(Usuario.google_sub == g["sub"]))
+        if u is None:
+            u = s.scalar(select(Usuario).where(Usuario.email == g["email"]))
+    if u is None:
+        return {"novo": True, "cadastro": google.token_cadastro(g), "email": g["email"], "nome": g["nome"]}
+    if u.google_sub and u.google_sub != g["sub"]:
+        with em_conta(u.conta_id) as s:
+            registrar(s, "login_google_recusado", "atencao", {"email": u.email}, usuario_id=u.id)
+            acessos.registrar(s, "login_falhou", conta_id=u.conta_id, usuario_id=u.id)
+        raise AppError(409, "google_outra_conta", MSG_OUTRA_CONTA_GOOGLE)
+    recusa = _recusa_situacao(u)
+    if recusa is not None:
+        with em_conta(u.conta_id) as s:
+            if not u.email_confirmado:
+                # o Google confirmou o e-mail: vale como a confirmação (e o pedido de acesso avisa os administradores)
+                x = s.get(Usuario, u.id)
+                x.email_confirmado = True
+                if x.situacao == "pendente":
+                    _avisar_pedido_de_acesso(s, x)
+            acessos.registrar(s, "login_falhou", conta_id=u.conta_id, usuario_id=u.id)
+        raise recusa
+    valores: dict = {}
+    if not u.email_confirmado:
+        valores["email_confirmado"] = True
+    if not u.google_sub:
+        valores["google_sub"] = g["sub"]
+    try:
+        return _abrir_sessao(u, dados.lembrar, ip, agente, valores, "google", ligou_google=not u.google_sub)
+    except IntegrityError:  # a mesma conta do Google ligada a outro usuário ao mesmo tempo
+        raise AppError(409, "google_outra_conta", MSG_OUTRA_CONTA_GOOGLE)
+
+
+def cadastrar_google(dados, ip: str | None, agente: str | None) -> dict:
+    """Termina o cadastro de quem veio do Google (o token de `entrar_google`): conta nova em teste, o usuário
+    administrador com o e-mail já confirmado e a conta do Google ligada, o aceite dos termos e a sessão aberta. Senha:
+    uma aleatória que ninguém sabe (para usar senha, "Esqueci a senha")."""
+    g = google.ler_cadastro(dados.cadastro)
+    senha_hash = gerar_hash(secrets.token_urlsafe(32))
+    try:
+        with modo_sistema() as s:
+            if s.scalar(select(Usuario.id).where(or_(Usuario.email == g["email"], Usuario.google_sub == g["sub"]))):
+                raise AppError(409, "email_em_uso", MSG_JA_TEM_CONTA)
+            conta = _nova_conta(s, dados.empresa, dados.origem, ip)
+            u = Usuario(conta_id=conta.id, nome=dados.nome, email=g["email"], senha_hash=senha_hash,
+                        telefone=dados.telefone, perfil="admin", situacao="ativo", email_confirmado=True,
+                        google_sub=g["sub"])
+            s.add(u)
+            s.flush()
+            semear_padrao(s, conta.id)
+            semear_conta(s, conta.id)
+            registrar(s, "cadastro_conta", "sucesso", {"empresa": conta.nome, "email": u.email, "metodo": "google"},
+                      usuario_id=u.id, conta_id=conta.id)
+            termos.gravar(s, u, "cadastro", ip, agente, conta_id=conta.id)
+            acessos.registrar(s, "cadastro", conta_id=conta.id, usuario_id=u.id)
+    except IntegrityError:  # corrida com outro cadastro do mesmo e-mail ou da mesma conta do Google
+        raise AppError(409, "email_em_uso", MSG_JA_TEM_CONTA)
+    return _abrir_sessao(u, False, ip, agente, {}, "google")
 
 
 # ---- tokens de uso único ----------------------------------------------------

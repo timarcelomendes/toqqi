@@ -132,6 +132,15 @@ export interface Mensagem {
   mensagem: string
 }
 
+/** Entrar com o Google (docs/api-login-google.md): quem ainda não tem conta termina o cadastro com este token
+ * (15 minutos), sem precisar do Google de novo. */
+export interface CadastroGooglePendente {
+  novo: true
+  cadastro: string
+  email: string
+  nome: string
+}
+
 export interface RegrasSenha {
   minimo: number
   maximo: number

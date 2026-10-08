@@ -83,6 +83,7 @@ registros de acesso guardam o endereço inteiro.
 | `ZEPTOMAIL_TOKEN` / `RESEND_API_KEY` | Credenciais do provedor de e-mail |
 | `EMAIL_FROM` | Remetente, ex.: `Toqqi <nao-responda@toqqi.com>` |
 | `SUPERADMIN_EMAILS` | E-mails com acesso à área `/plataforma`, separados por vírgula |
+| `GOOGLE_CLIENT_ID` | Entrar com o Google: o "ID do cliente OAuth" (Aplicativo da Web) do Google Cloud, terminado em `.apps.googleusercontent.com`. Não é segredo. Vazio = sem o botão (docs/api-login-google.md) |
 | `RATE_LIMIT_ENABLED` | `0` desliga o limite de tentativas (usado nos testes) |
 | `AMBIENTE` | `desenvolvimento` (padrão) ou `producao`; em produção o provedor `console` não conta como configurado |
 | `TAREFAS_TOKEN` | Segredo do cabeçalho `X-Tarefas-Token` de `POST /api/v1/interno/tarefas` (vazio = rota desligada, 404) |

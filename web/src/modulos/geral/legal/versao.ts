@@ -17,6 +17,9 @@
 // Versão 7 (etapa 5k), vigente desde 05/10/2026: nos Termos, o plano Personalizado, a cobrança mensal ou anual (Pix com
 // desconto no mensal; anual com desconto), trocar forma ou ciclo = cancelar e assinar de novo, e o WhatsApp automático
 // cobrado pela Meta direto da Empresa (sem franquia do Toqqi, salvo a informada em Integrações). A Política não muda.
-export const VERSAO_DOCUMENTOS = 7
+// Versão 8, vigente desde 08/10/2026: a Política de privacidade passa a descrever o "Entrar com o Google" (o Google envia
+// nome, e-mail e o identificador da conta, só se a pessoa usar o botão; o Google entre os fornecedores; o botão é
+// carregado do Google nas telas de entrar e de cadastro). Os Termos não mudam.
+export const VERSAO_DOCUMENTOS = 8
 /** Data em que a versão atual (VERSAO_DOCUMENTOS) passou a valer (AAAA-MM-DD). */
-export const VIGENTE_DESDE = '2026-10-05'
+export const VIGENTE_DESDE = '2026-10-08'

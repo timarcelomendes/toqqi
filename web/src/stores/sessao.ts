@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { ApiError, authApi, euApi } from '@/api'
-import type { Aceite, Conta, DadosSessao, Permissao, Sessao, Usuario } from '@/api'
+import type { Aceite, CadastroGooglePendente, Conta, DadosSessao, Permissao, Sessao, Usuario } from '@/api'
 import { apagarConversas } from '@/modulos/assistente/historico'
 
 const CHAVE = 'toqqi.sessao'
@@ -43,6 +43,8 @@ export const useSessaoStore = defineStore('sessao', () => {
   const inicializada = ref(false)
   /** Mensagem para mostrar na tela de entrar (ex.: "sua sessão terminou"). */
   const avisoEntrar = ref<string | null>(null)
+  /** Entrar com o Google de quem ainda não tem conta: a tela de cadastro termina com o nome da empresa (só em memória). */
+  const googlePendente = ref<CadastroGooglePendente | null>(null)
 
   const logado = computed(() => !!token.value && !!usuario.value)
   const superadmin = computed(() => !!usuario.value?.superadmin)
@@ -179,6 +181,28 @@ export const useSessaoStore = defineStore('sessao', () => {
     if (s.conta && !('logo_url' in s.conta)) recarregar().catch(() => {})
   }
 
+  /** Entrar com o Google: 'entrou' (sessão aberta) ou 'novo' (falta o cadastro: fica em `googlePendente`). */
+  async function entrarComGoogle(credencial: string, lembrarDeMim: boolean): Promise<'entrou' | 'novo'> {
+    const r = await authApi.entrarGoogle(credencial, lembrarDeMim)
+    if ('novo' in r && r.novo) {
+      googlePendente.value = r
+      return 'novo'
+    }
+    const s = r as Sessao
+    googlePendente.value = null
+    definirSessao(s, lembrarDeMim)
+    if (s.conta && !('logo_url' in s.conta)) recarregar().catch(() => {})
+    return 'entrou'
+  }
+
+  /** Termina o cadastro de quem veio do Google e já abre a sessão. */
+  async function cadastrarComGoogle(dados: Omit<Parameters<typeof authApi.cadastrarGoogle>[0], 'cadastro'>) {
+    if (!googlePendente.value) throw new Error('Sem cadastro do Google pendente')
+    const s = await authApi.cadastrarGoogle({ ...dados, cadastro: googlePendente.value.cadastro })
+    googlePendente.value = null
+    definirSessao(s, false)
+  }
+
   async function sair() {
     try {
       if (token.value) await authApi.sair()
@@ -198,6 +222,7 @@ export const useSessaoStore = defineStore('sessao', () => {
     lembrar,
     inicializada,
     avisoEntrar,
+    googlePendente,
     logado,
     superadmin,
     admin,
@@ -211,6 +236,8 @@ export const useSessaoStore = defineStore('sessao', () => {
     recarregarSeAntiga,
     inicializar,
     entrar,
+    entrarComGoogle,
+    cadastrarComGoogle,
     sair,
   }
 })

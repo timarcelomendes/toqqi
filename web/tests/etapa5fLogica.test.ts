@@ -231,12 +231,12 @@ describe('Termos de uso e Política de privacidade (versão 4)', () => {
     return s.blocos.map(textoBloco).join('\n')
   }
 
-  it('versão 7 (5f, 5g e, na 5k, planos e cobrança), vigente desde 05/10/2026 (a tela de aceite mostra essa data)', () => {
-    expect(VERSAO_DOCUMENTOS).toBe(7)
-    expect(VIGENTE_DESDE).toBe('2026-10-05')
-    expect(textoVersao(VERSAO_DOCUMENTOS)).toBe('Versão 7 · vigente desde 05/10/2026')
+  it('versão 8 (5f, 5g, na 5k planos e cobrança e, em 08/10, o Entrar com o Google), vigente desde 08/10/2026 (a tela de aceite mostra essa data)', () => {
+    expect(VERSAO_DOCUMENTOS).toBe(8)
+    expect(VIGENTE_DESDE).toBe('2026-10-08')
+    expect(textoVersao(VERSAO_DOCUMENTOS)).toBe('Versão 8 · vigente desde 08/10/2026')
     expect(textoAbertura({ versao_atual: 4, versao_aceita: 3, aceito_em: '2026-10-02T12:00:00Z', pendente: true })).toBe(
-      'Atualizamos os Termos de uso e a Política de privacidade em 05/10/2026.',
+      'Atualizamos os Termos de uso e a Política de privacidade em 08/10/2026.',
     )
   })
 

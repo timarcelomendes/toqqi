@@ -602,6 +602,40 @@
           ]
         },
         {
+          "id": "entrar-com-o-google",
+          "titulo": "Entrar com o Google",
+          "somente_admin": false,
+          "atalho": null,
+          "palavras": [
+            "google",
+            "entrar com google",
+            "login com google",
+            "login com o google",
+            "gmail",
+            "conta do google",
+            "sem senha",
+            "login social",
+            "continuar com o google",
+            "fazer login com o google"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Na tela de entrada, o botão “Fazer login com o Google” entra com a sua conta do Google, sem digitar a senha do Toqqi. Na tela de criar conta, o botão é “Continuar com o Google”. O Google só nos envia seu nome, seu e-mail e um código da sua conta do Google: não recebemos a senha do Google nem acesso ao Gmail ou ao Drive."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Já tem usuário no Toqqi com o mesmo e-mail? Na primeira vez, a conta do Google fica ligada a ele, e a senha continua valendo.",
+                "Ainda não tem conta? Depois de escolher a conta do Google, falta só o nome da empresa e o aceite dos termos. O e-mail já vem confirmado pelo Google.",
+                "Criou a conta pelo Google e quer uma senha também? Na tela de entrada, use “Esqueci a senha”.",
+                "“Este e-mail já entra no Toqqi por outra conta do Google”: use a conta do Google da primeira vez, ou entre com e-mail e senha.",
+                "O botão não aparece? Alguns bloqueadores de anúncio escondem o botão do Google. Entre com e-mail e senha."
+              ]
+            }
+          ]
+        },
+        {
           "id": "problemas-para-entrar",
           "titulo": "Problemas para entrar",
           "somente_admin": false,

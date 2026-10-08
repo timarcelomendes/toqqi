@@ -379,7 +379,7 @@ describe('dias do teste (GET /publico/planos)', () => {
 describe('Termos de uso v6 (etapa 5g)', () => {
   const texto = JSON.stringify(TERMOS)
   it('versão 6, vigente desde 03/10/2026', () => {
-    expect([VERSAO_DOCUMENTOS, VIGENTE_DESDE]).toEqual([7, '2026-10-05'])
+    expect([VERSAO_DOCUMENTOS, VIGENTE_DESDE]).toEqual([8, '2026-10-08'])
   })
   it('o preço é o da contratação; limites e cotas podem mudar, com aviso se diminuírem', () => {
     expect(texto).toContain(

@@ -10,6 +10,7 @@ import Botao from '@/components/ui/Botao.vue'
 import Campo from '@/components/ui/Campo.vue'
 import CampoSenha from '@/components/ui/CampoSenha.vue'
 import CaixaSelecao from '@/components/ui/CaixaSelecao.vue'
+import BotaoGoogle from './BotaoGoogle.vue'
 import CabecalhoAcesso from './CabecalhoAcesso.vue'
 
 const sessao = useSessaoStore()
@@ -21,6 +22,7 @@ const dados = reactive({ email: '', senha: '', lembrar: false })
 const errosLocais = reactive<{ email?: string; senha?: string }>({})
 const aviso = ref<string | null>(null)
 const reenvio = reactive({ enviando: false, mensagem: '' as string, erro: '' as string })
+const entrandoGoogle = ref(false)
 
 onMounted(() => {
   aviso.value = sessao.avisoEntrar
@@ -48,6 +50,16 @@ async function enviar() {
     return true
   })
   if (ok) router.replace(destinoSeguro(rota.query.voltar))
+}
+
+/** Entrar com o Google: quem já tem conta entra; quem não tem vai terminar o cadastro (o nome da empresa). */
+async function entrarGoogle(credencial: string) {
+  aviso.value = null
+  entrandoGoogle.value = true
+  const r = await executar(() => sessao.entrarComGoogle(credencial, dados.lembrar))
+  entrandoGoogle.value = false
+  if (r === 'entrou') router.replace(destinoSeguro(rota.query.voltar))
+  else if (r === 'novo') router.push({ name: 'cadastro' })
 }
 
 async function reenviarConfirmacao() {
@@ -90,6 +102,8 @@ async function reenviarConfirmacao() {
       <Alerta v-else tom="erro">{{ erroGeral }}</Alerta>
     </template>
   </div>
+
+  <BotaoGoogle texto="signin_with" divisor="ou entre com seu e-mail" :ocupado="entrandoGoogle" @credencial="entrarGoogle" />
 
   <form class="flex flex-col gap-4" novalidate @submit.prevent="enviar">
     <Campo

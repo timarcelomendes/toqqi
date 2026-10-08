@@ -98,6 +98,8 @@ class Usuario(Base):
     # etapa 4b: e-mails do Toqqi (Minha conta)
     recebe_resumo_semanal: Mapped[bool] = mapped_column(Boolean, server_default="true")
     recebe_alertas: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    # Entrar com o Google: o `sub` da conta do Google ligada na primeira entrada por ela (docs/api-login-google.md)
+    google_sub: Mapped[str | None] = mapped_column(Text)
 
 
 class Sessao(Base):

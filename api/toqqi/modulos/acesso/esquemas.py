@@ -22,6 +22,20 @@ class CadastroIn(BaseModel):
     origem: Any = None  # etapa 5i: {utm_source, utm_medium, utm_campaign}; limpo no cadastro, nunca dá 422
 
 
+class EntrarGoogleIn(BaseModel):
+    credencial: Annotated[str, Field(min_length=1, max_length=4096)]  # o token de identidade do botão do Google
+    lembrar: bool = False
+
+
+class CadastroGoogleIn(BaseModel):
+    cadastro: Annotated[str, Field(min_length=1, max_length=2000)]  # o token de POST /auth/google ({novo: true})
+    empresa: Annotated[Texto, Field(min_length=2, max_length=120)]
+    nome: Annotated[Texto, Field(min_length=2, max_length=120)]
+    telefone: Annotated[Texto, Field(max_length=30)] | None = None
+    aceite_termos: Annotated[bool, AfterValidator(_aceite_obrigatorio)]
+    origem: Any = None
+
+
 class EntrarIn(BaseModel):
     email: Annotated[str, AfterValidator(normalizar_email), Field(min_length=1, max_length=254)]
     senha: Annotated[str, Field(min_length=1, max_length=200)]

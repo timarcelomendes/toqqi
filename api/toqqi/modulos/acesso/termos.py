@@ -22,8 +22,9 @@ from toqqi.modelos import AceiteTermos, Usuario
 # nos Termos, o nível "Mais detalhado" da IA gasta 2 análises da cota por resumo, parecer ou pergunta; 6 (etapa 5g):
 # nos Termos, o preço é o da contratação (só muda por reajuste) e limites e cotas podem mudar, com aviso; a IA usa as
 # análises do nível escolhido (a tela mostra quantas); 7 (etapa 5k): Personalizado, mensal ou anual (Pix com desconto),
-# trocar forma ou ciclo = cancelar e assinar de novo, WhatsApp cobrado pela Meta direto da Empresa
-VERSAO_DOCUMENTOS = 7
+# trocar forma ou ciclo = cancelar e assinar de novo, WhatsApp cobrado pela Meta direto da Empresa; 8 (08/10): na
+# Política, o "Entrar com o Google" (o que o Google envia, o Google entre os fornecedores e o botão carregado do Google)
+VERSAO_DOCUMENTOS = 8
 
 AGENTE_MAX = 400
 ORIGENS = ("cadastro", "tela")
