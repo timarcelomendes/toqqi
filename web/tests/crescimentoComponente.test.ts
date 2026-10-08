@@ -1,4 +1,4 @@
-// Etapa 5c com a API simulada: Crescimento (abas, resumo, filtros, painel da indicação, mudanças de situação, registro à
+// Etapa 5c com a API simulada: Crescimento (abas, panorama, filtros, painel da indicação, mudanças de situação, registro à
 // mão, CSV, vazio, foco e página quando uma linha sai) e Oportunidades (listas, oferta pelo WhatsApp com o link certo e o
 // registro, trava contra clique duplo, resultado), mais as permissões de cada perfil e as rotas. No fim, o que a revisão
 // da 5c tocou fora do módulo: o valor em reais de Contatos › Empresas e o formato dos webhooks de indicação.
@@ -7,12 +7,14 @@ import { enableAutoUnmount, flushPromises, mount, type VueWrapper } from '@vue/t
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router'
 import { defineComponent, h } from 'vue'
-import type { ConfigCrescimento, DadosNovaOferta, DadosResultadoOferta, Indicacao, Oferta, Oportunidade, Perfil } from '@/api/tipos'
+import type { ConfigCrescimento, DadosNovaOferta, DadosResultadoOferta, Indicacao, Oferta, Oportunidade, PanoramaCrescimento, Perfil } from '@/api/tipos'
 import { avisos } from '@/composables/avisos'
 import { estadoConfirmacao, responderConfirmacao } from '@/composables/confirmacao'
 import { router as rotasDoApp } from '@/router'
 import { useSessaoStore } from '@/stores/sessao'
+import { hojeIso } from '@/utils/datas'
 import CrescimentoView from '@/modulos/crescimento/CrescimentoView.vue'
+import { intervaloPanorama } from '@/modulos/crescimento/panorama'
 import ModalEmpresa from '@/modulos/contatos/ModalEmpresa.vue'
 import SecaoWebhooks from '@/modulos/integracoes/SecaoWebhooks.vue'
 import { apiFalsa, erro422, type Chamada } from './apiFalsa'
@@ -75,7 +77,18 @@ function indicacoes(): Indicacao[] {
   ]
 }
 const RESUMO_LISTA = { novas: 1, em_contato: 1, clientes: 1, nao_avancou: 0, receita_mensal: '4800.00' }
-const RESUMO = { indicacoes: { recebidas: 12, clientes: 3, taxa: 25, receita_mensal: '7150.00' }, ofertas: { feitas: 8, aceitas: 2, taxa: 0.25, receita: '5600.00' } }
+/** O topo da tela (o detalhe do panorama está em crescimentoPanorama.test.ts). */
+const PANORAMA: PanoramaCrescimento = {
+  periodo: { de: '2026-07-05', ate: '2026-10-02' },
+  anterior: { de: '2026-04-06', ate: '2026-07-04' },
+  receita: { total: '12750.00', indicacoes: '7150.00', ofertas: '5600.00', anterior: '9000.00' },
+  indicacoes: { promotores: 20, recebidas: 12, novas: 1, em_contato: 6, clientes: 3, nao_avancou: 2, abordadas: 11, esperando_contato: 1 },
+  ofertas: { feitas: 8, aceitas: 2, recusadas: 3, sem_resposta: 1, aguardando: 2, prontas: 3, sem_oferta: 2 },
+  fas: [{ empresa: { id: 11, nome: 'Mercado Bom Preço' }, indicacoes: 4, clientes: 1, receita_mensal: '4800.00' }],
+  depoimentos: { aprovados: 1, pendentes: 0, destaque: null },
+  meses: [],
+  tem_historico: true,
+}
 const CONFIG: ConfigCrescimento = {
   indicacoes_ativas: true,
   titulo_convite: 'Que bom que você gostou!',
@@ -127,7 +140,7 @@ function api(extra: Rotas = {}, opcoes: { vazio?: boolean; config?: Partial<Conf
   const ofertas = new Map<number, Oferta>()
   const empresaDe = (id: number) => ref(id, oportunidades().find((o) => o.empresa.id === id)?.empresa.nome ?? '')
   return apiFalsa({
-    'GET /crescimento/resumo': () => RESUMO,
+    'GET /crescimento/panorama': () => PANORAMA,
     'GET /crescimento/configuracao': () => ({ ...CONFIG, ...opcoes.config }),
     'GET /crescimento/indicacoes': ({ url }) => {
       const s = url.searchParams.get('situacao')
@@ -275,19 +288,20 @@ afterEach(() => {
 })
 
 describe('Crescimento › Indicações', () => {
-  it('abre com o resumo dos últimos 90 dias e a lista (quem indicou, responsável, situação e data)', async () => {
+  it('abre com o panorama dos últimos 90 dias e a lista (quem indicou, responsável, situação e data)', async () => {
     entrar()
     const { chamadas } = api()
     const w = await abrir('/crescimento/indicacoes')
-    expect(consulta(pedidos(chamadas, 'GET', '/crescimento/resumo')[0])).toEqual({})
+    expect(consulta(pedidos(chamadas, 'GET', '/crescimento/panorama')[0])).toEqual(intervaloPanorama('90', hojeIso()))
     expect(pedidos(chamadas, 'GET', '/crescimento/configuracao')).toHaveLength(1)
     expect(document.title).toBe('Indicações · Crescimento · Toqqi')
 
-    const numeros = (sel: string) => w.get(sel).findAll('dt').map((dt) => `${t(dt.text())}: ${t(dt.element.nextElementSibling?.textContent ?? '')}`)
-    expect(numeros('[data-resumo-indicacoes]')).toEqual(['Recebidas: 12', 'Viraram cliente: 325% das recebidas', 'Receita mensal: R$7,2milR$ 7.150,00'])
-    // A taxa sai das contagens (a escala de `taxa` da API não importa)
-    expect(numeros('[data-resumo-ofertas]')).toEqual(['Feitas: 8', 'Aceitas: 225% das feitas'])
-    expect(t(w.get('[data-resumo-ofertas]').text())).toContain('R$ 5.600,00 em vendas')
+    // O panorama do topo (o detalhe está em crescimentoPanorama.test.ts): a receita, de onde veio e a trilha com o link
+    expect(t(w.get('[data-receita] .sr-only').text())).toBe('R$ 12.750,00 por mês')
+    expect(t(w.get('[data-origem]').text())).toBe('3 indicações viraram cliente e 2 ofertas foram aceitas.')
+    expect(w.get('[data-etapa="clientes"] a').attributes('href')).toBe('/crescimento/indicacoes?periodo=90&situacao=cliente')
+    // A área das abas fica num bloco próprio (o panorama rola até ela)
+    expect(w.get('[data-area-abas]').find('[role="tablist"]').exists()).toBe(true)
 
     const linha = (id: number) => t(w.get(`[data-abrir="${id}"]`).element.closest('tr')!.textContent ?? '')
     expect(linha(41)).toContain('Juliana Prado')
@@ -405,7 +419,7 @@ describe('Crescimento › Indicações', () => {
     expect(avisos.map((a) => a.mensagem)).toContain('Indicação marcada como “Virou cliente”.')
     expect(t(w.get('[data-abrir="41"]').element.closest('tr')!.textContent ?? '')).toContain('Virou cliente')
     await esperar()
-    expect(pedidos(chamadas, 'GET', '/crescimento/resumo')).toHaveLength(2)
+    expect(pedidos(chamadas, 'GET', '/crescimento/panorama')).toHaveLength(2)
   })
 
   it('não avançou manda o motivo; trocar só o responsável manda só ele; o erro 422 aparece no campo', async () => {
@@ -787,7 +801,7 @@ describe('Crescimento › Oportunidades', () => {
     await flushPromises()
     expect(pedidos(chamadas, 'POST', '/crescimento/ofertas')[0]!.corpo).toEqual({ empresa_id: 21, contato_id: 201, lista: 'pode_crescer', canal: 'whatsapp', texto: TEXTO })
     expect(t(w.get('[data-resultado="21"]').text())).toBe('Registrar resultado da oferta para Atacadão do Vale')
-    expect(pedidos(chamadas, 'GET', '/crescimento/resumo')).toHaveLength(2)
+    expect(pedidos(chamadas, 'GET', '/crescimento/panorama')).toHaveLength(2)
 
     const email = w.get('[data-oferecer="22"]')
     expect(email.attributes('href')).toMatch(/^mailto:beatriz@sabor\.com\.br\?subject=Uma%20condi%C3%A7%C3%A3o%20especial%20para%20a%20Hortifruti%20Sabor&body=Ol%C3%A1%2C%20Beatriz!/)

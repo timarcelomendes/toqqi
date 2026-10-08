@@ -2173,6 +2173,43 @@ export interface ResumoCrescimento {
   ofertas: { feitas: number; aceitas: number; taxa: number | null; receita: ValorDecimal | null }
 }
 
+/**
+ * GET /crescimento/panorama (docs/api-crescimento-panorama.md): o topo da tela de Crescimento no período (padrão: 90
+ * dias). `receita` é a mesma conta da "Receita gerada pelo Toqqi" do Início, com o período anterior de mesmo tamanho.
+ */
+export interface PanoramaCrescimento {
+  periodo: { de: string | null; ate: string | null }
+  anterior: { de: string; ate: string } | null
+  receita: { total: ValorDecimal; indicacoes: ValorDecimal; ofertas: ValorDecimal; anterior: ValorDecimal | null }
+  /**
+   * Promotores = respostas de nota máxima (NPS 9–10 ou CSAT 5); abordadas = as que já saíram de "nova";
+   * `esperando_contato` = as em "nova" agora, de qualquer data.
+   */
+  indicacoes: {
+    promotores: number
+    recebidas: number
+    novas: number
+    em_contato: number
+    clientes: number
+    nao_avancou: number
+    abordadas: number
+    esperando_contato: number
+  }
+  /** `prontas` = empresas nas listas de Oportunidades agora; `sem_oferta` = delas, sem oferta nos últimos 90 dias. */
+  ofertas: { feitas: number; aceitas: number; recusadas: number; sem_resposta: number; aguardando: number; prontas: number; sem_oferta: number }
+  /** Quem mais indicou no período (até 5). */
+  fas: { empresa: { id: Id; nome: string }; indicacoes: number; clientes: number; receita_mensal: ValorDecimal }[]
+  depoimentos: {
+    aprovados: number
+    pendentes: number
+    destaque: { resposta_id: Id; comentario: string; assinatura: string; nota: number | null; tipo_nota: string | null; data_resposta: string | null } | null
+  }
+  /** A receita nova de cada um dos 12 meses que terminam no mês de hoje ("2026-10"; o mês de hoje, até hoje). */
+  meses: { mes: string; indicacoes: ValorDecimal; ofertas: ValorDecimal; total: ValorDecimal }[]
+  /** A conta já teve um promotor, uma indicação ou uma oferta, em qualquer data (sem nada, a tela explica como funciona). */
+  tem_historico: boolean
+}
+
 /** GET/PUT /crescimento/configuracao. Sem linha no banco, a API devolve os padrões. */
 export interface ConfigCrescimento {
   indicacoes_ativas: boolean

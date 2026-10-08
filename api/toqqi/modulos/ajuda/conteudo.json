@@ -3304,7 +3304,11 @@
             "venda cruzada",
             "upsell",
             "representante",
-            "receita nova"
+            "receita nova",
+            "receita gerada",
+            "panorama",
+            "quem mais indica",
+            "próximos passos"
           ],
           "blocos": [
             {
@@ -3316,7 +3320,7 @@
               "itens": [
                 "Indicações: pessoas indicadas pelos promotores no fim da pesquisa ou registradas à mão pela equipe.",
                 "Oportunidades: empresas felizes para receber uma oferta, em duas listas, “Pode crescer” e “Promotores recentes”.",
-                "No topo, o resumo dos últimos 90 dias: indicações recebidas, quantas viraram cliente e a receita mensal que veio delas; ofertas feitas e aceitas."
+                "No topo, o panorama de 30 dias, 90 dias ou 12 meses: a receita gerada pelo Toqqi (comparada com o período anterior e mês a mês), a trilha do promotor ao cliente, as ofertas, os próximos passos, quem mais indica e o depoimento mais recente. Os números com lista levam a ela, já filtrada."
               ]
             },
             {

@@ -65,7 +65,7 @@ const rotas: RouteRecordRaw[] = [
       { path: 'relatorios/:aba', name: 'relatorios', component: () => import('@/modulos/relatorios/RelatoriosView.vue'), meta: { titulo: 'Relatórios', permissao: 'relatorios.ver' } },
       // Etapa 5c: Crescimento com as abas Indicações e Oportunidades; a aba e os filtros ficam no endereço.
       { path: 'crescimento', redirect: (to) => ({ path: '/crescimento/indicacoes', query: to.query }) },
-      { path: 'crescimento/:aba', name: 'crescimento', component: () => import('@/modulos/crescimento/CrescimentoView.vue'), meta: { titulo: 'Crescimento', permissao: 'crescimento.ver' } },
+      { path: 'crescimento/:aba', name: 'crescimento', component: () => import('@/modulos/crescimento/CrescimentoView.vue'), meta: { titulo: 'Crescimento', permissao: 'crescimento.ver', manterRolagem: true } },
       // Etapa 5a: planos, fatura em aberto, trocar de plano, dados de cobrança, cancelar e histórico.
       { path: 'assinatura', name: 'assinatura', component: () => import('@/modulos/assinatura/AssinaturaView.vue'), meta: { titulo: 'Assinatura', permissao: 'assinatura.gerenciar' } },
       // Etapa 5b: tópicos e seções da ajuda (/ajuda/contatos#importar-planilha); trocar de tópico não rola a página (a tela cuida).

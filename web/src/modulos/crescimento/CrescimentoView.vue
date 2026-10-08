@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// Crescimento (etapa 5c): "retenha quem está insatisfeito e cresça com quem está feliz". No topo, o resumo dos últimos
-// 90 dias; nas abas, as Indicações (promotores que indicaram outras empresas) e as Oportunidades (clientes felizes para
-// uma oferta). A aba e os filtros dela ficam no endereço (/crescimento/oportunidades?lista=promotores).
+// Crescimento (etapa 5c): "retenha quem está insatisfeito e cresça com quem está feliz". No topo, o panorama do período
+// (a receita gerada, as trilhas, os próximos passos, quem mais indica e o depoimento mais recente); nas abas, as
+// Indicações (promotores que indicaram outras empresas), as Oportunidades (clientes felizes para uma oferta) e os
+// Depoimentos. A aba e os filtros dela ficam no endereço (/crescimento/oportunidades?lista=promotores).
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Download, Settings, UserPlus } from 'lucide-vue-next'
@@ -18,7 +19,7 @@ import AbaIndicacoes from './AbaIndicacoes.vue'
 import AbaDepoimentos from './AbaDepoimentos.vue'
 import AbaOportunidades from './AbaOportunidades.vue'
 import ModalNovaIndicacao from './ModalNovaIndicacao.vue'
-import ResumoCrescimento from './ResumoCrescimento.vue'
+import PanoramaCrescimento from './PanoramaCrescimento.vue'
 import {
   ABAS_CRESCIMENTO,
   ABA_PADRAO,
@@ -184,13 +185,22 @@ async function carregarConfig() {
 }
 
 // ── Ações do topo ───────────────────────────────────────────────────────────
-const resumo = ref<InstanceType<typeof ResumoCrescimento> | null>(null)
+const panorama = ref<InstanceType<typeof PanoramaCrescimento> | null>(null)
+const areaAbas = ref<HTMLElement | null>(null)
 const abaIndicacoes = ref<InstanceType<typeof AbaIndicacoes> | null>(null)
 const novaAberta = ref(false)
 const baixando = ref(false)
 
 function aoMudar() {
-  resumo.value?.recarregar()
+  panorama.value?.recarregar()
+}
+
+/** Um número ou passo do panorama levou a uma aba: rola até a lista (a troca de aba não rola a página). */
+function mostrarLista() {
+  const el = areaAbas.value
+  if (!el || typeof el.scrollIntoView !== 'function') return
+  const semMovimento = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  el.scrollIntoView({ block: 'start', behavior: semMovimento ? 'auto' : 'smooth' })
 }
 function aoCriar() {
   abaIndicacoes.value?.recarregar()
@@ -219,7 +229,7 @@ onMounted(() => {
 <template>
   <CabecalhoPagina
     titulo="Crescimento"
-    descricao="Retenha quem está insatisfeito e cresça com quem está feliz: as indicações dos seus promotores e os clientes prontos para uma oferta."
+    descricao="O que seus clientes felizes trazem: indicações de outras empresas, ofertas aceitas e depoimentos."
   >
     <template #acoes>
       <!-- Como em Planos de ação: o atalho para a configuração do módulo (quem não pode mudar, consulta) -->
@@ -231,24 +241,26 @@ onMounted(() => {
     </template>
   </CabecalhoPagina>
 
-  <ResumoCrescimento ref="resumo" />
+  <PanoramaCrescimento ref="panorama" :config="config" @ir-para-lista="mostrarLista" />
 
-  <Abas v-model="abaModelo" :abas="ABAS_CRESCIMENTO" rotulo="Crescimento">
-    <AbaIndicacoes
-      v-if="aba === 'indicacoes'"
-      ref="abaIndicacoes"
-      v-model:filtros="filtrosInd"
-      :hoje="hoje"
-      :pronto="!erroDatas"
-      :erro-datas="erroDatas"
-      :config="config"
-      :erro-config="erroConfig"
-      @mudou="aoMudar"
-      @recarregar-config="carregarConfig"
-    />
-    <AbaOportunidades v-else-if="aba === 'oportunidades'" v-model:filtros="filtrosOp" :config="config" :erro-config="erroConfig" @mudou="aoMudar" @recarregar-config="carregarConfig" />
-    <AbaDepoimentos v-else :config="config" />
-  </Abas>
+  <div ref="areaAbas" data-area-abas>
+    <Abas v-model="abaModelo" :abas="ABAS_CRESCIMENTO" rotulo="Crescimento">
+      <AbaIndicacoes
+        v-if="aba === 'indicacoes'"
+        ref="abaIndicacoes"
+        v-model:filtros="filtrosInd"
+        :hoje="hoje"
+        :pronto="!erroDatas"
+        :erro-datas="erroDatas"
+        :config="config"
+        :erro-config="erroConfig"
+        @mudou="aoMudar"
+        @recarregar-config="carregarConfig"
+      />
+      <AbaOportunidades v-else-if="aba === 'oportunidades'" v-model:filtros="filtrosOp" :config="config" :erro-config="erroConfig" @mudou="aoMudar" @recarregar-config="carregarConfig" />
+      <AbaDepoimentos v-else :config="config" @mudou="aoMudar" />
+    </Abas>
+  </div>
 
   <ModalNovaIndicacao v-model:aberto="novaAberta" @criada="aoCriar" />
 </template>

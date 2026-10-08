@@ -16,6 +16,7 @@ import type {
   Oportunidade,
   Pagina,
   PaginaIndicacoes,
+  PanoramaCrescimento,
   ResumoCrescimento,
   SituacaoDepoimento,
 } from './tipos'
@@ -61,6 +62,9 @@ export const crescimentoApi = {
   /** Padrão: últimos 90 dias. */
   resumo: (f: { de?: string; ate?: string } = {}, sinal?: AbortSignal) =>
     api.get<ResumoCrescimento>('/crescimento/resumo', { query: { ...f }, sinal }),
+  /** O topo da tela de Crescimento (padrão: últimos 90 dias). */
+  panorama: (f: { de?: string; ate?: string } = {}, sinal?: AbortSignal) =>
+    api.get<PanoramaCrescimento>('/crescimento/panorama', { query: { ...f }, sinal }),
 
   /** Também com crescimento.ver (a tela usa o texto da oferta e sabe se o convite está ligado). */
   configuracao: (sinal?: AbortSignal) => api.get<ConfigCrescimento>('/crescimento/configuracao', { sinal }),

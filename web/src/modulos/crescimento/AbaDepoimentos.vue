@@ -19,6 +19,8 @@ import Paginacao from '@/components/ui/Paginacao.vue'
 import { FILTROS_DEPOIMENTO, SITUACOES_DEPOIMENTO, textoDepoimento, type FiltroDepoimento } from './logica'
 
 const props = defineProps<{ config: ConfigCrescimento | null }>()
+/** Aprovou, ocultou ou devolveu um depoimento: o panorama do topo atualiza as contagens e o destaque. */
+const emit = defineEmits<{ mudou: [] }>()
 const sessao = useSessaoStore()
 const podeTratar = computed(() => sessao.pode('crescimento.tratar'))
 const podeConfigurar = computed(() => sessao.pode('configuracoes.gerenciar'))
@@ -71,6 +73,7 @@ async function mudar(d: Depoimento, situacao: SituacaoDepoimento) {
   try {
     await crescimentoApi.alterarDepoimento(d.resposta_id, situacao)
     avisar.sucesso(situacao === 'aprovado' ? 'Depoimento aprovado: pode publicar.' : situacao === 'oculto' ? 'Depoimento ocultado.' : 'Depoimento voltou para revisão.')
+    emit('mudou')
     await carregar()
   } catch (e) {
     avisar.erro(mensagemDoErro(e))

@@ -97,7 +97,7 @@ valores em reais como decimal, NPS com **meio para cima** (`respostas/indicadore
 ## 6. Telas (web)
 - **Menu**: "Crescimento" (com `crescimento.ver`), depois de "Planos de ação"; rota `/crescimento/:aba` com abas
   **Indicações** (padrão) e **Oportunidades**; no topo, o resumo dos últimos 90 dias (indicações recebidas, viraram cliente,
-  receita mensal vinda delas; ofertas feitas, aceitas).
+  receita mensal vinda delas; ofertas feitas, aceitas). Desde 08/10/2026, o panorama de `docs/api-crescimento-panorama.md`.
 - **Indicações**: filtros (situação, responsável, período, busca), lista (tabela a partir de 640 px, cartões no celular) com
   nome, empresa, contato (telefone/e-mail), quem indicou ("Mercado Bom Preço · Ana" ou "Não quis se identificar"), responsável,
   situação (selo) e data; abrir uma linha → painel lateral com os dados, a observação, botões de WhatsApp/e-mail para falar

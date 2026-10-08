@@ -10,7 +10,7 @@ from toqqi.core.deps import Contexto, contexto_atual, requer
 from toqqi.core.errors import AppError
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.core.validacao import MAX_ID
-from toqqi.modulos.crescimento import configuracao, depoimentos, indicacoes, oportunidades
+from toqqi.modulos.crescimento import configuracao, depoimentos, indicacoes, oportunidades, panorama
 from toqqi.modulos.crescimento.esquemas import (
     DepoimentoAlterarIn,
     ConfigCrescimentoIn,
@@ -115,6 +115,13 @@ def alterar_depoimento(resposta_id: IdCaminho, dados: DepoimentoAlterarIn, ctx: 
 @router.get("/resumo")
 def resumo(filtros: Annotated[PeriodoIn, Query()], ctx: Contexto = Depends(VER)):
     return oportunidades.resumo(ctx, filtros.de, filtros.ate)
+
+
+@router.get("/panorama")
+def ver_panorama(filtros: Annotated[PeriodoIn, Query()], ctx: Contexto = Depends(VER)):
+    """O topo da tela de Crescimento: receita do período (e do anterior), trilhas das indicações e das ofertas, quem
+    mais indica e o depoimento em destaque (docs/api-crescimento-panorama.md)."""
+    return panorama.panorama(ctx, filtros.de, filtros.ate)
 
 
 # ---- configuração -----------------------------------------------------------------------

@@ -127,6 +127,9 @@ Só para as marcas dos gráficos (barras, linhas, pontos), nunca para texto: val
   (`grafico-cinza`), misto âmbar (`grafico-neutro`) e negativo vermelho (`grafico-detrator`), sempre com o nome escrito.
   O cinza é de propósito (o meio da escala) e fica separado do verde e do âmbar vizinhos no validador.
 - As seis cores dos temas foram conferidas com o validador de paleta nos dois modos (separação para daltonismo entre vizinhas e brilho). No claro, as dos temas 3, 4 e 5 ficam abaixo de 3:1 com a superfície: todo gráfico que as usa tem legenda escrita e a mesma informação em tabela.
+- **Destaque** (o panorama do Crescimento: trilhas, mês a mês e quem mais indica): o resultado em `marca` e o resto em
+  `grafico-cinza` (no escuro, a 70%), nunca outra cor. Conferido com o validador: separação para daltonismo ΔE 16,5 no
+  claro e 15,1 no escuro. O cinza fica abaixo de 3:1 no claro, então os valores ficam escritos ao lado de cada barra.
 
 ---
 
