@@ -251,11 +251,6 @@ const COMO_FUNCIONA = [
                     <span v-if="barraAtiva.valor > 0" class="block opacity-80">{{ detalheMes(barraAtiva) }}</span>
                   </div>
                 </div>
-                <figcaption class="mt-1.5 flex items-baseline justify-between gap-2 text-xs text-texto-fraco">
-                  <span aria-hidden="true">{{ barras.length ? mesCurto(barras[0]!.mes) : '' }}</span>
-                  <span>Receita nova por mês</span>
-                  <span aria-hidden="true">{{ barras.length ? mesCurto(barras[barras.length - 1]!.mes) : '' }}</span>
-                </figcaption>
                 <!-- A tabela fica numa caixa sr-only (a tabela não encolhe para 1 px e alargaria a página) -->
                 <div class="sr-only">
                   <table>
@@ -271,6 +266,11 @@ const COMO_FUNCIONA = [
                     </tbody>
                   </table>
                 </div>
+                <figcaption class="mt-1.5 flex items-baseline justify-between gap-2 text-xs text-texto-fraco">
+                  <span aria-hidden="true">{{ barras.length ? mesCurto(barras[0]!.mes) : '' }}</span>
+                  <span>Receita nova por mês</span>
+                  <span aria-hidden="true">{{ barras.length ? mesCurto(barras[barras.length - 1]!.mes) : '' }}</span>
+                </figcaption>
               </figure>
             </div>
           </div>

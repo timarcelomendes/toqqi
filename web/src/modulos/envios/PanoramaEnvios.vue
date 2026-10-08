@@ -79,9 +79,9 @@ const LISTRAS = { backgroundImage: 'repeating-linear-gradient(135deg, var(--t-su
         </p>
 
         <!-- Os próximos 14 dias: pesquisas e lembretes por dia -->
-        <figure class="mt-7" data-agenda>
+        <figure class="mt-7" aria-labelledby="t-agenda-envios" data-agenda>
           <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <figcaption class="text-sm font-semibold text-texto-suave" data-total-agenda>{{ totalAgenda(dados) }}</figcaption>
+            <p id="t-agenda-envios" class="text-sm font-semibold text-texto-suave" data-total-agenda>{{ totalAgenda(dados) }}</p>
             <p class="flex items-center gap-3 text-xs text-texto-fraco" data-legenda-agenda>
               <span class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-grafico-tema-2" aria-hidden="true" />Pesquisas</span>
               <span class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-grafico-serie" aria-hidden="true" />Lembretes</span>
