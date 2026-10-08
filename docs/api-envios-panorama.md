@@ -41,7 +41,8 @@ Sem migração.
   contatos", "Ninguém na fila agora. O próximo contato entra na fila em 23/11.", "As pesquisas só saem quando alguém
   envia por aqui"…), quem fica de fora, as regras em uma linha com "Mudar as regras" e a agenda de 14 dias em barras
   empilhadas (pesquisas em laranja, lembretes em azul, conferidas com o validador de paleta nos dois modos; dias sem
-  envio listrados; dica por dia e tabela para leitores de tela; no celular, só o dia do mês). Ao lado, a taxa de
+  envio listrados; dica por dia e tabela para leitores de tela; no celular, só o dia do mês). Ao lado (a partir de
+  1280 px; abaixo disso, embaixo), a taxa de
   resposta dos 30 dias, a comparação em pontos, o tempo até a metade responder e, com os dois canais, a taxa de
   cada um. Atualiza depois de um envio, de "Enviar lembretes agora" e de "Rodar envio automático agora".
 - Aba Contatos: os cinco cartões viraram botões de filtro com a contagem dentro do cartão da lista ("Com erro" em

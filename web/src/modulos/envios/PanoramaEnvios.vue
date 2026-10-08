@@ -66,7 +66,7 @@ const LISTRAS = { backgroundImage: 'repeating-linear-gradient(135deg, var(--t-su
       Não deu para carregar o resumo dos envios: {{ erro }} <button type="button" class="link ml-1" @click="carregar()">Tentar de novo</button>
     </Alerta>
 
-    <div v-else-if="dados && a && m && r" class="grid gap-x-10 gap-y-8 lg:grid-cols-[minmax(0,1fr)_15.5rem]">
+    <div v-else-if="dados && a && m && r" class="grid gap-x-10 gap-y-8 xl:grid-cols-[minmax(0,1fr)_15.5rem]">
       <div class="min-w-0">
         <p class="flex items-center gap-2 text-sm font-semibold" :class="COR_ESTADO[m.tom]" data-estado-envio>
           <span class="size-2 shrink-0 rounded-full" :class="PONTO_ESTADO[m.tom]" aria-hidden="true" />
@@ -137,7 +137,7 @@ const LISTRAS = { backgroundImage: 'repeating-linear-gradient(135deg, var(--t-su
       </div>
 
       <!-- Quantos responderam -->
-      <div class="border-t border-borda pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8" data-respostas-envios>
+      <div class="border-t border-borda pt-6 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-8" data-respostas-envios>
         <h3 class="text-sm font-semibold text-texto-suave">Taxa de resposta</h3>
         <p class="mt-2 text-5xl leading-none font-extrabold tracking-tight text-texto" data-taxa>
           {{ r.taxa === null ? '—' : `${formatarNumero(r.taxa)}%` }}
