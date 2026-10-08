@@ -48,6 +48,9 @@ class FiltrosRespostas(BaseModel):
     # etapa 4b
     sentimento: Annotated[Literal[SENTIMENTOS_FILTRO] | None, Opcional] = None  # type: ignore[valid-type]
     reclamacao: Annotated[bool | None, Opcional] = None
+    # triagem (08/10/2026): as que pedem análise (nota baixa ou comentário, ainda sem análise) e as com comentário
+    para_analisar: Annotated[bool | None, Opcional] = None
+    com_comentario: Annotated[bool | None, Opcional] = None
     motorista: Contexto = None
     rota: Contexto = None
     filial: Contexto = None

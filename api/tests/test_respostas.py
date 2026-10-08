@@ -187,11 +187,11 @@ def test_lista_ordem_formato_e_metricas(client, base):
     assert d["total"] == 4 and d["pagina"] == 1
     # ordem: data da resposta (as de hoje primeiro; depois 20/03 e 10/03 de 2025)
     assert _notas(d)[2:] == [3, 10] and set(_notas(d)[:2]) == {8, 5}
-    assert d["metricas"] == {
+    assert {k: d["metricas"][k] for k in ("nps", "csat", "total")} == {
         "nps": {"valor": 0, "faixa": "pode_melhorar", "promotores": 1, "neutros": 1, "detratores": 1, "total": 3},
         "csat": {"percentual": 100, "media": 5.0, "total": 1},
         "total": 4,
-    }
+    }  # os atalhos da triagem (para analisar, com comentário, temas) estão em test_respostas_triagem.py
     r1 = next(x for x in d["itens"] if x["id"] == base["r1"]["id"])
     assert r1["contato"]["perfil"] == {"id": base["decisor"], "nome": "Decisor"}
     assert r1["empresa"]["grupo"] == {"id": base["g1"]["id"], "nome": "Rede Leste"}
@@ -276,7 +276,8 @@ def test_csat_percentual_inteiro(client, admin):
     for n in (5, 4, 4, 3, 2, 1, 5, 2):  # 4 de 8 satisfeitos = 50%; média 26/8 = 3,25
         assert responder_link(client, csat["codigo_publico"], {pid: n}).status_code == 201
     d = lista_respostas(client, h)
-    assert d["metricas"] == {"nps": None, "csat": {"percentual": 50, "media": 3.25, "total": 8}, "total": 8}
+    assert {k: d["metricas"][k] for k in ("nps", "csat", "total")} == {
+        "nps": None, "csat": {"percentual": 50, "media": 3.25, "total": 8}, "total": 8}
     # 1 de 8 satisfeitos = 12,5% → 13 (meio para cima)
     d = lista_respostas(client, h, categoria="", busca="")
     assert indicadores.percentual(1, 8) == 13 and d["total"] == 8

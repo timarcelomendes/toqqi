@@ -4,7 +4,7 @@ import csv
 import io
 from datetime import date, datetime, time
 
-from sqlalchemy import String, case, cast, delete, func, or_, select, true
+from sqlalchemy import String, and_, case, cast, delete, func, or_, select, true
 from sqlalchemy.orm import Session, aliased
 
 from toqqi.core import relogio
@@ -150,9 +150,20 @@ def _resposta(s: Session, resposta_id: int, travar: bool = False) -> Resposta:
 
 # ---- filtros e métricas -----------------------------------------------------
 
-def condicoes(f) -> list:
-    """Condições da lista (e do CSV) a partir de FiltrosRespostas. Pedem a junção de contato e empresa."""
+NOTA_BAIXA = Resposta.grupo.in_(("detrator", "insatisfeito"))
+COM_COMENTARIO = Resposta.comentario_cliente != ""
+# Triagem: o que pede análise da equipe (nota baixa ou algo escrito pelo cliente) e ninguém analisou ainda
+PARA_ANALISAR = and_(Resposta.analisada_em.is_(None), or_(NOTA_BAIXA, COM_COMENTARIO))
+
+
+def condicoes(f, triagem: bool = True) -> list:
+    """Condições da lista (e do CSV) a partir de FiltrosRespostas. Pedem a junção de contato e empresa. Sem a
+    `triagem` (para analisar, com comentário): a base das contagens desses atalhos."""
     conds = []
+    if triagem and getattr(f, "para_analisar", None):
+        conds.append(PARA_ANALISAR)
+    if triagem and getattr(f, "com_comentario", None):
+        conds.append(COM_COMENTARIO)
     if f.busca and f.busca.strip():
         termo = f"%{f.busca.strip()}%"
         conds.append(or_(Contato.nome.ilike(termo), cast(Contato.email, String).ilike(termo),
@@ -217,20 +228,46 @@ def metricas_json(c) -> dict:
     }
 
 
+MAX_TEMAS_METRICAS = 6
+
+
+def triagem(s: Session, base: list) -> dict:
+    """Os atalhos da lista sobre a base (os outros filtros): quantas pedem análise, quantas têm comentário do cliente
+    e os temas citados (menções e quantas delas com nota baixa), dos mais citados aos menos."""
+    linha = s.execute(_juntar_cadastros(select(
+        func.count().filter(PARA_ANALISAR), func.count().filter(COM_COMENTARIO)).select_from(Resposta)).where(*base)).one()
+    sq = _juntar_cadastros(select(func.unnest(Resposta.temas).label("tema"), Resposta.grupo.label("grupo"))
+                           .select_from(Resposta)).where(*base).subquery()
+    contagem = {t: (n, baixa) for t, n, baixa in s.execute(select(
+        sq.c.tema, func.count(), func.count().filter(sq.c.grupo.in_(("detrator", "insatisfeito"))))
+        .group_by(sq.c.tema)).all()}
+    citados = sorted((t for t in temas_mod.CHAVES if t in contagem),
+                     key=lambda t: (-contagem[t][0], temas_mod.CHAVES.index(t)))[:MAX_TEMAS_METRICAS]
+    return {"para_analisar": linha[0], "com_comentario": linha[1],
+            "temas": [{"chave": t, "rotulo": temas_mod.ROTULOS[t], "mencoes": contagem[t][0],
+                       "nota_baixa": contagem[t][1]} for t in citados]}
+
+
 # ---- leitura ----------------------------------------------------------------
 
 def listar(ctx: Contexto, f, pg: Pagina) -> dict:
     conds = [Resposta.conta_id == ctx.conta_id, *condicoes(f)]  # conta explícita: deixa o banco usar os índices
+    base = [Resposta.conta_id == ctx.conta_id, *condicoes(f, triagem=False)]
     ordem = (Resposta.data_resposta.desc(), Resposta.id.desc())
     with em_conta(ctx.conta_id) as s:
         sem_jit(s)
-        c = contagens(s, conds)
+        # as métricas (NPS, CSAT, total) descrevem os filtros sem a triagem; a página, a lista com ela
+        c = contagens(s, base)
+        total = c.total if len(conds) == len(base) else s.scalar(
+            _juntar_cadastros(select(func.count()).select_from(Resposta)).where(*conds))
+        atalhos = triagem(s, base)
         # primeiro os ids da página; os detalhes (e a ação de cada uma) só para eles
         pagina_ids = (_juntar_cadastros(select(Resposta.id).select_from(Resposta)).where(*conds).order_by(*ordem)
                       .limit(pg.por_pagina).offset(pg.offset))
         linhas = s.execute(_consulta().where(Resposta.id.in_(pagina_ids)).order_by(*ordem)).all()
         hoje = relogio.hoje()
-        return {**pg.resultado([resposta_json(x, hoje) for x in linhas], c.total), "metricas": metricas_json(c)}
+        return {**pg.resultado([resposta_json(x, hoje) for x in linhas], total),
+                "metricas": {**metricas_json(c), **atalhos}}
 
 
 def _perguntas(perguntas: list[dict], respostas: dict, v: dict) -> list[dict]:

@@ -1137,6 +1137,12 @@ export interface MetricasRespostas {
   nps: NpsResumo | null
   csat: { percentual: number | null; media: number | null; total: number } | null
   total: number
+  /** Triagem (docs/api-respostas-triagem.md), contada sobre os outros filtros: nota baixa ou comentário sem análise. */
+  para_analisar?: number
+  /** Com algo escrito pelo cliente. */
+  com_comentario?: number
+  /** Temas citados (menções e quantas com nota baixa), dos mais citados aos menos. */
+  temas?: { chave: string; rotulo: string; mencoes: number; nota_baixa: number }[]
 }
 
 export interface PaginaRespostas extends Pagina<RespostaItem> {
@@ -1167,6 +1173,10 @@ export interface FiltrosRespostas {
   sentimento?: FiltroSentimento | ''
   /** Etapa 4b: só reclamações (com `tema`, reclamações daquele tema). */
   reclamacao?: boolean
+  /** Triagem: nota baixa ou comentário, ainda sem análise da equipe. */
+  para_analisar?: boolean
+  /** Triagem: só as com comentário do cliente. */
+  com_comentario?: boolean
   /** Etapa 4b: valor do contexto do pedido (sem diferenciar maiúsculas e espaços nas pontas). */
   motorista?: string
   rota?: string

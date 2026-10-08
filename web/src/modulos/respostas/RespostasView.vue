@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   Archive,
   ArchiveRestore,
+  CheckCircle2,
   Download,
   Eye,
   MessageSquareText,
@@ -63,7 +64,9 @@ import {
   FILTROS_PADRAO,
   LIMITE_BUSCA,
   TEMAS_PADRAO,
+  VISOES_RESPOSTAS,
   categoriasDoTipo,
+  contagemVisao,
   contarFiltrosAtivos,
   contextoNoFiltro,
   filtrosDaQuery,
@@ -72,6 +75,7 @@ import {
   mesmosFiltros,
   queryDosFiltros,
   rotuloTema,
+  temasCitados,
   textoExclusao,
   type Consulta,
   type FiltrosTela,
@@ -156,12 +160,19 @@ const qtdFiltros = computed(() => contarFiltrosAtivos(filtros))
 /** Contexto da entrega no filtro (vem de Relatórios › Entregas): aparece em "Mostrando", como o contato. */
 const contexto = computed(() => contextoNoFiltro(filtros))
 const temFiltro = computed(
-  () => qtdFiltros.value > 0 || !!filtros.busca || filtros.periodo !== FILTROS_PADRAO.periodo || filtros.contato_id !== '' || contexto.value.length > 0,
+  () =>
+    qtdFiltros.value > 0 ||
+    !!filtros.busca ||
+    filtros.periodo !== FILTROS_PADRAO.periodo ||
+    filtros.contato_id !== '' ||
+    contexto.value.length > 0 ||
+    filtros.visao !== 'todas',
 )
 
 function limparFiltros() {
   Object.assign(filtros, {
     ...FILTROS_PADRAO,
+    visao: filtros.visao,
     busca: filtros.busca,
     periodo: filtros.periodo,
     de: filtros.de,
@@ -277,6 +288,15 @@ function linkCategoria(g: GrupoNota) {
   return { path: '/respostas', query: { ...queryDosFiltros({ ...filtros, categoria: g, pagina: 1 }) } }
 }
 
+// ── Triagem e "Do que falam" (docs/api-respostas-triagem.md) ────────────────
+const temasDoFiltro = computed(() => temasCitados(metricas.value, temas.value))
+/** No celular, os 3 mais citados; o resto num toque. */
+const temasAbertos = ref(false)
+/** Um clique filtra pelo tema; outro clique tira. */
+function filtrarTema(chave: string) {
+  filtros.tema = filtros.tema === chave ? '' : chave
+}
+
 // ── IA (etapa 4b): "Sentimento" e "Só reclamações" com a IA ativa, com análises na lista ou já no endereço ──
 const mostrarIa = computed(() =>
   mostrarFiltrosIa({
@@ -369,6 +389,7 @@ function aoAtualizar(r: RespostaItem) {
   // atual (categoria, busca, tema, arquivadas): busca a lista de novo. Só a ação ligada mudou: não precisa.
   const mudouOQueFiltra =
     !antes ||
+    (antes.analisada_em ?? null) !== (r.analisada_em ?? null) ||
     antes.nota !== r.nota ||
     antes.grupo !== r.grupo ||
     antes.arquivada !== r.arquivada ||
@@ -469,11 +490,68 @@ onBeforeUnmount(() => {
       legenda="compacta"
       :link-grupo="linkCategoria"
     />
+    <!-- Do que falam: os temas citados nos comentários; um clique filtra a lista pelo tema -->
+    <div v-if="temasDoFiltro.length" class="border-t border-borda pt-4 md:col-span-2" data-temas-citados>
+      <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 class="text-sm font-semibold text-texto-suave">Do que falam</h2>
+        <p class="flex items-center gap-3 text-xs text-texto-fraco" data-legenda-temas>
+          <span class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-grafico-detrator" aria-hidden="true" />Com nota baixa</span>
+          <span class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-grafico-cinza" aria-hidden="true" />As outras</span>
+        </p>
+      </div>
+      <ul class="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
+        <li v-for="(t, i) in temasDoFiltro" :key="t.chave" :class="i >= 3 && !temasAbertos ? 'hidden sm:block' : ''">
+          <button
+            type="button"
+            class="group w-full rounded-lg py-1 text-left"
+            :aria-pressed="filtros.tema === t.chave"
+            :aria-label="`${t.rotulo}: ${t.mencoes} ${t.mencoes === 1 ? 'menção' : 'menções'}, ${t.detalhe.toLowerCase()}. ${filtros.tema === t.chave ? 'Tirar o filtro' : 'Ver só este tema'}`"
+            :data-tema="t.chave"
+            @click="filtrarTema(t.chave)"
+          >
+            <span class="flex items-baseline justify-between gap-2 text-sm">
+              <span class="truncate font-semibold group-hover:underline" :class="filtros.tema === t.chave ? 'text-marca-texto' : 'text-texto'">{{ t.rotulo }}</span>
+              <span class="shrink-0 text-texto-suave"><strong class="font-bold text-texto">{{ formatarNumero(t.mencoes) }}</strong> {{ t.mencoes === 1 ? 'menção' : 'menções' }}</span>
+            </span>
+            <span class="mt-1.5 flex h-2 gap-0.5" :style="{ width: `${t.largura}%` }" aria-hidden="true">
+              <span v-if="t.notaBaixa" class="h-full bg-grafico-detrator" :class="t.parteBaixa >= 100 ? 'rounded-r-[4px]' : ''" :style="{ width: `${t.parteBaixa}%` }" />
+              <span v-if="t.parteBaixa < 100" class="h-full min-w-0.5 flex-1 rounded-r-[4px] bg-grafico-cinza" />
+            </span>
+            <span class="mt-1 block text-xs text-texto-fraco">{{ t.detalhe }}</span>
+          </button>
+        </li>
+      </ul>
+      <button v-if="temasDoFiltro.length > 3 && !temasAbertos" type="button" class="link mt-2 inline-flex min-h-11 items-center text-sm sm:hidden" @click="temasAbertos = true">
+        Ver {{ temasDoFiltro.length === 4 ? 'mais 1 tema' : `mais ${temasDoFiltro.length - 3} temas` }}
+      </button>
+    </div>
   </section>
 
   <div class="cartao">
     <!-- Filtros -->
     <div class="flex flex-col gap-3 border-b border-borda p-4 sm:px-5">
+      <!-- Triagem: todas, as que pedem análise e as com comentário (cada uma com a contagem nos outros filtros) -->
+      <div class="flex flex-wrap gap-2" role="group" aria-label="Mostrar na lista" data-visoes>
+        <button
+          v-for="v in VISOES_RESPOSTAS"
+          :key="v.valor"
+          type="button"
+          class="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco"
+          :class="filtros.visao === v.valor ? 'border-marca bg-marca-suave text-marca-texto' : 'border-borda-forte bg-superficie text-texto hover:bg-superficie-2'"
+          :aria-pressed="filtros.visao === v.valor"
+          :title="v.dica"
+          :data-visao="v.valor"
+          @click="filtros.visao = v.valor"
+        >
+          {{ v.rotulo }}
+          <span
+            v-if="contagemVisao(v.valor, metricas) !== null"
+            class="tabular-nums"
+            :class="filtros.visao === v.valor ? '' : v.valor === 'para_analisar' && contagemVisao(v.valor, metricas) ? 'text-marca-texto' : 'text-texto-fraco'"
+            >{{ formatarNumero(contagemVisao(v.valor, metricas)) }}</span
+          >
+        </button>
+      </div>
       <div class="flex flex-col gap-3 lg:flex-row lg:items-start">
         <Campo v-model="busca" rotulo="Buscar respostas" rotulo-oculto tipo="search" :maxlength="LIMITE_BUSCA" placeholder="Contato, empresa ou comentário" class="lg:max-w-sm lg:flex-1">
           <template #antes><Search class="size-4" aria-hidden="true" /></template>
@@ -664,7 +742,17 @@ onBeforeUnmount(() => {
         <div v-else class="p-4 xl:hidden"><div v-for="i in 3" :key="i" class="mb-3 h-24 animate-pulse rounded-xl bg-superficie-2" /></div>
 
         <template v-if="!carregando && !lista.length">
-          <EstadoVazio v-if="temFiltro" :icone="Search" titulo="Nenhuma resposta com esses filtros" descricao="Tente outro período, outra busca ou limpe os filtros.">
+          <!-- "Para analisar" vazio é boa notícia: tudo o que pedia análise já foi analisado -->
+          <EstadoVazio
+            v-if="filtros.visao === 'para_analisar' && metricas && metricas.total > 0"
+            :icone="CheckCircle2"
+            titulo="Nada para analisar"
+            descricao="As respostas com nota baixa ou com comentário já foram analisadas. As novas aparecem aqui."
+            data-vazio-analisar
+          >
+            <Botao variante="secundario" @click="filtros.visao = 'todas'">Ver todas as respostas</Botao>
+          </EstadoVazio>
+          <EstadoVazio v-else-if="temFiltro" :icone="Search" titulo="Nenhuma resposta com esses filtros" descricao="Tente outro período, outra busca ou limpe os filtros.">
             <Botao variante="secundario" @click="limparTudo">Limpar busca e filtros</Botao>
           </EstadoVazio>
           <EstadoVazio

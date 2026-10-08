@@ -1952,12 +1952,16 @@
             "planilha",
             "período",
             "reclamações",
-            "avaliações"
+            "avaliações",
+            "para analisar",
+            "com comentário",
+            "do que falam",
+            "temas mais citados"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "A tela Respostas lista as notas e os comentários dos clientes. No topo, o NPS, o CSAT e o total mudam conforme os filtros que você escolher."
+              "texto": "A tela Respostas lista as notas e os comentários dos clientes. No topo, o NPS, o CSAT e o total mudam conforme os filtros que você escolher, e “Do que falam” mostra os temas mais citados nos comentários, com quantas menções vieram de nota baixa (um clique filtra a lista pelo tema). Acima da lista, “Para analisar” junta as respostas com nota baixa ou com comentário que ninguém analisou ainda, e “Com comentário” mostra só as que têm algo escrito pelo cliente; cada uma diz quantas são."
             },
             {
               "tipo": "paragrafo",

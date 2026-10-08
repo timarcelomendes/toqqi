@@ -76,6 +76,7 @@ describe('filtros ↔ endereço (URL)', () => {
       arquivadas: 'todas',
       so_ativos: 'true',
       contato_id: '101',
+      visao: 'para_analisar',
       pagina: '3',
     })
     expect(f).toEqual({
@@ -99,6 +100,7 @@ describe('filtros ↔ endereço (URL)', () => {
       rota: '',
       filial: '',
       transportadora: '',
+      visao: 'para_analisar',
       pagina: 3,
     })
   })

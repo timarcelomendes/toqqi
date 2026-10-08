@@ -125,6 +125,21 @@ export const LIMITE_BUSCA = 100
 
 export type Arquivadas = 'false' | 'true' | 'todas'
 
+/**
+ * Triagem (docs/api-respostas-triagem.md): todas, as que pedem análise (nota baixa ou comentário do cliente, ainda
+ * sem análise da equipe) ou só as com comentário. Vai no endereço como `visao`.
+ */
+export type VisaoRespostas = 'todas' | 'para_analisar' | 'com_comentario'
+export const VISOES_RESPOSTAS: readonly { valor: VisaoRespostas; rotulo: string; dica: string }[] = [
+  { valor: 'todas', rotulo: 'Todas', dica: 'Todas as respostas dos filtros.' },
+  { valor: 'para_analisar', rotulo: 'Para analisar', dica: 'Nota baixa ou com comentário do cliente, e ninguém analisou ainda.' },
+  { valor: 'com_comentario', rotulo: 'Com comentário', dica: 'Só as que têm algo escrito pelo cliente.' },
+]
+
+export function ehVisao(v: unknown): v is VisaoRespostas {
+  return v === 'todas' || v === 'para_analisar' || v === 'com_comentario'
+}
+
 export interface FiltrosTela {
   busca: string
   periodo: PresetPeriodo
@@ -149,6 +164,8 @@ export interface FiltrosTela {
   rota: string
   filial: string
   transportadora: string
+  /** A triagem escolhida acima da lista. */
+  visao: VisaoRespostas
   pagina: number
 }
 
@@ -185,6 +202,7 @@ export const FILTROS_PADRAO: Readonly<FiltrosTela> = Object.freeze<FiltrosTela>(
   rota: '',
   filial: '',
   transportadora: '',
+  visao: 'todas',
   pagina: 1,
 })
 
@@ -234,6 +252,7 @@ export function filtrosDaQuery(q: Consulta): FiltrosTela {
     rota: um(q, 'rota').slice(0, LIMITE_CONTEXTO),
     filial: um(q, 'filial').slice(0, LIMITE_CONTEXTO),
     transportadora: um(q, 'transportadora').slice(0, LIMITE_CONTEXTO),
+    visao: ehVisao(um(q, 'visao')) ? (um(q, 'visao') as VisaoRespostas) : 'todas',
     pagina: Number.isFinite(pagina) && pagina > 1 ? pagina : 1,
   }
 }
@@ -260,6 +279,7 @@ export function queryDosFiltros(f: FiltrosTela): Record<string, string> {
   if (f.sentimento) q.sentimento = f.sentimento
   if (f.reclamacao) q.reclamacao = 'true'
   for (const c of CAMPOS_CONTEXTO_FILTRO) if (f[c].trim()) q[c] = f[c].trim()
+  if (f.visao !== 'todas') q.visao = f.visao
   if (f.pagina > 1) q.pagina = String(f.pagina)
   return q
 }
@@ -283,7 +303,44 @@ export function filtrosParaApi(f: FiltrosTela, hoje: string = hojeIso()): Filtro
   if (f.sentimento) r.sentimento = f.sentimento
   if (f.reclamacao) r.reclamacao = true
   for (const c of CAMPOS_CONTEXTO_FILTRO) if (f[c].trim()) r[c] = f[c].trim().slice(0, LIMITE_CONTEXTO)
+  if (f.visao === 'para_analisar') r.para_analisar = true
+  if (f.visao === 'com_comentario') r.com_comentario = true
   return r
+}
+
+/** A contagem de cada triagem, das métricas da lista (que descrevem os filtros sem a triagem). */
+export function contagemVisao(v: VisaoRespostas, m: { total: number; para_analisar?: number; com_comentario?: number } | null): number | null {
+  if (!m) return null
+  if (v === 'para_analisar') return m.para_analisar ?? null
+  if (v === 'com_comentario') return m.com_comentario ?? null
+  return m.total
+}
+
+export interface TemaCitado {
+  chave: string
+  rotulo: string
+  mencoes: number
+  notaBaixa: number
+  /** Barra: largura em % do tema mais citado e a parte de nota baixa em % da própria barra. */
+  largura: number
+  parteBaixa: number
+  /** "5 com nota baixa", "Nenhuma com nota baixa". */
+  detalhe: string
+}
+
+/** "Do que falam": os temas das métricas com a barra (menções) e a parte de nota baixa. */
+export function temasCitados(m: { temas?: { chave: string; rotulo: string; mencoes: number; nota_baixa: number }[] } | null, temas: TemaResposta[] = TEMAS_PADRAO): TemaCitado[] {
+  const lista = m?.temas ?? []
+  const maior = Math.max(0, ...lista.map((t) => t.mencoes))
+  return lista.map((t) => ({
+    chave: t.chave,
+    rotulo: temas.find((x) => x.chave === t.chave)?.rotulo ?? t.rotulo,
+    mencoes: t.mencoes,
+    notaBaixa: t.nota_baixa,
+    largura: maior > 0 ? Math.max(6, Math.round((t.mencoes / maior) * 100)) : 0,
+    parteBaixa: t.mencoes > 0 ? Math.round((t.nota_baixa / t.mencoes) * 100) : 0,
+    detalhe: t.nota_baixa ? `${t.nota_baixa.toLocaleString('pt-BR')} com nota baixa` : 'Nenhuma com nota baixa',
+  }))
 }
 
 /**
