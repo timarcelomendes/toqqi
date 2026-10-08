@@ -2,12 +2,19 @@ import { reactive } from 'vue'
 
 export type TipoAviso = 'sucesso' | 'erro' | 'atencao' | 'info'
 
+/** Um botão no aviso (ex.: "Atualizar a página"): faz a ação e fecha o aviso. */
+export interface AcaoAviso {
+  rotulo: string
+  executar: () => void
+}
+
 export interface Aviso {
   id: number
   tipo: TipoAviso
   mensagem: string
   titulo?: string
   duracao: number
+  acao?: AcaoAviso
 }
 
 let proximoId = 1
@@ -22,14 +29,15 @@ export function fecharAviso(id: number): void {
   temporizadores.delete(id)
 }
 
-export function avisar(opcoes: { tipo?: TipoAviso; mensagem: string; titulo?: string; duracao?: number }): number {
+/** Mostra um aviso. `duracao` 0: fica até a pessoa fechar (ou usar a `acao`). */
+export function avisar(opcoes: { tipo?: TipoAviso; mensagem: string; titulo?: string; duracao?: number; acao?: AcaoAviso }): number {
   // Evita empilhar a mesma mensagem várias vezes (ex.: vários 403 ao mesmo tempo).
   const repetido = avisos.find((a) => a.mensagem === opcoes.mensagem)
   if (repetido) return repetido.id
   const id = proximoId++
   const tipo = opcoes.tipo ?? 'info'
   const duracao = opcoes.duracao ?? (tipo === 'erro' ? 7000 : 4500)
-  avisos.push({ id, tipo, mensagem: opcoes.mensagem, titulo: opcoes.titulo, duracao })
+  avisos.push({ id, tipo, mensagem: opcoes.mensagem, titulo: opcoes.titulo, duracao, acao: opcoes.acao })
   if (avisos.length > 4) fecharAviso(avisos[0]!.id)
   if (duracao > 0) temporizadores.set(id, setTimeout(() => fecharAviso(id), duracao))
   return id

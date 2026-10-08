@@ -1,5 +1,6 @@
 // Risco das contas em Plataforma › Contas (docs/api-plataforma-risco.md): o texto de cada sinal, a coluna Risco (nível,
-// nota e motivos; a conta da equipe sem nota), o risco embaixo do nome no celular e o filtro "Suspeitas".
+// nota e motivos; a conta da equipe sem nota) a partir de 1024 px, o mesmo embaixo do nome em telas menores, a
+// assinatura embaixo da situação até 1280 px e o filtro "Suspeitas".
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { enableAutoUnmount, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -137,7 +138,9 @@ describe('Plataforma › risco: aba Contas', () => {
     const w = await montar()
     // a coluna Datas saiu: as datas ficam embaixo da situação
     expect(w.findAll('thead th').map((th) => t(th.text()))).toEqual(['Empresa', 'Risco', 'Situação', 'Assinatura', 'Usuários', 'Criada em', 'Ações'])
-    expect(w.get('thead th:nth-child(2)').classes()).toContain('xl:table-cell')
+    // a coluna Risco a partir de 1024 px (lg); a Assinatura, a partir de 1280 px (xl), para a Risco caber
+    expect(w.get('thead th:nth-child(2)').classes()).toEqual(expect.arrayContaining(['hidden', 'lg:table-cell']))
+    expect(w.get('thead th:nth-child(4)').classes()).toEqual(expect.arrayContaining(['hidden', 'xl:table-cell']))
     expect(t(linha(w, 'asdf').findAll('td')[2]!.text())).toContain('Teste até 15/10/2026')
     const alto = linha(w, 'asdf').get('[data-risco]')
     expect(visivel(alto.get('[data-nivel]').element)).toBe('Alto 70')
@@ -149,25 +152,49 @@ describe('Plataforma › risco: aba Contas', () => {
       '+15 Nome de empresa de teste',
     ])
     expect(t(alto.get('[data-sinal]').text())).toContain('(40 pontos)') // o "+40" é escondido do leitor de tela
-    expect(visivel(linha(w, 'Mercado Bom').get('[data-nivel]').element)).toBe('Médio 40')
+    expect(visivel(linha(w, 'Mercado Bom').get('[data-risco] [data-nivel]').element)).toBe('Médio 40')
     // baixo: sem selo colorido; sem sinal nenhum, "Nenhum sinal"
     const baixo = linha(w, 'Padaria do João').get('[data-risco]')
     expect(baixo.get('[data-nivel]').element.tagName).toBe('P')
     expect(visivel(baixo.get('[data-nivel]').element)).toBe('Baixo 10')
     expect(visivel(baixo.get('[data-sinal]').element)).toBe('+10 E-mail pessoal (gmail.com)')
-    expect(visivel(linha(w, 'Distribuidora Aurora').get('[data-nivel]').element)).toBe('Nenhum sinal')
+    expect(visivel(linha(w, 'Distribuidora Aurora').get('[data-risco] [data-nivel]').element)).toBe('Nenhum sinal')
+    // a conta da equipe: sem nota, escrito (não só um "—")
     const equipe = linha(w, 'Toqqi')
     expect(equipe.find('[data-risco]').exists()).toBe(false)
-    expect(t(equipe.findAll('td')[1]!.text())).toBe('—Conta da equipe, sem nota')
+    expect(t(equipe.findAll('td')[1]!.text())).toBe('Conta da equipe, sem nota')
   })
 
-  it('até 1280 px (sem a coluna), o risco médio ou alto aparece embaixo do nome', async () => {
+  it('até 1024 px (sem a coluna), o mesmo risco aparece embaixo do nome, com a palavra "risco"', async () => {
     const w = await montar()
-    const celular = linha(w, 'asdf').get('[data-risco-celular]')
-    expect(celular.classes()).toContain('xl:hidden')
-    expect(textos(celular.element)).toBe('Risco alto 70 E-mail temporário (mailinator.com) E-mail não confirmado há 3 dias Nome de empresa de teste')
-    expect(textos(linha(w, 'Mercado Bom').get('[data-risco-celular]').element)).toBe('Risco médio 40 E-mail temporário (yopmail.com)')
-    for (const nome of ['Padaria do João', 'Distribuidora Aurora', 'Toqqi']) expect(linha(w, nome).find('[data-risco-celular]').exists()).toBe(false)
+    const alto = linha(w, 'asdf').get('[data-risco-embaixo]')
+    expect(alto.classes()).toContain('lg:hidden')
+    expect(visivel(alto.element)).toBe('Risco alto 70 +40 E-mail temporário (mailinator.com) +15 E-mail não confirmado há 3 dias +15 Nome de empresa de teste')
+    expect(alto.get('[data-nivel]').classes().join(' ')).toContain('text-erro')
+    expect(t(alto.get('[data-nivel]').text())).toBe('Risco alto 70 de 100 pontos')
+    expect(visivel(linha(w, 'Mercado Bom').get('[data-risco-embaixo]').element)).toBe('Risco médio 40 +40 E-mail temporário (yopmail.com)')
+    // o baixo e o sem sinal também (antes, só o médio e o alto: em 1024 px não se via risco nenhum dessas contas)
+    expect(visivel(linha(w, 'Padaria do João').get('[data-risco-embaixo]').element)).toBe('Risco baixo 10 +10 E-mail pessoal (gmail.com)')
+    expect(visivel(linha(w, 'Distribuidora Aurora').get('[data-risco-embaixo]').element)).toBe('Nenhum sinal de risco')
+    // a conta da equipe: escrito embaixo do nome também
+    expect(linha(w, 'Toqqi').find('[data-risco-embaixo]').exists()).toBe(false)
+    const equipe = linha(w, 'Toqqi').findAll('td')[0]!.get('[data-risco-equipe]')
+    expect(equipe.classes()).toContain('lg:hidden')
+    expect(t(equipe.text())).toBe('Conta da equipe, sem nota de risco')
+  })
+
+  it('até 1280 px (sem a coluna Assinatura), a assinatura fica embaixo da situação', async () => {
+    const contas = [
+      ...CONTAS,
+      conta({ id: 6, nome: 'Assinante', situacao: 'ativa', teste_ate: null, assinatura: { plano: 'profissional', valor: 349, situacao: 'ativa' } }),
+    ]
+    const w = await montar(contas)
+    const curta = linha(w, 'Assinante').get('[data-assinatura-curta]')
+    expect(curta.classes()).toContain('xl:hidden')
+    expect(t(curta.text())).toBe('Profissional · R$ 349,00/mês')
+    expect(t(linha(w, 'asdf').get('[data-assinatura-curta]').text())).toBe('Sem assinatura (plano Profissional)')
+    // no celular (sem a coluna Situação), embaixo do nome
+    expect(linha(w, 'asdf').findAll('td')[0]!.findAll('p').some((p) => p.classes().includes('sm:hidden') && t(p.text()) === 'Sem assinatura (plano Profissional)')).toBe(true)
   })
 
   it('"Suspeitas" mostra só as de risco médio ou alto, da maior nota para a menor, e combina com a busca', async () => {

@@ -63,10 +63,18 @@ A nota é um alerta para alguém da equipe olhar, não uma decisão: nada é blo
 
 ## Site (Plataforma › Contas)
 
-- Coluna **Risco** (a partir de 1280 px), logo depois de Empresa: médio e alto com o selo colorido ("Alto 65",
+- Coluna **Risco** (a partir de 1024 px), logo depois de Empresa: médio e alto com o selo colorido ("Alto 65",
   "Médio 40"), baixo em texto discreto ("Baixo 10") e "Nenhum sinal" quando não há nenhum; embaixo, cada motivo com os
-  pontos ("+35 6% saíram da lista (9 de 150 em 30 dias)"). A conta da equipe mostra "—".
-- Abaixo de 1280 px (e no celular), o risco médio ou alto aparece embaixo do nome, com os motivos.
+  pontos ("+35 6% saíram da lista (9 de 150 em 30 dias)"). A conta da equipe mostra **"Conta da equipe, sem nota"**.
+- Abaixo de 1024 px (e no celular), o mesmo embaixo do nome, com a palavra "risco" ("Risco alto 65", "Risco baixo 10",
+  "Nenhum sinal de risco", "Conta da equipe, sem nota de risco").
+- Para a coluna caber em 1024 px, a **Assinatura** só tem coluna a partir de 1280 px; antes disso, fica embaixo da
+  situação ("Profissional · R$ 349,00/mês" ou "Sem assinatura (plano Profissional)"), e no celular embaixo do nome.
+- Revisão (08/10/2026, 12h55, Marcelo: "não apareceu a coluna risco"): no primeiro deploy a coluna só aparecia a partir
+  de 1280 px e a conta da equipe mostrava só "—". Em produção, as duas contas que existiam eram da equipe (a dele e a
+  EMPRESA TESTE, de development@toqqi.com, que está em `SUPERADMIN_EMAILS`), então a coluna só tinha traços. Agora a
+  coluna aparece a partir de 1024 px, a conta da equipe diz o porquê, e o site avisa quando há versão nova no ar
+  (`web/src/utils/atualizacao.ts`; README do web, "Site atualizado").
 - Botão **Suspeitas N** ao lado da busca: mostra só as contas de risco médio ou alto, da maior nota para a menor;
   combina com a busca; sem nenhuma, "Nenhuma conta suspeita".
 - Para a coluna caber, a coluna **Datas** saiu: "Teste até" e "Pago até" ficam embaixo da situação (no celular,
@@ -78,5 +86,6 @@ A nota é um alerta para alguém da equipe olhar, não uma decisão: nada é blo
   sensível) e, pela API, conta limpa e da equipe, cadastro suspeito, repetidos (com a conta da equipe fora), lista
   comprada (faixas e janela de 30 dias), pouco volume, conta nova com muito envio, formulário pedindo senha (arquivado
   não conta), estorno e o teto de 100.
-- `web/tests/plataformaRisco.test.ts`: o texto de cada sinal, a coluna, o risco embaixo do nome, o filtro "Suspeitas"
-  com a busca e a ordem.
+- `web/tests/plataformaRisco.test.ts`: o texto de cada sinal, a coluna (a partir de 1024 px; a conta da equipe escrita),
+  o risco embaixo do nome (todos os níveis), a assinatura embaixo da situação, o filtro "Suspeitas" com a busca e a
+  ordem.

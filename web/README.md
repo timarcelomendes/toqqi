@@ -185,6 +185,15 @@ tests/            testes unitários (lógica/condições, variáveis, validaçã
 ## Comportamentos importantes
 
 - **Sessão:** com "Lembrar de mim" o token fica no `localStorage`; sem, no `sessionStorage` (some ao fechar o navegador).
+- **Site atualizado** (`utils/atualizacao.ts`): o build grava `/versao.json` com a versão (o commit do Render, a mesma
+  de `VERSAO_SITE`; o `render.yaml` serve esse arquivo com `Cache-Control: no-store`). O app aberto confere o arquivo ao
+  trocar de tela e quando a aba volta a ficar visível (no máximo 1 vez por minuto). Com versão nova no ar: o aviso "O
+  Toqqi foi atualizado" com "Atualizar a página" e, na próxima troca de tela do app logado (outro caminho; filtros na
+  mesma tela, não), a página inteira carrega no destino, já na versão nova. Tela cujo arquivo sumiu (a publicação troca
+  os arquivos com hash): confere na hora e, com versão nova, abre o destino do mesmo jeito. Cada aba recarrega no máximo
+  1 vez por versão (`sessionStorage` `toqqi.versao-recarregada`): sem laço se o navegador trouxer o index.html velho.
+  Entrar, cadastro e as outras telas de visitante ficam de fora (o "Falta pouco" do Google mora na memória). Local
+  (`VERSAO_SITE` "local"): desligado.
 - **Menu lateral recolhível** (computador): "Recolher menu", no pé da barra, deixa só os ícones (72 px); o nome aparece numa
   dica ao passar o mouse ou chegar pelo teclado e continua para leitores de tela. A escolha fica no `localStorage`
   (`toqqi.menu-recolhido`, com try/catch). A gaveta do celular fica sempre aberta. Estado em `composables/menuLateral.ts`.

@@ -191,6 +191,10 @@ services:
       - path: /*
         name: Referrer-Policy
         value: strict-origin-when-cross-origin
+      # A versão do site no ar (web/src/utils/atualizacao.ts): o app aberto confere, então nunca em cache.
+      - path: /versao.json
+        name: Cache-Control
+        value: no-store
       # Etapa 5l (docs/api-etapa-5l.md §3.4): as páginas de pesquisa mostram HTML escrito no editor e dividem a origem
       # com o app logado, então só rodam script do próprio site e só conversam com a API. `img-src https:` mantém os
       # logos de fora; `frame-ancestors *` mantém o widget (iframe no site do cliente). Trocou o domínio da API:

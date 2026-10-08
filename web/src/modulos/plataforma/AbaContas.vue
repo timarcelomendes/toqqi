@@ -3,8 +3,8 @@
 // botão, no diálogo e no pedido) e da "Nova conta" vêm de `teste.dias`: o gravado no banco, quando a aba Parâmetros já o
 // leu, salvou ou releu nesta página (`diasGravados`); antes disso, o de GET /publico/planos (carregando ou com falha, 14).
 // A leitura pública tem cache (até 60 s no navegador e 30 s na API): sem o gravado, o número ficaria o de antes de salvar.
-// Risco (docs/api-plataforma-risco.md): coluna com o nível, a nota e os motivos; "Suspeitas" mostra só as de risco médio
-// ou alto, da maior nota para a menor. No celular, o risco médio ou alto aparece embaixo do nome.
+// Risco (docs/api-plataforma-risco.md): coluna com o nível, a nota e os motivos a partir de 1024 px (antes disso, o mesmo
+// embaixo do nome); "Suspeitas" mostra só as de risco médio ou alto, da maior nota para a menor.
 import { computed, onMounted, ref } from 'vue'
 import { Building2, CalendarPlus, Gift, Plus, Search, ShieldAlert, Trash2 } from 'lucide-vue-next'
 import { mensagemDoErro, plataformaApi, type ContaPlataforma } from '@/api'
@@ -23,9 +23,11 @@ import Campo from '@/components/ui/Campo.vue'
 import EstadoVazio from '@/components/ui/EstadoVazio.vue'
 import Etiqueta from '@/components/ui/Etiqueta.vue'
 import Tabela, { type Coluna } from '@/components/ui/Tabela.vue'
+import TextoEmail from '@/components/ui/TextoEmail.vue'
 import ModalExcluirConta from './ModalExcluirConta.vue'
 import ModalNovaConta from './ModalNovaConta.vue'
-import { NIVEIS, detalheSinal, suspeita, suspeitas, textoSinal } from './risco'
+import RiscoDaConta from './RiscoDaConta.vue'
+import { suspeita, suspeitas } from './risco'
 
 const props = defineProps<{ diasGravados?: number | null }>()
 
@@ -56,12 +58,15 @@ function aoExcluir(c: ContaPlataforma) {
 
 // Usuários e "criada em" ganham coluna só em telas bem largas; antes disso, ficam embaixo do nome. As datas (teste e pago
 // até) ficam embaixo da situação (no celular, embaixo do nome): a coluna Datas saiu para a coluna Risco caber.
-// Risco: coluna a partir de xl; antes disso, o risco médio ou alto fica embaixo do nome.
+// Risco: coluna a partir de 1024 px (lg), a largura de um notebook pequeno ou de uma janela pela metade; antes disso,
+// embaixo do nome (pedido do Marcelo em 08/10/2026, 12h55: "não apareceu a coluna risco", com a coluna só a partir de
+// 1280 px). Para ela caber em 1024 px, a Assinatura só ganha coluna a partir de 1280 px (xl): antes, fica embaixo da
+// situação (no celular, embaixo do nome).
 const colunas: Coluna[] = [
   { chave: 'nome', rotulo: 'Empresa' },
-  { chave: 'risco', rotulo: 'Risco', classe: 'hidden xl:table-cell' },
+  { chave: 'risco', rotulo: 'Risco', classe: 'hidden lg:table-cell' },
   { chave: 'situacao', rotulo: 'Situação', classe: 'hidden sm:table-cell' },
-  { chave: 'assinatura', rotulo: 'Assinatura', classe: 'hidden md:table-cell' },
+  { chave: 'assinatura', rotulo: 'Assinatura', classe: 'hidden xl:table-cell' },
   { chave: 'usuarios', rotulo: 'Usuários', classe: 'hidden 2xl:table-cell', alinhar: 'direita' },
   { chave: 'criada_em', rotulo: 'Criada em', classe: 'hidden 2xl:table-cell' },
   { chave: 'acoes', rotulo: 'Ações', rotuloOculto: true, alinhar: 'direita' },
@@ -203,49 +208,25 @@ onMounted(carregar)
       </Alerta>
       <Tabela v-else :colunas="colunas" :linhas="filtradas" :chave="(c) => c.id" :carregando="carregando" legenda="Contas da plataforma" densa>
         <template #cel-nome="{ linha: c }">
-          <div class="flex min-w-48 flex-wrap items-center gap-x-2 gap-y-1">
+          <div class="flex min-w-40 flex-wrap items-center gap-x-2 gap-y-1 xl:min-w-48">
             <p class="font-semibold text-texto">{{ c.nome }}</p>
             <Etiqueta v-if="propria(c)" tom="marca" data-sua-conta>Sua conta</Etiqueta>
           </div>
           <p v-if="adminDe(c)" class="text-texto-suave [overflow-wrap:anywhere]" data-admin>
-            {{ adminDe(c)!.email }}<span v-if="!adminDe(c)!.confirmado" class="text-atencao"> (não confirmado)</span>{{ adminDe(c)!.mais }}
+            <TextoEmail :email="adminDe(c)!.email" /><span v-if="!adminDe(c)!.confirmado" class="text-atencao"> (não confirmado)</span>{{ adminDe(c)!.mais }}
           </p>
           <p class="text-xs text-texto-fraco 2xl:hidden">{{ plural(c.usuarios ?? 0, 'usuário', 'usuários') }} · criada em {{ formatarData(c.criada_em) }}</p>
-          <p class="mt-1 text-texto-suave md:hidden">{{ textoAssinatura(c) }}</p>
+          <p class="mt-1 text-texto-suave sm:hidden">{{ textoAssinatura(c) }}</p>
           <div class="mt-1 flex flex-wrap gap-1.5 sm:hidden">
             <Etiqueta :tom="situacaoConta(c.situacao).tom">{{ situacaoConta(c.situacao).rotulo }}</Etiqueta>
             <Etiqueta v-if="seloExclusao(c.exclusao_em)" tom="erro" data-selo-exclusao>{{ seloExclusao(c.exclusao_em) }}</Etiqueta>
           </div>
           <p v-if="c.teste_ate || c.pago_ate" class="mt-1 text-xs text-texto-fraco sm:hidden">{{ textoDatas(c) }}</p>
-          <!-- Até xl (sem a coluna Risco): o risco médio ou alto embaixo do nome (o baixo só na coluna) -->
-          <div v-if="c.risco && suspeita(c)" class="mt-2 xl:hidden" data-risco-celular>
-            <Etiqueta :tom="NIVEIS[c.risco.nivel].tom">Risco {{ NIVEIS[c.risco.nivel].rotulo.toLowerCase() }} <span class="tabular-nums">{{ c.risco.pontos }}</span></Etiqueta>
-            <ul class="mt-1 space-y-0.5 text-xs text-texto-suave">
-              <li v-for="(sinal, i) in c.risco.sinais" :key="i">
-                {{ textoSinal(sinal) }}<span v-if="detalheSinal(sinal)" class="block text-texto-fraco [overflow-wrap:anywhere]">{{ detalheSinal(sinal) }}</span>
-              </li>
-            </ul>
-          </div>
+          <!-- Até 1024 px (sem a coluna Risco): o risco embaixo do nome -->
+          <RiscoDaConta :conta="c" embaixo class="lg:hidden" />
         </template>
         <template #cel-risco="{ linha: c }">
-          <div v-if="c.risco" class="min-w-52 max-w-64" data-risco>
-            <Etiqueta v-if="suspeita(c)" :tom="NIVEIS[c.risco.nivel].tom" data-nivel
-              >{{ NIVEIS[c.risco.nivel].rotulo }} <span class="tabular-nums">{{ c.risco.pontos }}</span><span class="sr-only"> de 100 pontos</span></Etiqueta
-            >
-            <p v-else class="text-texto-fraco tabular-nums" data-nivel>
-              {{ c.risco.sinais.length ? `Baixo ${c.risco.pontos}` : 'Nenhum sinal' }}<span v-if="c.risco.sinais.length" class="sr-only"> de 100 pontos</span>
-            </p>
-            <ul v-if="c.risco.sinais.length" class="mt-1.5 space-y-1 text-xs leading-snug" :class="suspeita(c) ? 'text-texto-suave' : 'text-texto-fraco'">
-              <li v-for="(sinal, i) in c.risco.sinais" :key="i" class="flex gap-1.5" data-sinal>
-                <span class="w-6 shrink-0 text-right font-semibold tabular-nums text-texto-fraco" aria-hidden="true">+{{ sinal.pontos }}</span>
-                <span class="min-w-0 [overflow-wrap:anywhere]"
-                  >{{ textoSinal(sinal) }}<span class="sr-only"> ({{ sinal.pontos }} pontos)</span
-                  ><span v-if="detalheSinal(sinal)" class="mt-0.5 block text-texto-fraco">{{ detalheSinal(sinal) }}</span></span
-                >
-              </li>
-            </ul>
-          </div>
-          <span v-else class="text-texto-fraco" title="Conta da equipe Toqqi: sem nota">—<span class="sr-only">Conta da equipe, sem nota</span></span>
+          <RiscoDaConta :conta="c" />
         </template>
         <template #cel-situacao="{ linha: c }">
           <div class="flex flex-col items-start gap-1">
@@ -256,6 +237,8 @@ onMounted(carregar)
           <p v-if="c.atrasada_desde" class="mt-1 whitespace-nowrap text-xs text-texto-fraco">Vencida em {{ formatarData(c.atrasada_desde) }}</p>
           <p v-if="c.teste_ate" class="mt-1 whitespace-nowrap text-xs text-texto-fraco" data-teste-ate>Teste até {{ formatarData(c.teste_ate) }}</p>
           <p v-if="c.pago_ate" class="mt-0.5 whitespace-nowrap text-xs text-texto-fraco" data-pago-ate>Pago até {{ formatarData(c.pago_ate) }}</p>
+          <!-- Até 1280 px (sem a coluna Assinatura): a assinatura embaixo da situação -->
+          <p class="mt-1.5 text-xs text-texto-suave xl:hidden" data-assinatura-curta>{{ textoAssinatura(c) }}</p>
         </template>
         <template #cel-assinatura="{ linha: c }">
           <template v-if="c.assinatura">

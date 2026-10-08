@@ -68,8 +68,22 @@ function guiasDoSite(): Plugin {
  */
 const versaoSite = (process.env.RENDER_GIT_COMMIT ?? '').replace(/[^0-9A-Za-z]/g, '').slice(0, 7) || 'local'
 
+/**
+ * Site atualizado (src/utils/atualizacao.ts): o build grava `/versao.json` com a versão dele; o app aberto numa aba
+ * confere esse arquivo e, com versão nova no ar, avisa e abre a próxima tela já na versão nova.
+ */
+function versaoDoSite(): Plugin {
+  return {
+    name: 'toqqi-versao',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'versao.json', source: `${JSON.stringify({ versao: versaoSite })}\n` })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [paginasPublicas(), guiasDoSite(), vue(), tailwindcss()],
+  plugins: [paginasPublicas(), guiasDoSite(), versaoDoSite(), vue(), tailwindcss()],
   define: { __TOQQI_VERSAO__: JSON.stringify(versaoSite) },
   resolve: {
     alias: { '@': raiz('./src') },

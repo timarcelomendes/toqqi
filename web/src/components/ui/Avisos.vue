@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-vue-next'
-import { avisos, fecharAviso, type TipoAviso } from '@/composables/avisos'
+import { avisos, fecharAviso, type Aviso, type TipoAviso } from '@/composables/avisos'
 
 const icones = { sucesso: CheckCircle2, erro: XCircle, atencao: AlertTriangle, info: Info }
 const cores: Record<TipoAviso, string> = {
@@ -8,6 +8,11 @@ const cores: Record<TipoAviso, string> = {
   erro: 'text-erro',
   atencao: 'text-atencao',
   info: 'text-info',
+}
+
+function executar(a: Aviso) {
+  fecharAviso(a.id)
+  a.acao?.executar()
 }
 </script>
 
@@ -33,6 +38,7 @@ const cores: Record<TipoAviso, string> = {
         <div class="min-w-0 flex-1 text-sm">
           <p v-if="a.titulo" class="font-semibold text-texto">{{ a.titulo }}</p>
           <p class="text-texto-suave">{{ a.mensagem }}</p>
+          <button v-if="a.acao" type="button" class="link mt-2" data-acao-aviso @click="executar(a)">{{ a.acao.rotulo }}</button>
         </div>
         <button
           type="button"

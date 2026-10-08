@@ -5,6 +5,7 @@ import { configurarCliente } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { router } from '@/router'
 import { useSessaoStore } from '@/stores/sessao'
+import { instalarAtualizacao } from '@/utils/atualizacao'
 import { instalarAvisoDeErros } from '@/utils/erros'
 // Fonte servida pelo próprio site (sem Google Fonts: o navegador não manda o IP a terceiros). Só latin, pesos 400–800.
 import '@fontsource/plus-jakarta-sans/latin-400.css'
@@ -35,6 +36,9 @@ configurarCliente({
   },
   aoSemPermissao: (erro) => avisar.atencao(erro.mensagem),
 })
+
+// Versão nova do site no ar: avisa e abre a próxima tela já na versão nova (utils/atualizacao.ts).
+instalarAtualizacao(router)
 
 app.use(router)
 app.mount('#app')
