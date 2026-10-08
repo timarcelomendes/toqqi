@@ -59,6 +59,12 @@ function quadro() {
 function api(extra: Record<string, Parameters<typeof apiFalsa>[0][string]> = {}) {
   return apiFalsa({
     'GET /acoes/quadro': () => quadro(),
+    // antes de "GET /acoes/:id": a primeira rota que casa responde
+    'GET /acoes/panorama': () => ({
+      prazos: { abertas: 3, vencidas: 1, hoje: 0, proximos_7_dias: 2, depois: 0, sem_prazo: 0 },
+      responsaveis: [{ responsavel: { id: 7, nome: 'Carla Ribeiro' }, abertas: 3, vencidas: 1 }],
+      concluidas: { de: '2026-09-09', ate: '2026-10-08', total: 20, mediana_dias: 3, com_retorno: 5, anterior: { de: '2026-08-10', ate: '2026-09-08', total: 12, mediana_dias: 4, com_retorno: 2 } },
+    }),
     'GET /responsaveis': () => [{ id: 7, nome: 'Carla Ribeiro', funcao: null, email: null, foto_url: null, teams_webhook: null, empresas: 3 }],
     'GET /cadastros/grupos': () => [],
     'PATCH /acoes/:id': ({ caminho, corpo }) => {
@@ -327,6 +333,25 @@ describe('quadro de planos de ação', () => {
     await flushPromises()
     expect(router.currentRoute.value.query).toEqual({ tipo_nota: 'csat', so_vencidas: 'true' })
     expect(Object.fromEntries(quadros().at(-1)!.url.searchParams)).toEqual({ tipo_nota: 'csat', so_vencidas: 'true' })
+  })
+
+  it('resumo do topo: segue os filtros, busca de novo a cada carga do quadro e filtra por responsável e por vencidas', async () => {
+    const { chamadas } = api()
+    const w = await abrir('/planos-de-acao?categoria=detrator')
+    const panoramas = () => chamadas.filter((c) => c.caminho === '/acoes/panorama')
+    expect(panoramas()).toHaveLength(1)
+    expect(Object.fromEntries(panoramas()[0]!.url.searchParams)).toEqual({ categoria: 'detrator' })
+    expect(w.get('[data-manchete-acoes]').text()).toContain('1 de 3 ações abertas está vencida')
+    // clicar na pessoa filtra o quadro (e o resumo) por ela
+    await w.get('[data-pessoa="7"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ categoria: 'detrator', responsavel_id: '7' })
+    expect(Object.fromEntries(panoramas().at(-1)!.url.searchParams)).toEqual({ categoria: 'detrator', responsavel_id: '7' })
+    // "1 vencida" liga o "Só vencidas" do quadro
+    await w.get('[data-legenda-prazo="vencidas"] button').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toMatchObject({ so_vencidas: 'true' })
+    expect(w.findAll('button').find((b) => b.text().includes('Só vencidas'))!.attributes('aria-pressed')).toBe('true')
   })
 
   it('sem acoes.tratar, não dá para mover nem criar', async () => {

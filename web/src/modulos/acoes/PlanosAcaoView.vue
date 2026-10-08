@@ -9,7 +9,7 @@ import { avisar } from '@/composables/avisos'
 import { useCadastrosStore } from '@/stores/cadastros'
 import { useSessaoStore } from '@/stores/sessao'
 import { hojeIso } from '@/utils/datas'
-import { formatarNumero, plural } from '@/utils/formatos'
+import { formatarNumero } from '@/utils/formatos'
 import { PERIODOS, erroPeriodoEscolhido, intervaloDoPeriodo } from '@/utils/periodo'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Alerta from '@/components/ui/Alerta.vue'
@@ -22,6 +22,7 @@ import CartaoAcao from './CartaoAcao.vue'
 import ModalConcluidas from './ModalConcluidas.vue'
 import ModalNovaAcao from './ModalNovaAcao.vue'
 import PainelAcao from './PainelAcao.vue'
+import PanoramaAcoes from './PanoramaAcoes.vue'
 import {
   COLUNAS,
   FILTROS_QUADRO_PADRAO,
@@ -169,6 +170,8 @@ const anuncio = ref('')
 let controle: AbortController | null = null
 let recarga: ReturnType<typeof setTimeout> | null = null
 let carregouUmaVez = false
+/** Muda a cada carga do quadro: o resumo do topo busca de novo, com os mesmos filtros. */
+const versaoQuadro = ref(0)
 
 async function carregar(silencioso = false) {
   if (erroDatas.value) {
@@ -183,6 +186,7 @@ async function carregar(silencioso = false) {
   try {
     quadro.value = normalizarQuadro(await acoesApi.quadro(filtrosApi.value, controle.signal), hoje)
     carregouUmaVez = true
+    versaoQuadro.value++
     descobrirEmpresa()
   } catch (e) {
     if (e instanceof DOMException) return
@@ -203,6 +207,8 @@ function agendarRecarga() {
 
 const totalNoQuadro = computed(() => COLUNAS.reduce((n, c) => n + quadro.value.colunas[c.situacao].length, 0))
 const totais = computed(() => quadro.value.totais)
+/** Conta sem nenhuma ação (e sem filtro): o vazio do quadro explica; o resumo do topo não aparece. */
+const semNenhumaAcao = computed(() => !carregando.value && !totalNoQuadro.value && !totais.value.concluida && !temFiltro.value)
 
 // ── Celular: uma coluna por vez ─────────────────────────────────────────────
 const colunaAtiva = ref<SituacaoAcao>('a_fazer')
@@ -445,6 +451,17 @@ onBeforeUnmount(() => {
     </template>
   </CabecalhoPagina>
 
+  <!-- Resumo: prazos, quem está com quantas e as concluídas (segue os filtros) -->
+  <PanoramaAcoes
+    v-if="versaoQuadro > 0 && !semNenhumaAcao && !erro"
+    :filtros="filtrosApi"
+    :versao="versaoQuadro"
+    :responsavel="filtros.responsavel_id"
+    :so-vencidas="filtros.so_vencidas"
+    @responsavel="(v) => (filtros.responsavel_id = v)"
+    @so-vencidas="(v) => (filtros.so_vencidas = v)"
+  />
+
   <!-- Filtros -->
   <section class="cartao mb-5 flex flex-col gap-3 p-4 sm:px-5" aria-label="Filtros das ações">
     <div class="flex flex-col gap-3 md:flex-row md:items-center">
@@ -553,9 +570,6 @@ onBeforeUnmount(() => {
             {{ c.titulo }}
             <span class="rounded-full bg-superficie px-2 py-0.5 text-xs font-bold tabular-nums text-texto-suave ring-1 ring-borda">{{ formatarNumero(totais[c.situacao]) }}</span>
           </h2>
-          <span v-if="c.situacao !== 'concluida' && c.situacao === 'a_fazer' && totais.vencidas" class="text-xs font-semibold text-erro">
-            {{ plural(totais.vencidas, 'vencida', 'vencidas') }} no quadro
-          </span>
         </header>
 
         <div v-if="carregando" class="flex flex-col gap-3">

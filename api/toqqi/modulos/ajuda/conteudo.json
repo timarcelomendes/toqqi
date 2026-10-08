@@ -3066,12 +3066,23 @@
             "a fazer",
             "em andamento",
             "concluído",
-            "fila de ações"
+            "fila de ações",
+            "resumo das ações",
+            "quem está atrasado",
+            "atrasadas por responsável",
+            "carga da equipe",
+            "concluídas no mês",
+            "tempo de conclusão",
+            "comentário do cliente"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Em Planos de ação, as ações ficam em três colunas: A fazer, Em andamento e Concluído, com o total no título de cada uma. O cartão mostra título, nota, empresa, responsável (ou “Sem responsável”), prioridade (Alta, Média ou Baixa) e prazo: “Prazo vencido”, “Vence hoje”, “Vence amanhã” ou “Até” e a data."
+              "texto": "Em Planos de ação, as ações ficam em três colunas: A fazer, Em andamento e Concluído, com o total no título de cada uma. O cartão mostra título, nota, o comentário do cliente (quando a ação veio de uma resposta com comentário), empresa, responsável (ou “Sem responsável”), prioridade (Alta, Média ou Baixa) e prazo: “Prazo vencido”, “Vence hoje”, “Vence amanhã” ou “Até” e a data."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "No topo, o resumo diz quantas ações abertas estão vencidas e quantas vencem hoje, com uma barra das abertas por prazo. Em “Por responsável”, cada pessoa aparece com as abertas e as vencidas: clique no nome para ver só as ações dela no quadro (outro clique volta a mostrar as de todos). Clicar no número de vencidas liga o “Só vencidas”. Em “Concluídas nos últimos 30 dias”, o resumo compara com os 30 dias anteriores e mostra em quanto tempo a metade foi concluída e quantas tiveram retorno ao cliente. O resumo segue os filtros do quadro."
             },
             {
               "tipo": "paragrafo",

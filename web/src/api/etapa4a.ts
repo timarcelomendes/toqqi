@@ -14,6 +14,7 @@ import type {
   Pagina,
   PaginaRespostas,
   Painel,
+  PanoramaAcoes,
   QuadroAcoes,
   ResultadoDetratores,
   RespostaDetalhe,
@@ -54,6 +55,8 @@ export const acoesApi = {
   avisarCliente: (id: Id, texto: string) => api.post<Acao>(`/acoes/${encodeURIComponent(String(id))}/retorno`, { texto }),
   /** As três colunas (até 300 abertas por coluna; as 15 concluídas mais recentes) e os totais. */
   quadro: (filtros: FiltrosAcoes = {}, sinal?: AbortSignal) => api.get<QuadroAcoes>('/acoes/quadro', { query: { ...filtros }, sinal }),
+  /** O topo do quadro: prazos das abertas, quem está com quantas e as concluídas nos últimos 30 dias. */
+  panorama: (filtros: FiltrosAcoes = {}, sinal?: AbortSignal) => api.get<PanoramaAcoes>('/acoes/panorama', { query: { ...filtros }, sinal }),
   /** Lista paginada (ex.: "ver todas as concluídas"). */
   listar: (filtros: FiltrosListaAcoes = {}, sinal?: AbortSignal) => api.get<Pagina<Acao>>('/acoes', { query: { ...filtros }, sinal }),
   obter: (id: Id) => api.get<Acao>(`/acoes/${seg(id)}`),

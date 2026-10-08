@@ -22,6 +22,7 @@ const emit = defineEmits<{ abrir: [Acao]; mover: [Acao, SituacaoAcao]; arrastar:
 const selo = computed(() => seloPrazo(props.acao))
 const prioridade = computed(() => PRIORIDADES[props.acao.prioridade] ?? { rotulo: props.acao.prioridade, tom: 'neutro' as const })
 const opcoes = computed(() => destinos(props.acao.situacao))
+const comentario = computed(() => (props.acao.resposta?.comentario ?? '').trim() || null)
 
 function aoArrastar(e: DragEvent) {
   if (!props.arrastavel || !e.dataTransfer) return
@@ -58,6 +59,9 @@ function aoArrastar(e: DragEvent) {
       </h3>
       <SeloNota v-if="acao.nota !== null && acao.nota !== undefined" :nota="acao.nota" :grupo="acao.grupo" :tipo="acao.tipo_nota" tamanho="sm" class="relative" />
     </div>
+
+    <!-- O que o cliente escreveu (o motivo da ação, em poucas linhas) -->
+    <p v-if="comentario" class="line-clamp-2 text-xs leading-relaxed text-texto-suave" :title="comentario" data-comentario-cliente>“{{ comentario }}”</p>
 
     <p v-if="acao.empresa" class="flex min-w-0 items-center gap-1.5 text-xs text-texto-suave">
       <Building2 class="size-3.5 shrink-0" aria-hidden="true" /><span class="truncate">{{ acao.empresa.nome }}</span>

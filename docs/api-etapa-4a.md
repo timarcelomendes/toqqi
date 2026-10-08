@@ -127,6 +127,8 @@ Filtros comuns: `busca` (título, empresa, contato), `categoria` (grupo da nota 
 - `GET /acoes/quadro?<filtros>` (`acoes.ver`) → `{colunas: {a_fazer: [Acao], em_andamento: [Acao], concluida: [Acao]},
   totais: {a_fazer, em_andamento, concluida, vencidas}}`. Abertas ordenadas por vencidas primeiro, prazo (vazio por último),
   prioridade (alta → baixa), criada_em; até 300 por coluna. `concluida`: as 15 concluídas mais recentes.
+- `GET /acoes/panorama?<filtros>` (`acoes.ver`) → o resumo do topo (prazos, responsáveis, concluídas); desde
+  08/10/2026, em `docs/api-acoes-panorama.md`.
 - `GET /acoes?<filtros>&situacao=&pagina=` (`acoes.ver`) → paginado (para "ver todas as concluídas"; concluídas por concluida_em desc).
 - `GET /acoes/{id}` (`acoes.ver`) → `Acao` (link direto).
 - `POST /acoes` (`acoes.tratar`) `{titulo, descricao?, empresa_id?, contato_id?, resposta_id?, responsavel_id?, prioridade? (padrão media), prazo?}`

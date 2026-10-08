@@ -1261,6 +1261,27 @@ export interface QuadroAcoes {
   totais: TotaisQuadro
 }
 
+/**
+ * GET /acoes/panorama (docs/api-acoes-panorama.md), com os filtros do quadro (menos "Só vencidas"; a lista de
+ * responsáveis ignora também o filtro de responsável): os prazos das abertas, quem está com quantas e as concluídas.
+ */
+export interface PanoramaAcoes {
+  prazos: { abertas: number; vencidas: number; hoje: number; proximos_7_dias: number; depois: number; sem_prazo: number }
+  /** Até 8: primeiro quem tem mais vencidas, depois mais abertas; `responsavel` nulo = sem responsável. */
+  responsaveis: { responsavel: Referencia | null; abertas: number; vencidas: number }[]
+  concluidas: ConcluidasAcoes & { anterior: ConcluidasAcoes }
+}
+
+export interface ConcluidasAcoes {
+  de: string
+  ate: string
+  total: number
+  /** Mediana de dias da criação à conclusão. */
+  mediana_dias: number | null
+  /** Com o e-mail "Avisar o cliente" enviado. */
+  com_retorno: number
+}
+
 export interface FiltrosAcoes {
   busca?: string
   categoria?: GrupoNota | ''

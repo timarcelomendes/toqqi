@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from toqqi.core.deps import Contexto, requer
 from toqqi.core.paginacao import Pagina, pagina
-from toqqi.modulos.acoes import detratores, servico
+from toqqi.modulos.acoes import detratores, panorama, servico
 from toqqi.modulos.acoes.esquemas import AcaoAlterarIn, AcaoIn, ConfigAcoesIn, FiltrosAcoes, FiltrosListaAcoes
 from toqqi.modulos.acoes.passos import coletar_passos, sugerir_passos
 from toqqi.modulos.envios.processamento import processar_lista
@@ -19,6 +19,12 @@ TRATAR = requer("acoes.tratar")
 @router.get("/quadro")
 def quadro(filtros: Annotated[FiltrosAcoes, Query()], ctx: Contexto = Depends(VER)):
     return servico.quadro(ctx, filtros)
+
+
+@router.get("/panorama")
+def ver_panorama(filtros: Annotated[FiltrosAcoes, Query()], ctx: Contexto = Depends(VER)):
+    """O topo do quadro: prazos das abertas, carga por responsável e as concluídas nos últimos 30 dias."""
+    return panorama.panorama(ctx, filtros)
 
 
 @router.get("/configuracao")
