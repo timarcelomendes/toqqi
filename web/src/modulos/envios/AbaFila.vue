@@ -1,18 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import {
-  AlertTriangle,
-  Clock,
-  Hourglass,
-  ListChecks,
-  MessageCircle,
-  Search,
-  Send,
-  SlidersHorizontal,
-  ThumbsUp,
-  UserX,
-  X,
-} from 'lucide-vue-next'
+import { MessageCircle, Search, Send, SlidersHorizontal } from 'lucide-vue-next'
 import {
   enviosApi,
   mensagemDoErro,
@@ -55,7 +43,7 @@ import {
 } from './logica'
 
 withDefaults(defineProps<{ emailLiberado?: boolean }>(), { emailLiberado: true })
-const emit = defineEmits<{ 'pre-condicao': [] }>()
+const emit = defineEmits<{ 'pre-condicao': []; enviou: [] }>()
 
 const sessao = useSessaoStore()
 /** A assinatura permite enviar (etapa 5a); pausada, o WhatsApp também não sai. */
@@ -92,13 +80,14 @@ const selecao = reactive<TipoSelecao>(new Map())
 const modalAberto = ref(false)
 const alvo = ref<AlvoDisparo | null>(null)
 
-type Cartao = { chave: keyof ResumoEnvios; situacao: SituacaoContato; rotulo: string; icone: typeof Clock; cor: string }
+/** As situações da fila, com a contagem: um clique filtra a lista (outro clique tira o filtro). */
+type Cartao = { chave: keyof ResumoEnvios; situacao: SituacaoContato; rotulo: string; alerta?: boolean }
 const cartoes: Cartao[] = [
-  { chave: 'na_fila', situacao: 'na_fila', rotulo: 'Na fila', icone: ListChecks, cor: 'text-info bg-info-suave' },
-  { chave: 'aguardando', situacao: 'aguardando', rotulo: 'Aguardando resposta', icone: Hourglass, cor: 'text-atencao bg-atencao-suave' },
-  { chave: 'responderam', situacao: 'respondeu', rotulo: 'Responderam', icone: ThumbsUp, cor: 'text-sucesso bg-sucesso-suave' },
-  { chave: 'com_erro', situacao: 'nao_saiu', rotulo: 'Com erro', icone: AlertTriangle, cor: 'text-erro bg-erro-suave' },
-  { chave: 'saiu_da_lista', situacao: 'saiu_da_lista', rotulo: 'Saíram da lista', icone: UserX, cor: 'text-texto-suave bg-superficie-2' },
+  { chave: 'na_fila', situacao: 'na_fila', rotulo: 'Na fila' },
+  { chave: 'aguardando', situacao: 'aguardando', rotulo: 'Aguardando resposta' },
+  { chave: 'responderam', situacao: 'respondeu', rotulo: 'Responderam' },
+  { chave: 'com_erro', situacao: 'nao_saiu', rotulo: 'Com erro', alerta: true },
+  { chave: 'saiu_da_lista', situacao: 'saiu_da_lista', rotulo: 'Saíram da lista' },
 ]
 
 const colunas = computed<Coluna[]>(() => [
@@ -294,10 +283,14 @@ async function enviarFila() {
 function aoEnviar() {
   if (alvo.value?.tipo === 'contatos' && alvo.value.ids.length > 1) limparSelecao()
   recarregar()
+  emit('enviou')
 }
 
 async function abrirWhatsapp(c: ContatoEnvio) {
-  if (await whatsapp.abrir(c)) recarregar()
+  if (await whatsapp.abrir(c)) {
+    recarregar()
+    emit('enviou')
+  }
 }
 
 function motivoSemEmail(c: ContatoEnvio): string | null {
@@ -322,29 +315,27 @@ defineExpose({ recarregar })
 
 <template>
   <div class="flex flex-col gap-5">
-    <!-- Cartões: resumo e atalho de filtro -->
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" role="group" aria-label="Resumo e filtro rápido por situação">
-      <button
-        v-for="c in cartoes"
-        :key="c.chave"
-        type="button"
-        class="cartao flex flex-col items-start gap-2 p-4 text-left transition-colors hover:border-borda-forte focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco"
-        :class="filtros.situacao === c.situacao ? '!border-marca ring-2 ring-marca/25' : ''"
-        :aria-pressed="filtros.situacao === c.situacao"
-        @click="escolherCartao(c.situacao)"
-      >
-        <span class="flex size-8 items-center justify-center rounded-lg" :class="c.cor" aria-hidden="true"><component :is="c.icone" class="size-4" /></span>
-        <span class="text-2xl font-extrabold tabular-nums text-texto">{{ resumo ? formatarNumero(resumo[c.chave]) : '—' }}</span>
-        <span class="text-sm font-medium text-texto-suave">{{ c.rotulo }}</span>
-      </button>
-    </div>
-    <p v-if="resumo" class="-mt-2 text-sm text-texto-fraco">
-      {{ formatarNumero(resumo.enviados_30d) }} {{ resumo.enviados_30d === 1 ? 'pesquisa enviada' : 'pesquisas enviadas' }} nos últimos 30 dias
-      · {{ formatarNumero(resumo.lembretes_hoje) }} {{ resumo.lembretes_hoje === 1 ? 'lembrete previsto' : 'lembretes previstos' }} para hoje
-    </p>
-
     <div class="cartao">
       <div class="flex flex-col gap-3 border-b border-borda p-4 sm:px-5">
+        <!-- Situações da fila: contagem e filtro rápido -->
+        <div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar pela situação" data-situacoes-fila>
+          <button
+            v-for="c in cartoes"
+            :key="c.chave"
+            type="button"
+            class="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco"
+            :class="filtros.situacao === c.situacao ? 'border-marca bg-marca-suave text-marca-texto' : 'border-borda-forte bg-superficie text-texto hover:bg-superficie-2'"
+            :aria-pressed="filtros.situacao === c.situacao"
+            :data-situacao="c.situacao"
+            @click="escolherCartao(c.situacao)"
+          >
+            {{ c.rotulo }}
+            <span
+              class="tabular-nums"
+              :class="filtros.situacao === c.situacao ? '' : c.alerta && resumo && resumo[c.chave] ? 'text-erro' : 'text-texto-fraco'"
+            >{{ resumo ? formatarNumero(resumo[c.chave]) : '—' }}</span>
+          </button>
+        </div>
         <div class="flex flex-col gap-3 md:flex-row md:items-center">
           <Campo v-model="filtros.busca" rotulo="Buscar contatos" rotulo-oculto tipo="search" placeholder="Buscar por nome, e-mail ou telefone" class="md:max-w-sm md:flex-1">
             <template #antes><Search class="size-4" aria-hidden="true" /></template>
@@ -393,13 +384,6 @@ defineExpose({ recarregar })
             <CaixaSelecao v-model="filtros.mostrar_inativos" rotulo="Mostrar contatos inativos" />
             <Botao v-if="filtrosAtivos" variante="fantasma" tamanho="sm" @click="limparFiltros">Limpar filtros</Botao>
           </div>
-        </div>
-        <div v-if="filtros.situacao" class="flex items-center gap-2 text-sm">
-          <span class="text-texto-fraco">Mostrando:</span>
-          <Etiqueta :tom="situacaoContato(filtros.situacao).tom">{{ cartoes.find((c) => c.situacao === filtros.situacao)?.rotulo }}</Etiqueta>
-          <button type="button" class="link inline-flex items-center gap-1 text-sm" @click="filtros.situacao = ''">
-            <X class="size-3.5" aria-hidden="true" /> Mostrar todos
-          </button>
         </div>
       </div>
 

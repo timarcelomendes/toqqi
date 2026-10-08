@@ -826,6 +826,46 @@ export interface ResumoEnvios {
   enviados_30d: number
 }
 
+/**
+ * GET /envios/panorama (docs/api-envios-panorama.md): o estado do envio automático e a próxima rodada, a agenda dos
+ * próximos 14 dias e quantos responderam nos últimos 30 dias (e nos 30 anteriores).
+ */
+export interface PanoramaEnvios {
+  automatico: {
+    /** desligado = envios desligados; parado = falta uma pré-condição; manual = sem o automático; ligado. */
+    estado: 'desligado' | 'parado' | 'manual' | 'ligado'
+    /** Quando a próxima rodada pode sair (hora de São Paulo); só com o automático ligado e pronto. */
+    proxima_rodada: string | null
+    /** Quem está na fila e pode receber agora (cada rodada leva até `por_rodada`). */
+    na_fila: number
+    /** Na fila, mas fora da rodada: sem canal, em descanso ou com 3 falhas seguidas. */
+    fora_da_rodada: number
+    por_rodada: number
+    /** Com a fila vazia: o dia em que o próximo contato entra nela. */
+    proximo_contato: string | null
+    janela_inicio: string
+    janela_fim: string
+    so_dias_uteis: boolean
+    intervalo_dias: number
+    canal: 'email' | 'whatsapp' | 'whatsapp_e_email'
+    lembretes: number
+  }
+  /** 14 dias a partir de hoje; `sai` = o dia tem envio (o que cairia num dia sem envio vai para o próximo). */
+  agenda: { dia: string; pesquisas: number; lembretes: number; sai: boolean }[]
+  respostas: RespostasEnvios & { anterior: RespostasEnvios }
+}
+
+export interface RespostasEnvios {
+  de: string
+  ate: string
+  enviadas: number
+  respondidas: number
+  taxa: number | null
+  /** Em quantas horas metade das respondidas chegou (mediana). */
+  horas_ate_metade: number | null
+  canais: { canal: 'email' | 'whatsapp'; enviadas: number; respondidas: number; taxa: number | null }[]
+}
+
 export interface ContatoEnvio {
   id: Id
   nome: string

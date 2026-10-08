@@ -53,9 +53,13 @@ const colunas: Coluna[] = [
   { chave: 'contato', rotulo: 'Para' },
   { chave: 'tipo', rotulo: 'O quê', classe: 'hidden md:table-cell' },
   { chave: 'situacao', rotulo: 'Situação', classe: 'hidden sm:table-cell' },
-  { chave: 'origem', rotulo: 'Como saiu', classe: 'hidden lg:table-cell' },
   { chave: 'acoes', rotulo: 'Ações', rotuloOculto: true, alinhar: 'direita' },
 ]
+
+/** Como saiu, em poucas palavras: "Enviado por Ana", "Envio automático", "Lembrete automático". */
+function comoSaiu(e: Envio): string {
+  return e.origem === 'manual' && e.usuario ? `Enviado por ${e.usuario.nome}` : rotuloDe(ORIGENS_ENVIO, e.origem)
+}
 
 /** No WhatsApp, "para" é o telefone: mostra formatado. */
 function destino(e: Envio): string {
@@ -212,6 +216,7 @@ defineExpose({ recarregar })
           <Mail v-else class="size-4 text-texto-fraco" aria-hidden="true" />
           {{ rotuloDe(TIPOS_ENVIO, e.tipo) }}<span class="text-texto-fraco" aria-hidden="true">· {{ rotuloDe(CANAIS_ENVIO, e.canal) }}</span><span class="sr-only"> por {{ rotuloDe(CANAIS_ENVIO, e.canal) }}</span>
         </span>
+        <span class="block text-xs whitespace-nowrap text-texto-fraco" data-como-saiu>{{ comoSaiu(e) }}</span>
       </template>
       <template #cel-situacao="{ linha: e }">
         <div class="flex flex-col items-start gap-1">
@@ -219,9 +224,6 @@ defineExpose({ recarregar })
           <p v-if="e.erro" class="max-w-64 text-xs text-erro">{{ e.erro }}</p>
           <p v-if="e.situacao === 'aberto_no_whatsapp'" class="max-w-64 text-xs text-texto-fraco">Depende de quem abriu ter apertado Enviar no WhatsApp.</p>
         </div>
-      </template>
-      <template #cel-origem="{ linha: e }">
-        <span class="text-texto-suave">{{ e.origem === 'manual' && e.usuario ? `Enviado por ${e.usuario.nome}` : rotuloDe(ORIGENS_ENVIO, e.origem) }}</span>
       </template>
       <template #cel-acoes="{ linha: e }">
         <Botao
@@ -234,6 +236,8 @@ defineExpose({ recarregar })
         >
           <RotateCcw v-if="tentando !== e.id" class="size-4" aria-hidden="true" /> Tentar de novo<span class="sr-only"> para {{ e.contato?.nome ?? e.para }}</span>
         </Botao>
+        <!-- Sem o botão, a célula fica vazia (sem o "—" padrão da tabela) -->
+        <span v-else />
       </template>
       <template #vazio>
         <EstadoVazio

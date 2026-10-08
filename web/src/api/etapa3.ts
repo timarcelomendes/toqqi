@@ -12,6 +12,7 @@ import type {
   PreCondicoes,
   ResultadoDisparo,
   ResultadoTarefa,
+  PanoramaEnvios,
   ResumoEnvios,
   SituacaoContato,
   WhatsappContato,
@@ -63,6 +64,8 @@ export const enviosApi = {
   /** Usa a configuração salva (a tela só deixa enviar sem mudanças pendentes). */
   enviarTeste: () => api.post<Mensagem>('/envios/configuracao/teste'),
   resumo: () => api.get<ResumoEnvios>('/envios/resumo'),
+  /** O topo da tela: o envio automático, a agenda dos próximos 14 dias e quantos responderam. */
+  panorama: (sinal?: AbortSignal) => api.get<PanoramaEnvios>('/envios/panorama', { sinal }),
   contatos: (filtros: FiltrosFila = {}, sinal?: AbortSignal) =>
     api.get<Pagina<ContatoEnvio>>('/envios/contatos', { query: { ...filtros }, sinal }),
   disparar: (pedido: PedidoDisparo) => api.post<ResultadoDisparo>('/envios/disparar', pedido),

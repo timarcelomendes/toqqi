@@ -7,7 +7,7 @@ from toqqi.core.config import config
 from toqqi.core.deps import Contexto, requer
 from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.paginacao import Pagina, pagina
-from toqqi.modulos.envios import descadastro, servico
+from toqqi.modulos.envios import descadastro, panorama, servico
 from toqqi.modulos.envios.esquemas import ConfigIn, DescadastroManualIn, DispararIn, FiltrosFila, FiltrosHistorico
 from toqqi.modulos.envios.processamento import processar_lista
 from toqqi.modulos.integracoes.webhooks import coletar_entregas, entregar_lista
@@ -47,6 +47,11 @@ def teste(ctx: Contexto = Depends(requer("configuracoes.gerenciar"))):
 @router.get("/resumo")
 def resumo(ctx: Contexto = Depends(requer("envios.ver"))):
     return servico.resumo(ctx)
+
+
+@router.get("/panorama")
+def ver_panorama(ctx: Contexto = Depends(requer("envios.ver"))):
+    return panorama.panorama(ctx)
 
 
 @router.get("/contatos")

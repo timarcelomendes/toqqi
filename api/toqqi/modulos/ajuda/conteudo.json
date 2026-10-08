@@ -1618,12 +1618,15 @@
             "email",
             "visão geral",
             "enviar nps",
-            "como mandar a pesquisa"
+            "como mandar a pesquisa",
+            "próxima rodada",
+            "taxa de resposta",
+            "agenda de envios"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "A tela Envios tem três abas: Contatos (quem pode receber e a situação de cada um), Histórico (tudo que já saiu) e Descadastros (quem pediu para não receber mais)."
+              "texto": "No topo da tela Envios, um resumo diz se o envio automático está ligado e quando sai a próxima rodada (e para quantos contatos), mostra as pesquisas e os lembretes previstos para os próximos 14 dias e a taxa de resposta dos últimos 30 dias, comparada com os 30 anteriores. Embaixo, três abas: Contatos (quem pode receber e a situação de cada um), Histórico (tudo que já saiu) e Descadastros (quem pediu para não receber mais)."
             },
             {
               "tipo": "paragrafo",
@@ -1819,7 +1822,7 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Na aba Contatos de Envios, cada contato tem uma situação. Os cartões no topo contam quantos estão em cada uma e servem de filtro rápido."
+              "texto": "Na aba Contatos de Envios, cada contato tem uma situação. Os botões acima da lista contam quantos estão em cada uma e servem de filtro rápido (outro clique tira o filtro)."
             },
             {
               "tipo": "lista",

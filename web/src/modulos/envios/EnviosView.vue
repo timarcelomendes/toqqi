@@ -16,6 +16,7 @@ import AbaDescadastros from './AbaDescadastros.vue'
 import AbaFila from './AbaFila.vue'
 import AbaHistorico from './AbaHistorico.vue'
 import AvisoPreCondicoes from './AvisoPreCondicoes.vue'
+import PanoramaEnvios from './PanoramaEnvios.vue'
 import { estadoFranquia } from '@/modulos/integracoes/logica'
 
 type Aba = 'contatos' | 'historico' | 'descadastros'
@@ -43,6 +44,7 @@ watch(aba, (a) => visitadas.value.add(a))
 const preCondicoes = ref<PreCondicoes | null>(null)
 const fila = ref<InstanceType<typeof AbaFila> | null>(null)
 const historico = ref<InstanceType<typeof AbaHistorico> | null>(null)
+const panorama = ref<InstanceType<typeof PanoramaEnvios> | null>(null)
 const ocupado = ref<'lembretes' | 'robo' | null>(null)
 const admin = computed(() => sessao.usuario?.perfil === 'admin')
 
@@ -73,6 +75,7 @@ function contar(v: ResultadoTarefa['ignorados']): number {
 function aposTarefa() {
   fila.value?.recarregar()
   historico.value?.recarregar()
+  panorama.value?.recarregar()
 }
 
 async function enviarLembretes() {
@@ -165,6 +168,8 @@ onMounted(() => {
     <RouterLink v-if="admin" to="/integracoes?aba=whatsapp" class="link">Ver detalhes</RouterLink>
   </p>
 
+  <PanoramaEnvios ref="panorama" />
+
   <AvisoPreCondicoes v-if="preCondicoes && !preCondicoes.pronto" :dados="preCondicoes" class="mb-6" />
 
   <Abas v-model="aba" :abas="abas" rotulo="Seções de envios">
@@ -174,6 +179,7 @@ onMounted(() => {
       ref="fila"
       :email-liberado="preCondicoes?.pronto ?? true"
       @pre-condicao="carregarPreCondicoes"
+      @enviou="panorama?.recarregar()"
     />
     <AbaHistorico v-if="visitadas.has('historico')" v-show="aba === 'historico'" ref="historico" />
     <AbaDescadastros v-if="visitadas.has('descadastros')" v-show="aba === 'descadastros'" />
