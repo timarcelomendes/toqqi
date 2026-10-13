@@ -167,6 +167,8 @@ export interface FormularioPublico {
   prefixo_imagens?: string | null
   /** Etapa 5l: há finais por condição (o navegador já prepara o limpador de HTML para o final). */
   tem_finais?: boolean
+  /** Plano Grátis: a pesquisa da conta Grátis mostra "Denunciar esta pesquisa" (ausente na prévia). */
+  denuncia?: boolean
 }
 
 /** Valor de uma resposta: número (notas), texto, lista (múltipla escolha) ou sim/não. */

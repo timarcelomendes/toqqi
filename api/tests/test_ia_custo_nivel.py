@@ -267,7 +267,7 @@ def test_resta_1_no_mais_detalhado_e_cota_insuficiente_e_com_0_continua_esgotada
         r = perguntar(client, h)
         assert r.status_code == 409 and r.json()["erro"] == ESGOTADA
     # conta pausada vem antes da cota
-    sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=c)
+    sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c", c=c)
     usar_cota(dono, c, 499)
     assert client.get(f"{API}/assistente", headers=h).json()["motivo"] == "conta_pausada"
     assert gerar_ia(client, h, "relatorios").json()["erro"]["codigo"] == "conta_pausada"

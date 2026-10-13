@@ -4,12 +4,15 @@ número de consultas não cresce com o de contas. Nada de nome, e-mail ou telefo
 
 Forma (decisões desta etapa onde o contrato não diz):
 - `gerado_em`.
-- `totais`: {contas, por_situacao: {teste, teste_expirado, ativa, atrasada, pausada, cancelada, cortesia}, pagantes,
+- `totais`: {contas, por_situacao: {teste, gratis, ativa, atrasada, pausada, cancelada, cortesia}, pagantes,
   receita_mensal, ambiente, novas_7d, novas_30d}. Cada conta conta numa situação só: `pausada` é a atrasada depois dos
   7 dias de carência (envios parados: o aviso `pausada` de `assinatura.regras`); `atrasada`, a que ainda está na
   carência. `pagantes` = contas com assinatura ativa no ambiente atual do Asaas (`assinaturas.filtro_ambiente()`: sem
   chave configurada, todas); `receita_mensal` = soma do `valor` delas (Decimal; sai como número, como o `valor` em
   GET /plataforma/contas); `ambiente` = sandbox | producao | null (sem chave).
+- `gratis` (Plano Grátis): {contas (no Grátis hoje), entraram_30d (das que estão nele, quantas entraram nos últimos 30
+  dias), assinaram_30d (saíram dele pagando a primeira fatura nos últimos 30 dias: evento `plano_gratis_saiu` para
+  `ativa`), pausadas (pela nota de risco, à espera da equipe)}.
 - `conversao`: {de, ate, contas, assinaram, taxa}: das contas que tiveram teste (`teste_ate` preenchido; a cortesia
   criada pela Plataforma nunca teve) criadas entre 60 e 15 dias atrás (`de` e `ate`: os dias, em São Paulo), quantas
   criaram assinatura no ambiente atual (mesmo cancelada depois); `taxa` = assinaram ÷ contas (de 0 a 1, 4 casas), ou
@@ -34,12 +37,23 @@ from sqlalchemy import func, select
 
 from toqqi.core import asaas, relogio
 from toqqi.core.db import modo_sistema, sem_jit
-from toqqi.modelos import Assinatura, ConfigEnvios, Conta, Contato, Convite, Envio, IaUsoMensal, Resposta, Usuario
-from toqqi.modulos.assinatura import regras
+from toqqi.modelos import (
+    Assinatura,
+    Auditoria,
+    ConfigEnvios,
+    Conta,
+    Contato,
+    Convite,
+    Envio,
+    IaUsoMensal,
+    Resposta,
+    Usuario,
+)
+from toqqi.modulos.assinatura import gratis, regras
 from toqqi.modulos.assinatura import servico as assinaturas
 from toqqi.modulos.painel.servico import SAIU_CONVITE
 
-SITUACOES = ("teste", "teste_expirado", "ativa", "atrasada", "pausada", "cancelada", "cortesia")
+SITUACOES = ("teste", "gratis", "ativa", "atrasada", "pausada", "cancelada", "cortesia")
 DIAS_ACABANDO = 7
 CONVERSAO_DE = 60  # dias atrás
 CONVERSAO_ATE = 15
@@ -89,6 +103,10 @@ def visao() -> dict:
         # melhoria 9: a primeira resposta de cliente de verdade (pela pesquisa; não as importadas nem as registradas)
         primeira = dict(s.execute(select(Resposta.conta_id, func.min(Resposta.criada_em))
                                   .where(Resposta.origem == "pesquisa").group_by(Resposta.conta_id)).all())
+        # Plano Grátis: quem saiu dele pagando (a primeira fatura paga) nos últimos 30 dias
+        assinaram_do_gratis = s.scalar(select(func.count(func.distinct(Auditoria.conta_id))).where(
+            Auditoria.evento == "plano_gratis_saiu", Auditoria.criado_em >= trinta,
+            Auditoria.detalhe["para"].astext == "ativa"))
 
     def ativacao(cid: int) -> dict:
         return {"contatos": contatos.get(cid, (0, 0))[0] > 0, "envios_ligados": cid in envios_ligados,
@@ -167,9 +185,15 @@ def visao() -> dict:
         "sem_origem": {"cadastros": sem[0], "pagantes": sem[1]},
     }
 
+    no_gratis = [c for c in contas if c.situacao == "gratis"]
+    plano_gratis = {"contas": len(no_gratis), "assinaram_30d": assinaram_do_gratis,
+                    "pausadas": sum(1 for c in no_gratis if gratis.pausada_por_risco(c)),
+                    "entraram_30d": sum(1 for c in no_gratis if c.gratis_desde and c.gratis_desde >= trinta)}
+
     return {
         "gerado_em": agora,
         "origens": origens,
+        "gratis": plano_gratis,
         "totais": {
             "contas": len(contas), "por_situacao": por_situacao, "pagantes": len(ativas),
             "receita_mensal": sum(((a.valor / 12).quantize(Decimal("0.01")) if a.ciclo == "anual" else a.valor

@@ -11,8 +11,8 @@ o filtro da tela de Auditoria e a exportação:
   exportacao_*, acoes_detratores_criadas (5h);
 - `exclusoes` "Exclusões definitivas": todo *_excluido(a) menos os globais conta_excluida*, e zona_risco;
 - `integracoes` "Integrações": chave_*, webhook_* (menos webhook_excluido), whatsapp_*;
-- `assinatura` "Assinatura e conta": o resto (inclusive exclusao_avisada e os globais da plataforma, como
-  parametros_alterados, da 5g).
+- `assinatura` "Assinatura e conta": o resto (inclusive exclusao_avisada, os do Plano Grátis e os globais da
+  plataforma, como parametros_alterados, da 5g).
 """
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
@@ -112,7 +112,14 @@ ROTULOS = {
     "zona_risco": "Dados apagados pela zona de risco",
     "exclusao_avisada": "Aviso de exclusão da conta enviado",
     "conta_excluida_automatica": "Conta excluída automaticamente",
-    "exclusao_automatica": "Rotina de exclusão de contas encerradas",
+    "exclusao_automatica": "Rotina de exclusão das contas Grátis paradas",
+    # Plano Grátis (docs/api-plano-gratis.md)
+    "plano_gratis": "Conta passou para o plano Grátis",
+    "plano_gratis_saiu": "Conta saiu do plano Grátis",
+    "envio_limite_mes": "Os envios por e-mail do mês do plano Grátis acabaram",
+    "risco_pausou": "Envios pausados para a equipe Toqqi conferir a conta",
+    "risco_liberado": "Envios liberados pela equipe Toqqi",
+    "exclusao_cancelada": "Exclusão da conta cancelada: a conta voltou a ser usada",
     # etapa 5h (global, sem conta): marca o e-mail diário de erros aos superadmins (tarefa `erros`)
     "erros_avisados": "Aviso diário de erros enviado à equipe Toqqi",
     # etapa 5g (global, sem conta)

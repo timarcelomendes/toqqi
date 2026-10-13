@@ -30,8 +30,10 @@ from toqqi.modulos.empresas.desfecho import marcar
 from toqqi.modulos.integracoes import pesquisas
 from toqqi.modulos.integracoes.chave import ContextoIntegracao
 from toqqi.modulos.integracoes.esquemas import EmpresaEventoIn, PesquisaIn
+from toqqi.modulos.assinatura import gratis
 
 PROVEDOR = "bling"
+RECURSO = "O conector do Bling"
 MAX_CONTATOS = 5000
 MAX_DETALHES = 600
 VALIDADE_STATE = timedelta(minutes=15)
@@ -67,6 +69,7 @@ def ver(ctx: Contexto) -> dict:
 # ---- conectar (OAuth) ------------------------------------------------------------------------
 
 def autorizar(ctx: Contexto) -> dict:
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
     if not bling.disponivel():
         raise AppError(503, "conector_indisponivel", "O conector do Bling ainda não está disponível.")
     state = jwt.encode({"c": ctx.conta_id, "u": ctx.usuario_id, "p": PROVEDOR, "n": secrets.token_hex(8),
@@ -88,6 +91,9 @@ def retorno(codigo: str | None, state: str | None) -> str:
         return _volta("erro")
     if not codigo:
         return _volta("negado")
+    with em_conta(int(dados["c"])) as s:
+        if s.scalar(select(Conta.situacao)) == gratis.GRATIS:
+            return _volta("plano")  # a conta passou para o Grátis no meio da autorização
     try:
         tokens = bling.trocar_codigo(codigo)
         empresa_bling = bling.empresa(tokens)
@@ -124,6 +130,7 @@ def _tokens_validos(conta_id: int) -> dict:
 
 
 def alterar(ctx: Contexto, pesquisar: bool) -> dict:
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
     with em_conta(ctx.conta_id) as s:
         c = _obter(s)
         if c is None:
@@ -143,6 +150,7 @@ def desconectar(ctx: Contexto) -> None:
 # ---- sincronizar (em segundo plano) -----------------------------------------------------------
 
 def iniciar_sincronizacao(ctx: Contexto) -> dict:
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
     with em_conta(ctx.conta_id) as s:
         c = _obter(s)
         if c is None:

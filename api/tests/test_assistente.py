@@ -162,7 +162,7 @@ def saidas_das_ferramentas(corpo: dict) -> list:
 
 @pytest.mark.parametrize("plano,situacao,esperado", [
     ("essencial", "ativa", 100), ("profissional", "ativa", 500), ("empresa", "ativa", 2000),
-    ("essencial", "teste", 100), ("empresa", "teste", 2000), ("profissional", "teste_expirado", 500),
+    ("essencial", "teste", 100), ("empresa", "teste", 2000), ("profissional", "gratis", 10),
     ("empresa", "atrasada", 2000), ("essencial", "cancelada", 100), ("empresa", "cortesia", 500),
     (None, "ativa", 500), ("ouro", "ativa", 500),
 ])
@@ -383,7 +383,7 @@ def test_estado_sem_ia_conta_pausada_e_cota_esgotada(client, admin, dono, monkey
     monkeypatch.setattr(config(), "IA_PROVEDOR", "openai")  # sem chave
     assert client.get(f"{API}/assistente", headers=h).json() == sem_ia
     monkeypatch.setattr(config(), "IA_PROVEDOR", "memoria")
-    sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=c)
+    sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c", c=c)
     assert client.get(f"{API}/assistente", headers=h).json() == {
         "disponivel": False, "motivo": "conta_pausada", "sugestoes": [], "custo": 1,
         "cota": {"usadas": 0, "limite": 500, "restantes": 500, "mes": mes_iso()}}
@@ -438,7 +438,7 @@ def test_ordem_das_verificacoes(client, admin, dono, monkeypatch):
         assert client.post(f"{API}/assistente/perguntar", headers=h, json={"pergunta": ""}).status_code == 422
     # sem IA e com a conta pausada: 503 (a IA vem antes da conta)
     monkeypatch.setattr(config(), "IA_PROVEDOR", "desligado")
-    sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=c)
+    sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c", c=c)
     assert perguntar(client, h).json()["erro"] == INDISPONIVEL
     # conta pausada e cota esgotada: 409 conta_pausada (a conta vem antes da cota)
     monkeypatch.setattr(config(), "IA_PROVEDOR", "memoria")
@@ -536,7 +536,7 @@ def test_a_vaga_sempre_volta(client, admin, dono, monkeypatch):
         assert [perguntar(sem_excecoes(client), h).status_code for _ in range(3)] == [500] * 3
     usar_cota(dono, c, 500)
     assert [perguntar(client, h).json()["erro"]["codigo"] for _ in range(3)] == ["cota_esgotada"] * 3
-    sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=c)
+    sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c", c=c)
     assert [perguntar(client, h).json()["erro"]["codigo"] for _ in range(3)] == ["conta_pausada"] * 3
     monkeypatch.setattr(config(), "IA_PROVEDOR", "desligado")
     assert [perguntar(client, h).json()["erro"] for _ in range(3)] == [INDISPONIVEL] * 3

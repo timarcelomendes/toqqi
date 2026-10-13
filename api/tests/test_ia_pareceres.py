@@ -169,7 +169,7 @@ def test_estados_do_get(client, cenario, dono, monkeypatch):
     monkeypatch.setattr(config(), "IA_PROVEDOR", "openai")  # sem chave
     assert estado_ia(client, h, "relatorios").json() == sem_ia
     monkeypatch.setattr(config(), "IA_PROVEDOR", "memoria")
-    sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=c)
+    sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c", c=c)
     assert estado_ia(client, h).json() == {**vazio, "disponivel": False, "motivo": "conta_pausada"}
     definir_plano(dono, c, "profissional", "ativa")
     usar_cota(dono, c, 500)
@@ -347,7 +347,7 @@ def test_ordem_das_verificacoes(client, cenario, dono, monkeypatch):
     assert r.status_code == 422 and r.json()["erro"]["campos"] == {
         "de": "A data inicial precisa ser igual ou anterior à final."}
     # sem IA e com a conta pausada: a IA vem antes
-    sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=c)
+    sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c", c=c)
     r = gerar_ia(client, h)
     assert r.status_code == 409 and r.json()["erro"] == {
         "codigo": "ia_indisponivel", "campos": {}, "mensagem": "A IA não está disponível no momento."}

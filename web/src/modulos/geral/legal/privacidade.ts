@@ -108,6 +108,11 @@ export const PRIVACIDADE: DocumentoLegal = {
               'Gerados quando a pessoa envia a resposta ou a indicação.',
             ],
             [
+              'Quem denuncia uma pesquisa (contas no plano Grátis)',
+              'O motivo escolhido, o que a pessoa escreveu, se quis, o formulário e um código derivado do IP, com sal diário, só para não contar a mesma pessoa duas vezes no mesmo dia. A empresa que mandou a pesquisa não vê a denúncia.',
+              'Informados pela pessoa ao usar “Denunciar esta pesquisa”.',
+            ],
+            [
               'Quem recebe e-mails pelo Toqqi (clientes da empresa assinante e usuários)',
               'Registro de cada e-mail que sai em nome de uma conta, das pesquisas e do sistema: o endereço de quem recebeu, o assunto, a situação (enviado ou falhou), o erro, quando falha, e a data. Não guardamos o conteúdo da mensagem nesse registro.',
               'Gerado quando o e-mail é enviado.',
@@ -139,7 +144,7 @@ export const PRIVACIDADE: DocumentoLegal = {
             ],
             ['Cobrança, emissão de documentos fiscais e contabilidade.', 'Execução de contrato (V) e obrigação legal (II).'],
             [
-              'Segurança, prevenção a fraude e abuso, auditoria, limites de uso.',
+              'Segurança, prevenção a fraude e abuso (inclusive a nota de risco das contas e as denúncias de pesquisas do plano Grátis), auditoria, limites de uso.',
               'Legítimo interesse (IX) e obrigação legal (II).',
             ],
             [
@@ -168,7 +173,7 @@ export const PRIVACIDADE: DocumentoLegal = {
           texto: [
             'O aceite destes documentos não é um consentimento: ele registra que você conhece e concorda com as regras de uso do Toqqi, contratado pela sua empresa. Mesmo assim, você pode retirá-lo quando quiser em ',
             { texto: 'Minha conta › Privacidade › Retirar meu aceite', href: '/minha-conta' },
-            '. Ao retirar, você sai do Toqqi e só volta a usá-lo aceitando de novo; guardamos o registro do aceite anterior e da retirada como prova, pelo tempo descrito em Retenção, e você deixa de receber os e-mails do Toqqi. Retirar o aceite não apaga a sua conta nem os seus dados: para isso, veja Seus direitos. Para encerrar o uso pela empresa, o administrador cancela a assinatura.',
+            '. Ao retirar, você sai do Toqqi e só volta a usá-lo aceitando de novo; guardamos o registro do aceite anterior e da retirada como prova, pelo tempo descrito em Retenção, e você deixa de receber os e-mails do Toqqi. Retirar o aceite não apaga a sua conta nem os seus dados: para isso, veja Seus direitos. Para encerrar o uso pela empresa, o administrador cancela a assinatura e pode pedir a exclusão da conta.',
           ],
         },
       ],
@@ -180,7 +185,7 @@ export const PRIVACIDADE: DocumentoLegal = {
         {
           tipo: 'p',
           texto:
-            'Usamos a OpenAI (Estados Unidos) em cinco recursos. A análise de comentários e os passos sugeridos nas ações já vêm ligados, e a empresa assinante pode desligá-los em Configurações › IA. O resumo do painel, o parecer dos relatórios e o ToqqiAI, o assistente de IA do Toqqi, só enviam dados quando alguém da conta pede (clica em gerar o resumo ou o parecer, ou faz uma pergunta). Todos funcionam enquanto a IA estiver disponível e a assinatura estiver em dia.',
+            'Usamos a OpenAI (Estados Unidos) em cinco recursos. A análise de comentários e os passos sugeridos nas ações já vêm ligados, e a empresa assinante pode desligá-los em Configurações › IA. O resumo do painel, o parecer dos relatórios e o ToqqiAI, o assistente de IA do Toqqi, só enviam dados quando alguém da conta pede (clica em gerar o resumo ou o parecer, ou faz uma pergunta). Todos funcionam enquanto a IA estiver disponível e a conta não estiver pausada por falta de pagamento, inclusive no plano Grátis, com as cotas dele.',
         },
         {
           tipo: 'lista',
@@ -336,8 +341,9 @@ export const PRIVACIDADE: DocumentoLegal = {
         {
           tipo: 'lista',
           itens: [
-            'Dados da conta: enquanto ela estiver ativa.',
-            'Depois do fim do período pago (quando a assinatura é cancelada) ou do teste grátis sem assinatura: guardamos os dados por 90 dias, para a empresa exportar. O administrador baixa uma cópia de todos os dados em Configurações › Dados da conta. Avisamos os administradores por e-mail 7 dias antes da exclusão. Passado o prazo, excluímos de forma definitiva e automática tudo o que é da conta, inclusive o registro de auditoria, o histórico de cobranças e os aceites dos termos. Assinar um plano antes disso cancela a exclusão.',
+            'Dados da conta: enquanto ela existir. Quando o teste acaba sem assinatura, ou a assinatura é cancelada e o período pago termina, a conta passa para o plano Grátis, com os dados guardados.',
+            'Conta no plano Grátis sem uso: se ninguém entrar na conta por 180 dias, excluímos de forma definitiva e automática tudo o que é da conta, inclusive o registro de auditoria, o histórico de cobranças e os aceites dos termos. Avisamos os administradores por e-mail 30 dias antes, e entrar no Toqqi antes da data cancela a exclusão. Até lá, o administrador baixa uma cópia de todos os dados em Configurações › Dados da conta.',
+            'Denúncias de pesquisas: enquanto a conta denunciada existir. São apagadas junto com ela.',
             'Registros de acesso (data, hora e IP das entradas e tentativas, do cadastro, do pedido de acesso, da troca de senha e do envio de respostas e indicações): por 6 meses (Marco Civil da Internet, art. 15), guardados à parte, mesmo depois de excluídos o usuário ou a conta. Depois disso, são apagados automaticamente.',
             'Registro de auditoria e histórico de cobranças: enquanto a conta existir. Os documentos fiscais seguem o prazo legal [a confirmar: prazo fiscal aplicável, em geral 5 anos].',
             'Respostas e contatos dos clientes: a empresa assinante controla e pode apagar quando quiser, um por um ou de uma vez (Configurações › Dados da conta › Zona de risco). Ao excluir um contato, o nome e o e-mail ficam no registro de auditoria enquanto a conta existir, e o e-mail ou telefone fica na lista de descadastro, para continuarmos respeitando o pedido da pessoa.',

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// Plano Grátis (docs/api-plano-gratis.md): até 2 formulários recebem respostas ao mesmo tempo. Com 2 ativos, "Novo
+// formulário" e "Duplicar" ficam parados com o aviso em cima (a API recusa com 403 `recurso_do_plano`); com mais de 2
+// (vindos do teste), o aviso explica que os envios novos usam só os padrão (NPS e CSAT).
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Copy, FilePlus2, FileText, Globe, ListChecks, Lock, MessageSquareText, MoreHorizontal, Pencil, Trash2 } from 'lucide-vue-next'
@@ -9,6 +12,7 @@ import { useSessaoStore } from '@/stores/sessao'
 import { formatarData } from '@/utils/datas'
 import { plural } from '@/utils/formatos'
 import { TIPOS_FORMULARIO } from '@/utils/rotulos'
+import AvisoPlanoGratis from '@/components/app/AvisoPlanoGratis.vue'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import ItemMenu from '@/components/app/ItemMenu.vue'
 import Alerta from '@/components/ui/Alerta.vue'
@@ -27,6 +31,21 @@ const erro = ref<string | null>(null)
 const ocupado = ref<Id | null>(null)
 const novoAberto = ref(false)
 const podeEditar = computed(() => sessao.pode('formularios.editar'))
+
+const gratis = computed(() => sessao.conta?.gratis ?? null)
+const ativos = computed(() => formularios.value.filter((f) => f.ativo).length)
+/** Conta Grátis com o limite de formulários recebendo respostas cheio: criar e duplicar ficam parados. */
+const semVaga = computed(() => !!gratis.value && !carregando.value && ativos.value >= gratis.value.formularios)
+const textoGratis = computed(() => {
+  const g = gratis.value
+  if (!g) return ''
+  const limite = `No plano Grátis, até ${g.formularios} formulários recebem respostas ao mesmo tempo.`
+  const saida = 'ou assine um plano a partir do Essencial.'
+  if (ativos.value > g.formularios) {
+    return `${limite} Esta conta tem ${ativos.value} ativos, vindos do teste: os links já enviados seguem valendo, mas os envios novos usam só os padrão (NPS e CSAT). Para criar ou duplicar, desative os que não usa, ${saida}`
+  }
+  return `${limite} Para criar ou duplicar, desative um deles, ${saida}`
+})
 
 const ordenados = computed(() =>
   [...formularios.value].sort(
@@ -50,6 +69,10 @@ async function carregar() {
 }
 
 async function duplicar(f: FormularioResumo) {
+  if (semVaga.value) {
+    avisar.atencao(textoGratis.value)
+    return
+  }
   ocupado.value = f.id
   try {
     const novo = await formulariosApi.duplicar(f.id)
@@ -95,9 +118,11 @@ onMounted(carregar)
 <template>
   <CabecalhoPagina titulo="Formulários" descricao="As pesquisas que seus clientes respondem: perguntas, visual e onde compartilhar.">
     <template v-if="podeEditar" #acoes>
-      <Botao @click="novoAberto = true"><FilePlus2 class="size-4" aria-hidden="true" /> Novo formulário</Botao>
+      <Botao :desabilitado="semVaga" data-novo-formulario @click="novoAberto = true"><FilePlus2 class="size-4" aria-hidden="true" /> Novo formulário</Botao>
     </template>
   </CabecalhoPagina>
+
+  <AvisoPlanoGratis v-if="semVaga" :texto="textoGratis" :recurso="false" class="mb-4" data-gratis-formularios />
 
   <Carregando v-if="carregando" :linhas="4" />
   <Alerta v-else-if="erro" tom="erro">

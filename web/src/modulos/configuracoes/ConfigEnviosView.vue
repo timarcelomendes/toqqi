@@ -20,6 +20,7 @@ import { useFormulario } from '@/composables/formulario'
 import { useSessaoStore } from '@/stores/sessao'
 import { CANAIS_CONFIG } from '@/utils/rotulos'
 import { avisoCanal, disponibilidadeCanais, estadoFranquia } from '@/modulos/integracoes/logica'
+import AvisoPlanoGratis from '@/components/app/AvisoPlanoGratis.vue'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Alerta from '@/components/ui/Alerta.vue'
 import AreaTexto from '@/components/ui/AreaTexto.vue'
@@ -56,6 +57,10 @@ import { LIMITE_ASSINATURA, LIMITE_RODAPE, normalizarCorHex, textoOuNulo } from 
 
 const sessao = useSessaoStore()
 const podeSalvar = computed(() => sessao.pode('configuracoes.gerenciar'))
+// Plano Grátis (docs/api-plano-gratis.md): o e-mail sai com o nome da empresa e as respostas vão para o administrador
+// mais antigo (o que estiver aqui fica guardado e volta ao assinar); o descanso é de pelo menos 30 dias; com mais de 2
+// formulários ativos, os envios usam só os padrão.
+const gratis = computed(() => sessao.conta?.gratis ?? null)
 
 const carregando = ref(true)
 const erroCarga = ref<string | null>(null)
@@ -228,6 +233,8 @@ const logoEmail = computed(() => logoFormulario.value || sessao.conta?.logo_url 
 /** A configuração como está na tela, para as prévias (o visual com a cor que vale agora). */
 const configPrevia = computed<ConfigPrevia>(() => ({
   ...f,
+  // No Grátis, o remetente é sempre o nome da empresa (a configuração fica guardada para quando assinar).
+  ...(gratis.value ? { remetente_nome: null, responder_para: null } : {}),
   email_cor: visual.usarCorFormulario ? null : normalizarCorHex(visual.cor),
   email_mostrar_logo: visual.mostrarLogo,
   email_imagem_topo: visual.imagemTopo,
@@ -255,7 +262,23 @@ const notaLogo = computed(() => {
   if (sessao.conta?.logo_url) return 'O formulário não tem logo: vale o da empresa.'
   return null
 })
-const dicaRemetente = computed(() => `Aparece como "${(f.remetente_nome || sessao.conta?.nome || 'Sua empresa').trim()} via Toqqi".`)
+const dicaRemetente = computed(() =>
+  gratis.value
+    ? `Aparece como "${(sessao.conta?.nome || 'Sua empresa').trim()} via Toqqi".`
+    : `Aparece como "${(f.remetente_nome || sessao.conta?.nome || 'Sua empresa').trim()} via Toqqi".`,
+)
+const dicaDescanso = computed(() =>
+  gratis.value
+    ? `Anti-cansaço: quem recebeu qualquer pesquisa, por e-mail ou WhatsApp, há menos desses dias não recebe outra. No plano Grátis, pelo menos ${gratis.value.descanso_minimo} dias.`
+    : 'Anti-cansaço: quem recebeu qualquer pesquisa, por e-mail ou WhatsApp, há menos desses dias não recebe outra. Use 0 para desligar.',
+)
+const dicaFormulario = computed(() => {
+  const g = gratis.value
+  if (g && formularios.value.filter((x) => x.ativo).length > g.formularios) {
+    return `Só aparecem formulários ativos. No plano Grátis, com mais de ${g.formularios} ativos, os envios usam só os padrão (NPS e CSAT).`
+  }
+  return 'Só aparecem formulários ativos.'
+})
 const textoWhatsapp = computed(() => renderizarMensagem(f.texto_whatsapp, exemplo.value))
 
 async function carregar() {
@@ -291,7 +314,7 @@ async function focarPrimeiroErro() {
 async function salvar(): Promise<boolean> {
   limpar()
   const dados = montar()
-  const locais = validarConfig(dados)
+  const locais = validarConfig(dados, { descansoMinimo: gratis.value?.descanso_minimo })
   if (Object.keys(locais).length) {
     Object.assign(erros, locais)
     erroGeral.value = 'Confira os campos destacados.'
@@ -463,7 +486,7 @@ onMounted(carregar)
             :opcoes="opcoesFormularios"
             :vazio="f.formulario_id === null ? 'Escolha um formulário' : undefined"
             :erro="erros.formulario_id"
-            dica="Só aparecem formulários ativos."
+            :dica="dicaFormulario"
           />
           <template v-else>
             <p class="text-sm text-texto-suave">Não conseguimos listar os formulários. Veja em <RouterLink to="/formularios" class="link">Formulários</RouterLink>.</p>
@@ -495,10 +518,10 @@ onMounted(carregar)
             rotulo="Descanso entre pesquisas (dias)"
             tipo="number"
             inputmode="numeric"
-            min="0"
+            :min="gratis ? gratis.descanso_minimo : 0"
             max="180"
             :erro="erros.descanso_dias"
-            dica="Anti-cansaço: quem recebeu qualquer pesquisa, por e-mail ou WhatsApp, há menos desses dias não recebe outra. Use 0 para desligar."
+            :dica="dicaDescanso"
           />
           <div class="flex flex-col gap-3 sm:col-span-2">
             <div class="sm:max-w-xs">
@@ -559,6 +582,13 @@ onMounted(carregar)
           <p class="mt-1 text-sm text-texto-suave">Como o seu cliente vê o remetente do e-mail.</p>
         </div>
         <div class="grid gap-5 sm:grid-cols-2 md:col-span-2">
+          <AvisoPlanoGratis
+            v-if="gratis"
+            texto="No plano Grátis, o e-mail sai com o nome da empresa e, se o cliente responder, a mensagem chega no e-mail do administrador mais antigo da conta. O que estiver aqui fica guardado e volta a valer quando a conta assinar."
+            :recurso="false"
+            class="sm:col-span-2"
+            data-gratis-remetente
+          />
           <Campo
             :model-value="f.remetente_nome ?? ''"
             rotulo="Nome do remetente"
@@ -567,6 +597,7 @@ onMounted(carregar)
             :placeholder="sessao.conta?.nome"
             :erro="erros.remetente_nome"
             :dica="dicaRemetente"
+            :desabilitado="!!gratis"
             @update:model-value="(v: string) => (f.remetente_nome = v)"
           />
           <Campo
@@ -578,6 +609,7 @@ onMounted(carregar)
             placeholder="atendimento@suaempresa.com.br"
             :erro="erros.responder_para"
             dica="Se o cliente responder o e-mail, a mensagem chega neste endereço."
+            :desabilitado="!!gratis"
             @update:model-value="(v: string) => (f.responder_para = v)"
           />
         </div>

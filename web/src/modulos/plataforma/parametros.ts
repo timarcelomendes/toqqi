@@ -1,6 +1,8 @@
 // Regras puras de Plataforma › Parâmetros (etapa 5g, docs/api-etapa-5g.md §2 e §7), sem Vue: o catálogo de chaves
 // (rótulo, tipo e limites), o formato de cada valor, o formulário (texto digitado ↔ valor da API), a validação igual à da
 // API, o que mudou, as linhas do diálogo de confirmação (com as contas atingidas) e as do histórico.
+// Plano Grátis (docs/api-plano-gratis.md): o grupo `gratis` (limites e prazos) e o Grátis na cota e no teto do ToqqiAI
+// e na franquia do WhatsApp.
 import type {
   GrupoParametros,
   GrupoParametrosPlataforma,
@@ -19,6 +21,7 @@ export const GRUPOS_PARAMETROS: { valor: GrupoParametros; rotulo: string }[] = [
   { valor: 'ia', rotulo: 'IA' },
   { valor: 'whatsapp', rotulo: 'WhatsApp automático' },
   { valor: 'teste', rotulo: 'Teste e cortesia' },
+  { valor: 'gratis', rotulo: 'Plano Grátis' },
 ]
 
 export function rotuloGrupo(grupo: string): string {
@@ -67,10 +70,10 @@ export interface CampoParametro {
   min?: number
   max?: number
   /**
-   * Como uma mudança pesa nas contas: `contatos` e `uso` (cota, teto, franquia) pedem confirmação quando diminuem;
-   * `analises`, quando aumenta.
+   * Como uma mudança pesa nas contas: `contatos`, `uso` (cota, teto, franquia) e `gratis` (limites e prazos do Grátis)
+   * pedem confirmação quando diminuem; `analises`, quando aumenta.
    */
-  peso?: 'contatos' | 'uso' | 'analises'
+  peso?: 'contatos' | 'uso' | 'analises' | 'gratis'
 }
 
 function campo(c: CampoParametro): CampoParametro {
@@ -90,6 +93,26 @@ const PERSONALIZADO = [
   { chave: 'ia_5000', rotulo: 'ToqqiAI: 5.000 perguntas', nome: 'Personalizado: pacote de 5.000 perguntas' },
 ] as const
 
+/** Cortesia, teste e Grátis, depois dos planos, na cota e no teto do ToqqiAI e na franquia do WhatsApp. */
+const OUTROS = [
+  { chave: 'cortesia', nome: 'Cortesia' },
+  { chave: 'teste', nome: 'Teste' },
+  { chave: 'gratis', nome: 'Grátis' },
+] as const
+const NOME_OUTRO: Record<string, string> = { cortesia: 'da cortesia', teste: 'do teste', gratis: 'do Grátis' }
+const DE_OUTRO = (p: { chave: string; nome: string }) => NOME_OUTRO[p.chave] ?? DE_PLANO(p)
+
+/** Plano Grátis: os limites e os prazos (os mesmos mínimos e máximos da API, core/parametros.py `GRATIS`). */
+const GRATIS = [
+  { chave: 'contatos', rotulo: 'Contatos ativos', nome: 'Contatos do Grátis', min: 1, max: 1_000_000 },
+  { chave: 'envios_mes', rotulo: 'Envios por e-mail por mês', nome: 'Envios por mês do Grátis', min: 1, max: 100_000 },
+  { chave: 'envios_dia', rotulo: 'Envios por e-mail por dia', nome: 'Envios por dia do Grátis', min: 1, max: 100_000 },
+  { chave: 'usuarios', rotulo: 'Usuários', nome: 'Usuários do Grátis', min: 1, max: 10 },
+  { chave: 'dias_sem_uso', rotulo: 'Dias sem uso até a exclusão', nome: 'Dias sem uso até excluir a conta Grátis', min: 60, max: 730 },
+  { chave: 'dias_aviso', rotulo: 'Aviso antes da exclusão (dias)', nome: 'Dias de aviso antes de excluir a conta Grátis', min: 7, max: 60 },
+  { chave: 'dias_atraso', rotulo: 'Dias de atraso até cancelar', nome: 'Dias de fatura vencida até cancelar a assinatura', min: 10, max: 120 },
+] as const
+
 /** Todas as chaves do §2, na ordem da tela. */
 export const CAMPOS: CampoParametro[] = [
   ...PLANOS.flatMap((p) => [
@@ -101,13 +124,13 @@ export const CAMPOS: CampoParametro[] = [
   ...PERSONALIZADO.map((p) =>
     campo({ chave: `planos.personalizado.${p.chave}`, grupo: 'planos', tipo: 'dinheiro', rotulo: p.rotulo, nome: p.nome, min: 5, max: 99_999.99 }),
   ),
-  ...[...PLANOS, { chave: 'cortesia', nome: 'Cortesia' }, { chave: 'teste', nome: 'Teste' }].map((p) =>
+  ...[...PLANOS, ...OUTROS].map((p) =>
     campo({
       chave: `ia.cota.${p.chave}`,
       grupo: 'ia',
       tipo: 'inteiro',
       rotulo: p.nome,
-      nome: p.chave === 'cortesia' ? 'Cota de IA da cortesia' : p.chave === 'teste' ? 'Cota de IA do teste' : `Cota de IA ${DE_PLANO(p)}`,
+      nome: `Cota de IA ${DE_OUTRO(p)}`,
       min: 0,
       max: 100_000,
       peso: 'uso',
@@ -118,25 +141,25 @@ export const CAMPOS: CampoParametro[] = [
     campo({ chave: `ia.esforco.${n.chave}`, grupo: 'ia', tipo: 'esforco', rotulo: 'Esforço', nome: `Esforço do nível ${n.nome}` }),
     campo({ chave: `ia.analises.${n.chave}`, grupo: 'ia', tipo: 'inteiro', rotulo: 'Análises por uso', nome: `Análises por uso do nível ${n.nome}`, min: 1, max: 10, peso: 'analises' }),
   ]),
-  ...[...PLANOS, { chave: 'cortesia', nome: 'Cortesia' }, { chave: 'teste', nome: 'Teste' }].map((p) =>
+  ...[...PLANOS, ...OUTROS].map((p) =>
     campo({
       chave: `ia.teto.${p.chave}`,
       grupo: 'ia',
       tipo: 'inteiro',
       rotulo: p.nome,
-      nome: p.chave === 'cortesia' ? 'Teto de IA da cortesia' : p.chave === 'teste' ? 'Teto de IA do teste' : `Teto de IA ${DE_PLANO(p)}`,
+      nome: `Teto de IA ${DE_OUTRO(p)}`,
       min: 0,
       max: 1_000_000,
       peso: 'uso',
     }),
   ),
-  ...[...PLANOS, { chave: 'personalizado', nome: 'Personalizado' }, { chave: 'cortesia', nome: 'Cortesia' }, { chave: 'teste', nome: 'Teste' }].map((p) =>
+  ...[...PLANOS, { chave: 'personalizado', nome: 'Personalizado' }, ...OUTROS].map((p) =>
     campo({
       chave: `whatsapp.franquia.${p.chave}`,
       grupo: 'whatsapp',
       tipo: 'limite',
       rotulo: p.nome,
-      nome: p.chave === 'cortesia' ? 'Franquia de WhatsApp da cortesia' : p.chave === 'teste' ? 'Franquia de WhatsApp do teste' : `Franquia de WhatsApp ${DE_PLANO(p)}`,
+      nome: `Franquia de WhatsApp ${DE_OUTRO(p)}`,
       min: 0,
       max: 100_000,
       peso: 'uso',
@@ -144,7 +167,10 @@ export const CAMPOS: CampoParametro[] = [
   ),
   campo({ chave: 'teste.dias', grupo: 'teste', tipo: 'inteiro', rotulo: 'Dias de teste', nome: 'Dias de teste', min: 1, max: 90 }),
   campo({ chave: 'teste.plano', grupo: 'teste', tipo: 'plano', rotulo: 'Plano do teste', nome: 'Plano do teste' }),
-  campo({ chave: 'teste.exclusao_automatica', grupo: 'teste', tipo: 'exclusao', rotulo: 'Exclusão automática das contas encerradas', nome: 'Exclusão automática' }),
+  campo({ chave: 'teste.exclusao_automatica', grupo: 'teste', tipo: 'exclusao', rotulo: 'Exclusão automática das contas Grátis paradas', nome: 'Exclusão automática' }),
+  ...GRATIS.map((g) =>
+    campo({ chave: `gratis.${g.chave}`, grupo: 'gratis', tipo: 'inteiro', rotulo: g.rotulo, nome: g.nome, min: g.min, max: g.max, peso: 'gratis' }),
+  ),
 ]
 
 const POR_CHAVE = new Map(CAMPOS.map((c) => [c.chave, c]))
@@ -189,7 +215,7 @@ export const LAYOUT_GRUPOS: Record<GrupoParametros, LayoutGrupo> = {
   ia: {
     descricao: 'Cotas, modelos e tetos de segurança da inteligência artificial.',
     blocos: [
-      { legenda: 'Análises por mês (cota do plano)', chaves: ['essencial', 'profissional', 'empresa', 'cortesia', 'teste'].map((p) => `ia.cota.${p}`) },
+      { legenda: 'Análises por mês (cota do plano)', chaves: ['essencial', 'profissional', 'empresa', 'cortesia', 'teste', 'gratis'].map((p) => `ia.cota.${p}`) },
       {
         legenda: 'Níveis de modelo',
         chaves: [],
@@ -197,20 +223,30 @@ export const LAYOUT_GRUPOS: Record<GrupoParametros, LayoutGrupo> = {
       },
       {
         legenda: 'Teto de segurança por mês (análise dos comentários e passos das ações)',
-        chaves: ['essencial', 'profissional', 'empresa', 'cortesia', 'teste'].map((p) => `ia.teto.${p}`),
+        chaves: ['essencial', 'profissional', 'empresa', 'cortesia', 'teste', 'gratis'].map((p) => `ia.teto.${p}`),
       },
     ],
     nota: 'Ao salvar um modelo ou esforço novo, o Toqqi faz uma chamada curta à OpenAI para conferir.',
   },
   whatsapp: {
     descricao: 'Franquia do WhatsApp automático de cada plano. O padrão é sem franquia: as mensagens saem pelo número do cliente e a Meta cobra a conta dele.',
-    blocos: [{ legenda: 'Mensagens por mês', chaves: ['essencial', 'profissional', 'empresa', 'personalizado', 'cortesia', 'teste'].map((p) => `whatsapp.franquia.${p}`) }],
+    blocos: [{ legenda: 'Mensagens por mês', chaves: ['essencial', 'profissional', 'empresa', 'personalizado', 'cortesia', 'teste', 'gratis'].map((p) => `whatsapp.franquia.${p}`) }],
     nota: 'Com franquia, quem passa dela segue por e-mail (ou pelo excedente de R$ 1,50 por mensagem, se ligar).',
   },
   teste: {
-    descricao: 'O teste grátis das contas novas e a exclusão das contas encerradas.',
-    blocos: [{ legenda: 'Teste grátis e exclusão', chaves: ['teste.dias', 'teste.plano', 'teste.exclusao_automatica'] }],
-    nota: 'Cota, teto e franquia da cortesia e do teste ficam em IA e WhatsApp automático.',
+    descricao: 'O teste das contas novas e a exclusão automática das contas Grátis paradas.',
+    blocos: [{ legenda: 'Teste e exclusão', chaves: ['teste.dias', 'teste.plano', 'teste.exclusao_automatica'] }],
+    nota: 'Cota, teto e franquia da cortesia e do teste ficam em IA e WhatsApp automático. Os prazos da exclusão ficam em Plano Grátis.',
+  },
+  gratis: {
+    descricao:
+      'Onde fica a conta que não assina depois do teste, a que cancelou e a de fatura vencida há muito tempo: os limites do plano e os prazos.',
+    blocos: [
+      { legenda: 'Limites', chaves: ['gratis.contatos', 'gratis.envios_mes', 'gratis.envios_dia', 'gratis.usuarios'] },
+      { legenda: 'Prazos', chaves: ['gratis.dias_sem_uso', 'gratis.dias_aviso', 'gratis.dias_atraso'] },
+    ],
+    ladoALado: true,
+    nota: 'Cota e teto do ToqqiAI e franquia do WhatsApp do Grátis ficam em IA e WhatsApp automático; ligar ou simular a exclusão, em Teste e cortesia. Os Termos prometem aviso de 30 dias antes de piorar o Grátis.',
   },
 }
 
@@ -326,6 +362,8 @@ export const MENSAGENS_PARAMETROS = {
   esforco: 'Escolha um esforço da lista (ou “Sem raciocínio”).',
   plano: 'Escolha um dos planos: Essencial, Profissional ou Empresa.',
   exclusao: 'Escolha “ligada” ou “simular”.',
+  enviosDia: 'Os envios do dia não podem passar dos envios do mês.',
+  diasAviso: 'O aviso precisa sair antes da exclusão.',
 } as const
 
 /** "Use um número inteiro de 0 a 100.000." */
@@ -392,6 +430,15 @@ export function lerFormulario(
     const r = lerCampo(form, c.chave)
     if ('erro' in r) erros[c.chave] = r.erro
     else valores[c.chave] = r.valor
+  }
+  if (dados.grupo === 'gratis') {
+    const n = (k: string) => inteiroDe(valores[k])
+    if (!erros['gratis.envios_dia'] && !erros['gratis.envios_mes'] && (n('gratis.envios_dia') ?? 0) > (n('gratis.envios_mes') ?? 0)) {
+      erros['gratis.envios_dia'] = MENSAGENS_PARAMETROS.enviosDia
+    }
+    if (!erros['gratis.dias_aviso'] && !erros['gratis.dias_sem_uso'] && (n('gratis.dias_aviso') ?? 0) >= (n('gratis.dias_sem_uso') ?? 0)) {
+      erros['gratis.dias_aviso'] = MENSAGENS_PARAMETROS.diasAviso
+    }
   }
   if (dados.grupo === 'planos') {
     for (let i = 1; i < PLANOS.length; i++) {
@@ -486,7 +533,7 @@ export function textoImpacto(m: MudancaParametro, impacto: ImpactoParametro | un
   if (!c) return null
   if (c.tipo === 'dinheiro' || m.chave.startsWith('planos.desconto.')) return 'Vale para assinaturas novas e trocas de plano.'
   if (c.tipo === 'exclusao' && m.para === 'ligada' && m.de !== 'ligada') {
-    return 'Na próxima rodada (9h), contas encerradas há 90 dias passam a ser avisadas e excluídas de vez.'
+    return 'Na próxima rodada (9h), as contas Grátis paradas passam a ser avisadas e, no fim do prazo, excluídas de vez.'
   }
   if (!diminui(m) || !impacto) return null
   const n = impacto.contas
@@ -503,9 +550,34 @@ export function textoImpacto(m: MudancaParametro, impacto: ImpactoParametro | un
     if (n <= 0) return `Nenhuma conta usou ${valor} ou mais neste mês.`
     return `${contasTexto(n)} já ${n === 1 ? 'usou' : 'usaram'} ${valor} ou mais neste mês.`
   }
+  if (c.peso === 'gratis') return textoImpactoGratis(m.chave, valor, impacto)
   // Análises por uso que aumentam.
   if (n <= 0) return 'Nenhuma conta usa este nível.'
   return `${contasTexto(n)} ${n === 1 ? 'usa' : 'usam'} este nível.`
+}
+
+/** O que um limite menor do Grátis faz nas contas Grátis de agora (os prazos não têm contas atingidas). */
+function textoImpactoGratis(chave: string, valor: string, impacto: ImpactoParametro): string | null {
+  const n = impacto.contas
+  const nomes = listaNomes(impacto.exemplos.map((e) => e.nome), n)
+  const quem = `${contasTexto(n)} Grátis${nomes ? ` (${nomes})` : ''}`
+  const um = n === 1
+  switch (chave) {
+    case 'gratis.contatos':
+      if (n <= 0) return `Nenhuma conta Grátis tem mais de ${valor} contatos ativos.`
+      return `${quem} ${um ? 'tem' : 'têm'} mais de ${valor} contatos ativos: os envios param até ${um ? 'ela ficar' : 'elas ficarem'} dentro do limite.`
+    case 'gratis.envios_mes':
+      if (n <= 0) return `Nenhuma conta Grátis mandou ${valor} e-mails ou mais neste mês.`
+      return `${quem} já ${um ? 'mandou' : 'mandaram'} ${valor} e-mails ou mais neste mês: os próximos esperam o mês virar.`
+    case 'gratis.envios_dia':
+      if (n <= 0) return `Nenhuma conta Grátis mandou ${valor} e-mails ou mais hoje.`
+      return `${quem} já ${um ? 'mandou' : 'mandaram'} ${valor} e-mails ou mais hoje: os próximos esperam o dia virar.`
+    case 'gratis.usuarios':
+      if (n <= 0) return `Nenhuma conta Grátis tem mais de ${valor} ${valor === '1' ? 'usuário ativo' : 'usuários ativos'}.`
+      return `${quem} ${um ? 'tem' : 'têm'} mais usuários ativos: no próximo login, os mais novos ficam de fora.`
+    default:
+      return null
+  }
 }
 
 export const AVISO_DIMINUI = 'Vale na hora para todas as contas, inclusive quem já assina. Os Termos prometem aviso com antecedência razoável.'

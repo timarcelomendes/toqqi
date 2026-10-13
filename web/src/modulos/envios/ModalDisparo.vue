@@ -1,9 +1,11 @@
 <script setup lang="ts">
 // Confirma o envio manual (dizendo para quantos) e depois mostra o que saiu e o que ficou de fora.
+// Plano Grátis (docs/api-plano-gratis.md): o descanso vale sempre (a API não deixa ignorar), então a opção some.
 import { computed, ref, watch } from 'vue'
 import { ChevronDown, Send } from 'lucide-vue-next'
 import { enviosApi, type FiltrosFila, type Id, type ResultadoDisparo } from '@/api'
 import { useFormulario } from '@/composables/formulario'
+import { useSessaoStore } from '@/stores/sessao'
 import Alerta from '@/components/ui/Alerta.vue'
 import Botao from '@/components/ui/Botao.vue'
 import CaixaSelecao from '@/components/ui/CaixaSelecao.vue'
@@ -19,6 +21,8 @@ const aberto = defineModel<boolean>('aberto', { default: false })
 const emit = defineEmits<{ enviado: [ResultadoDisparo]; 'pre-condicao': [] }>()
 
 const { enviando, erroGeral, codigoErro, executar, limpar } = useFormulario()
+const sessao = useSessaoStore()
+const gratis = computed(() => !!sessao.conta?.gratis)
 const ignorarDescanso = ref(false)
 const resultado = ref<ResultadoDisparo | null>(null)
 
@@ -43,8 +47,8 @@ async function enviar() {
   const r = await executar(() =>
     enviosApi.disparar(
       a.tipo === 'fila'
-        ? { toda_fila: true, filtros: a.filtros, ...(ignorarDescanso.value ? { ignorar_descanso: true } : {}) }
-        : { contato_ids: a.ids, ...(ignorarDescanso.value ? { ignorar_descanso: true } : {}) },
+        ? { toda_fila: true, filtros: a.filtros, ...(ignorarDescanso.value && !gratis.value ? { ignorar_descanso: true } : {}) }
+        : { contato_ids: a.ids, ...(ignorarDescanso.value && !gratis.value ? { ignorar_descanso: true } : {}) },
     ),
   )
   if (codigoErro.value === 'pre_condicao') emit('pre-condicao')
@@ -91,13 +95,14 @@ async function enviar() {
       <p class="text-sm text-texto-fraco">
         Quem não tem e-mail, saiu da lista ou recebeu outra pesquisa há pouco tempo fica de fora. Depois do envio você vê quem foi e o motivo.
       </p>
-      <div class="rounded-xl border border-borda bg-superficie-2/50 p-3.5">
+      <div v-if="!gratis" class="rounded-xl border border-borda bg-superficie-2/50 p-3.5">
         <CaixaSelecao
           v-model="ignorarDescanso"
           rotulo="Enviar mesmo para quem está em descanso"
           descricao="O descanso evita cansar o cliente com pesquisas seguidas. Marque só se tiver um bom motivo, como um atendimento que acabou de acontecer."
         />
       </div>
+      <p v-else class="text-sm text-texto-fraco" data-descanso-gratis>No plano Grátis, o descanso entre pesquisas vale sempre: quem está em descanso fica de fora.</p>
     </form>
 
     <template #rodape>

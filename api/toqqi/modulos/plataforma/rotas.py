@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 from toqqi.core.deps import Contexto, requer_superadmin
 from toqqi.core.errors import AppError
 from toqqi.core.validacao import MAX_ID
-from toqqi.modulos.plataforma import erros, servico, visao
-from toqqi.modulos.plataforma.esquemas import EstenderTesteIn, ExcluirContaIn, NovaContaIn
+from toqqi.modulos.plataforma import denuncias, erros, servico, visao
+from toqqi.modulos.plataforma.esquemas import DenunciaAlterarIn, EstenderTesteIn, ExcluirContaIn, NovaContaIn
 
 router = APIRouter(prefix="/plataforma", tags=["plataforma"])
 
@@ -33,10 +33,30 @@ def cortesia(conta_id: int, ctx: Contexto = Depends(requer_superadmin)):
     return servico.cortesia(ctx, conta_id)
 
 
+@router.post("/contas/{conta_id}/liberar-envios")
+def liberar_envios(conta_id: int, ctx: Contexto = Depends(requer_superadmin)):
+    """Plano Grátis: libera os envios da conta pausada pela nota de risco."""
+    return servico.liberar_envios(ctx, conta_id)
+
+
 @router.delete("/contas/{conta_id}", status_code=204)
 def excluir(conta_id: int, dados: ExcluirContaIn, ctx: Contexto = Depends(requer_superadmin)):
     servico.excluir_conta(ctx, conta_id, dados.confirmar_nome)
     return Response(status_code=204)
+
+
+# ---- Plano Grátis: denúncias das pesquisas -----------------------------------------------------------------------
+
+@router.get("/denuncias")
+def listar_denuncias(situacao: Annotated[Literal["abertas", "todas"], Query()] = "abertas",
+                     ctx: Contexto = Depends(requer_superadmin)):
+    return denuncias.listar(situacao)
+
+
+@router.patch("/denuncias/{denuncia_id}")
+def alterar_denuncia(denuncia_id: IdErro, dados: DenunciaAlterarIn, ctx: Contexto = Depends(requer_superadmin)):
+    return denuncias.alterar(denuncia_id, dados.situacao, (dados.nota_interna or "").strip() or None,
+                             "nota_interna" in dados.model_fields_set)
 
 
 # ---- etapa 5h: visão do negócio e erros ---------------------------------------------------------------------------

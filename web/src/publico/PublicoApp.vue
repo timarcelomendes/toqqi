@@ -2,7 +2,7 @@
 // Página pública de resposta: /r/:token (convite individual) e /f/:codigo (link público).
 import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '@/api/erros'
-import { publicoApi, type PesquisaPublica } from '@/api/publico'
+import { publicoApi, type MotivoDenuncia, type PesquisaPublica } from '@/api/publico'
 import Pesquisa from '@/pesquisa/Pesquisa.vue'
 import { lerParametros } from '@/pesquisa/contexto'
 import type { ErroIndicacao } from '@/pesquisa/indicacao'
@@ -119,6 +119,19 @@ async function autorizarDepoimento(): Promise<string | void> {
   return r && typeof r === 'object' && typeof r.mensagem === 'string' ? r.mensagem : undefined
 }
 
+/** Plano Grátis: "Denunciar esta pesquisa" (pelo convite ou pelo link público). */
+async function denunciar(d: { motivo: MotivoDenuncia; detalhe?: string }): Promise<string | void> {
+  try {
+    const r = await publicoApi.denunciar(rota!.tipo === 'r' ? { token: rota!.chave } : { codigo: rota!.chave }, d)
+    return r && typeof r === 'object' && typeof r.mensagem === 'string' ? r.mensagem : undefined
+  } catch (e) {
+    throw {
+      mensagem:
+        e instanceof ApiError ? (e.status === 0 ? 'Sem conexão no momento. Confira sua internet e tente de novo.' : e.mensagem) : undefined,
+    }
+  }
+}
+
 onMounted(carregar)
 </script>
 
@@ -140,6 +153,7 @@ onMounted(carregar)
       :enviar="enviar"
       :indicar="rota?.tipo === 'r' ? indicar : undefined"
       :autorizar-depoimento="rota?.tipo === 'r' ? autorizarDepoimento : undefined"
+      :denunciar="denunciar"
     />
 
     <section v-else class="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 py-16 text-center">

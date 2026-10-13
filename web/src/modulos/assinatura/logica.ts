@@ -10,6 +10,7 @@ import type {
   EstadoAssinatura,
   FaturaAberta,
   PlanoAssinatura,
+  ResumoGratis,
   TabelaPersonalizado,
 } from '@/api/tipos'
 import {
@@ -31,6 +32,7 @@ import { somarDias } from '@/utils/periodo'
 import type { Tom } from '@/utils/rotulos'
 import { apenasDigitos, emailValido, normalizarDocumento } from '@/utils/validacao'
 import { MENSAGENS, documentoValido, erroTelefone, telefoneDoCampo } from '@/modulos/configuracoes/empresa'
+import { textoDaPassagem } from './gratis'
 
 // ── Datas ───────────────────────────────────────────────────────────────────
 
@@ -148,15 +150,18 @@ export function resumoPrimeiraFatura(
   const porque = motivo === 'teste' ? ', no fim do teste' : motivo === 'pago' ? ', no dia seguinte ao fim do período já pago' : ''
   return {
     texto: `Primeira fatura de ${valor} com vencimento ${quando}${porque}. Ela cobre de ${textoPeriodo(data, false, ciclo)}. ${textoDepois(data, ciclo)}`,
-    // Sem teste nem período pago, os envios estão parados até o pagamento.
-    envios: motivo === 'amanha' ? `Os envios voltam assim que o pagamento for confirmado: ${TEMPO_CONFIRMACAO}.` : null,
+    // Sem teste nem período pago (Plano Grátis): o plano começa no pagamento; até lá, a conta segue no Grátis.
+    envios:
+      motivo === 'amanha'
+        ? `O plano começa assim que o pagamento for confirmado (${TEMPO_CONFIRMACAO}); até lá, a conta segue no Grátis.`
+        : null,
     vencimento: data,
   }
 }
 
 // ── Aviso do topo das telas (conta.cobranca.aviso) ──────────────────────────
 
-export type AcaoAviso = 'escolher' | 'pagar' | 'ver'
+export type AcaoAviso = 'escolher' | 'pagar' | 'ver' | 'planos'
 
 export interface TextoAviso {
   texto: string
@@ -170,14 +175,19 @@ export const ROTULOS_ACAO_AVISO: Record<AcaoAviso, string> = {
   escolher: 'Escolher plano',
   pagar: 'Pagar agora',
   ver: 'Ver assinatura',
+  planos: 'Ver planos',
 }
 
 export const FALE_COM_ADMIN = 'Fale com o administrador da conta.'
 
-/** Texto, cor e botão do aviso. `cobranca` completa o atraso (o vencimento da fatura) e diz se os envios seguem. */
+/**
+ * Texto, cor e botão do aviso. `cobranca` completa o atraso (o vencimento da fatura) e diz se os envios seguem;
+ * `gratis` (o resumo do Plano Grátis da conta) põe os limites dele no aviso da passagem.
+ */
 export function textoDoAviso(
   aviso: AvisoCobranca | null | undefined,
   cobranca?: Partial<Pick<CobrancaConta, 'atrasada_desde' | 'liberada'>> | null,
+  gratis?: ResumoGratis | null,
 ): TextoAviso | null {
   if (!aviso) return null
   const dia = (d: string | null | undefined) => (d ? formatarDiaMes(d) : null)
@@ -189,7 +199,24 @@ export function textoDoAviso(
       return { texto: `Seu teste grátis termina ${quando}.`, tom: typeof d === 'number' && d <= 1 ? 'atencao' : 'info', acao: 'escolher', dispensavel: true }
     }
     case 'teste_expirado':
-      return { texto: 'Seu teste grátis terminou. Os envios estão pausados; seus dados continuam guardados.', tom: 'atencao', acao: 'escolher', dispensavel: false }
+      // Plano Grátis: só até a tarefa passar a conta para o Grátis (minutos).
+      return { texto: 'Seu teste grátis terminou. A conta passa para o plano Grátis em instantes.', tom: 'info', acao: 'escolher', dispensavel: false }
+    case 'gratis':
+      return { texto: textoDaPassagem(aviso.motivo, gratis), tom: 'info', acao: 'planos', dispensavel: true }
+    case 'gratis_aguardando': {
+      // Assinou saindo do Grátis: o plano começa no pagamento da primeira fatura; até lá, a conta segue no Grátis.
+      const d = aviso.dias
+      if (typeof d === 'number' && d < 0) {
+        return {
+          texto: `A primeira fatura venceu${dia(aviso.data) ? ` em ${dia(aviso.data)}` : ''}. O plano começa quando ela for paga; até lá, a conta segue no Grátis.`,
+          tom: 'atencao',
+          acao: 'pagar',
+          dispensavel: false,
+        }
+      }
+      const quando = d === 0 ? 'hoje' : d === 1 ? 'amanhã' : dia(aviso.data) ? `em ${dia(aviso.data)}` : 'em breve'
+      return { texto: `O plano assinado começa quando a primeira fatura for paga. Ela vence ${quando}.`, tom: 'info', acao: 'pagar', dispensavel: true }
+    }
     case 'atrasada': {
       const venceu = dia(cobranca?.atrasada_desde)
       const param = dia(aviso.data)
@@ -220,9 +247,10 @@ export function textoDoAviso(
       return { texto: `A primeira fatura da assinatura vence ${quando}.`, tom: typeof d === 'number' && d <= 1 ? 'atencao' : 'info', acao: 'pagar', dispensavel: true }
     }
     case 'cancelada_encerrada':
+      // Plano Grátis: só até a tarefa passar a conta para o Grátis (minutos).
       return {
-        texto: 'Assinatura cancelada e o período pago terminou. Os envios estão pausados; seus dados continuam guardados.',
-        tom: 'atencao',
+        texto: 'Assinatura cancelada e o período pago terminou. A conta passa para o plano Grátis em instantes.',
+        tom: 'info',
         acao: 'escolher',
         dispensavel: false,
       }
@@ -278,7 +306,16 @@ export function situacaoNaTela(e: Pick<EstadoAssinatura, 'conta' | 'assinatura'>
         descricao: `${ultimo ? `O teste vai até ${formatarData(ultimo)}. ` : ''}A primeira fatura vence em ${formatarData(a.primeiro_vencimento)}.`,
       }
     }
-    // Assinou sem teste valendo e sem período pago (teste_expirado ou cancelada): espera a primeira fatura.
+    if (c.situacao === 'gratis') {
+      // Plano Grátis: assinou e a primeira fatura ainda não foi paga; até lá, a conta segue no Grátis.
+      return {
+        rotulo: 'Aguardando pagamento',
+        tom: 'atencao',
+        titulo: 'Aguardando o pagamento',
+        descricao: `O plano começa assim que a primeira fatura for paga (${TEMPO_CONFIRMACAO}); até lá, a conta segue no Grátis.`,
+      }
+    }
+    // Assinou e o teste ou o período pago acabou antes de a tarefa passar a conta para o Grátis: espera a fatura.
     return {
       rotulo: 'Aguardando pagamento',
       tom: 'atencao',
@@ -286,7 +323,16 @@ export function situacaoNaTela(e: Pick<EstadoAssinatura, 'conta' | 'assinatura'>
       descricao: `Os envios voltam assim que a primeira fatura for paga: ${TEMPO_CONFIRMACAO}.`,
     }
   }
-  // Teste que já acabou e a API ainda não marcou (a tarefa passa de hora em hora): mostra como encerrado.
+  if (c.situacao === 'gratis') {
+    return {
+      rotulo: 'Grátis',
+      tom: 'neutro',
+      titulo: 'Plano Grátis',
+      descricao: 'Os contatos, as respostas e os formulários continuam aqui. Assine quando quiser para enviar sem os limites.',
+    }
+  }
+  // Teste que já acabou e a API ainda não marcou (a tarefa passa a cada meia hora): mostra como encerrado.
+  // (`teste_expirado`: dado de antes do Plano Grátis, que a migração já converteu; aparece igual.)
   const testeAcabou = c.situacao === 'teste_expirado' || (c.situacao === 'teste' && !!c.teste_ate && !testeValendo(c.teste_ate, agora))
   if (c.situacao === 'teste' && !testeAcabou) {
     const dias = ultimo ? Math.round((Date.parse(`${ultimo}T12:00:00Z`) - Date.parse(`${hoje}T12:00:00Z`)) / 86_400_000) : null
@@ -301,15 +347,15 @@ export function situacaoNaTela(e: Pick<EstadoAssinatura, 'conta' | 'assinatura'>
   if (testeAcabou) {
     return {
       rotulo: 'Teste encerrado',
-      tom: 'atencao',
+      tom: 'info',
       titulo: ultimo ? `Seu teste grátis terminou em ${formatarData(ultimo)}` : 'Seu teste grátis terminou',
-      descricao: 'Os envios estão pausados; seus dados continuam guardados. Escolha um plano para voltar a enviar.',
+      descricao: 'A conta passa para o plano Grátis em instantes. Para continuar sem os limites dele, escolha um plano.',
     }
   }
   if (c.situacao === 'cancelada') {
     return c.liberada && c.pago_ate
-      ? { rotulo: 'Cancelada', tom: 'neutro', titulo: 'Assinatura cancelada', descricao: `Você usa até ${formatarData(c.pago_ate)}. Para continuar depois disso, escolha um plano.` }
-      : { rotulo: 'Cancelada', tom: 'neutro', titulo: 'Assinatura cancelada', descricao: 'O período pago terminou e os envios estão pausados; seus dados continuam guardados.' }
+      ? { rotulo: 'Cancelada', tom: 'neutro', titulo: 'Assinatura cancelada', descricao: `Você usa até ${formatarData(c.pago_ate)}. Depois disso, a conta passa para o plano Grátis.` }
+      : { rotulo: 'Cancelada', tom: 'neutro', titulo: 'Assinatura cancelada', descricao: 'O período pago terminou. A conta passa para o plano Grátis em instantes.' }
   }
   return { rotulo: c.situacao, tom: 'neutro', titulo: 'Assinatura', descricao: '' }
 }
@@ -550,9 +596,9 @@ export function mensagemCancelamento(
   const hoje = diaEmSaoPaulo(agora)
   const ultimo = ultimoDiaDoTeste(c.teste_ate)
   let uso: string
-  if (c.pago_ate && c.pago_ate >= hoje) uso = `Você continua usando até ${formatarData(c.pago_ate)}. Sem multa e sem devolução.`
+  if (c.pago_ate && c.pago_ate >= hoje) uso = `Você continua usando até ${formatarData(c.pago_ate)}; depois, a conta passa para o plano Grátis. Sem multa e sem devolução.`
   else if (c.situacao === 'teste' && ultimo && testeValendo(c.teste_ate, agora)) uso = `Você volta para o teste grátis, que vai até ${formatarData(ultimo)}. Sem multa.`
-  else uso = 'Os envios ficam pausados até você assinar de novo; seus dados continuam guardados. Sem multa.'
+  else uso = 'A conta segue no plano Grátis, com os dados guardados. Sem multa.'
   const abertas = faturasEmAberto(e).length
   if (!abertas) return uso
   return abertas === 1 ? `${uso} A fatura em aberto é cancelada no Asaas.` : `${uso} As ${abertas} faturas em aberto são canceladas no Asaas.`
@@ -660,9 +706,19 @@ export interface SeloTeste {
 
 /**
  * Selo do topo enquanto a conta está em teste. Quem cuida da assinatura clica e vai à tela de Assinatura, com o convite
- * "Escolher plano" até assinar; os outros só leem.
+ * "Escolher plano" até assinar; os outros só leem. Plano Grátis: "Plano Grátis", com "Ver planos" até assinar.
  */
 export function seloDoTeste(conta: ContaTeste | null | undefined, podeGerenciar: boolean, agora: Date = new Date()): SeloTeste | null {
+  if (conta?.situacao === 'gratis') {
+    const assinou = !!conta.cobranca?.assinada
+    return {
+      texto: 'Plano Grátis',
+      curto: 'Grátis',
+      titulo: assinou ? 'Plano Grátis até a primeira fatura ser paga' : 'Sua conta está no plano Grátis',
+      link: podeGerenciar,
+      convite: podeGerenciar && !assinou ? 'Ver planos' : null,
+    }
+  }
   if (!conta || conta.situacao !== 'teste' || !conta.teste_ate) return null
   const ultimo = ultimoDiaDoTeste(conta.teste_ate)
   if (!ultimo) return null

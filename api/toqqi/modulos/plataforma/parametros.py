@@ -12,9 +12,11 @@ Rotas (`requer_superadmin`):
   que diminui: contatos → contas do plano (não cortesia) com mais ativos que o novo limite (`uso` = ativos); cota, teto
   e franquia → contas a que o valor se aplica (`cota.chave_do_limite`, `regras.chave_do_teto`,
   `franquia.plano_da_franquia`) que já usaram o novo valor ou mais no mês (`uso` = usado); análises de um nível que
-  aumentam → contas com o nível (equilibrado: também o desconhecido; `uso` 0). `exemplos`: até 5, de maior uso.
-  `precisa_confirmar`: preço mudou; limite de contatos, cota, teto ou franquia diminuiu; análises aumentaram; ou a
-  exclusão automática foi a `ligada`.
+  aumentam → contas com o nível (equilibrado: também o desconhecido; `uso` 0); Plano Grátis (grupo `gratis`):
+  contatos → contas Grátis com mais ativos que o novo limite, envios do mês (ou do dia) → contas Grátis que já
+  enviaram o novo valor ou mais no mês (no dia), usuários → contas Grátis com mais usuários ativos. `exemplos`: até 5,
+  de maior uso. `precisa_confirmar`: preço mudou; limite de contatos, cota, teto ou franquia diminuiu; algum número do
+  Grátis diminuiu; análises aumentaram; ou a exclusão automática foi a `ligada`.
 - PUT /plataforma/parametros/{grupo} {versao, valores, confirmar} → o grupo (como no GET) e, em `ia`, `testados`:
   (1) valida (422; grupo desconhecido → 404); (2) nada mudou → 200 sem gravar; (3) `precisa_confirmar` sem
   `confirmar: true` → 409 `confirmacao_necessaria`; (4) em `ia`, testa cada nível com modelo ou esforço mudado
@@ -27,7 +29,8 @@ Rotas (`requer_superadmin`):
 - GET /plataforma/parametros/historico?grupo=&pagina=&por_pagina= → página de {id, criado_em, grupo, por, mudancas},
   mais novos primeiro (`por_pagina` 20, até 100).
 Público (sem login, 60/min por IP, `Cache-Control: public, max-age=60`):
-- GET /publico/planos → {planos: [{chave, nome, preco, contatos, whatsapp, ia_cota, ia_teto}], teste: {dias, plano,
+- GET /publico/planos → {planos: [{chave, nome, preco, contatos, whatsapp, ia_cota, ia_teto}], gratis: {contatos,
+  envios_mes, usuarios, ia_cota} (Plano Grátis), teste: {dias, plano,
   whatsapp, ia_teto}, ia_analises: {rapido, equilibrado, detalhado}} (do cache; sem modelos nem o modo da exclusão).
 """
 import logging
@@ -41,14 +44,14 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from toqqi.core import ia, ia_texto, parametros
+from toqqi.core import ia, ia_texto, parametros, relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.db import apos_commit, modo_sistema, travar
 from toqqi.core.deps import Contexto, requer_superadmin
 from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.planos import PLANOS, descontos_json, personalizado_json
 from toqqi.core.rate_limit import LIMITE_PLANOS_PUBLICOS, limiter
-from toqqi.modelos import Conta, Contato, IaUsoMensal, Parametro, ParametroHistorico, WhatsappUso
+from toqqi.modelos import Conta, Contato, EnvioUso, IaUsoMensal, Parametro, ParametroHistorico, Usuario, WhatsappUso
 from toqqi.modulos.ia import cota, regras
 from toqqi.modulos.whatsapp import franquia
 
@@ -143,6 +146,8 @@ def _familia(chave: str) -> str | None:
             return prefixo.rstrip(".")
     if chave == "teste.exclusao_automatica":
         return "exclusao"
+    if chave.startswith("gratis."):
+        return "gratis"
     return None
 
 
@@ -151,7 +156,7 @@ def _pede_confirmacao(m: tuple[str, Any, Any]) -> bool:
     familia = _familia(chave)
     if familia == "preco":
         return True
-    if familia in ("contatos", "ia.cota", "ia.teto", "whatsapp.franquia"):
+    if familia in ("contatos", "ia.cota", "ia.teto", "whatsapp.franquia", "gratis"):
         return _diminuiu(chave, de, para)
     if familia == "ia.analises":
         return para > de
@@ -194,6 +199,30 @@ def _impacto_franquia(s: Session, chave: str, novo: int) -> dict:
                       if f"whatsapp.franquia.{franquia.plano_da_franquia(c)}" == chave])
 
 
+def _impacto_gratis(s: Session, chave: str, novo: int) -> dict | None:
+    """Contas Grátis acima do novo número (contatos ativos, envios do mês ou do dia, usuários ativos)."""
+    no_gratis = Conta.situacao == "gratis"
+    if chave == "gratis.contatos":
+        ativos = (select(Contato.conta_id, func.count().label("n")).where(Contato.ativo.is_(True))
+                  .group_by(Contato.conta_id).subquery())
+        linhas = s.execute(select(Conta.id, Conta.nome, ativos.c.n).join(ativos, ativos.c.conta_id == Conta.id)
+                           .where(no_gratis, ativos.c.n > novo)).all()
+    elif chave in ("gratis.envios_mes", "gratis.envios_dia"):
+        hoje = relogio.hoje()
+        coluna = EnvioUso.emails if chave == "gratis.envios_mes" else EnvioUso.emails_dia
+        filtro = [EnvioUso.mes == hoje.replace(day=1)] + ([EnvioUso.dia == hoje] if chave == "gratis.envios_dia" else [])
+        linhas = s.execute(select(Conta.id, Conta.nome, coluna).join(EnvioUso, EnvioUso.conta_id == Conta.id)
+                           .where(no_gratis, coluna >= novo, *filtro)).all()
+    elif chave == "gratis.usuarios":
+        ativos = (select(Usuario.conta_id, func.count().label("n")).where(Usuario.situacao == "ativo")
+                  .group_by(Usuario.conta_id).subquery())
+        linhas = s.execute(select(Conta.id, Conta.nome, ativos.c.n).join(ativos, ativos.c.conta_id == Conta.id)
+                           .where(no_gratis, ativos.c.n > novo)).all()
+    else:
+        return None
+    return _exemplos([tuple(x) for x in linhas])
+
+
 def _impacto_analises(s: Session, nivel: str) -> dict:
     if nivel == ia_texto.NIVEL_PADRAO:
         filtro = Conta.ia_modelo.is_(None) | Conta.ia_modelo.notin_([n for n in ia_texto.NIVEIS if n != nivel])
@@ -217,6 +246,10 @@ def _impacto(s: Session, m: tuple[str, Any, Any]) -> dict | None:
         dados = _impacto_ia(s, chave, para, IaUsoMensal.analises, regras.chave_do_teto)
     elif familia == "whatsapp.franquia":
         dados = _impacto_franquia(s, chave, para)
+    elif familia == "gratis":
+        dados = _impacto_gratis(s, chave, para)
+        if dados is None:
+            return None  # prazos: pedem confirmação, sem impacto de contas
     else:  # ia.analises
         dados = _impacto_analises(s, ultimo)
     return {"chave": chave, **dados}
@@ -356,6 +389,9 @@ def planos_publicos() -> dict:
         "ia_analises": {n: v(f"ia.analises.{n}") for n in ia_texto.NIVEIS},
         "descontos": descontos_json(),
         "personalizado": {**personalizado_json(), "whatsapp": v("whatsapp.franquia.personalizado")},
+        # Plano Grátis: onde a conta fica depois do teste, se não assinar (site e cadastro)
+        "gratis": {"contatos": v("gratis.contatos"), "envios_mes": v("gratis.envios_mes"),
+                   "usuarios": v("gratis.usuarios"), "ia_cota": v("ia.cota.gratis")},
     }
 
 

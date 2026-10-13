@@ -29,8 +29,10 @@ from toqqi.modulos.envios.descadastro import telefone_sql
 from toqqi.modulos.integracoes import pesquisas
 from toqqi.modulos.integracoes.chave import ContextoIntegracao
 from toqqi.modulos.integracoes.esquemas import EmpresaEventoIn, PesquisaIn
+from toqqi.modulos.assinatura import gratis
 
 PROVEDOR = "rdstation_crm"
+RECURSO = "O conector do RD Station CRM"
 MAX_EMPRESAS = 2000
 MAX_CONTATOS = 5000
 MAX_CONTATOS_NEGOCIO = 5
@@ -66,6 +68,7 @@ def ver(ctx: Contexto) -> dict:
 
 
 def conectar(ctx: Contexto, token: str, pesquisar_ao_ganhar: bool) -> dict:
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
     token = token.strip()
     try:
         rdstation.conferir_token(token)
@@ -100,6 +103,7 @@ def conectar(ctx: Contexto, token: str, pesquisar_ao_ganhar: bool) -> dict:
 
 def alterar(ctx: Contexto, pesquisar_ao_ganhar: bool) -> dict:
     """Liga ou desliga a pesquisa no negócio ganho (cadastra ou remove o aviso no RD)."""
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
     with em_conta(ctx.conta_id) as s:
         c = _obter(s)
         if c is None:
@@ -134,6 +138,7 @@ def _texto(v, limite: int) -> str | None:
 
 
 def sincronizar(ctx: Contexto) -> dict:
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
     with em_conta(ctx.conta_id) as s:
         c = _obter(s)
         if c is None:
@@ -297,6 +302,7 @@ def devolver_notas() -> dict:
             select(Convite.id, Convite.conta_id, Convite.origem_externa, Conector.token_cifrado, Resposta.nota,
                    Resposta.tipo_nota, Resposta.grupo, Resposta.comentario_cliente, Contato.nome)
             .join(Conector, (Conector.conta_id == Convite.conta_id) & (Conector.provedor == "rdstation_crm"))
+            .join(Conta, (Conta.id == Convite.conta_id) & (Conta.situacao != "gratis"))  # Plano Grátis: desligado
             .join(Resposta, Resposta.convite_id == Convite.id)
             .outerjoin(Contato, Contato.id == Resposta.contato_id)
             .where(Convite.origem_externa.like("rd:%"), Convite.devolvida_em.is_(None),

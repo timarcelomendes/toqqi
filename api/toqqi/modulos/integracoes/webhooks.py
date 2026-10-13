@@ -8,6 +8,9 @@ público conferido (core.rede, sem redirecionamento, timeout 10 s) e grava o res
 Exclusão a pedido da pessoa (LGPD) de um registro que foi para os webhooks (`esquecer_entregas`, ex.: uma indicação):
 as entregas pendentes somem (não saem mais) e as que já terminaram ficam no histórico com o corpo sem os dados.
 
+Plano Grátis: nenhum evento entra na fila (os webhooks ficam guardados e voltam ao assinar) e criar, ligar ou testar
+devolve 403 `recurso_do_plano`; as entregas que já estavam na fila seguem.
+
 Auditoria do cadastro (etapa 5f): `webhook_criado` `{webhook_id, url, campos}`, `webhook_alterado` `{webhook_id,
 campos}` (só os campos que mudaram; novo segredo = `segredo`) e `webhook_excluido` (atenção) `{webhook_id, url}`.
 """
@@ -38,6 +41,7 @@ from toqqi.core.segredos import cifrar, decifrar
 from toqqi.modelos import Contato, Conta, Convite, Empresa, Formulario, Resposta, Webhook, WebhookEntrega
 from toqqi.modulos.formularios.servico import resposta_json
 from toqqi.modulos.respostas.eventos import GANCHOS, GANCHOS_EDICAO
+from toqqi.modulos.assinatura import gratis
 
 log = logging.getLogger("toqqi.webhooks")
 
@@ -52,6 +56,7 @@ DIAS_ENTREGAS = 30
 POR_PAGINA_ENTREGAS = 50
 
 MSG_DESATIVADO = f"O webhook foi desativado depois de {MAX_FALHAS_SEGUIDAS} falhas seguidas."
+RECURSO = "Os webhooks"
 
 
 # ---- segredo e assinatura ---------------------------------------------------
@@ -122,7 +127,7 @@ def enfileirar(s: Session, evento: str, dados: dict) -> None:
     """Uma entrega por webhook ativo da conta (da transação) inscrito no evento."""
     assert evento in EVENTOS
     ids = s.scalars(select(Webhook.id).where(Webhook.ativo.is_(True), Webhook.eventos.any(evento))).all()
-    if not ids:
+    if not ids or s.scalar(select(Conta.situacao)) == gratis.GRATIS:  # Plano Grátis: desligados (voltam ao assinar)
         return
     conta = _conta_json(s)
     agora = relogio.agora()
@@ -306,6 +311,7 @@ def listar(ctx: Contexto) -> list[dict]:
 
 
 def criar(ctx: Contexto, dados) -> dict:
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
     url = _conferir_url(dados.url)
     segredo = novo_segredo()
     with em_conta(ctx.conta_id) as s:
@@ -323,6 +329,8 @@ def criar(ctx: Contexto, dados) -> dict:
 
 def alterar(ctx: Contexto, webhook_id: int, dados) -> dict:
     novos = {c: getattr(dados, c) for c in dados.model_fields_set if getattr(dados, c) is not None}
+    if novos.get("ativo"):
+        gratis.exigir_recurso_ctx(ctx, RECURSO)
     if "url" in novos:
         novos["url"] = _conferir_url(novos["url"])
     with em_conta(ctx.conta_id) as s:
@@ -358,6 +366,7 @@ def trocar_segredo(ctx: Contexto, webhook_id: int) -> dict:
 
 def testar(ctx: Contexto, webhook_id: int) -> dict:
     """POST de teste (evento "teste"), na hora; não entra na fila nem conta como falha."""
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
     with em_conta(ctx.conta_id) as s:
         w = _webhook(s, webhook_id)
         url, segredo = w.url, decifrar(w.segredo_cifrado)

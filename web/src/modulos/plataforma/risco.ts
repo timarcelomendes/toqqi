@@ -64,6 +64,8 @@ export function textoSinal(s: SinalRisco): string {
       return s.quantas === 1
         ? `Pagamento estornado em ${formatarData(s.ultima_em)}`
         : `${formatarNumero(s.quantas)} pagamentos estornados (último em ${formatarData(s.ultima_em)})`
+    case 'denuncias':
+      return `Pesquisa denunciada por ${plural(s.pessoas, 'pessoa', 'pessoas')} em 30 dias${s.denuncias > s.pessoas ? ` (${plural(s.denuncias, 'denúncia', 'denúncias')})` : ''}`
   }
 }
 
@@ -72,9 +74,9 @@ export function detalheSinal(s: SinalRisco): string | null {
   return s.tipo === 'formulario_sensivel' ? `“${s.trecho}”` : null
 }
 
-/** Médio ou alto: entra em "Suspeitas". */
+/** Médio ou alto (ou, no Plano Grátis, com os envios pausados pela nota): entra em "Suspeitas". */
 export function suspeita(c: ContaPlataforma): boolean {
-  return !!c.risco && c.risco.nivel !== 'baixo'
+  return !!c.envios_pausados || (!!c.risco && c.risco.nivel !== 'baixo')
 }
 
 /** As suspeitas, da maior nota para a menor (empate: a mais nova primeiro, a ordem da lista). */
@@ -82,6 +84,6 @@ export function suspeitas(contas: ContaPlataforma[]): ContaPlataforma[] {
   return contas
     .map((c, i) => ({ c, i }))
     .filter(({ c }) => suspeita(c))
-    .sort((a, b) => b.c.risco!.pontos - a.c.risco!.pontos || a.i - b.i)
+    .sort((a, b) => (b.c.risco?.pontos ?? 0) - (a.c.risco?.pontos ?? 0) || a.i - b.i)
     .map(({ c }) => c)
 }

@@ -5,8 +5,13 @@
 // A leitura pública tem cache (até 60 s no navegador e 30 s na API): sem o gravado, o número ficaria o de antes de salvar.
 // Risco (docs/api-plataforma-risco.md): coluna com o nível, a nota e os motivos a partir de 1024 px (antes disso, o mesmo
 // embaixo do nome); "Suspeitas" mostra só as de risco médio ou alto, da maior nota para a menor.
-import { computed, onMounted, ref } from 'vue'
-import { Building2, CalendarPlus, Gift, Plus, Search, ShieldAlert, Trash2 } from 'lucide-vue-next'
+// Plano Grátis (docs/api-plano-gratis.md): a situação "Grátis"; a conta Grátis pausada pela nota de risco ganha o selo
+// "Envios pausados" (e entra em "Suspeitas") e o botão "Liberar envios". `?suspeitas=1` (o link do e-mail à equipe)
+// já abre com o filtro ligado; `?busca=` (o nome da conta, vindo de uma denúncia em Plataforma › Feedback) já abre
+// buscando. "+N dias" numa conta Grátis dá um teste novo.
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { Building2, CalendarPlus, Gift, Plus, Search, ShieldAlert, ShieldCheck, Trash2 } from 'lucide-vue-next'
 import { mensagemDoErro, plataformaApi, type ContaPlataforma } from '@/api'
 import { avisar } from '@/composables/avisos'
 import { confirmar } from '@/composables/confirmacao'
@@ -34,8 +39,18 @@ const props = defineProps<{ diasGravados?: number | null }>()
 const contas = ref<ContaPlataforma[]>([])
 const carregando = ref(true)
 const erro = ref<string | null>(null)
-const busca = ref('')
-const soSuspeitas = ref(false)
+// Sem roteador (a aba montada sozinha), sem os filtros do endereço.
+const rota = useRoute() as ReturnType<typeof useRoute> | undefined
+const busca = ref(typeof rota?.query.busca === 'string' ? rota.query.busca : '')
+const soSuspeitas = ref(rota?.query.suspeitas === '1')
+// A aba fica montada: um link novo (outra denúncia, o e-mail da equipe) troca a busca ou liga o filtro.
+watch(
+  () => [rota?.query.busca, rota?.query.suspeitas],
+  ([b, s]) => {
+    if (typeof b === 'string') busca.value = b
+    if (s === '1') soSuspeitas.value = true
+  },
+)
 const ocupado = ref<string | null>(null)
 const modalAberto = ref(false)
 const sessao = useSessaoStore()
@@ -72,8 +87,12 @@ const colunas: Coluna[] = [
   { chave: 'acoes', rotulo: 'Ações', rotuloOculto: true, alinhar: 'direita' },
 ]
 
-/** "Profissional · R$ 349,00/mês" (etapa 5a); sem assinatura, o plano da conta (o do teste). */
+/**
+ * "Profissional · R$ 349,00/mês" (etapa 5a); sem assinatura, o plano da conta (o do teste). No Grátis: "Plano Grátis"
+ * (assinou e ainda não pagou: "Plano Grátis até pagar o Essencial").
+ */
 function textoAssinatura(c: ContaPlataforma): string {
+  if (c.situacao === 'gratis') return c.assinatura ? `Plano Grátis até pagar o ${nomeDoPlano(c.assinatura.plano)}` : 'Plano Grátis'
   if (c.assinatura) return `${nomeDoPlano(c.assinatura.plano)} · ${formatarMoeda(c.assinatura.valor)}/mês`
   return c.plano ? `Sem assinatura (plano ${nomeDoPlano(c.plano)})` : 'Sem assinatura'
 }
@@ -154,6 +173,27 @@ async function estender(c: ContaPlataforma) {
   }
 }
 
+/** Plano Grátis: a equipe conferiu a conta pausada pela nota de risco e libera os envios. */
+async function liberar(c: ContaPlataforma) {
+  const ok = await confirmar({
+    titulo: `Liberar os envios de ${c.nome}?`,
+    mensagem:
+      'Libere depois de conferir a conta (os motivos estão na coluna Risco). Se a nota subir acima da de agora, os envios param de novo.',
+    confirmar: 'Liberar envios',
+    cancelar: 'Voltar',
+  })
+  if (!ok) return
+  ocupado.value = `liberar-${c.id}`
+  try {
+    substituir(await plataformaApi.liberarEnvios(c.id))
+    avisar.sucesso(`Os envios de ${c.nome} foram liberados.`)
+  } catch (e) {
+    avisar.erro(mensagemDoErro(e))
+  } finally {
+    ocupado.value = null
+  }
+}
+
 async function cortesia(c: ContaPlataforma) {
   const ok = await confirmar({
     titulo: `Dar cortesia para ${c.nome}?`,
@@ -219,6 +259,7 @@ onMounted(carregar)
           <p class="mt-1 text-texto-suave sm:hidden">{{ textoAssinatura(c) }}</p>
           <div class="mt-1 flex flex-wrap gap-1.5 sm:hidden">
             <Etiqueta :tom="situacaoConta(c.situacao).tom">{{ situacaoConta(c.situacao).rotulo }}</Etiqueta>
+            <Etiqueta v-if="c.envios_pausados" tom="erro" data-envios-pausados>Envios pausados</Etiqueta>
             <Etiqueta v-if="seloExclusao(c.exclusao_em)" tom="erro" data-selo-exclusao>{{ seloExclusao(c.exclusao_em) }}</Etiqueta>
           </div>
           <p v-if="c.teste_ate || c.pago_ate" class="mt-1 text-xs text-texto-fraco sm:hidden">{{ textoDatas(c) }}</p>
@@ -231,7 +272,9 @@ onMounted(carregar)
         <template #cel-situacao="{ linha: c }">
           <div class="flex flex-col items-start gap-1">
             <Etiqueta :tom="situacaoConta(c.situacao).tom">{{ situacaoConta(c.situacao).rotulo }}</Etiqueta>
-            <!-- Etapa 5f: conta encerrada com a exclusão automática já avisada -->
+            <!-- Plano Grátis: a nota de risco pausou os envios até a equipe liberar -->
+            <Etiqueta v-if="c.envios_pausados" tom="erro" data-envios-pausados>Envios pausados</Etiqueta>
+            <!-- Etapa 5f (desde o Grátis, a conta Grátis parada): a exclusão automática já avisada -->
             <Etiqueta v-if="seloExclusao(c.exclusao_em)" tom="erro" data-selo-exclusao>{{ seloExclusao(c.exclusao_em) }}</Etiqueta>
           </div>
           <p v-if="c.atrasada_desde" class="mt-1 whitespace-nowrap text-xs text-texto-fraco">Vencida em {{ formatarData(c.atrasada_desde) }}</p>
@@ -245,6 +288,7 @@ onMounted(carregar)
             <p class="text-texto">{{ nomeDoPlano(c.assinatura.plano) }}</p>
             <p class="whitespace-nowrap text-xs text-texto-fraco">{{ formatarMoeda(c.assinatura.valor) }}/mês</p>
           </template>
+          <p v-else-if="c.situacao === 'gratis'" class="text-texto-suave">Plano Grátis</p>
           <template v-else>
             <p class="text-texto-fraco">Sem assinatura</p>
             <p v-if="c.plano" class="whitespace-nowrap text-xs text-texto-fraco">Plano {{ nomeDoPlano(c.plano) }}</p>
@@ -258,6 +302,16 @@ onMounted(carregar)
         </template>
         <template #cel-acoes="{ linha: c }">
           <div class="flex flex-wrap justify-end gap-1.5">
+            <Botao
+              v-if="c.envios_pausados"
+              tamanho="sm"
+              :carregando="ocupado === `liberar-${c.id}`"
+              :desabilitado="!!ocupado"
+              data-liberar-envios
+              @click="liberar(c)"
+            >
+              <ShieldCheck class="size-4" aria-hidden="true" /> Liberar envios<span class="sr-only"> de {{ c.nome }}</span>
+            </Botao>
             <Botao
               variante="secundario"
               tamanho="sm"

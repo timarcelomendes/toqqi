@@ -231,12 +231,12 @@ describe('Termos de uso e Política de privacidade (versão 4)', () => {
     return s.blocos.map(textoBloco).join('\n')
   }
 
-  it('versão 8 (5f, 5g, na 5k planos e cobrança e, em 08/10, o Entrar com o Google), vigente desde 08/10/2026 (a tela de aceite mostra essa data)', () => {
-    expect(VERSAO_DOCUMENTOS).toBe(8)
-    expect(VIGENTE_DESDE).toBe('2026-10-08')
-    expect(textoVersao(VERSAO_DOCUMENTOS)).toBe('Versão 8 · vigente desde 08/10/2026')
+  it('versão 9 (5f, 5g, na 5k planos e cobrança, em 08/10 o Entrar com o Google e, em 13/10, o Plano Grátis), vigente desde 13/10/2026 (a tela de aceite mostra essa data)', () => {
+    expect(VERSAO_DOCUMENTOS).toBe(9)
+    expect(VIGENTE_DESDE).toBe('2026-10-13')
+    expect(textoVersao(VERSAO_DOCUMENTOS)).toBe('Versão 9 · vigente desde 13/10/2026')
     expect(textoAbertura({ versao_atual: 4, versao_aceita: 3, aceito_em: '2026-10-02T12:00:00Z', pendente: true })).toBe(
-      'Atualizamos os Termos de uso e a Política de privacidade em 08/10/2026.',
+      'Atualizamos os Termos de uso e a Política de privacidade em 13/10/2026.',
     )
   })
 
@@ -247,10 +247,13 @@ describe('Termos de uso e Política de privacidade (versão 4)', () => {
     expect(dados).toContain('data, hora e IP do envio da resposta ou de uma indicação')
   })
 
-  it('Política › Por quanto tempo guardamos: sem "[a confirmar]" de cancelamento, teste e acesso; 90 dias, aviso 7 dias antes, 6 meses', () => {
+  it('Política › Por quanto tempo guardamos: sem "[a confirmar]" de cancelamento, teste e acesso; Plano Grátis (v9): 180 dias sem uso, aviso 30 dias antes; 6 meses', () => {
     const retencao = secao(PRIVACIDADE, 'retencao')
-    expect(retencao).toContain('guardamos os dados por 90 dias')
-    expect(retencao).toContain('Avisamos os administradores por e-mail 7 dias antes da exclusão')
+    expect(retencao).not.toContain('guardamos os dados por 90 dias')
+    expect(retencao).toContain('a conta passa para o plano Grátis, com os dados guardados')
+    expect(retencao).toContain('Conta no plano Grátis sem uso: se ninguém entrar na conta por 180 dias')
+    expect(retencao).toContain('Avisamos os administradores por e-mail 30 dias antes, e entrar no Toqqi antes da data cancela a exclusão.')
+    expect(retencao).toContain('Denúncias de pesquisas: enquanto a conta denunciada existir.')
     expect(retencao).toContain('excluímos de forma definitiva e automática tudo o que é da conta, inclusive o registro de auditoria, o histórico de cobranças e os aceites dos termos')
     expect(retencao).toContain('por 6 meses (Marco Civil da Internet, art. 15), guardados à parte, mesmo depois de excluídos o usuário ou a conta')
     expect(retencao).toContain('Registro de auditoria e histórico de cobranças: enquanto a conta existir.')
@@ -270,15 +273,23 @@ describe('Termos de uso e Política de privacidade (versão 4)', () => {
     expect(secao(PRIVACIDADE, 'seus-direitos')).toContain('Configurações › Dados da conta')
   })
 
-  it('Termos: teste e "Fim do contrato" com as mesmas regras (90 dias, aviso 7 dias antes, exclusão automática, assinar cancela)', () => {
+  it('Termos (v9, Plano Grátis): o teste, o cancelamento e o atraso levam ao Grátis; "Fim do contrato" com a conta Grátis sem uso (180 dias, aviso 30 dias antes, entrar ou assinar cancela)', () => {
     const planos = secao(TERMOS, 'planos-e-pagamento')
-    expect(planos).toContain('Se a Empresa não assinar, os dados ficam guardados por 90 dias depois do fim do teste e então são excluídos, como no fim do contrato')
+    expect(planos).toContain('Se a Empresa não assinar até o fim dele, a conta passa para o plano Grátis, com os dados guardados.')
+    expect(planos).toContain('Plano Grátis: é onde fica a conta que termina o teste sem assinar')
+    expect(planos).toContain('Uso justo do plano Grátis:')
+    expect(planos).toContain('Conta Grátis sem uso: se ninguém entrar na conta no plano Grátis por 180 dias')
+    expect(planos).toContain('Mudanças no plano Grátis: podemos mudar os limites do plano Grátis ou deixar de oferecê-lo, avisando com pelo menos 30 dias de antecedência.')
+    expect(planos).toContain('Com 30 dias de atraso, a assinatura é cancelada e a conta passa para o plano Grátis.')
+    expect(planos).toContain('Depois, a conta passa para o plano Grátis.')
+    expect(planos).not.toContain('90 dias')
     const tratamento = secao(TERMOS, 'tratamento-de-dados')
-    expect(tratamento).toContain('a Empresa tem 90 dias para exportar os dados dela')
+    expect(tratamento).toContain('quando a conta no plano Grátis fica 180 dias sem ninguém entrar')
     expect(tratamento).toContain('Configurações › Dados da conta')
-    expect(tratamento).toContain('Avisamos os administradores por e-mail 7 dias antes da exclusão.')
-    expect(tratamento).toContain('excluímos de forma definitiva e automática todos os dados da conta')
-    expect(tratamento).toContain('Assinar um plano antes disso cancela a exclusão.')
+    expect(tratamento).toContain('avisamos os administradores por e-mail 30 dias antes')
+    expect(tratamento).toContain('apagamos de forma definitiva todos os dados da conta')
+    expect(tratamento).toContain('Entrar no Toqqi ou assinar um plano antes da data cancela a exclusão automática.')
+    expect(tratamento).not.toContain('90 dias')
     expect(tratamento).not.toContain('[a confirmar: prazo, sugerido 90 dias]')
     expect(tratamento).not.toContain('[a confirmar: como os dados são eliminados]')
   })

@@ -203,11 +203,12 @@ def test_so_a_propria_conta(client, conta):
     assert {x["E-mail"] for x in _linhas(planilhas["equipe.csv"])} == {"bia@beta.com.br"}
 
 
-def test_encerrada_exporta_e_gestor_nao(client, dono, conta):
+def test_conta_gratis_exporta_e_gestor_nao(client, dono, conta):
     g = membro(client, conta["h"], "gil@alfa.com.br", perfil="gestor")
     assert _baixar(client, g["h"]).status_code == 403
-    sql(dono, "update contas set situacao = 'teste_expirado', teste_ate = now() - interval '200 days' "
-              "where id = :c", c=conta["c"])
+    # Plano Grátis: o teste acabou há 200 dias e a conta segue no Grátis (antes, `teste_expirado`)
+    sql(dono, "update contas set situacao = 'gratis', gratis_desde = now() - interval '200 days', gratis_motivo = "
+              "'teste', teste_ate = now() - interval '200 days' where id = :c", c=conta["c"])
     assert _baixar(client, conta["h"]).status_code == 200
 
 

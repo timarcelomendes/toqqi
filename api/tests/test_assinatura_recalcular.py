@@ -30,13 +30,13 @@ CASOS = {
     "sem_assinatura_teste_valendo": (
         "2026-10-12", {"teste_ate": FIM_DO_TESTE}, None, [], ("teste", None, None), True),
     "sem_assinatura_teste_acabou": (
-        "2026-10-16", {"teste_ate": FIM_DO_TESTE}, None, [], ("teste_expirado", None, None), False),
+        "2026-10-16", {"teste_ate": FIM_DO_TESTE}, None, [], ("gratis", None, None), True),
     "cancelada_ja_pagou": (
         "2026-10-20", {"teste_ate": FIM_DO_TESTE}, None, [("2026-10-15", "paga", False)],
         ("cancelada", "2026-11-14", None), True),
-    "cancelada_periodo_acabou": (
+    "cancelada_periodo_acabou": (  # Plano Grátis: o período pago acabou, a conta passa para o Grátis
         "2026-11-15", {"teste_ate": FIM_DO_TESTE}, None, [("2026-10-15", "paga", False)],
-        ("cancelada", "2026-11-14", None), False),
+        ("gratis", "2026-11-14", None), True),
     "cancelou_no_teste_depois_de_pagar": (  # o período pago vale mais que o teste: cancelada
         "2026-10-12", {"teste_ate": FIM_DO_TESTE}, None, [("2026-10-15", "paga", False)],
         ("cancelada", "2026-11-14", None), True),
@@ -45,7 +45,7 @@ CASOS = {
         [("2026-10-15", "paga", False)], ("teste", "2026-11-14", None), True),
     "cancelada_teste_e_periodo_acabaram": (
         "2026-12-02", {"teste_ate": "2026-12-01 14:30-03", "situacao": "cancelada"}, None,
-        [("2026-10-15", "paga", False)], ("cancelada", "2026-11-14", None), False),
+        [("2026-10-15", "paga", False)], ("gratis", "2026-11-14", None), True),
     "assinou_no_teste_fatura_em_aberto": (
         "2026-10-12", {"teste_ate": FIM_DO_TESTE}, "2026-10-15", [("2026-10-15", "pendente", True)],
         ("teste", None, None), True),
@@ -76,13 +76,14 @@ CASOS = {
         [("2026-10-15", "estornada", True), ("2026-09-15", "removida", True)], ("teste", None, None), True),
     "estornada_depois_da_carencia": (
         "2026-10-23", {"teste_ate": FIM_DO_TESTE}, "2026-10-15",
-        [("2026-10-15", "estornada", True)], ("teste_expirado", None, None), False),
+        [("2026-10-15", "estornada", True)], ("gratis", None, None), True),
+    # Plano Grátis: quem assina sem teste valendo segue no Grátis (liberada, com os limites dele) até pagar
     "assinou_depois_do_teste_em_aberto": (
-        "2026-10-20", {"teste_ate": FIM_DO_TESTE, "situacao": "teste_expirado"}, "2026-10-21",
-        [("2026-10-21", "pendente", True)], ("teste_expirado", None, None), False),
+        "2026-10-20", {"teste_ate": FIM_DO_TESTE, "situacao": "gratis"}, "2026-10-21",
+        [("2026-10-21", "pendente", True)], ("gratis", None, None), True),
     "assinou_depois_do_teste_vencida_sem_carencia": (
-        "2026-10-22", {"teste_ate": FIM_DO_TESTE, "situacao": "teste_expirado"}, "2026-10-21",
-        [("2026-10-21", "vencida", True)], ("teste_expirado", None, "2026-10-21"), False),
+        "2026-10-22", {"teste_ate": FIM_DO_TESTE, "situacao": "gratis"}, "2026-10-21",
+        [("2026-10-21", "vencida", True)], ("gratis", None, "2026-10-21"), True),
     "assinou_de_novo_no_periodo_pago": (
         "2026-11-01", {"teste_ate": FIM_DO_TESTE, "pago_ate": "2026-11-14", "situacao": "cancelada"}, "2026-11-15",
         [("2026-11-15", "pendente", True)], ("ativa", "2026-11-14", None), True),
@@ -91,7 +92,7 @@ CASOS = {
         [("2026-11-15", "vencida", True)], ("atrasada", "2026-11-14", "2026-11-15"), True),
     "assinou_de_novo_depois_do_periodo_pago": (
         "2026-12-01", {"teste_ate": FIM_DO_TESTE, "pago_ate": "2026-11-14", "situacao": "cancelada"}, "2026-12-02",
-        [("2026-12-02", "pendente", True)], ("cancelada", "2026-11-14", None), False),
+        [("2026-12-02", "pendente", True)], ("gratis", "2026-11-14", None), True),
     "pago_ate_nunca_diminui": (
         "2026-12-20", {"teste_ate": FIM_DO_TESTE, "pago_ate": "2027-01-14", "situacao": "cancelada"}, None,
         [("2026-10-15", "paga", False)], ("cancelada", "2027-01-14", None), True),
@@ -195,7 +196,7 @@ def test_pagamento_de_outro_ambiente_nao_conta(client, dono, monkeypatch):
     _cobranca(dono, cid, "pay_1", "sub_sandbox", "2026-10-15", "paga")
     monkeypatch.setattr(config(), "ASAAS_API_KEY", CHAVE_ASAAS.replace("$aact_hmlg_", "$aact_prod_"))
     c = _recalcular(cid)
-    assert (c.situacao, c.pago_ate, c.primeiro_vencimento) == ("teste_expirado", None, None)
+    assert (c.situacao, c.pago_ate, c.primeiro_vencimento) == ("gratis", None, None)
     monkeypatch.setattr(config(), "ASAAS_API_KEY", CHAVE_ASAAS)  # de volta ao sandbox: ela existe de novo
     c = _recalcular(cid)
     assert (c.situacao, c.pago_ate, c.primeiro_vencimento) == ("ativa", date(2026, 11, 14), date(2026, 10, 15))

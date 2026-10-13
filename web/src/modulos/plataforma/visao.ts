@@ -1,6 +1,14 @@
 // Regras puras de Plataforma › Visão geral (etapa 5h, docs/api-etapa-5h.md §5): indicadores, textos dos testes
 // acabando, ativação, busca, filtro e ordem da tabela de contas.
-import type { AtivacaoConta, ContaVisao, ConversaoVisao, SituacaoVisao, TempoTeste, TotaisVisao } from '@/api/tipos'
+import type {
+  AtivacaoConta,
+  ContaVisao,
+  ConversaoVisao,
+  SituacaoVisao,
+  TempoTeste,
+  TotaisVisao,
+  VisaoPlataforma,
+} from '@/api/tipos'
 import { diasAte, formatarData, formatarDiaMes } from '@/utils/datas'
 import { formatarMoeda, formatarNumero, plural } from '@/utils/formatos'
 import { situacaoConta, type Tom } from '@/utils/rotulos'
@@ -36,7 +44,7 @@ export function rotuloAtivacao(a: AtivacaoConta | null | undefined): string {
 
 // ── Situação ─────────────────────────────────────────────────────────────────
 
-export const SITUACOES_VISAO: SituacaoVisao[] = ['teste', 'teste_expirado', 'ativa', 'atrasada', 'pausada', 'cancelada', 'cortesia']
+export const SITUACOES_VISAO: SituacaoVisao[] = ['teste', 'gratis', 'ativa', 'atrasada', 'pausada', 'cancelada', 'cortesia']
 
 /** Rótulo e cor da situação (a `pausada`: atrasada depois dos 7 dias, envios parados). */
 export function rotuloSituacao(s: string | null | undefined): { rotulo: string; tom: Tom } {
@@ -76,17 +84,32 @@ export function textoConversao(c: ConversaoVisao): string {
   return `${formatarNumero(c.assinaram)} de ${contas} ${c.assinaram === 1 ? 'assinou' : 'assinaram'}.`
 }
 
-export function indicadores(t: TotaisVisao, conversao: ConversaoVisao, testesAcabando: number): Indicador[] {
+export function indicadores(
+  t: TotaisVisao,
+  conversao: ConversaoVisao,
+  testesAcabando: number,
+  gratis?: VisaoPlataforma['gratis'],
+): Indicador[] {
   const s = t.por_situacao ?? {}
   const n = (k: string) => s[k] ?? 0
-  const encerrados = n('teste_expirado')
   const devendo = n('atrasada') + n('pausada')
+  const noGratis = gratis?.contas ?? n('gratis')
   return [
     {
       chave: 'teste',
       rotulo: 'Em teste',
       valor: formatarNumero(n('teste')),
-      detalhe: encerrados ? `${plural(encerrados, 'teste encerrado', 'testes encerrados')} sem assinar` : 'Nenhum teste encerrado sem assinar',
+      detalhe: testesAcabando ? `${plural(testesAcabando, 'acaba', 'acabam')} nos próximos 7 dias (a lista está abaixo)` : 'Nenhum acaba nesta semana',
+      tomDetalhe: testesAcabando ? 'atencao' : undefined,
+    },
+    {
+      chave: 'gratis',
+      rotulo: 'Plano Grátis',
+      valor: formatarNumero(noGratis),
+      detalhe: gratis
+        ? `${plural(gratis.entraram_30d, 'entrou', 'entraram')} e ${plural(gratis.assinaram_30d, 'assinou', 'assinaram')} em 30 dias${gratis.pausadas ? ` · ${plural(gratis.pausadas, 'pausada', 'pausadas')} pelo risco` : ''}`
+        : 'Contas que não assinaram depois do teste',
+      tomDetalhe: gratis?.pausadas ? 'atencao' : undefined,
     },
     {
       chave: 'pagantes',
@@ -101,13 +124,6 @@ export function indicadores(t: TotaisVisao, conversao: ConversaoVisao, testesAca
       valor: formatarMoeda(t.receita_mensal, 'R$ 0,00'),
       detalhe: t.pagantes ? `das ${plural(t.pagantes, 'assinatura ativa', 'assinaturas ativas')}` : 'Nenhuma assinatura ativa',
       selo: t.ambiente === 'sandbox' ? 'sandbox' : undefined,
-    },
-    {
-      chave: 'acabando',
-      rotulo: 'Testes acabando em 7 dias',
-      valor: formatarNumero(testesAcabando),
-      detalhe: testesAcabando ? 'A lista está logo abaixo' : 'Nenhum teste acaba nesta semana',
-      tom: testesAcabando ? 'atencao' : undefined,
     },
     {
       chave: 'novas',

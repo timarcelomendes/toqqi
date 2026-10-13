@@ -65,7 +65,7 @@ export const TERMOS: DocumentoLegal = {
         {
           tipo: 'p',
           texto: [
-            'A análise de comentários e os passos das ações já vêm ligados, e a Empresa pode desligá-los em Configurações › IA. O resumo do painel, o parecer dos relatórios e o ToqqiAI só rodam quando alguém da conta pede, e cada resumo, parecer ou pergunta usa análises da cota de IA do plano, conforme o nível de modelo escolhido em Configurações › IA (a tela mostra quantas). Todos funcionam enquanto a IA estiver disponível e a assinatura estiver em dia. O que cada recurso envia à IA está na ',
+            'A análise de comentários e os passos das ações já vêm ligados, e a Empresa pode desligá-los em Configurações › IA. O resumo do painel, o parecer dos relatórios e o ToqqiAI só rodam quando alguém da conta pede, e cada resumo, parecer ou pergunta usa análises da cota de IA do plano, conforme o nível de modelo escolhido em Configurações › IA (a tela mostra quantas). Todos funcionam enquanto a IA estiver disponível e a conta não estiver pausada por falta de pagamento, inclusive no plano Grátis, com as cotas dele. O que cada recurso envia à IA está na ',
             { texto: 'Política de privacidade', href: '/privacidade#inteligencia-artificial' },
             '.',
           ],
@@ -100,21 +100,25 @@ export const TERMOS: DocumentoLegal = {
     },
     {
       id: 'planos-e-pagamento',
-      titulo: 'Planos, teste grátis e pagamento',
+      titulo: 'Planos, teste grátis, plano Grátis e pagamento',
       blocos: [
         {
           tipo: 'p',
           texto:
-            'O Toqqi tem os planos Essencial, Profissional e Empresa e o Personalizado, em que a Empresa escolhe na contratação os contatos ativos e as perguntas ao ToqqiAI por mês. Cada plano tem limites e recursos próprios, mostrados na tela de assinatura. O preço é o mostrado na contratação e só muda por reajuste, como abaixo. Limites e cotas dos planos podem mudar; se diminuírem, avisamos com antecedência razoável.',
+            'O Toqqi tem os planos pagos Essencial, Profissional e Empresa, o Personalizado, em que a Empresa escolhe na contratação os contatos ativos e as perguntas ao ToqqiAI por mês, e o plano Grátis, descrito abaixo. Cada plano tem limites e recursos próprios, mostrados na tela de assinatura. O preço é o mostrado na contratação e só muda por reajuste, como abaixo. Limites e cotas dos planos podem mudar; se diminuírem, avisamos com antecedência razoável.',
         },
         {
           tipo: 'lista',
           itens: [
-            'Teste grátis: quando houver, vale pelo período informado na tela. Ao final, a conta precisa de um plano pago para continuar enviando pesquisas. Se a Empresa não assinar, os dados ficam guardados por 90 dias depois do fim do teste e então são excluídos, como no fim do contrato (veja a seção sobre tratamento de dados).',
+            'Teste grátis: quando houver, vale pelo período informado na tela. Se a Empresa não assinar até o fim dele, a conta passa para o plano Grátis, com os dados guardados.',
+            'Plano Grátis: é onde fica a conta que termina o teste sem assinar, a que cancelou a assinatura, depois do fim do período pago, e a que teve a assinatura cancelada por falta de pagamento. Não tem custo e tem limites menores, mostrados na tela de assinatura: contatos ativos, envios de pesquisa por e-mail por mês e por dia, usuários, formulários recebendo respostas e perguntas ao ToqqiAI. As integrações (RD Station, Omie, Bling, chave de API e webhooks) ficam desligadas, com a configuração guardada. O que passa de um limite fica parado, sem ser apagado, até voltar ao limite ou a Empresa assinar um plano.',
+            'Uso justo do plano Grátis: para proteger quem recebe as pesquisas, no plano Grátis o e-mail sai com o nome da Empresa e as respostas a ele vão para o administrador mais antigo da conta; o intervalo entre duas pesquisas para a mesma pessoa é de pelo menos 30 dias; pesquisas que pedem senha, número de cartão, dados bancários ou código de verificação não são enviadas; quem recebe a pesquisa pode denunciá-la à nossa equipe; e os envios podem ser pausados enquanto a equipe confere uma conta com sinais de abuso, como muitos descadastros, endereços que não existem ou denúncias. Durante a pausa, a Empresa continua entrando e vendo os dados dela.',
+            'Conta Grátis sem uso: se ninguém entrar na conta no plano Grátis por 180 dias, ela é excluída, como no fim do contrato (veja a seção sobre tratamento de dados). Avisamos os administradores por e-mail 30 dias antes, e entrar no Toqqi antes da data cancela a exclusão.',
+            'Mudanças no plano Grátis: podemos mudar os limites do plano Grátis ou deixar de oferecê-lo, avisando com pelo menos 30 dias de antecedência. Se ele deixar de existir, a Empresa pode assinar um plano ou baixar os dados antes da exclusão.',
             'Cobrança: mensal ou anual, pelo Asaas. No mensal, por Pix, com o desconto mostrado na contratação (a fatura aceita só Pix), ou por boleto ou cartão, pelo preço cheio. No anual, o ano é pago de uma vez, com o desconto mostrado na contratação, por boleto, Pix ou cartão. Para mudar a forma de pagamento ou o ciclo, cancele e assine de novo: a nova assinatura começa quando o período já pago acabar. Na assinatura anual, a troca de plano é feita pela nossa equipe.',
             'WhatsApp automático: as mensagens saem pelo número da Empresa, na conta dela na Meta, que cobra cada mensagem diretamente da Empresa. O Toqqi não cobra por mensagem, salvo quando um limite mensal e o valor das mensagens extras estiverem informados na tela de Integrações.',
-            'Atraso: se o pagamento atrasar, avisamos e damos 7 dias. Passado esse prazo, os envios de pesquisas e os recursos de IA são pausados até a regularização. Avisamos no topo das telas. Seus dados continuam guardados e você continua vendo o que já coletou.',
-            'Cancelamento: você pode cancelar quando quiser. O plano vale até o fim do período já pago, sem nova cobrança depois disso. Depois, valem as regras do fim do contrato (veja a seção sobre tratamento de dados).',
+            'Atraso: se o pagamento atrasar, avisamos e damos 7 dias. Passado esse prazo, os envios de pesquisas e os recursos de IA são pausados até a regularização. Avisamos no topo das telas. Seus dados continuam guardados e você continua vendo o que já coletou. Com 30 dias de atraso, a assinatura é cancelada e a conta passa para o plano Grátis.',
+            'Cancelamento: você pode cancelar quando quiser. O plano vale até o fim do período já pago, sem nova cobrança depois disso. Depois, a conta passa para o plano Grátis.',
             'Reajuste: podemos reajustar os preços, avisando com pelo menos [a confirmar: prazo de aviso de reajuste, sugerido 30 dias] de antecedência. O novo valor vale a partir da renovação seguinte. Se não concordar com o reajuste, você pode cancelar sem multa antes do novo valor valer.',
             'Arrependimento (Código de Defesa do Consumidor, art. 49, quando aplicável): [a confirmar: cancelando em até 7 dias da primeira cobrança, devolvemos o valor pago].',
             'Reembolso: fora o caso de arrependimento, não devolvemos o período já pago, salvo cobrança feita por engano e o valor proporcional quando uma função essencial for retirada do seu plano.',
@@ -193,7 +197,7 @@ export const TERMOS: DocumentoLegal = {
             'Dados anonimizados: a Empresa autoriza o uso de dados anonimizados e agregados (que não identificam ninguém) para melhorar o serviço.',
             'Incidentes: se houver incidente de segurança com dados dos clientes da Empresa, avisamos a Empresa em [a confirmar: prazo para avisar a Empresa, sugerido 48 horas], com as informações que tivermos, para ela comunicar a ANPD e os titulares.',
             'Ajuda com os titulares: encaminhamos à Empresa os pedidos que recebermos e ajudamos a atendê-los (por exemplo, exclusão de contato e descadastro).',
-            'Fim do contrato: depois do fim do período pago (quando a assinatura é cancelada) ou do teste grátis sem assinatura, a Empresa tem 90 dias para exportar os dados dela: o administrador baixa uma cópia de todos os dados, com uma planilha por assunto, em Configurações › Dados da conta. Avisamos os administradores por e-mail 7 dias antes da exclusão. Passado o prazo, excluímos de forma definitiva e automática todos os dados da conta, inclusive o registro de auditoria, o histórico de cobranças e os aceites dos termos. Ficam só os registros de acesso (data, hora e IP), guardados à parte por 6 meses, como pede o Marco Civil da Internet (art. 15). Assinar um plano antes disso cancela a exclusão. Se a Empresa pedir, confirmamos a exclusão.',
+            'Fim do contrato: a conta é excluída quando a Empresa pede, por contato@toqqi.com, quando encerramos a conta (veja Suspensão e encerramento) ou quando a conta no plano Grátis fica 180 dias sem ninguém entrar. Antes da exclusão automática, avisamos os administradores por e-mail 30 dias antes, e a Empresa pode baixar os dados dela: o administrador baixa uma cópia de todos os dados, com uma planilha por assunto, em Configurações › Dados da conta. Entrar no Toqqi ou assinar um plano antes da data cancela a exclusão automática. Na exclusão, apagamos de forma definitiva todos os dados da conta, inclusive o registro de auditoria, o histórico de cobranças e os aceites dos termos. Ficam só os registros de acesso (data, hora e IP), guardados à parte por 6 meses, como pede o Marco Civil da Internet (art. 15). Se a Empresa pedir, confirmamos a exclusão.',
             'Transferência internacional: alguns suboperadores ficam nos Estados Unidos. A transferência segue o art. 33 da LGPD: [a confirmar: mecanismo — cláusulas-padrão contratuais da ANPD (Resolução CD/ANPD nº 19/2024) nos contratos com os fornecedores].',
           ],
         },
@@ -289,7 +293,7 @@ export const TERMOS: DocumentoLegal = {
           texto: [
             'Você também pode retirar o seu aceite destes Termos e da Política de privacidade quando quiser, em ',
             { texto: 'Minha conta › Privacidade › Retirar meu aceite', href: '/minha-conta' },
-            '. Ao retirar, você sai do Toqqi em todos os aparelhos e só volta a usá-lo aceitando de novo; guardamos o registro do aceite anterior e da retirada como prova. Retirar o aceite não cancela a assinatura: para encerrar o uso pela Empresa, o administrador cancela a assinatura.',
+            '. Ao retirar, você sai do Toqqi em todos os aparelhos e só volta a usá-lo aceitando de novo; guardamos o registro do aceite anterior e da retirada como prova. Retirar o aceite não cancela a assinatura nem exclui a conta: o administrador cancela a assinatura na tela Assinatura e, para excluir a conta, escreve para contato@toqqi.com.',
           ],
         },
       ],

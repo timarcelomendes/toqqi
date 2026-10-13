@@ -1,5 +1,5 @@
 {
-  "versao": 1,
+  "versao": 2,
   "jornadas": [
     {
       "id": "cadastrar-seus-clientes",
@@ -480,14 +480,14 @@
       "id": "assinar-um-plano",
       "grupo": "alem",
       "titulo": "Assinar um plano",
-      "objetivo": "Escolher o plano da conta e pagar, para continuar enviando pesquisas depois do teste grátis.",
+      "objetivo": "Escolher o plano da conta e pagar, para enviar sem os limites do plano Grátis depois do teste.",
       "somente_admin": true,
       "onde": [
         "Assinatura"
       ],
       "atalho": "assinatura",
       "como": [
-        "Abra Assinatura, ou clique em “Escolher plano” no selo do teste grátis, no topo da tela.",
+        "Abra Assinatura, ou clique no selo do teste grátis ou do plano Grátis, no topo da tela.",
         "No alto, escolha Mensal ou Anual ({{planos.desconto.anual}}% de desconto) e, no mensal, Pix ({{planos.desconto.pix}}% de desconto) ou cartão e boleto.",
         "Em “Escolha um plano”, clique no plano que comporta os seus contatos ativos. Os que não comportam ficam bloqueados. No Personalizado, escolha os contatos e as perguntas ao ToqqiAI e veja o preço na hora.",
         "Em “Dados de cobrança”, confira Razão social, CPF ou CNPJ, Telefone e E-mail de cobrança: as faturas saem com eles.",
@@ -518,7 +518,8 @@
         "dados de cobrança",
         "quanto custa",
         "essencial",
-        "profissional"
+        "profissional",
+        "plano grátis"
       ]
     }
   ],
@@ -1697,21 +1698,29 @@
             "assinatura vencida",
             "formulário do convite",
             "por que não envia",
-            "problema para enviar"
+            "problema para enviar",
+            "plano grátis",
+            "envios do mês",
+            "contatos acima do limite",
+            "revisão da conta"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Se algo faltar, a tela Envios mostra o aviso “Falta pouco para as pesquisas por e-mail começarem a sair”, com o que falta e um atalho para resolver. São quatro itens:"
+              "texto": "Se algo faltar, a tela Envios mostra o aviso “Falta pouco para as pesquisas por e-mail começarem a sair”, com o que falta e um atalho para resolver. São quatro itens (no plano Grátis, mais três, embaixo):"
             },
             {
               "tipo": "lista",
               "itens": [
-                "Assinatura em dia: o teste ou o plano precisa estar valendo.",
+                "Assinatura em dia: o teste, o plano ou o Grátis precisa estar valendo (com a fatura atrasada há mais de 7 dias, os envios pausam).",
                 "Envio de e-mails configurado: depende da plataforma, não das suas configurações.",
                 "Formulário da pesquisa escolhido: defina em Configurações › Envios, em “Formulário do convite”.",
                 "Envios ligados: ligue “Enviar pesquisas por e-mail” em Configurações › Envios."
               ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "No plano Grátis, também entram: a conta sem revisão pendente da equipe Toqqi, os contatos ativos dentro do limite do Grátis e os envios por e-mail do mês e do dia ainda disponíveis (com o canal WhatsApp, os envios seguem por ele)."
             },
             {
               "tipo": "paragrafo",
@@ -4788,11 +4797,11 @@
     {
       "id": "assinatura",
       "titulo": "Assinatura",
-      "resumo": "Teste grátis, planos, pagamento pelo Asaas, troca de plano, cancelamento e a exclusão dos dados da conta encerrada.",
+      "resumo": "Teste grátis, plano Grátis, planos, pagamento pelo Asaas, troca de plano, cancelamento e a exclusão da conta Grátis sem uso.",
       "secoes": [
         {
           "id": "teste-gratis-e-situacoes-da-conta",
-          "titulo": "Teste grátis e situações da conta",
+          "titulo": "Teste grátis, plano Grátis e situações da conta",
           "somente_admin": false,
           "atalho": "assinatura",
           "palavras": [
@@ -4809,34 +4818,89 @@
             "pausa",
             "pausada",
             "expirou",
-            "venceu"
+            "venceu",
+            "plano grátis",
+            "conta grátis",
+            "gratuito",
+            "free",
+            "depois do teste"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Toda conta nova começa com {{teste.dias}} dias de teste grátis, sem cartão. O topo mostra “Teste grátis: faltam N dias” (no celular, “Teste: N dias”); para quem cuida da assinatura, ele leva à tela Assinatura e, até alguém assinar, também o Início mostra um cartão com os dias que faltam e o botão “Ver planos”. Na tela Assinatura, um selo mostra a situação da conta:"
+              "texto": "Toda conta nova começa com {{teste.dias}} dias de teste grátis, sem cartão. O topo mostra “Teste grátis: faltam N dias” (no celular, “Teste: N dias”); para quem cuida da assinatura, ele leva à tela Assinatura e, até alguém assinar, também o Início mostra um cartão com os dias que faltam e o botão “Ver planos”. Se ninguém assinar, no fim do teste a conta passa para o plano Grátis, com tudo guardado. Na tela Assinatura, um selo mostra a situação da conta:"
             },
             {
               "tipo": "lista",
               "itens": [
                 "Em teste: envios liberados até o último dia do teste. Quem assina durante o teste continua testando, e a primeira fatura vence no último dia dele.",
-                "Teste encerrado: o teste acabou e não há plano. Os envios ficam pausados até alguém escolher um plano; sem plano, os dados são excluídos 90 dias depois do fim do teste.",
-                "Aguardando pagamento: você assinou sem teste valendo e falta pagar a primeira fatura. Os envios voltam quando o pagamento for confirmado.",
+                "Grátis: a conta está no plano Grátis, sem custo e com limites menores (veja “Plano Grátis: limites e o que muda”). Fica assim até alguém assinar um plano.",
+                "Aguardando pagamento: você assinou fora do teste e falta pagar a primeira fatura. Até o pagamento ser confirmado, a conta segue no Grátis.",
                 "Ativa: o pagamento está em dia. A tela mostra “Pago até” e a data.",
-                "Atrasada: a fatura venceu. Os envios continuam por 7 dias depois do vencimento e, sem pagamento, pausam.",
-                "Cancelada: a assinatura foi cancelada. O uso vale até o fim do período já pago.",
+                "Atrasada: a fatura venceu. Os envios continuam por 7 dias depois do vencimento e, sem pagamento, pausam. Com {{gratis.dias_atraso}} dias de atraso, a assinatura é cancelada e a conta passa para o Grátis.",
+                "Cancelada: a assinatura foi cancelada. O uso vale até o fim do período já pago; depois, a conta passa para o Grátis.",
                 "Cortesia: conta sem cobrança. Não precisa assinar."
               ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "Com os envios pausados, o Toqqi não manda pesquisas nem lembretes, não analisa comentários com IA e o ToqqiAI não responde. Com assinatura, mesmo atrasada, nada é apagado e tudo volta quando o pagamento é confirmado. Numa conta encerrada (teste encerrado ou assinatura cancelada), os dados são excluídos 90 dias depois do fim do teste ou do período pago."
+              "texto": "Com os envios pausados por falta de pagamento, o Toqqi não manda pesquisas nem lembretes, não analisa comentários com IA e o ToqqiAI não responde. Nada é apagado: tudo volta quando o pagamento é confirmado, ou a conta passa para o Grátis com {{gratis.dias_atraso}} dias de atraso."
+            }
+          ]
+        },
+        {
+          "id": "plano-gratis-limites-e-o-que-muda",
+          "titulo": "Plano Grátis: limites e o que muda",
+          "somente_admin": false,
+          "atalho": "assinatura",
+          "palavras": [
+            "plano grátis",
+            "grátis",
+            "gratuito",
+            "free",
+            "limite de envios",
+            "envios do mês",
+            "envios por dia",
+            "acabaram os envios",
+            "remetente",
+            "denúncia",
+            "denunciar",
+            "conta pausada",
+            "revisão da conta",
+            "integrações desligadas",
+            "um usuário",
+            "formulários ativos",
+            "conta gratuita"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "O plano Grátis é onde fica a conta que termina o teste sem assinar, a que cancelou (depois do fim do período pago) e a que ficou {{gratis.dias_atraso}} dias com a fatura vencida. Ele não tem custo. Contatos, respostas, formulários e relatórios continuam lá, e você assina quando quiser em Assinatura. Os limites:"
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Contatos ativos: até {{gratis.contatos}}. Com mais (por exemplo, importados no teste), os envios param até você desativar os que não quer pesquisar ou assinar.",
+                "Envios por e-mail: {{gratis.envios_mes}} por mês e até {{gratis.envios_dia}} por dia, contando convites e lembretes. Quando acabam, os próximos esperam o dia ou o mês virar. Agradecimento, link público, link do contato e WhatsApp não contam.",
+                "Usuários: {{gratis.usuarios}}. Só entram os mais antigos, administradores primeiro; os outros veem um aviso ao entrar.",
+                "Formulários: até 2 recebendo respostas ao mesmo tempo. Com mais de 2 ativos, os links já enviados seguem valendo, mas os envios novos usam só os formulários padrão (NPS e CSAT).",
+                "ToqqiAI: {{ia.cota.gratis}} análises por mês.",
+                "Integrações: RD Station, Omie, Bling, a chave de API e os avisos (webhooks) ficam desligados, com a configuração guardada. O WhatsApp automático continua."
+              ]
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Para proteger quem recebe as pesquisas, no Grátis o e-mail sai com o nome da empresa e as respostas a ele vão para o administrador mais antigo; o descanso entre duas pesquisas para a mesma pessoa é de pelo menos 30 dias; uma pesquisa que pede senha, cartão, dados bancários ou código de verificação não sai; e quem recebe pode usar “Denunciar esta pesquisa”. Se a conta mostrar sinais de abuso, os envios pausam enquanto a equipe Toqqi confere, o que costuma levar até 1 dia útil."
+            },
+            {
+              "tipo": "dica",
+              "texto": "Em Assinatura, o plano Grátis mostra quanto a conta já usou no mês: contatos ativos, envios por e-mail e análises do ToqqiAI."
             }
           ]
         },
         {
           "id": "avisos-no-topo-e-envios-pausados",
-          "titulo": "Avisos no topo da tela: teste, atraso e envios pausados",
+          "titulo": "Avisos no topo da tela: teste, plano Grátis, atraso e envios pausados",
           "somente_admin": false,
           "atalho": "assinatura",
           "palavras": [
@@ -4853,27 +4917,35 @@
             "assinatura vencida",
             "teste terminou",
             "por que não envia",
-            "pausou"
+            "pausou",
+            "limite do grátis",
+            "envios do mês acabaram",
+            "envios de hoje acabaram",
+            "ver planos"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Quando a assinatura pede atenção, uma faixa aparece no topo de todas as telas. O administrador vê um botão, “Escolher plano” ou “Pagar agora”. Os outros leem “Fale com o administrador da conta.”"
+              "texto": "Quando a assinatura pede atenção, uma faixa aparece no topo de todas as telas. O administrador vê um botão, como “Escolher plano”, “Ver planos” ou “Pagar agora”. Os outros leem “Fale com o administrador da conta.”"
             },
             {
               "tipo": "lista",
               "itens": [
                 "“Seu teste grátis termina em N dias”: aparece nos últimos 5 dias do teste.",
-                "“Seu teste grátis terminou”: os envios estão pausados até um plano ser escolhido.",
+                "“Seu teste acabou e a conta passou para o Grátis”, “O período pago terminou e a conta passou para o Grátis” ou “A assinatura foi cancelada por falta de pagamento e a conta passou para o Grátis”: aparecem nos primeiros 7 dias no plano Grátis, com os limites dele.",
                 "“A fatura venceu em (data). Os envios param em (data) se ela não for paga”: ainda dá tempo, são 7 dias depois do vencimento.",
                 "“Envios pausados por falta de pagamento”: pague a fatura e os envios voltam.",
-                "“Assinatura cancelada. Você usa até (data)”: o uso vale até o fim do período pago.",
-                "“A primeira fatura da assinatura vence (data)” ou “Aguardando o pagamento da primeira fatura”: a assinatura foi feita e falta pagar."
+                "“Assinatura cancelada. Você usa até (data)”: o uso vale até o fim do período pago; depois, a conta passa para o Grátis.",
+                "“A primeira fatura da assinatura vence (data)”, “Aguardando o pagamento da primeira fatura” ou, saindo do Grátis, “O plano assinado começa quando a primeira fatura for paga”: a assinatura foi feita e falta pagar."
               ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "Os avisos que só informam têm um X para fechar e voltam na próxima vez que você abrir o Toqqi no navegador. Os que pedem ação, como teste encerrado, atraso e pausa, não fecham. Na tela Assinatura a faixa não aparece, porque a própria tela já mostra tudo."
+              "texto": "No plano Grátis, outra faixa avisa quando a conta passa de um limite: “Os envios estão pausados enquanto a equipe Toqqi confere a conta”, “Sua conta tem N contatos ativos. O Grátis envia para até {{gratis.contatos}}”, “Os envios por e-mail deste mês acabaram” ou “Os envios por e-mail de hoje acabaram”."
+            },
+            {
+              "tipo": "paragrafo",
+              "texto": "Os avisos que só informam têm um X para fechar e voltam na próxima vez que você abrir o Toqqi no navegador. Os que pedem ação, como atraso, pausa e contatos acima do limite, não fecham. Na tela Assinatura a faixa não aparece, porque a própria tela já mostra tudo."
             }
           ]
         },
@@ -4900,7 +4972,9 @@
             "limite de contatos",
             "contatos ativos",
             "passou do limite",
-            "tabela de preços"
+            "tabela de preços",
+            "plano grátis",
+            "gratuito"
           ],
           "blocos": [
             {
@@ -4913,7 +4987,8 @@
                 "Essencial: {{planos.essencial.preco}} por mês. Contatos ativos: {{planos.essencial.contatos}}.",
                 "Profissional: {{planos.profissional.preco}} por mês. Contatos ativos: {{planos.profissional.contatos}}.",
                 "Empresa: {{planos.empresa.preco}} por mês. Contatos ativos: {{planos.empresa.contatos}}.",
-                "Personalizado: você escolhe os contatos ativos (de 100 em 100) e as perguntas ao ToqqiAI por mês (100, 500, 2.000 ou 5.000), e a tela calcula o preço na hora: {{planos.personalizado.base}} de base, mais os contatos (cada 100 sai mais barato quanto mais você tem) e o pacote do ToqqiAI."
+                "Personalizado: você escolhe os contatos ativos (de 100 em 100) e as perguntas ao ToqqiAI por mês (100, 500, 2.000 ou 5.000), e a tela calcula o preço na hora: {{planos.personalizado.base}} de base, mais os contatos (cada 100 sai mais barato quanto mais você tem) e o pacote do ToqqiAI.",
+                "Grátis: sem custo, é onde fica a conta que não assina. Contatos ativos: {{gratis.contatos}}. Envios por e-mail: {{gratis.envios_mes}} por mês, com os limites de “Plano Grátis: limites e o que muda”."
               ]
             },
             {
@@ -4959,7 +5034,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Quem assina durante o teste continua testando, e a primeira fatura vence no último dia dele. Se o período já pago ainda não acabou, ela vence no dia seguinte ao fim dele. Sem nenhum dos dois, ela vence amanhã e os envios voltam quando o pagamento for confirmado. Depois, a cobrança é mensal (ou anual), no mesmo dia (nos meses mais curtos, no último dia). No mensal com Pix, a fatura só aceita Pix; para pagar com cartão ou boleto, cancele e assine de novo com a outra forma: a assinatura nova começa quando o período pago acabar. Do mensal para o anual é igual."
+              "texto": "Quem assina durante o teste continua testando, e a primeira fatura vence no último dia dele. Se o período já pago ainda não acabou, ela vence no dia seguinte ao fim dele. Sem nenhum dos dois (no plano Grátis), ela vence amanhã e o plano começa quando o pagamento for confirmado; até lá, a conta segue no Grátis. Depois, a cobrança é mensal (ou anual), no mesmo dia (nos meses mais curtos, no último dia). No mensal com Pix, a fatura só aceita Pix; para pagar com cartão ou boleto, cancele e assine de novo com a outra forma: a assinatura nova começa quando o período pago acabar. Do mensal para o anual é igual."
             },
             {
               "tipo": "dica",
@@ -5074,9 +5149,9 @@
             {
               "tipo": "lista",
               "itens": [
-                "Se já há um período pago, você continua usando até o fim dele. Sem multa e sem devolução.",
+                "Se já há um período pago, você continua usando até o fim dele. Sem multa e sem devolução. Depois, a conta passa para o plano Grátis.",
                 "Se cancelar durante o teste, antes de pagar, você volta para o teste grátis até o último dia dele.",
-                "Sem período pago nem teste, os envios ficam pausados até você assinar de novo. Seus dados ficam guardados por 90 dias depois do fim do período pago; depois, são excluídos.",
+                "Sem período pago nem teste, a conta passa para o plano Grátis na hora, com os dados guardados.",
                 "As faturas em aberto são canceladas no Asaas."
               ]
             },
@@ -5087,33 +5162,36 @@
           ]
         },
         {
-          "id": "conta-encerrada-e-exclusao-dos-dados",
-          "titulo": "Conta encerrada: exclusão automática dos dados",
+          "id": "conta-gratis-parada-e-exclusao-dos-dados",
+          "titulo": "Conta Grátis parada: exclusão automática dos dados",
           "somente_admin": false,
           "atalho": "assinatura",
           "palavras": [
             "excluir conta",
             "exclusão da conta",
             "apagar dados",
-            "90 dias",
-            "conta encerrada",
+            "conta parada",
+            "ninguém entra",
+            "conta grátis",
             "dados excluídos",
             "aviso de exclusão",
             "guardar dados",
-            "lgpd"
+            "lgpd",
+            "conta encerrada",
+            "inativa"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Quando o teste acaba sem assinatura, ou a assinatura é cancelada e o período pago termina, a conta fica encerrada. 90 dias depois do fim do teste ou do período pago, todos os dados da conta são excluídos de forma definitiva e automática."
+              "texto": "No plano Grátis, a conta em que ninguém entra por {{gratis.dias_sem_uso}} dias é excluída de forma definitiva e automática, com todos os dados. Vale a entrada de qualquer pessoa da equipe."
             },
             {
               "tipo": "lista",
               "itens": [
-                "7 dias antes, os administradores recebem o e-mail “Sua conta no Toqqi será excluída em” com a data, e o topo da tela mostra o aviso.",
+                "{{gratis.dias_aviso}} dias antes, os administradores recebem o e-mail “Sua conta no Toqqi será excluída em” com a data.",
+                "Entrar no Toqqi antes da data cancela a exclusão, e a contagem recomeça.",
                 "Para guardar uma cópia, o administrador baixa tudo em Configurações › Dados da conta › “Baixar todos os dados”.",
-                "Assinar um plano antes da data cancela a exclusão.",
-                "Conta com assinatura ativa, mesmo com fatura atrasada, não é excluída."
+                "Assinar um plano também cancela a exclusão. Contas em teste, assinantes (mesmo com fatura atrasada) e de cortesia não são excluídas por falta de uso."
               ]
             },
             {
@@ -5549,7 +5627,7 @@
             },
             {
               "tipo": "paragrafo",
-              "texto": "Acabou a cota? O chat explica: “O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.” O administrador vê o uso em Configurações › IA, na seção “Cota de IA do plano”, e pode trocar de plano em Assinatura. No teste grátis, a cota é de {{ia.cota.teste}} análises; quem assina durante o teste passa a usar a do plano escolhido."
+              "texto": "Acabou a cota? O chat explica: “O limite mensal de análises de IA do seu plano foi atingido. Ele renova no dia 1º.” O administrador vê o uso em Configurações › IA, na seção “Cota de IA do plano”, e pode trocar de plano em Assinatura. No teste grátis, a cota é de {{ia.cota.teste}} análises; quem assina durante o teste passa a usar a do plano escolhido. No plano Grátis, são {{ia.cota.gratis}} por mês."
             }
           ]
         },

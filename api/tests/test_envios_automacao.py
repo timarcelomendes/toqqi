@@ -313,8 +313,10 @@ def test_rota_interna_de_tarefas(client, monkeypatch):
     r = client.post(url, headers={"X-Tarefas-Token": "segredo-das-tarefas"})
     assert r.status_code == 200
     assert list(r.json())[0] == "assinaturas"  # roda primeiro: a liberação vale antes dos envios
-    assert r.json() == {"assinaturas": {"testes_expirados": 0, "contas_de_outro_ambiente": 0, "remocoes_no_asaas": 0,
-                                        "eventos_reprocessados": 0, "contas_conferidas": 0},
+    assert r.json() == {"assinaturas": {"contas_ao_gratis": 0, "contas_de_outro_ambiente": 0, "remocoes_no_asaas": 0,
+                                        "eventos_reprocessados": 0, "contas_conferidas": 0,
+                                        "canceladas_por_atraso": 0},  # Plano Grátis
+                        "riscos": {"contas": 0, "mudaram": 0, "pausadas": 0},  # Plano Grátis: a nota de risco
                         "pendentes": 0, "robo": {"contas": 0, "agendados": 0, "ignorados": 0},
                         "lembretes": {"contas": 0, "enviados": 0, "ignorados": 0},
                         "webhooks": {"entregues": 0, "falharam": 0},

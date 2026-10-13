@@ -13,6 +13,12 @@ E-mail: montado com o visual da conta (`configuracao.visual`, com o tema do form
 agradecimento, do formulário respondido) e registrado em `emails_enviados` pelo `core.email.enviar_mensagem` (tipo =
 o do envio). O agradecimento ganha a variável {motivo}: o comentário do cliente numa linha, cortado em 200 caracteres
 (vazio sem comentário).
+
+Plano Grátis (`assinatura.gratis`): o convite e o lembrete por e-mail gastam um envio do mês e do dia ao serem
+agendados (`escolher_canal`; o e-mail que substitui um WhatsApp que falhou também); acabou, o canal não serve. O que
+não chega a sair (`NaoEnviar`) devolve o envio. Na hora de enviar, a conta Grátis pausada pela nota de risco não envia
+pesquisa, o formulário que pede dado sensível não vai, e o remetente é o nome da conta com as respostas para o
+administrador.
 """
 import logging
 from collections.abc import Iterable
@@ -28,6 +34,7 @@ from toqqi.core.email import FalhaEnvio, Mensagem, enviar_mensagem
 from toqqi.core.ia import sem_controle
 from toqqi.core.segredos import decifrar
 from toqqi.modelos import Acao, ConfigEnvios, Conta, Contato, Convite, Empresa, Envio, Formulario, Resposta, WhatsappConta
+from toqqi.modulos.assinatura import gratis
 from toqqi.modulos.envios import mensagens
 from toqqi.modulos.envios.configuracao import obter, provedor_ok, visual
 from toqqi.modulos.envios.descadastro import esta_descadastrado
@@ -60,13 +67,14 @@ def whatsapp_da_config(s: Session, cfg: ConfigEnvios) -> WhatsappConta | None:
 
 def escolher_canal(s: Session, contato: Contato, canais: Iterable[str],
                    wa: WhatsappConta | None) -> tuple[str, str | None] | None:
-    """(canal, cobrança) do primeiro canal possível para o contato; no WhatsApp, reserva a franquia."""
+    """(canal, cobrança) do primeiro canal possível para o contato; no WhatsApp, reserva a franquia; no e-mail da
+    conta Grátis, gasta um envio do mês (`gratis.reservar_email`)."""
     for canal in canais:
         if canal == "whatsapp" and wa is not None and contato.telefone:
             cobranca = franquia.reservar(s, wa)
             if cobranca:
                 return canal, cobranca
-        elif canal == "email" and contato.email:
+        elif canal == "email" and contato.email and gratis.reservar_email(s, s.get(Conta, contato.conta_id)):
             return canal, None
     return None
 
@@ -122,11 +130,15 @@ def _montar(s: Session, e: Envio) -> Mensagem | MensagemWhatsapp:
     if esta_descadastrado(s, contato.email if whatsapp else e.para, e.para if whatsapp else contato.telefone):
         raise NaoEnviar("A pessoa saiu da lista antes do envio.")
     cfg = obter(s)
-    empresa = s.scalar(select(Conta.nome))
+    conta = s.get(Conta, e.conta_id)
+    empresa = conta.nome
+    if e.tipo in ("convite", "lembrete") and gratis.pausada_por_risco(conta):
+        raise NaoEnviar("Os envios da conta foram pausados para a equipe Toqqi conferir.")
     empresa_cliente = s.scalar(select(Empresa.nome).where(Empresa.id == contato.empresa_id))
     v = mensagens.variaveis(empresa, contato.nome, empresa_cliente)
+    remetente_nome, responder_para = gratis.remetente(s, conta, cfg.remetente_nome, cfg.responder_para)
     comum = {"conta_id": e.conta_id, "para": e.para, "empresa": empresa,
-             "remetente_nome": cfg.remetente_nome, "responder_para": cfg.responder_para}
+             "remetente_nome": remetente_nome, "responder_para": responder_para}
     if e.tipo == "retorno":  # melhoria 4: o texto escrito na ação concluída
         a = s.get(Acao, e.acao_id) if e.acao_id else None
         if a is None or not a.retorno_texto:
@@ -147,6 +159,9 @@ def _montar(s: Session, e: Envio) -> Mensagem | MensagemWhatsapp:
     f = s.get(Formulario, convite.formulario_id)
     if f is None or not f.ativo or f.arquivado:
         raise NaoEnviar("O formulário da pesquisa foi desativado.")
+    sensivel = gratis.motivo_sensivel(conta, f)
+    if sensivel is not None:
+        raise NaoEnviar(sensivel)
     token = token_do_convite(convite.token_semente)
     if whatsapp:
         wc = franquia.disponivel(s)
@@ -180,7 +195,8 @@ def falha_whatsapp(s: Session, e: Envio, erro_da_conta: bool = False) -> Pares:
     contato = s.get(Contato, e.contato_id) if e.contato_id else None
     cfg = obter(s)
     reserva = (contato is not None and contato.email and cfg.canal == "whatsapp_e_email" and cfg.envios_ativos
-               and provedor_ok() and not esta_descadastrado(s, contato.email, contato.telefone))
+               and provedor_ok() and not esta_descadastrado(s, contato.email, contato.telefone)
+               and gratis.reservar_email(s, s.get(Conta, e.conta_id)))
     if not reserva:
         if e.tipo == "convite" and contato is not None:
             contato.falhas += 1
@@ -229,6 +245,8 @@ def _processar(conta_id: int, envio_id: int) -> Pares:
         try:
             mensagem = _montar(s, e)
         except NaoEnviar as nao:
+            if e.canal == "email" and e.tipo in ("convite", "lembrete") and gratis.eh_gratis(s.get(Conta, conta_id)):
+                gratis.devolver_email(s, conta_id, e.criado_em)  # não saiu: não gasta o envio do mês
             return _gravar_resultado(s, e, str(nao))
     wamid, erro, erro_da_conta = None, None, False
     if isinstance(mensagem, MensagemWhatsapp):

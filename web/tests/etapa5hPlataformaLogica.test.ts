@@ -107,7 +107,7 @@ describe('Visão geral: textos', () => {
 describe('Visão geral: indicadores', () => {
   const totais = (extra: Partial<TotaisVisao> = {}): TotaisVisao => ({
     contas: 10,
-    por_situacao: { teste: 4, teste_expirado: 0, ativa: 3, atrasada: 0, pausada: 0, cancelada: 2, cortesia: 1 },
+    por_situacao: { teste: 4, gratis: 0, ativa: 3, atrasada: 0, pausada: 0, cancelada: 2, cortesia: 1 },
     pagantes: 3,
     receita_mensal: '1047.00',
     ambiente: null,
@@ -117,15 +117,15 @@ describe('Visão geral: indicadores', () => {
   })
   const conversao = { de: '2026-08-05', ate: '2026-09-19', contas: 0, assinaram: 0, taxa: null }
 
-  it('seis, nesta ordem, com os textos de quando não há nada', () => {
+  it('seis, nesta ordem, com os textos de quando não há nada (Plano Grátis: o cartão dele no lugar dos testes acabando)', () => {
     const lista = indicadores(totais({ pagantes: 0, receita_mensal: 0 }), conversao, 0)
-    expect(lista.map((i) => i.rotulo)).toEqual(['Em teste', 'Pagantes', 'Receita mensal', 'Testes acabando em 7 dias', 'Novas em 30 dias', 'Conversão do teste'])
-    expect(lista.map((i) => t(i.valor))).toEqual(['4', '0', 'R$ 0,00', '0', '1', '—'])
+    expect(lista.map((i) => i.rotulo)).toEqual(['Em teste', 'Plano Grátis', 'Pagantes', 'Receita mensal', 'Novas em 30 dias', 'Conversão do teste'])
+    expect(lista.map((i) => t(i.valor))).toEqual(['4', '0', '0', 'R$ 0,00', '1', '—'])
     expect(lista.map((i) => i.detalhe)).toEqual([
-      'Nenhum teste encerrado sem assinar',
+      'Nenhum acaba nesta semana',
+      'Contas que não assinaram depois do teste',
       'de 10 contas',
       'Nenhuma assinatura ativa',
-      'Nenhum teste acaba nesta semana',
       '0 novas nos últimos 7 dias',
       'Nenhuma conta com teste criada entre 05/08 e 19/09.',
     ])
@@ -139,9 +139,17 @@ describe('Visão geral: indicadores', () => {
     expect(t(por.receita!.valor)).toBe('R$ 1.047,00')
     expect(por.pagantes!.detalhe).toBe('3 com fatura atrasada · 10 contas no total')
     expect([por.pagantes!.tom, por.pagantes!.tomDetalhe]).toEqual([undefined, 'atencao'])
-    expect(por.acabando!.tom).toBe('atencao')
-    expect(por.teste!.detalhe).toBe('Nenhum teste encerrado sem assinar')
+    expect([por.teste!.detalhe, por.teste!.tomDetalhe]).toEqual(['2 acabam nos próximos 7 dias (a lista está abaixo)', 'atencao'])
+    expect(por.acabando).toBeUndefined()
     expect(indicadores(totais({ ambiente: 'producao' }), conversao, 0).find((i) => i.chave === 'receita')!.selo).toBeUndefined()
+  })
+
+  it('Plano Grátis: as contas, quem entrou e assinou em 30 dias e as pausadas pelo risco (âmbar)', () => {
+    const g = { contas: 12, assinaram_30d: 2, pausadas: 1, entraram_30d: 5 }
+    const cartao = indicadores(totais(), conversao, 0, g).find((i) => i.chave === 'gratis')!
+    expect([t(cartao.valor), cartao.detalhe, cartao.tomDetalhe]).toEqual(['12', '5 entraram e 2 assinaram em 30 dias · 1 pausada pelo risco', 'atencao'])
+    const sem = indicadores(totais(), conversao, 0, { contas: 1, assinaram_30d: 0, pausadas: 0, entraram_30d: 1 }).find((i) => i.chave === 'gratis')!
+    expect([sem.detalhe, sem.tomDetalhe]).toEqual(['1 entrou e 0 assinaram em 30 dias', undefined])
   })
 })
 

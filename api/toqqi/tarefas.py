@@ -1,18 +1,21 @@
 """Tarefas periódicas: `python -m toqqi.tarefas
-[assinaturas|robo|lembretes|pendentes|webhooks|ia|picos|resumo|erros|limpeza|tudo]` (padrão: tudo).
+[assinaturas|riscos|robo|lembretes|pendentes|webhooks|conectores|ia|picos|resumo|erros|limpeza|tudo]` (padrão: tudo).
 
 Também disponíveis em POST /api/v1/interno/tarefas (cabeçalho X-Tarefas-Token). Em produção, o Cron Job
 `toqqi-tarefas` do Render roda este comando a cada 15 minutos; cada tarefa decide por conta se é hora de agir.
-`tudo` roda na ordem: assinaturas, pendentes, robô, lembretes, webhooks, ia, picos, resumo, erros, limpeza
-(assinaturas primeiro, para a liberação dos envios já valer; a IA antes dos picos, para eles já usarem as análises
-novas; a limpeza por último, depois de tudo o que manda e-mails).
+`tudo` roda na ordem: assinaturas, riscos, pendentes, robô, lembretes, webhooks, conectores, ia, picos, resumo, erros,
+limpeza (assinaturas e riscos primeiro, para a liberação dos envios e a pausa das contas Grátis suspeitas já valerem;
+a IA antes dos picos, para eles já usarem as análises novas; a limpeza por último, depois de tudo o que manda e-mails).
+
+Plano Grátis (docs/api-plano-gratis.md): a tarefa `riscos` grava a nota de risco de cada conta (`plataforma.risco.
+gravar`: {contas, mudaram, pausadas}); no Grátis, 60 pontos ou mais pausam os envios até a equipe liberar.
 
 A tarefa `ia` analisa as respostas pendentes e, depois, no mesmo tempo da rodada, sugere os passos das ações
 pendentes (etapa 5d): {analisadas, falharam, limite, passos: {prontas, falharam, limite}}.
 
 A tarefa `limpeza` (etapa 5e) apaga o que passou do prazo de guarda: os e-mails enviados com mais de 90 dias, em
 lotes ({emails_apagados}). Etapa 5f: também os registros de acesso com mais de 184 dias ({acessos_apagados},
-`core.acessos`) e, a partir das 9h, uma vez por dia, a exclusão automática das contas encerradas ({encerradas}: o
+`core.acessos`) e, a partir das 9h, uma vez por dia, a exclusão automática das contas Grátis paradas ({encerradas}: o
 resumo da rodada, ou null quando ela pulou; `assinatura.exclusao`, com o parâmetro `teste.exclusao_automatica`
 (etapa 5g, Plataforma › Parâmetros; padrão: `EXCLUSAO_AUTOMATICA`) = ligada para agir; simular só conta). Etapa 5h:
 também os erros com a última ocorrência há mais de 30 dias ({erros_apagados}, `core.erros`). Feedback: as imagens dos
@@ -44,10 +47,11 @@ from toqqi.modulos.ia import servico as ia
 from toqqi.modulos.conectores import servico as conectores
 from toqqi.modulos.integracoes import webhooks
 from toqqi.modulos.plataforma import erros as aviso_erros
+from toqqi.modulos.plataforma import risco
 from toqqi.modulos.relatorios import emails
 
-TAREFAS = ("assinaturas", "robo", "lembretes", "pendentes", "webhooks", "conectores", "ia", "picos", "resumo", "erros", "limpeza",
-           "tudo")
+TAREFAS = ("assinaturas", "riscos", "robo", "lembretes", "pendentes", "webhooks", "conectores", "ia", "picos", "resumo",
+           "erros", "limpeza", "tudo")
 
 log = logging.getLogger("toqqi.tarefas")
 
@@ -60,7 +64,7 @@ def _ia() -> dict:
 def limpeza() -> dict:
     """Tarefa `limpeza`: apaga o que passou do prazo de guarda (e-mails enviados com mais de 90 dias, registros de
     acesso com mais de 184, erros sem ocorrência há mais de 30, imagens dos feedbacks concluídos ou encerrados há mais
-    de 180) e roda a exclusão automática das contas encerradas (uma vez por dia, a partir das 9h)."""
+    de 180) e roda a exclusão automática das contas Grátis paradas (uma vez por dia, a partir das 9h)."""
     return {"emails_apagados": emails_enviados.limpar(), "acessos_apagados": acessos.limpar(),
             "encerradas": exclusao.executar(), "erros_apagados": erros.limpar_antigos(),
             "feedback_imagens_apagadas": feedback.limpar_imagens_antigas()}
@@ -70,6 +74,7 @@ def _passos() -> list[tuple[str, Callable[[], object]]]:
     """As tarefas na ordem do `tudo` (os nomes de `TAREFAS`, menos `tudo`)."""
     return [
         ("assinaturas", lambda: assinaturas.executar()),
+        ("riscos", lambda: risco.gravar()),  # Plano Grátis: a nota alta pausa os envios
         ("pendentes", lambda: automacao.pendentes()),
         ("robo", lambda: automacao.robo()),
         ("lembretes", lambda: automacao.lembretes()),

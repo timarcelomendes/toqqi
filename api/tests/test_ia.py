@@ -513,7 +513,7 @@ def test_ia_ativa_no_login_e_no_eu(client, admin, dono, monkeypatch):
     assert client.get(f"{API}/eu", headers=admin["h"]).json()["conta"]["ia_ativa"] is False
     assert client.get(f"{API}/conta/ia", headers=admin["h"]).json()["disponivel"] is False
     monkeypatch.setattr(config(), "IA_PROVEDOR", "memoria")
-    sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=admin["conta"]["id"])
+    sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c", c=admin["conta"]["id"])
     assert entrar(client, "ana@alfa.com.br").json()["conta"]["ia_ativa"] is False
 
 

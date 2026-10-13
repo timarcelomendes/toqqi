@@ -1,4 +1,5 @@
-"""Etapa 5a: tarefa `assinaturas` — teste vencido vira `teste_expirado` (e só as contas que mudam pela data), fatura
+"""Etapa 5a: tarefa `assinaturas` — teste vencido vai para o Grátis (Plano Grátis, docs/api-plano-gratis.md; antes,
+`teste_expirado`; e só as contas que mudam pela data), fatura
 pendente que passou do vencimento, conferência diária (pega pagamento sem webhook, uma vez por dia, a partir das 6h,
 assinaturas canceladas há menos de 40 dias, para com o Asaas fora e recalcula o que já tinha mudado), conciliação
 (adota a assinatura criada sem a API saber; remove a duplicada e a cancelada aqui que segue viva lá), assinatura
@@ -16,8 +17,8 @@ from toqqi import tarefas
 from toqqi.core import asaas
 from toqqi.core.config import config
 
-VAZIO = {"testes_expirados": 0, "contas_de_outro_ambiente": 0, "remocoes_no_asaas": 0, "eventos_reprocessados": 0,
-         "contas_conferidas": 0}
+VAZIO = {"contas_ao_gratis": 0, "contas_de_outro_ambiente": 0, "remocoes_no_asaas": 0, "eventos_reprocessados": 0,
+         "contas_conferidas": 0, "canceladas_por_atraso": 0}
 CHAVE_PRODUCAO = CHAVE_ASAAS.replace("$aact_hmlg_", "$aact_prod_")
 
 
@@ -48,25 +49,25 @@ def admin(client, dono, monkeypatch):
 
 # ---- datas -----------------------------------------------------------------------------------------
 
-def test_teste_vencido_vira_expirado_e_as_outras_ficam(client, dono, monkeypatch):
+def test_teste_vencido_vai_ao_gratis_e_as_outras_ficam(client, dono, monkeypatch):
     fixar_relogio(monkeypatch, momento("2026-10-10"))
     ids = {}
     for nome, situacao, fim in (("vencido", "teste", "2026-10-09 23:00-03"),
                                 ("valendo", "teste", "2026-10-11 00:00-03"),
                                 ("cortesia", "cortesia", "2026-01-01 00:00-03"),
                                 ("ativa", "ativa", "2026-01-01 00:00-03"),
-                                ("expirado", "teste_expirado", "2026-12-01 00:00-03"),
+                                ("gratis", "gratis", "2026-12-01 00:00-03"),
                                 ("sem_fim", "teste", None)):
         a = conta_pronta(client, f"{nome}@{nome.replace('_', '-')}.com.br", empresa=nome)
         sql(dono, "update contas set situacao = :s, teste_ate = :t where id = :c", s=situacao, t=fim,
             c=a["conta"]["id"])
         ids[nome] = a["conta"]["id"]
-    assert rodar(monkeypatch, momento("2026-10-10")) == {**VAZIO, "testes_expirados": 2}
+    assert rodar(monkeypatch, momento("2026-10-10")) == {**VAZIO, "contas_ao_gratis": 2}
     situacoes = {nome: situacao_conta(dono, i)[0] for nome, i in ids.items()}
-    assert situacoes == {"vencido": "teste_expirado", "valendo": "teste", "cortesia": "cortesia", "ativa": "ativa",
-                         "expirado": "teste_expirado", "sem_fim": "teste_expirado"}
-    assert rodar(monkeypatch, momento("2026-10-10", 23, 59))["testes_expirados"] == 0
-    assert rodar(monkeypatch, momento("2026-10-11", 0, 0))["testes_expirados"] == 1  # "valendo" acabou à meia-noite
+    assert situacoes == {"vencido": "gratis", "valendo": "teste", "cortesia": "cortesia", "ativa": "ativa",
+                         "gratis": "gratis", "sem_fim": "gratis"}
+    assert rodar(monkeypatch, momento("2026-10-10", 23, 59))["contas_ao_gratis"] == 0
+    assert rodar(monkeypatch, momento("2026-10-11", 0, 0))["contas_ao_gratis"] == 1  # "valendo" acabou à meia-noite
     assert tarefas.main(["assinaturas"]) == 0
 
 
@@ -86,11 +87,11 @@ def test_assinou_no_teste_e_depois_do_vencimento_fica_atrasada(client, dono, adm
     conta = admin["conta"]["id"]
     assinar(client, admin["h"])
     # passou do fim do teste, mas é o dia do vencimento: continua em teste e liberada
-    assert rodar(monkeypatch, momento("2026-10-15", 15))["testes_expirados"] == 0
+    assert rodar(monkeypatch, momento("2026-10-15", 15))["contas_ao_gratis"] == 0
     assert situacao_conta(dono, conta)[0] == "teste"
     assert client.get("/api/v1/eu", headers=admin["h"]).json()["conta"]["cobranca"]["liberada"] is True
     # meia-noite: a fatura pendente passou do vencimento (o Asaas só marca de madrugada): atrasada, sem webhook
-    assert rodar(monkeypatch, momento("2026-10-16", 0, 5))["testes_expirados"] == 0
+    assert rodar(monkeypatch, momento("2026-10-16", 0, 5))["contas_ao_gratis"] == 0
     assert situacao_conta(dono, conta) == ("atrasada", None, date(2026, 10, 15), date(2026, 10, 15))
     assert client.get("/api/v1/eu", headers=admin["h"]).json()["conta"]["cobranca"]["aviso"] == {
         "tipo": "atrasada", "data": "2026-10-23", "dias": 7}
@@ -102,7 +103,7 @@ def test_ativa_com_fatura_do_mes_seguinte_vencida(client, dono, admin, asaas_fal
     assinar(client, admin["h"])
     asaas_falso.simular("pagar", asaas_falso.cobrancas()[0]["id"], forma="PIX")
     asaas_falso.simular("proxima", asaas_falso.assinatura()["id"])  # vence em 15/11
-    assert rodar(monkeypatch, momento("2026-11-15", 23))["testes_expirados"] == 0
+    assert rodar(monkeypatch, momento("2026-11-15", 23))["contas_ao_gratis"] == 0
     assert situacao_conta(dono, conta)[0] == "ativa"
     rodar(monkeypatch, momento("2026-11-16", 0, 30))
     assert situacao_conta(dono, conta) == ("atrasada", date(2026, 11, 14), date(2026, 11, 15), date(2026, 10, 15))
@@ -125,8 +126,8 @@ def test_uma_conta_com_erro_nao_derruba_as_outras(client, dono, monkeypatch):
         return original(s, conta)
 
     monkeypatch.setattr(servico, "recalcular", quebrar_a_primeira)
-    assert rodar(monkeypatch, momento("2026-10-10"))["testes_expirados"] == 1
-    assert [situacao_conta(dono, i)[0] for i in ids] == ["teste", "teste_expirado"]
+    assert rodar(monkeypatch, momento("2026-10-10"))["contas_ao_gratis"] == 1
+    assert [situacao_conta(dono, i)[0] for i in ids] == ["teste", "gratis"]
 
 
 def test_sem_asaas_so_a_primeira_parte(client, dono, admin, asaas_falso, monkeypatch):

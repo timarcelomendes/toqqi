@@ -1,6 +1,7 @@
 """Etapa 5a: regras da assinatura sem banco — "liberada" e os limites de data em São Paulo (fim do teste, carência da
 primeira fatura de quem assinou no teste, 7º dia de atraso, `pago_ate`, o mais tarde entre o teste e o período pago),
-quando os envios param, o aviso do topo (coerente com a liberação) e o primeiro vencimento."""
+quando os envios param, o aviso do topo (coerente com a liberação) e o primeiro vencimento. Plano Grátis: o Grátis
+sempre liberado, o aviso dos 7 primeiros dias (com o motivo) e o de quem assinou e ainda não pagou."""
 from datetime import date, datetime, time, timedelta, timezone
 
 import pytest
@@ -22,26 +23,45 @@ def d(dia: str) -> date:
 
 
 def conta(situacao: str, teste_ate: datetime | None = None, pago_ate: str | None = None,
-          atrasada_desde: str | None = None, primeiro_vencimento: str | None = None) -> Conta:
+          atrasada_desde: str | None = None, primeiro_vencimento: str | None = None,
+          gratis_desde: datetime | None = None, gratis_motivo: str | None = None) -> Conta:
     return Conta(situacao=situacao, plano="profissional",
                  teste_ate=teste_ate.astimezone(timezone.utc) if teste_ate else None,
                  pago_ate=d(pago_ate) if pago_ate else None,
                  atrasada_desde=d(atrasada_desde) if atrasada_desde else None,
-                 primeiro_vencimento=d(primeiro_vencimento) if primeiro_vencimento else None)
+                 primeiro_vencimento=d(primeiro_vencimento) if primeiro_vencimento else None,
+                 gratis_desde=gratis_desde.astimezone(timezone.utc) if gratis_desde else None,
+                 gratis_motivo=gratis_motivo)
 
 
 # ---- liberada ----------------------------------------------------------------------------
 
-@pytest.mark.parametrize("situacao", ["cortesia", "ativa"])
-def test_cortesia_e_ativa_sempre(situacao):
+@pytest.mark.parametrize("situacao", ["cortesia", "ativa", "gratis"])
+def test_cortesia_ativa_e_gratis_sempre(situacao):
     c = conta(situacao, teste_ate=sp("2020-01-01"), pago_ate="2020-01-01", atrasada_desde="2020-01-01")
     assert liberada(c, sp("2030-01-01")) is True
     assert pausa_em(c, sp("2030-01-01")) is None and aviso(c, sp("2030-01-01")) is None
 
 
-def test_teste_expirado_nunca():
-    c = conta("teste_expirado", teste_ate=sp("2030-01-01"), pago_ate="2030-01-01")
-    assert liberada(c, sp("2026-10-10")) is False and pausa_em(c, sp("2026-10-10")) is None
+def test_gratis_avisa_nos_7_primeiros_dias_com_o_motivo():
+    entrou = sp("2026-10-16", 0, 7)  # a tarefa da madrugada passou a conta para o Grátis
+    for motivo in ("teste", "cancelamento", "atraso"):
+        c = conta("gratis", teste_ate=sp("2026-10-15", 14), gratis_desde=entrou, gratis_motivo=motivo)
+        assert liberada(c, sp("2026-10-16", 9)) is True and pausa_em(c, sp("2026-10-16", 9)) is None
+        assert aviso(c, sp("2026-10-16", 9)) == {"tipo": "gratis", "data": d("2026-10-16"), "dias": 0, "motivo": motivo}
+        assert aviso(c, sp("2026-10-22", 23)) == {"tipo": "gratis", "data": d("2026-10-16"), "dias": 6,
+                                                  "motivo": motivo}
+        assert aviso(c, sp("2026-10-23")) is None  # depois de 7 dias, só os avisos de limite (no site)
+
+
+def test_gratis_que_assinou_espera_o_pagamento_da_primeira_fatura():
+    """O plano assinado começa no pagamento: até lá, a conta segue no Grátis (liberada, com os limites dele)."""
+    c = conta("gratis", teste_ate=sp("2026-09-15", 14), primeiro_vencimento="2026-10-02",
+              gratis_desde=sp("2026-09-16"), gratis_motivo="teste")
+    assert liberada(c, sp("2026-10-01", 9)) is True
+    assert aviso(c, sp("2026-10-01", 9)) == {"tipo": "gratis_aguardando", "data": d("2026-10-02"), "dias": 1}
+    assert aviso(c, sp("2026-10-05", 9)) == {"tipo": "gratis_aguardando", "data": d("2026-10-02"), "dias": -3}
+    assert regras.cobranca_json(c, sp("2026-10-01", 9))["assinada"] is True
 
 
 def test_teste_ate_o_fim_do_teste():
@@ -135,7 +155,8 @@ def test_aviso_teste_acabando_com_5_dias_ou_menos():
 
 def test_avisos_das_outras_situacoes():
     hoje = sp("2026-11-16", 9)
-    assert aviso(conta("teste_expirado", teste_ate=sp("2026-10-15", 14)), hoje) == {
+    # o teste acabou e a tarefa ainda não passou a conta para o Grátis
+    assert aviso(conta("teste", teste_ate=sp("2026-10-15", 14)), hoje) == {
         "tipo": "teste_expirado", "data": d("2026-10-15"), "dias": None}
     assert aviso(conta("atrasada", atrasada_desde="2026-11-15"), hoje) == {
         "tipo": "atrasada", "data": d("2026-11-23"), "dias": 7}
@@ -157,8 +178,8 @@ def test_aviso_aguardando_pagamento_de_quem_ja_assinou():
     assert aviso(c, sp("2026-10-10")) == {"tipo": "aguardando_pagamento", "data": d("2026-10-15"), "dias": 5}
     assert aviso(c, sp("2026-10-15", 20)) == {"tipo": "aguardando_pagamento", "data": d("2026-10-15"), "dias": 0}
     assert liberada(c, sp("2026-10-15", 20)) is True
-    # assinou com o teste vencido ou depois de cancelada (envios pausados até pagar): sempre
-    for c in (conta("teste_expirado", teste_ate=sp("2026-09-15", 14), primeiro_vencimento="2026-10-02"),
+    # assinou e o teste ou o período pago acabou antes da tarefa passar a conta para o Grátis: sempre
+    for c in (conta("teste", teste_ate=sp("2026-09-15", 14), primeiro_vencimento="2026-10-02"),
               conta("cancelada", pago_ate="2026-09-20", primeiro_vencimento="2026-10-02")):
         assert liberada(c, sp("2026-10-01", 9)) is False
         assert aviso(c, sp("2026-10-01", 9)) == {"tipo": "aguardando_pagamento", "data": d("2026-10-02"), "dias": 1}
@@ -176,10 +197,10 @@ def test_cobranca_json():
 
 
 def test_mensagem_da_pre_condicao():
-    assert regras.mensagem_pausa(conta("teste_expirado")) == regras.MSG_TESTE
+    assert regras.mensagem_pausa(conta("teste")) == regras.MSG_TESTE
     assert regras.mensagem_pausa(conta("atrasada", atrasada_desde="2026-10-01")) == regras.MSG_ATRASADA
     assert regras.mensagem_pausa(conta("cancelada", pago_ate="2026-10-01")) == regras.MSG_CANCELADA
-    assert regras.mensagem_pausa(conta("teste_expirado", primeiro_vencimento="2026-10-11")) == regras.MSG_AGUARDANDO
+    assert regras.mensagem_pausa(conta("teste", primeiro_vencimento="2026-10-11")) == regras.MSG_AGUARDANDO
 
 
 # ---- primeiro vencimento e período pago --------------------------------------------------------
@@ -190,7 +211,7 @@ def test_primeiro_vencimento():
     assert primeiro_vencimento(no_teste, agora) == d("2026-10-15")  # último dia do teste
     assert primeiro_vencimento(no_teste, sp("2026-10-15", 14)) == d("2026-10-15")  # o teste acaba hoje
     assert primeiro_vencimento(no_teste, sp("2026-10-15", 15)) == d("2026-10-16")  # já acabou: amanhã
-    assert primeiro_vencimento(conta("teste_expirado", teste_ate=sp("2026-09-01")), agora) == d("2026-10-11")
+    assert primeiro_vencimento(conta("gratis", teste_ate=sp("2026-09-01")), agora) == d("2026-10-11")
     assert primeiro_vencimento(conta("cancelada", pago_ate="2026-11-14"), agora) == d("2026-11-15")
     assert primeiro_vencimento(conta("cancelada", pago_ate="2026-10-10"), agora) == d("2026-10-11")
     assert primeiro_vencimento(conta("cancelada", pago_ate="2026-10-09"), agora) == d("2026-10-11")

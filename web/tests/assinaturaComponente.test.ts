@@ -216,15 +216,50 @@ describe('Assinatura: sem assinatura', () => {
     expect(campo(w, 'documento').element.value).toBe('529.982.247-25')
   })
 
-  it('teste encerrado: a fatura vence amanhã e os envios voltam com o pagamento', async () => {
+  it('Plano Grátis (o teste acabou sem assinar): R$ 0, o uso do mês e o que muda; a fatura vence amanhã e o plano começa com o pagamento', async () => {
     entrar(['assinatura.gerenciar'])
-    apiFalsa({ 'GET /assinatura': () => estado({ conta: { situacao: 'teste_expirado', teste_ate: '2026-09-20T10:00:00-03:00', liberada: false }, contatos_ativos: 40 }) })
+    const gratis = {
+      desde: '2026-09-21T03:00:00Z',
+      motivo: 'teste',
+      contatos: { ativos: 140, limite: 100 },
+      envios: { mes: 37, limite_mes: 200, dia: 5, limite_dia: 100, volta_mes: '2026-11-01', volta_dia: '2026-10-02' },
+      ia: { usadas: 3, limite: 10 },
+      usuarios: 1,
+      formularios: 2,
+      descanso_minimo: 30,
+      dias_sem_uso: 180,
+      pausada_por_risco: false,
+    }
+    apiFalsa({ 'GET /assinatura': () => estado({ conta: { situacao: 'gratis', teste_ate: '2026-09-20T10:00:00-03:00', liberada: true }, contatos_ativos: 140, gratis }) })
     const w = await abrir('/assinatura', AssinaturaView)
-    expect(t(w.get('#t-situacao').text())).toBe('Seu teste grátis terminou em 20/09/2026')
+    expect(t(w.get('#t-situacao').text())).toBe('Plano Grátis')
+    expect(t(w.get('[data-selo-situacao]').text())).toBe('Grátis')
+    expect(t(w.get('[data-preco-gratis]').text())).toBe('R$ 0 por mês')
+    const uso = (k: string) => t(w.get(`[data-uso-item="${k}"]`).text())
+    expect(uso('contatos')).toBe('Contatos ativos140 de 100Acima do limite: os envios voltam quando ficarem dentro dele.')
+    expect(uso('envios')).toBe('Envios por e-mail no mês37 de 200Até 100 por dia. Zeram em 01/11.')
+    expect(uso('ia')).toBe('ToqqiAI no mês3 de 10Perguntas e análises pedidas ao ToqqiAI.')
+    expect(w.findAll('[data-itens-gratis] li').map((li) => t(li.text()))).toEqual([
+      '1 usuário e até 2 formulários recebendo respostas',
+      'E-mail, link público, link de cada contato e WhatsApp automático',
+      'Sem RD Station, Omie, Bling, chave de API e webhooks (ficam guardados)',
+      '"Pesquisa feita com Toqqi" sempre aparece',
+    ])
     await w.get('input[value="essencial"]').setValue(true)
     const resumo = t(w.get('[data-resumo]').text())
     expect(resumo).toContain('Primeira fatura de R$ 144,53 com vencimento amanhã, 02/10/2026. Ela cobre de 02/10 a 01/11/2026. Depois, todo dia 2.')
-    expect(resumo).toContain('Os envios voltam assim que o pagamento for confirmado: Pix e cartão em segundos, boleto em até 3 dias úteis.')
+    expect(resumo).toContain('O plano começa assim que o pagamento for confirmado (Pix e cartão em segundos, boleto em até 3 dias úteis); até lá, a conta segue no Grátis.')
+  })
+
+  it('em teste: embaixo do uso, o que acontece se não assinar (os números do Grátis)', async () => {
+    entrar(['assinatura.gerenciar'])
+    const limites_gratis = { contatos: 100, envios_mes: 200, envios_dia: 100, usuarios: 1, formularios: 2, ia_cota: 10, dias_sem_uso: 180, descanso_minimo: 30 }
+    apiFalsa({ 'GET /assinatura': () => estado({ conta: { teste_ate: '2026-10-15T14:30:00-03:00' }, limites_gratis }) })
+    const w = await abrir('/assinatura', AssinaturaView)
+    expect(t(w.get('[data-depois-do-teste]').text())).toBe(
+      'Se não assinar até o fim do teste, a conta passa para o plano Grátis: até 100 contatos e 200 envios por e-mail por mês.',
+    )
+    expect(w.find('[data-uso-gratis]').exists()).toBe(false)
   })
 
   it('confere os campos antes de enviar (todos obrigatórios) e não chama a API', async () => {
@@ -588,7 +623,7 @@ describe('Assinatura: com assinatura', () => {
     await botao(w, 'Cancelar assinatura').trigger('click')
     expect(estadoConfirmacao.aberto).toBe(true)
     expect(estadoConfirmacao.titulo).toBe('Cancelar a assinatura?')
-    expect(estadoConfirmacao.mensagem).toBe('Você continua usando até 14/11/2026. Sem multa e sem devolução.')
+    expect(estadoConfirmacao.mensagem).toBe('Você continua usando até 14/11/2026; depois, a conta passa para o plano Grátis. Sem multa e sem devolução.')
     expect(estadoConfirmacao.perigo).toBe(true)
     responderConfirmacao(true)
     await flushPromises()

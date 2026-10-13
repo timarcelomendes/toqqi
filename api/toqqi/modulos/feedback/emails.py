@@ -24,7 +24,7 @@ VERBOS = {"erro": "relatou um erro", "sugestao": "deu uma sugestão", "melhoria"
           "elogio": "fez um elogio"}
 O_QUE = {"erro": "o erro que você relatou", "sugestao": "a sugestão que você deu",
          "melhoria": "a melhoria que você pediu", "elogio": "o elogio que você fez"}
-SITUACOES_CONTA = {"teste": "em teste", "teste_expirado": "teste encerrado", "ativa": "assinante",
+SITUACOES_CONTA = {"teste": "em teste", "gratis": "plano Grátis", "ativa": "assinante",
                    "atrasada": "pagamento atrasado", "cancelada": "cancelada", "cortesia": "cortesia"}
 
 

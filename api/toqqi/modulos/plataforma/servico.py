@@ -9,7 +9,10 @@ de todas as etapas; ficam os registros de acesso, os eventos globais e as remoç
 relógio das regras (`relogio.agora()`).
 Etapa 5g: a conta criada aqui (teste ou cortesia) começa no plano `teste.plano`, com `teste.dias` de teste; o "+N dias"
 sem `dias` soma `teste.dias` (parâmetros da plataforma). Os parâmetros em si ficam em `parametros.py`.
+Plano Grátis (docs/api-plano-gratis.md): "+N dias" numa conta Grátis dá um teste novo (a conta sai do Grátis); a lista
+traz `gratis_desde` e `envios_pausados`, e "Liberar envios" (`liberar_envios`) solta a conta pausada pela nota de risco.
 """
+import logging
 from datetime import timedelta
 
 from sqlalchemy import and_, delete, func, select
@@ -41,6 +44,7 @@ from toqqi.modelos import (
     EmailEnviado,
     Empresa,
     Envio,
+    EnvioUso,
     EventoIdempotencia,
     Formulario,
     Grupo,
@@ -65,16 +69,19 @@ from toqqi.modelos import (
     WhatsappConta,
     WhatsappUso,
 )
-from toqqi.modulos.assinatura import regras
+from toqqi.modulos.assinatura import gratis, regras
 from toqqi.modulos.assinatura import servico as assinaturas
 from toqqi.modulos.formularios.semear import semear_conta
 from toqqi.modulos.plataforma import risco
+
+log = logging.getLogger("toqqi.plataforma")
 
 
 def _conta_json(c: Conta, usuarios: int, a: Assinatura | None = None, admins: list[dict] | None = None) -> dict:
     """`assinatura` = a assinatura ativa ({plano, valor, situacao}) ou null; `admins` = administradores da conta, o
     mais antigo primeiro ([{nome, email, email_confirmado}]); `exclusao_em` = o dia da exclusão automática avisado
-    (`assinatura.regras.exclusao_em`) ou null."""
+    (`assinatura.regras.exclusao_em`) ou null. Plano Grátis: `gratis_desde` e `envios_pausados` (a nota de risco
+    gravada pausou os envios da conta Grátis e a equipe ainda não liberou), com `risco_liberado_em`."""
     return {
         "id": c.id, "nome": c.nome, "plano": c.plano, "situacao": c.situacao,
         "teste_ate": c.teste_ate, "usuarios": usuarios, "criada_em": c.criada_em,
@@ -82,6 +89,8 @@ def _conta_json(c: Conta, usuarios: int, a: Assinatura | None = None, admins: li
         "assinatura": {"plano": a.plano, "valor": a.valor, "situacao": a.situacao, "ciclo": a.ciclo,
                        "forma": a.forma, "contatos": a.contatos, "cota_ia": a.cota_ia} if a is not None else None,
         "admins": admins or [], "exclusao_em": regras.exclusao_em(c),
+        "gratis_desde": c.gratis_desde, "envios_pausados": gratis.pausada_por_risco(c),
+        "risco_liberado_em": c.risco_liberado_em,
     }
 
 
@@ -176,6 +185,23 @@ def estender_teste(ctx: Contexto, conta_id: int, dias: int | None = None) -> dic
         return _conta_json(c, _contar_usuarios(s, c.id), None, _admins(s, c.id).get(c.id))
 
 
+def liberar_envios(ctx: Contexto, conta_id: int) -> dict:
+    """Plano Grátis: a equipe conferiu a conta pausada pela nota de risco e libera os envios. Guarda a nota de agora
+    (a maior entre a gravada e a calculada na hora): se ela subir acima disso, os envios param de novo. 409
+    `nao_pausada` se a conta não está pausada."""
+    with modo_sistema() as s:
+        c = _conta_travada(s, conta_id)
+        if not gratis.pausada_por_risco(c):
+            raise AppError(409, "nao_pausada", "Os envios desta conta não estão pausados pela nota de risco.")
+        nota = risco.calcular(s).get(c.id)
+        pontos = max(c.risco_pontos or 0, nota["pontos"] if nota else 0)
+        c.risco_liberado_pontos, c.risco_liberado_em = pontos, relogio.agora()
+        registrar(s, "risco_liberado", "info", None, conta_id=c.id)
+        s.flush()
+        log.info("Plano Grátis: envios da conta %s liberados pela equipe (%s) com a nota %s.", c.id, ctx.email, pontos)
+        return {**_conta_json(c, _contar_usuarios(s, c.id), None, _admins(s, c.id).get(c.id)), "risco": nota}
+
+
 def cortesia(ctx: Contexto, conta_id: int) -> dict:
     """Com assinatura ativa, remove antes no Asaas (falhou → 503 e nada muda) e a marca cancelada aqui."""
     with modo_sistema() as s:
@@ -197,7 +223,7 @@ def cortesia(ctx: Contexto, conta_id: int) -> dict:
 # Ordem de exclusão: quem aponta para outras tabelas da conta sai antes.
 _ORDEM_EXCLUSAO = (Cobranca, Assinatura, AlertaPico, ResumoSemanal, IaUsoMensal, IaParecer, Indicacao, Oferta,
                    ConfigCrescimento, Acao, ConfigAcoes, Envio, Descadastro, ConfigEnvios, EventoIdempotencia,
-                   EmailEnviado, WebhookEntrega, Webhook, IntegracaoChave, WhatsappUso, WhatsappConta, Resposta,
+                   EmailEnviado, WebhookEntrega, Webhook, IntegracaoChave, WhatsappUso, WhatsappConta, EnvioUso, Resposta,
                    Convite, Importacao, Contato, Empresa, Responsavel, Grupo, Segmento, PerfilContato, Cargo, Imagem,
                    Formulario, Auditoria, DominioLiberado, PerfilPermissao, TokenUsoUnico, Sessao, AceiteTermos,
                    Usuario)

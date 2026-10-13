@@ -281,10 +281,17 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  * Devolve erros por campo, com as mesmas chaves que a API usa em `campos`. Etapa 5e: também o visual dos e-mails
  * (só os campos que vieram).
  */
-export function validarConfig(c: Omit<ConfigEnvios, 'email_imagem_topo'>): Record<string, string> {
+/**
+ * Confere a configuração antes do PUT (as mesmas regras da API). `descansoMinimo`: o piso do descanso no plano Grátis
+ * (30 dias; a API recusa menos com a mesma frase).
+ */
+export function validarConfig(c: Omit<ConfigEnvios, 'email_imagem_topo'>, opcoes: { descansoMinimo?: number } = {}): Record<string, string> {
   const e: Record<string, string> = validarVisual(c)
   if (!inteiroEntre(c.intervalo_dias, 30, 365)) e.intervalo_dias = 'Use um número entre 30 e 365 dias.'
   if (!inteiroEntre(c.descanso_dias, 0, 180)) e.descanso_dias = 'Use um número entre 0 e 180 dias.'
+  else if (opcoes.descansoMinimo && c.descanso_dias < opcoes.descansoMinimo) {
+    e.descanso_dias = `No plano Grátis, o descanso entre pesquisas é de pelo menos ${opcoes.descansoMinimo} dias.`
+  }
   if (!inteiroEntre(c.lembretes, 0, 3)) e.lembretes = 'Escolha de 0 a 3 lembretes.'
   else {
     const dias = c.dias_lembretes ?? []

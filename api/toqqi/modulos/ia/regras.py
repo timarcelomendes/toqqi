@@ -6,11 +6,13 @@ from toqqi.modulos.assinatura.regras import liberada
 ORIGENS = ("pesquisa", "manual")
 MIN_LETRAS = 3
 def chave_do_teto(conta: Conta) -> str:
-    """O parâmetro do teto da conta: cortesia → `ia.teto.cortesia`; teste e teste expirado → `ia.teto.teste`; demais
-    → pelo plano (desconhecido → o do teste)."""
+    """O parâmetro do teto da conta: cortesia → `ia.teto.cortesia`; Grátis → `ia.teto.gratis`; teste → `ia.teto.teste`;
+    demais → pelo plano (desconhecido → o do teste)."""
     if conta.situacao == "cortesia":
         return "ia.teto.cortesia"
-    if conta.situacao in ("teste", "teste_expirado"):
+    if conta.situacao == "gratis":
+        return "ia.teto.gratis"
+    if conta.situacao == "teste":
         return "ia.teto.teste"
     if conta.plano == "personalizado":
         return "planos.personalizado"

@@ -13,6 +13,7 @@ from toqqi.core.security import gerar_hash
 from toqqi.modelos import Conta, PerfilPermissao, Usuario
 from toqqi.modulos.acesso import emails
 from toqqi.modulos.acesso.servico import criar_token, revogar_sessoes
+from toqqi.modulos.assinatura import gratis
 
 
 def erro_email_em_uso() -> AppError:
@@ -70,6 +71,7 @@ def criar(ctx: Contexto, dados) -> dict:
         raise erro_email_em_uso()
     senha_hash = gerar_hash(dados.senha)
     with em_conta(ctx.conta_id) as s:
+        gratis.exigir_vaga_de_usuario(s, s.get(Conta, ctx.conta_id))  # Plano Grátis: 1 usuário
         u = Usuario(conta_id=ctx.conta_id, nome=dados.nome, email=dados.email, cargo=dados.cargo,
                     perfil=dados.perfil, senha_hash=senha_hash, situacao="ativo", email_confirmado=True)
         s.add(u)
@@ -98,6 +100,8 @@ def alterar(ctx: Contexto, usuario_id: int, dados) -> dict:
                 raise erro_ultimo_admin()
             if u.id == ctx.usuario_id:
                 raise erro_si_mesmo()
+            if nova_situacao == "ativo" and u.situacao != "ativo":  # aprovar ou desbloquear: Plano Grátis, 1 usuário
+                gratis.exigir_vaga_de_usuario(s, s.get(Conta, ctx.conta_id))
 
         mudancas: dict[str, list] = {}
         novos = {

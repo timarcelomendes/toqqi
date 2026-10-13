@@ -39,6 +39,7 @@ from toqqi.modulos.formularios.validacao import (
 from toqqi.modulos.imagens import servico as imagens
 from toqqi.modulos.respostas.convites import CHAVES_CONTEXTO
 from toqqi.modulos.respostas.registro import formatar_valor, renderizar, variaveis
+from toqqi.modulos.assinatura import gratis
 
 ROTULO_USO = {"nps": "NPS", "csat": "CSAT"}
 ROTULOS_CONTEXTO = {"pedido": "Pedido", "nota_fiscal": "Nota fiscal", "rota": "Rota", "motorista": "Motorista",
@@ -170,6 +171,7 @@ def criar(ctx: Contexto, dados) -> dict:
     doc, _ = normalizar_documento(perguntas, dados.tema, finais, estrito=True, base_tema=base_tema)
     descricao = dados.descricao if dados.descricao is not None else (MODELOS[chave]["descricao"] if chave else "")
     with em_conta(ctx.conta_id) as s:
+        gratis.exigir_vaga_de_formulario(s, s.get(Conta, ctx.conta_id))  # Plano Grátis: até 2 recebendo respostas
         tema = doc["tema"]
         if "cor" not in (dados.tema or {}):  # etapa 5h: sem cor pedida, nasce com a cor da marca (se houver)
             tema = _com_a_marca(tema, _cor_da_marca(s))
@@ -256,6 +258,8 @@ def alterar(ctx: Contexto, formulario_id: int, dados) -> dict:
             if uso and not dados.ativo:
                 raise erro_padrao(f"Este é o formulário padrão de {ROTULO_USO[uso]} e não pode ser desativado. "
                                   "Escolha outro formulário como padrão antes.")
+            if dados.ativo and not f.ativo:
+                gratis.exigir_vaga_de_formulario(s, s.get(Conta, ctx.conta_id))
             f.ativo = dados.ativo
         for campo in ("nome", "descricao", "publico", "permite_editar"):
             if campo in campos and getattr(dados, campo) is not None:
@@ -346,6 +350,7 @@ def duplicar(ctx: Contexto, formulario_id: int) -> dict:
     imagens) ganham cópias no formulário novo, com as URLs trocadas: trocar o logo de um não mexe no outro."""
     with em_conta(ctx.conta_id) as s:
         o = _form_ou_404(s, formulario_id)
+        gratis.exigir_vaga_de_formulario(s, s.get(Conta, ctx.conta_id))
         f = Formulario(conta_id=ctx.conta_id, nome=f"Cópia de {o.nome}"[:120], descricao=o.descricao,
                        perguntas=copy.deepcopy(o.perguntas), tema=copy.deepcopy(o.tema),
                        finais=copy.deepcopy(o.finais or []), rascunho=copy.deepcopy(o.rascunho), ativo=True,

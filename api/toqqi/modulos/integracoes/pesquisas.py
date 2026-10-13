@@ -15,7 +15,7 @@ from toqqi.core import relogio
 from toqqi.core.db import em_conta, travar
 from toqqi.core.errors import AppError
 from toqqi.core.texto import telefone_canonico
-from toqqi.modelos import ConfigEnvios, Contato, Convite, Empresa, EventoIdempotencia, Formulario
+from toqqi.modelos import ConfigEnvios, Conta, Contato, Convite, Empresa, EventoIdempotencia, Formulario
 from toqqi.modulos.contatos.servico import codigo_livre, formulario_para_envio
 from toqqi.modulos.envios.configuracao import exigir, obter
 from toqqi.modulos.envios.descadastro import esta_descadastrado, telefone_sql
@@ -23,6 +23,7 @@ from toqqi.modulos.envios.processamento import Pares, criar_convite
 from toqqi.modulos.integracoes.chave import ContextoIntegracao
 from toqqi.modulos.respostas.convites import link_do_convite, novo_convite, token_do_convite
 from toqqi.modulos.whatsapp import franquia
+from toqqi.modulos.assinatura import gratis
 
 VALIDADE_ID_EVENTO = timedelta(hours=24)
 NOME_TIPO = {"nps": "NPS", "csat": "CSAT"}
@@ -152,6 +153,8 @@ def disparar(ci: ContextoIntegracao, dados, tipo_padrao: str | None = None,
         msg = "Informe o e-mail ou o telefone."
         raise AppError(422, "dados_invalidos", msg, {"email": msg, "telefone": msg})
     with em_conta(ci.conta_id) as s:
+        if s.scalar(select(Conta.situacao)) == gratis.GRATIS:  # os conectores chegam aqui sem passar pela chave
+            raise gratis.erro_recurso("Enviar pesquisas pelas integrações")
         if dados.id_evento:
             travar(s, f"evento:{ci.conta_id}:{dados.id_evento}")
             s.execute(delete(EventoIdempotencia).where(EventoIdempotencia.expira <= relogio.agora()))

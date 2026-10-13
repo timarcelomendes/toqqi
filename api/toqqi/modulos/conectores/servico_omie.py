@@ -28,8 +28,10 @@ from toqqi.modulos.empresas.desfecho import marcar
 from toqqi.modulos.integracoes import pesquisas
 from toqqi.modulos.integracoes.chave import ContextoIntegracao
 from toqqi.modulos.integracoes.esquemas import EmpresaEventoIn, PesquisaIn
+from toqqi.modulos.assinatura import gratis
 
 PROVEDOR = "omie"
+RECURSO = "O conector do Omie"
 MAX_CLIENTES = 5000
 MAX_CONTATOS_AVISO = 5
 
@@ -70,6 +72,7 @@ def ver(ctx: Contexto) -> dict:
 
 
 def conectar(ctx: Contexto, app_key: str, app_secret: str, pesquisar: bool) -> dict:
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
     chaves = {"app_key": app_key.strip(), "app_secret": app_secret.strip()}
     try:
         omie.conferir(chaves)
@@ -90,6 +93,7 @@ def conectar(ctx: Contexto, app_key: str, app_secret: str, pesquisar: bool) -> d
 
 
 def alterar(ctx: Contexto, pesquisar: bool) -> dict:
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
     with em_conta(ctx.conta_id) as s:
         c = _obter(s)
         if c is None:
@@ -108,6 +112,7 @@ def desconectar(ctx: Contexto) -> None:
 
 
 def sincronizar(ctx: Contexto) -> dict:
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
     with em_conta(ctx.conta_id) as s:
         c = _obter(s)
         if c is None:

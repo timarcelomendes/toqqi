@@ -111,4 +111,4 @@ def test_fluxo_completo(client, dono, admin, asaas_falso, monkeypatch):
               "pagamento_estornado", "assinatura_cancelada"):
         assert e in eventos, e
     assert eventos.count("pagamento_confirmado") == 2
-    assert tarefas.executar("assinaturas")["assinaturas"]["testes_expirados"] == 0
+    assert tarefas.executar("assinaturas")["assinaturas"]["contas_ao_gratis"] == 0

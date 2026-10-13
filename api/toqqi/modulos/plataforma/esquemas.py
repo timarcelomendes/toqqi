@@ -17,5 +17,11 @@ class EstenderTesteIn(BaseModel):
     dias: Annotated[int, Field(ge=1, le=365)] | None = None  # sem `dias`: `teste.dias` (parâmetros da plataforma)
 
 
+class DenunciaAlterarIn(BaseModel):
+    """Plano Grátis: PATCH /plataforma/denuncias/{id}."""
+    situacao: Literal["aberta", "procedente", "descartada"] | None = None
+    nota_interna: Annotated[str, Field(max_length=2000)] | None = None
+
+
 class ExcluirContaIn(BaseModel):
     confirmar_nome: Annotated[Texto, Field(min_length=1, max_length=200)]

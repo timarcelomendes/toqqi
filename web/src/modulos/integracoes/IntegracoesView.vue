@@ -5,8 +5,12 @@
 // - "API e avisos", para quem cuida do sistema da empresa: a chave, como usar (com Zapier, Make e n8n) e os avisos
 //   (webhooks), num seletor dentro da aba para não virar uma página longa.
 // Endereços antigos (?aba=chave|conectar|webhooks) abrem a parte certa de "API e avisos".
+// Plano Grátis (docs/api-plano-gratis.md): "Sistemas" e "API e avisos" mostram o aviso do plano em cima (a API recusa
+// conectar, sincronizar, gerar chave e ligar avisos); o WhatsApp automático faz parte do Grátis.
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useSessaoStore } from '@/stores/sessao'
+import AvisoPlanoGratis from '@/components/app/AvisoPlanoGratis.vue'
 import CabecalhoPagina from '@/components/app/CabecalhoPagina.vue'
 import Abas from '@/components/ui/Abas.vue'
 import BotoesSegmentados from '@/components/ui/BotoesSegmentados.vue'
@@ -30,9 +34,14 @@ const partes: { valor: Parte; rotulo: string }[] = [
 ]
 const ANTIGAS: Record<string, Parte> = { chave: 'chave', conectar: 'conectar', webhooks: 'webhooks' }
 
+const TEXTO_GRATIS =
+  'RD Station, Omie, Bling, a chave de API e os avisos (webhooks) ficam desligados no plano Grátis. O que já estava configurado fica guardado e volta a funcionar quando a conta assinar.'
+
+const sessao = useSessaoStore()
+const gratis = computed(() => sessao.conta?.situacao === 'gratis')
 const rota = useRoute()
 const router = useRouter()
-const valida = (v: unknown): Aba => (typeof v === 'string' && v in ANTIGAS ? 'api' : abas.some((a) => a.valor === v) ? (v as Aba) : 'crm')
+const valida =(v: unknown): Aba => (typeof v === 'string' && v in ANTIGAS ? 'api' : abas.some((a) => a.valor === v) ? (v as Aba) : 'crm')
 const parteDe = (aba: unknown, parte: unknown): Parte =>
   typeof aba === 'string' && aba in ANTIGAS ? (ANTIGAS[aba] as Parte) : partes.some((p) => p.valor === parte) ? (parte as Parte) : 'chave'
 
@@ -70,10 +79,14 @@ function irPara(p: Parte) {
   />
 
   <Abas v-model="aba" :abas="abas" rotulo="Seções de integrações">
-    <CatalogoConectores v-if="visitadas.has('crm')" v-show="aba === 'crm'" @ir-para-api="irPara('conectar')" />
+    <div v-if="visitadas.has('crm')" v-show="aba === 'crm'" class="flex flex-col gap-4">
+      <AvisoPlanoGratis v-if="gratis" :texto="TEXTO_GRATIS" data-gratis-integracoes="crm" />
+      <CatalogoConectores @ir-para-api="irPara('conectar')" />
+    </div>
     <!-- A seção tem mais de uma raiz: o v-show precisa de um elemento em volta (senão ela aparece nas outras abas). -->
     <div v-if="visitadas.has('whatsapp')" v-show="aba === 'whatsapp'"><SecaoWhatsapp /></div>
     <div v-if="visitadas.has('api')" v-show="aba === 'api'" class="flex flex-col gap-4" data-aba-api>
+      <AvisoPlanoGratis v-if="gratis" :texto="TEXTO_GRATIS" data-gratis-integracoes="api" />
       <div class="flex flex-col gap-2">
         <BotoesSegmentados v-model="parte" :opcoes="partes" rotulo="Parte da API" class="self-start" />
         <p class="text-sm text-texto-suave">Para quem cuida do sistema da empresa: ligue qualquer sistema pela API ou por Zapier, Make e n8n.</p>

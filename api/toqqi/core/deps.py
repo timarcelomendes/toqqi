@@ -71,6 +71,9 @@ def contexto_atual(
             raise sessao_invalida("Seu acesso foi bloqueado. Fale com o administrador da sua conta.")
         if agora - sessao.ultimo_uso > timedelta(minutes=1):
             s.execute(update(Sessao).where(Sessao.id == sessao.id).values(ultimo_uso=func.now()))
+        if conta.situacao == "gratis" and conta.exclusao_avisada_para is not None:
+            from toqqi.modulos.assinatura.gratis import usar_conta  # import tardio (core → módulo)
+            usar_conta(s, conta, usuario.id)  # Plano Grátis: usar o Toqqi cancela a exclusão da conta parada
 
         permissoes = list(TODAS) if usuario.perfil == "admin" else ordenar(perms or [])
         return Contexto(

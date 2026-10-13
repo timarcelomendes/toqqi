@@ -80,8 +80,8 @@ def test_cartao_desligado_conta_pausada_e_link_publico(client, alfa, dono):
     nps = form_padrao(client, h)
     r = responder_link(client, nps["codigo_publico"], {nps["perguntas"][0]["id"]: 10})
     assert r.status_code == 201 and r.json().get("indicacao") is None
-    # conta pausada (teste expirado): não liberada
-    sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=alfa["conta"]["id"])
+    # conta pausada (fatura vencida há mais de 7 dias): não liberada
+    sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c", c=alfa["conta"]["id"])
     assert convite_respondido(client, h, alfa["contato"]["id"], 10)[1]["indicacao"] is None
     sql(dono, "update contas set situacao = 'ativa' where id = :c", c=alfa["conta"]["id"])
     assert convite_respondido(client, h, alfa["contato"]["id"], 10)[1]["indicacao"] is not None
@@ -258,7 +258,7 @@ def test_indicacao_sem_direito(client, alfa, dono, caso):
         if caso == "desligadas":
             ligar_indicacoes(client, h, indicacoes_ativas=False)
         else:
-            sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=alfa["conta"]["id"])
+            sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c", c=alfa["conta"]["id"])
     r = indicar(client, token)
     assert r.status_code == 409
     assert r.json()["erro"]["codigo"] == "indicacao_indisponivel"

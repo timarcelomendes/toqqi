@@ -1,10 +1,12 @@
-"""Exclusão automática das contas encerradas (etapa 5f): regras puras (`encerramento`, `exclusao_em`), quem entra e quem
-nunca entra, aviso uma vez (data = max(prevista, hoje + 7)), exclusão só com 7 dias nos dois relógios e conta com 100
-dias, assinar depois cancela, novo encerramento avisa de novo, limite de 20, `simular`, uma vez por dia, antes das 9h,
-rodada simultânea, Asaas fora, global e log sem dado pessoal, `cobranca.exclusao_em` e a lista da Plataforma.
-Revisão: limites do dia contados pelos eventos de hoje (rodada interrompida ou evento do dia apagado não liberam mais),
-erro numa conta não para as outras, aviso só vale entregue (sem administrador ativo, exclui com `admins: 0`), Asaas sem
-a chave do ambiente do cliente → adiada, `EXCLUSAO_AUTOMATICA` com outro valor simula e a linha de comando mostra o log."""
+"""Exclusão automática das contas Grátis paradas (etapa 5f; desde o Plano Grátis, docs/api-plano-gratis.md): quem entra
+e quem nunca entra, o último uso (entrada no Grátis, login, sessão), aviso uma vez aos 150 dias (data = max(prevista,
+hoje + 30)), exclusão só com 30 dias nos dois relógios e conta com 180 dias, usar o Toqqi cancela (e uma parada nova
+avisa de novo), os prazos dos parâmetros, limite de 20, `simular`, uma vez por dia, antes das 9h, rodada simultânea,
+Asaas fora, global e log sem dado pessoal, `cobranca.exclusao_em` e a lista da Plataforma.
+Revisão (5f): limites do dia contados pelos eventos de hoje (rodada interrompida ou evento do dia apagado não liberam
+mais), erro numa conta não para as outras, aviso só vale entregue (sem administrador ativo, exclui com `admins: 0`),
+Asaas sem a chave do ambiente do cliente → adiada, `EXCLUSAO_AUTOMATICA` com outro valor simula e a linha de comando
+mostra o log."""
 import json
 import logging
 import os
@@ -21,6 +23,7 @@ from util import (
     FUSO,
     conta_pronta,
     criar_contato,
+    entrar,
     erro_http,
     falhar_provedor,
     fixar_relogio,
@@ -29,6 +32,7 @@ from util import (
 )
 
 from toqqi import tarefas
+from toqqi.core import parametros
 from toqqi.core.config import Config, config
 from toqqi.core.db import RAIZ_API
 from toqqi.core.email import Memoria, caixa_memoria
@@ -45,40 +49,14 @@ def sp(d: date, hora: int = 12) -> datetime:
 
 # ---- regras puras --------------------------------------------------------------------------------
 
-def _conta(situacao: str, teste_ate: datetime | None = None, pago_ate: date | None = None,
-           primeiro_vencimento: date | None = None, avisada: date | None = None) -> Conta:
-    return Conta(situacao=situacao, plano="profissional", teste_ate=teste_ate, pago_ate=pago_ate,
-                 primeiro_vencimento=primeiro_vencimento, exclusao_avisada_para=avisada)
-
-
-def test_encerramento():
-    d = date(2026, 1, 10)
-    agora = sp(date(2026, 6, 1))
-    assert regras.encerramento(_conta("teste_expirado", teste_ate=sp(d, 15)), agora) == (d, d + timedelta(days=90))
-    # cancelada: o dia seguinte ao pago_ate (o fim do período pago é 00:00 do dia seguinte)
-    assert regras.encerramento(_conta("cancelada", pago_ate=d), agora) == (d + timedelta(days=1),
-                                                                            d + timedelta(days=91))
-    # o mais tarde entre o teste e o período pago
-    assert regras.encerramento(_conta("cancelada", teste_ate=sp(d + timedelta(days=5)), pago_ate=d), agora)[0] == \
-        d + timedelta(days=5)
-    for situacao in ("ativa", "atrasada", "cortesia", "teste"):
-        assert regras.encerramento(_conta(situacao, teste_ate=sp(d), pago_ate=d), agora) is None, situacao
-    assert regras.encerramento(_conta("cancelada", pago_ate=d, primeiro_vencimento=d), agora) is None  # assinou
-    assert regras.encerramento(_conta("teste_expirado"), agora) is None  # sem data
-    assert regras.encerramento(_conta("cancelada", pago_ate=date(2026, 6, 10)), agora) is None  # ainda liberada
-
-
-def test_exclusao_em():
-    d = date(2026, 1, 10)
-    agora = sp(date(2026, 4, 5))
-    prevista = d + timedelta(days=90)
-    assert regras.exclusao_em(_conta("teste_expirado", teste_ate=sp(d), avisada=prevista), agora) == prevista
-    assert regras.exclusao_em(_conta("teste_expirado", teste_ate=sp(d), avisada=prevista - timedelta(days=1)),
-                              agora) is None  # aviso de um encerramento anterior
-    assert regras.exclusao_em(_conta("ativa", teste_ate=sp(d), avisada=prevista), agora) is None  # assinou
-    assert regras.exclusao_em(_conta("teste_expirado", teste_ate=sp(d)), agora) is None
-    assert regras.cobranca_json(_conta("teste_expirado", teste_ate=sp(d), avisada=prevista), agora)["exclusao_em"] \
-        == prevista
+def test_exclusao_em_so_no_gratis():
+    d = date(2026, 4, 5)
+    assert regras.exclusao_em(Conta(situacao="gratis", exclusao_avisada_para=d)) == d
+    assert regras.exclusao_em(Conta(situacao="gratis")) is None
+    for situacao in ("teste", "ativa", "atrasada", "cancelada", "cortesia"):
+        assert regras.exclusao_em(Conta(situacao=situacao, exclusao_avisada_para=d)) is None, situacao
+    assert regras.cobranca_json(Conta(situacao="gratis", plano="profissional", exclusao_avisada_para=d),
+                                sp(d))["exclusao_em"] == d
 
 
 # ---- a rotina ------------------------------------------------------------------------------------
@@ -89,17 +67,21 @@ def ligada(monkeypatch):
     monkeypatch.setattr(config(), "EXCLUSAO_AUTOMATICA", "ligada")
 
 
-def _encerrar(dono, conta_id: int, dias: int = 90, situacao: str = "teste_expirado", criada_dias: int = 200,
-              **campos) -> None:
-    """Teste acabado há `dias` dias (o fim no meio do dia, São Paulo); conta criada há `criada_dias`."""
-    valores = {"teste_ate": sp(HOJE - timedelta(days=dias)), "situacao": situacao,
+def _parar(dono, conta_id: int, dias: int = 150, criada_dias: int = 400, situacao: str = "gratis", **campos) -> None:
+    """Conta no Grátis desde há `dias` dias, sem ninguém usar desde então (login e sessões na mesma data); criada há
+    `criada_dias`."""
+    quando = sp(HOJE - timedelta(days=dias))
+    valores = {"situacao": situacao, "desde": quando if situacao == "gratis" else None,
                "criada": datetime.now(timezone.utc) - timedelta(days=criada_dias), **campos}
     extra = "".join(f", {k} = :{k}" for k in campos)
-    sql(dono, f"update contas set situacao = :situacao, teste_ate = :teste_ate, criada_em = :criada{extra} "
-              "where id = :c", c=conta_id, **valores)
+    sql(dono, "update contas set situacao = :situacao, gratis_desde = :desde, gratis_motivo = "
+              "case when :situacao = 'gratis' then 'teste' end, teste_ate = :desde, criada_em = :criada"
+              f"{extra} where id = :c", c=conta_id, **valores)
+    sql(dono, "update usuarios set ultimo_acesso = :q where conta_id = :c", c=conta_id, q=quando)
+    sql(dono, "update sessoes set ultimo_uso = :q, criada_em = :q where conta_id = :c", c=conta_id, q=quando)
 
 
-def _avisada(dono, conta_id: int, para: date, dias_atras: int = 7, entregue: bool = True) -> None:
+def _avisada(dono, conta_id: int, para: date, dias_atras: int = 30, entregue: bool = True) -> None:
     """Aviso gravado há `dias_atras` dias (relógio do banco) para `para`; `entregue`: com o e-mail do aviso aceito pelo
     provedor no registro de e-mails enviados (um minuto depois do aviso)."""
     sql(dono, "update contas set exclusao_avisada_para = :p, exclusao_avisada_em = now() - make_interval(days => :d) "
@@ -120,23 +102,24 @@ def _email_do_aviso(dono, conta_id: int, para: date, situacao: str = "enviado", 
 
 
 def _prontas(dono, n: int) -> list[int]:
-    """n contas sem equipe prontas para a exclusão (teste acabado há 100 dias, avisadas há 8 dias para 3 dias atrás;
+    """n contas Grátis sem equipe prontas para a exclusão (paradas há 200 dias, avisadas há 31 dias para 3 dias atrás;
     sem administrador ativo, valem sem o e-mail do aviso)."""
     return [i for (i,) in sql(dono, """
-        insert into contas (nome, situacao, teste_ate, criada_em, exclusao_avisada_para, exclusao_avisada_em)
-        select 'Conta ' || g, 'teste_expirado', :t, now() - interval '300 days', :p, now() - interval '8 days'
+        insert into contas (nome, situacao, gratis_desde, gratis_motivo, criada_em, exclusao_avisada_para,
+                            exclusao_avisada_em)
+        select 'Conta ' || g, 'gratis', :d, 'teste', now() - interval '400 days', :p, now() - interval '31 days'
           from generate_series(1, :n) g
         returning id
-    """, t=sp(HOJE - timedelta(days=100)), p=HOJE - timedelta(days=3), n=n)]
+    """, d=sp(HOJE - timedelta(days=200)), p=HOJE - timedelta(days=3), n=n)]
 
 
 def _a_avisar(dono, n: int) -> list[int]:
-    """n contas sem equipe com o teste acabado há 90 dias (a exclusão prevista é hoje: hora do aviso)."""
+    """n contas Grátis sem equipe paradas há 150 dias (a exclusão prevista é daqui a 30: hora do aviso)."""
     return [i for (i,) in sql(dono, """
-        insert into contas (nome, situacao, teste_ate, criada_em)
-        select 'Aviso ' || g, 'teste_expirado', :t, now() - interval '300 days' from generate_series(1, :n) g
+        insert into contas (nome, situacao, gratis_desde, gratis_motivo, criada_em)
+        select 'Aviso ' || g, 'gratis', :d, 'teste', now() - interval '400 days' from generate_series(1, :n) g
         returning id
-    """, t=sp(HOJE - timedelta(days=90)), n=n)]
+    """, d=sp(HOJE - timedelta(days=150)), n=n)]
 
 
 def _contas(dono) -> int:
@@ -147,99 +130,104 @@ def _existe(dono, conta_id: int) -> bool:
     return bool(sql(dono, "select count(*) from contas where id = :c", c=conta_id)[0][0])
 
 
+def _avisada_para(dono, conta_id: int):
+    return sql(dono, "select exclusao_avisada_para from contas where id = :c", c=conta_id)[0][0]
+
+
 @pytest.fixture
 def ana(client):
     return conta_pronta(client, "ana@alfa.com.br", empresa="Alfa")
 
 
-def test_aviso_teste_vencido_ha_90_dias(client, dono, ana, ligada):
+def test_aviso_aos_150_dias_sem_uso(client, dono, ana, ligada):
     c = ana["conta"]["id"]
-    _encerrar(dono, c, dias=90)
+    _parar(dono, c, dias=150)
     caixa_memoria.clear()
     r = tarefas.limpeza()["encerradas"]
-    assert r == {"modo": "ligada", "avisadas": 1, "excluidas": 0, "adiadas": 0, "em_atraso_90_dias": 0,
-                 "sem_data": 0}
-    data = HOJE + timedelta(days=7)  # max(prevista = hoje, hoje + 7)
+    assert r == {"modo": "ligada", "avisadas": 1, "excluidas": 0, "adiadas": 0}
+    data = HOJE + timedelta(days=30)  # max(prevista = hoje + 30, hoje + 30)
     ((para, em),) = sql(dono, "select exclusao_avisada_para, exclusao_avisada_em from contas where id = :c", c=c)
     assert para == data and em is not None
     ((detalhe, gravidade),) = sql(dono, "select detalhe, gravidade from auditoria where conta_id = :c "
                                         "and evento = 'exclusao_avisada'", c=c)
     assert gravidade == "atencao"
-    assert detalhe == {"exclusao_em": data.isoformat(), "encerrada_em": (HOJE - timedelta(days=90)).isoformat(),
+    assert detalhe == {"exclusao_em": data.isoformat(), "sem_uso_desde": (HOJE - timedelta(days=150)).isoformat(),
                        "admins": 1}
     (m,) = [m for m in caixa_memoria if m.para == "ana@alfa.com.br"]
     assert m.assunto == f"Sua conta no Toqqi será excluída em {data:%d/%m/%Y}"
-    assert "Configurações › Dados da conta" in m.texto and "/configuracoes/dados-da-conta" in m.texto
-    assert "assinar um plano" in m.texto and "Baixar os dados" in m.html
+    assert "Ninguém usa a conta Alfa no Toqqi desde" in m.texto and "180 dias sem uso" in m.texto
+    assert "é só entrar no Toqqi antes dessa data" in m.texto and "Configurações › Dados da conta" in m.texto
+    assert "Entrar no Toqqi" in m.html and "/entrar" in m.texto
     assert sql(dono, "select tipo from emails_enviados where conta_id = :c and assunto = :a", c=c,
                a=m.assunto) == [("aviso",)]
-    # o aviso aparece em conta.cobranca e na lista da Plataforma; nada é excluído ainda
-    assert client.get(f"{API}/eu", headers=ana["h"]).json()["conta"]["cobranca"]["exclusao_em"] == data.isoformat()
+    # o aviso aparece na lista da Plataforma (e em conta.cobranca, até alguém usar a conta); nada é excluído ainda
     from toqqi.modulos.plataforma import servico as plataforma
     (item,) = [x for x in plataforma.listar() if x["id"] == c]
-    assert item["exclusao_em"] == data
+    assert item["exclusao_em"] == data and item["situacao"] == "gratis"
     assert _existe(dono, c)
-    # uma vez por dia; amanhã não avisa de novo (o aviso vale para este encerramento)
+    # uma vez por dia; amanhã não avisa de novo (o aviso vale para esta parada)
     assert tarefas.limpeza()["encerradas"] is None
     sql(dono, "delete from auditoria where conta_id is null")
     r = tarefas.limpeza()["encerradas"]
     assert r["avisadas"] == 0 and len([m for m in caixa_memoria if m.para == "ana@alfa.com.br"]) == 1
 
 
-def test_cancelada_com_pago_ate(client, dono, ana, ligada):
-    c = ana["conta"]["id"]
-    # pago_ate há 84 dias: encerrada no dia seguinte (há 83), prevista daqui a 7 → avisa
-    _encerrar(dono, c, dias=300, situacao="cancelada", pago_ate=HOJE - timedelta(days=84))
-    assert tarefas.limpeza()["encerradas"]["avisadas"] == 1
-    assert sql(dono, "select exclusao_avisada_para from contas where id = :c", c=c) == [(HOJE + timedelta(days=7),)]
-    # pago_ate há 82 dias: prevista daqui a 9 → ainda não
-    b = conta_pronta(client, "bia@beta.com.br", empresa="Beta")
-    _encerrar(dono, b["conta"]["id"], dias=300, situacao="cancelada", pago_ate=HOJE - timedelta(days=82))
-    sql(dono, "delete from auditoria where conta_id is null")
+def test_aos_149_dias_ainda_nao(client, dono, ana, ligada):
+    _parar(dono, ana["conta"]["id"], dias=149)
     assert tarefas.limpeza()["encerradas"]["avisadas"] == 0
 
 
-@pytest.mark.parametrize("caso", ["assinatura_ativa", "atrasada", "cortesia", "teste", "ativa", "sem_data",
+@pytest.mark.parametrize("uso", ["login", "sessao", "entrada_no_gratis"])
+def test_o_ultimo_uso_e_o_mais_tarde(client, dono, ana, ligada, uso):
+    """Login, uso de uma sessão (a cada minuto) ou a entrada no Grátis há 10 dias: a conta não está parada."""
+    c = ana["conta"]["id"]
+    _parar(dono, c, dias=200)
+    recente = sp(HOJE - timedelta(days=10))
+    if uso == "login":
+        sql(dono, "update usuarios set ultimo_acesso = :q where conta_id = :c", c=c, q=recente)
+    elif uso == "sessao":
+        sql(dono, "update sessoes set ultimo_uso = :q where conta_id = :c", c=c, q=recente)
+    else:
+        sql(dono, "update contas set gratis_desde = :q where id = :c", c=c, q=recente)
+    r = tarefas.limpeza()["encerradas"]
+    assert (r["avisadas"], r["excluidas"]) == (0, 0) and _avisada_para(dono, c) is None
+
+
+@pytest.mark.parametrize("caso", ["teste", "ativa", "atrasada", "cancelada", "cortesia", "assinatura_ativa",
                                   "primeiro_vencimento"])
 def test_quem_nunca_entra(client, dono, ana, ligada, caso):
+    """Só a conta Grátis sem assinatura: nunca a que assinou (mesmo sem pagar), nem as outras situações."""
     c = ana["conta"]["id"]
-    _encerrar(dono, c, dias=200)
+    if caso in ("teste", "ativa", "atrasada", "cancelada", "cortesia"):
+        _parar(dono, c, dias=300, situacao=caso, pago_ate=HOJE + timedelta(days=5), atrasada_desde=HOJE)
+    else:
+        _parar(dono, c, dias=300)
     if caso == "assinatura_ativa":
         sql(dono, "insert into assinaturas (conta_id, asaas_id, ambiente, plano, valor, razao_social, documento, "
                   "email_cobranca, telefone, primeiro_vencimento) values (:c, 'sub_1', 'producao', 'profissional', "
                   "349, 'Alfa', '11222333000181', 'a@alfa.com.br', '5511999999999', :d)", c=c, d=HOJE)
     elif caso == "primeiro_vencimento":
         sql(dono, "update contas set primeiro_vencimento = :d where id = :c", c=c, d=HOJE)
-    elif caso == "sem_data":
-        sql(dono, "update contas set teste_ate = null where id = :c", c=c)
-    else:
-        sql(dono, "update contas set situacao = :s, atrasada_desde = :a where id = :c", c=c, s=caso,
-            a=HOJE - timedelta(days=200) if caso == "atrasada" else None)
-    _avisada(dono, c, HOJE - timedelta(days=1), dias_atras=30)
+    _avisada(dono, c, HOJE - timedelta(days=1), dias_atras=40)
     r = tarefas.limpeza()["encerradas"]
     assert (r["avisadas"], r["excluidas"]) == (0, 0)
-    assert r["sem_data"] == (1 if caso == "sem_data" else 0)
-    assert r["em_atraso_90_dias"] == (1 if caso == "atrasada" else 0)
     assert _existe(dono, c)
-    if caso != "assinatura_ativa":  # a regra pura só vê a linha da conta (assinatura de outro ambiente: só a rotina)
-        assert client.get(f"{API}/eu", headers=ana["h"]).json()["conta"]["cobranca"]["exclusao_em"] is None
 
 
-def test_exclusao_com_7_dias_nos_dois_relogios(client, dono, ana, ligada):
+def test_exclusao_com_30_dias_nos_dois_relogios(client, dono, ana, ligada):
     c = ana["conta"]["id"]
     criar_contato(client, ana["h"], nome="Carla", email="carla@um.com.br")
-    _encerrar(dono, c, dias=97)  # prevista = hoje − 7
-    prevista = HOJE - timedelta(days=7)
+    _parar(dono, c, dias=187)  # prevista = hoje − 7
     # avisada para amanhã (relógio das regras): ainda não
-    _avisada(dono, c, HOJE + timedelta(days=1), dias_atras=8)
+    _avisada(dono, c, HOJE + timedelta(days=1), dias_atras=31)
     assert tarefas.limpeza()["encerradas"]["excluidas"] == 0 and _existe(dono, c)
-    # avisada para hoje, mas o aviso saiu há 6 dias pelo relógio do banco: ainda não
+    # avisada para hoje, mas o aviso saiu há 29 dias pelo relógio do banco: ainda não
     sql(dono, "delete from auditoria where conta_id is null")
-    _avisada(dono, c, HOJE, dias_atras=6)
+    _avisada(dono, c, HOJE, dias_atras=29)
     assert tarefas.limpeza()["encerradas"]["excluidas"] == 0 and _existe(dono, c)
-    # 7 dias nos dois relógios: exclui
+    # 30 dias nos dois relógios: exclui
     sql(dono, "delete from auditoria where conta_id is null")
-    _avisada(dono, c, HOJE, dias_atras=7)
+    _avisada(dono, c, HOJE, dias_atras=30)
     avisada_em = sql(dono, "select exclusao_avisada_em from contas where id = :c", c=c)[0][0]
     acessos = sql(dono, "select count(*) from registros_acesso where conta_id = :c", c=c)[0][0]
     assert acessos >= 2  # cadastro e login
@@ -247,41 +235,64 @@ def test_exclusao_com_7_dias_nos_dois_relogios(client, dono, ana, ligada):
     assert (r["excluidas"], r["adiadas"]) == (1, 0)
     assert not _existe(dono, c)
     for t in ("usuarios", "contatos", "auditoria", "aceites_termos", "formularios", "emails_enviados",
-              "config_envios", "perfil_permissoes"):
+              "config_envios", "perfil_permissoes", "envios_uso"):
         assert sql(dono, f"select count(*) from {t} where conta_id = :c", c=c)[0][0] == 0, t
     # ficam os registros de acesso e o evento global, sem dado pessoal
     assert sql(dono, "select count(*) from registros_acesso where conta_id = :c", c=c)[0][0] == acessos
     ((detalhe, gravidade),) = sql(dono, "select detalhe, gravidade from auditoria where conta_id is null "
                                         "and evento = 'conta_excluida_automatica'")
     assert gravidade == "atencao"
-    assert detalhe == {"conta_id": c, "situacao": "teste_expirado",
-                       "encerrada_em": (HOJE - timedelta(days=97)).isoformat(),
+    assert detalhe == {"conta_id": c, "situacao": "gratis", "sem_uso_desde": (HOJE - timedelta(days=187)).isoformat(),
                        "avisada_em": avisada_em.isoformat(), "exclusao_em": HOJE.isoformat(), "admins": 1}
-    assert prevista < HOJE
 
 
-def test_menos_de_100_dias_nunca(client, dono, ana, ligada):
+def test_conta_com_menos_de_180_dias_nunca(client, dono, ana, ligada):
     c = ana["conta"]["id"]
-    _encerrar(dono, c, dias=97, criada_dias=99)
-    _avisada(dono, c, HOJE, dias_atras=10)
+    _parar(dono, c, dias=187, criada_dias=179)
+    _avisada(dono, c, HOJE, dias_atras=35)
     assert tarefas.limpeza()["encerradas"]["excluidas"] == 0 and _existe(dono, c)
 
 
-def test_assinar_depois_cancela_e_novo_encerramento_avisa_de_novo(client, dono, ana, ligada):
+def test_usar_o_toqqi_cancela_e_uma_parada_nova_avisa_de_novo(client, dono, ana, ligada):
     c = ana["conta"]["id"]
-    _encerrar(dono, c, dias=97)
-    _avisada(dono, c, HOJE, dias_atras=7)
-    # assinou (a situação muda): nada é excluído e o aviso some
-    sql(dono, "update contas set situacao = 'ativa', pago_ate = :p where id = :c", c=c, p=HOJE + timedelta(days=30))
-    assert tarefas.limpeza()["encerradas"]["excluidas"] == 0 and _existe(dono, c)
+    _parar(dono, c, dias=150)
+    assert tarefas.limpeza()["encerradas"]["avisadas"] == 1
+    assert _avisada_para(dono, c) == HOJE + timedelta(days=30)
+    # alguém abre o site com a sessão: a exclusão é cancelada na hora (e a resposta já vem sem ela)
     assert client.get(f"{API}/eu", headers=ana["h"]).json()["conta"]["cobranca"]["exclusao_em"] is None
-    # cancelou e o período pago terminou de novo: novo encerramento, aviso de novo
+    assert sql(dono, "select exclusao_avisada_para, exclusao_avisada_em from contas where id = :c", c=c) == [
+        (None, None)]
+    ((detalhe,),) = sql(dono, "select detalhe from auditoria where conta_id = :c and evento = 'exclusao_cancelada'",
+                        c=c)
+    assert detalhe == {"exclusao_em": (HOJE + timedelta(days=30)).isoformat()}
+    # a rodada seguinte não avisa (o uso é de agora)
     sql(dono, "delete from auditoria where conta_id is null")
-    sql(dono, "update contas set situacao = 'cancelada', pago_ate = :p where id = :c", c=c,
-        p=HOJE - timedelta(days=84))
-    r = tarefas.limpeza()["encerradas"]
-    assert (r["avisadas"], r["excluidas"]) == (1, 0)
-    assert sql(dono, "select exclusao_avisada_para from contas where id = :c", c=c) == [(HOJE + timedelta(days=7),)]
+    assert tarefas.limpeza()["encerradas"]["avisadas"] == 0
+    # parou de novo: aviso novo
+    _parar(dono, c, dias=160)
+    sql(dono, "delete from auditoria where conta_id is null")
+    assert tarefas.limpeza()["encerradas"]["avisadas"] == 1
+    assert _avisada_para(dono, c) == HOJE + timedelta(days=30)  # max(prevista = hoje + 20, hoje + 30)
+
+
+def test_entrar_cancela_a_exclusao(client, dono, ana, ligada):
+    c = ana["conta"]["id"]
+    _parar(dono, c, dias=187)
+    _avisada(dono, c, HOJE, dias_atras=30)
+    r = entrar(client, "ana@alfa.com.br")
+    assert r.status_code == 200 and r.json()["conta"]["cobranca"]["exclusao_em"] is None
+    assert tarefas.limpeza()["encerradas"]["excluidas"] == 0 and _existe(dono, c)
+
+
+def test_os_prazos_sao_parametros(client, dono, ana, ligada):
+    """`gratis.dias_sem_uso` 90 e `gratis.dias_aviso` 10: o aviso sai aos 80 dias, para daqui a 10."""
+    sql(dono, "insert into parametros (chave, valor) values ('gratis.dias_sem_uso', '90'), "
+              "('gratis.dias_aviso', '10')")
+    parametros.invalidar()
+    c = ana["conta"]["id"]
+    _parar(dono, c, dias=80, criada_dias=120)
+    assert tarefas.limpeza()["encerradas"]["avisadas"] == 1
+    assert _avisada_para(dono, c) == HOJE + timedelta(days=10)
 
 
 def test_limite_de_20_por_dia(dono, ligada):
@@ -365,23 +376,23 @@ def test_simular_so_conta(client, dono, ana, monkeypatch):
     fixar_relogio(monkeypatch, AGORA)
     assert config().EXCLUSAO_AUTOMATICA == "simular"  # padrão do código
     c = ana["conta"]["id"]
-    _encerrar(dono, c, dias=90)
+    _parar(dono, c, dias=150)
     b = conta_pronta(client, "bia@beta.com.br", empresa="Beta")
-    _encerrar(dono, b["conta"]["id"], dias=97)
-    _avisada(dono, b["conta"]["id"], HOJE, dias_atras=7)
+    _parar(dono, b["conta"]["id"], dias=187)
+    _avisada(dono, b["conta"]["id"], HOJE, dias_atras=30)
     caixa_memoria.clear()
     r = tarefas.limpeza()["encerradas"]
-    assert r == {"modo": "simular", "avisadas": 1, "excluidas": 1, "adiadas": 0, "em_atraso_90_dias": 0,
-                 "sem_data": 0}
+    assert r == {"modo": "simular", "avisadas": 1, "excluidas": 1, "adiadas": 0}
     assert _existe(dono, b["conta"]["id"]) and not caixa_memoria
-    assert sql(dono, "select exclusao_avisada_para from contas where id = :c", c=c) == [(None,)]
+    assert _avisada_para(dono, c) is None
     assert sql(dono, "select detalhe from auditoria where conta_id is null and evento = 'exclusao_automatica'") == [
         (r,)]
 
 
 def test_antes_das_9h_e_rodada_simultanea(dono, ana, monkeypatch):
     fixar_relogio(monkeypatch, datetime.combine(HOJE, time(8, 59), tzinfo=FUSO))
-    _encerrar(dono, ana["conta"]["id"], dias=90)
+    _parar(dono, ana["conta"]["id"], dias=150)
+    monkeypatch.setattr(config(), "EXCLUSAO_AUTOMATICA", "ligada")
     assert tarefas.limpeza()["encerradas"] is None
     fixar_relogio(monkeypatch, AGORA)
     with dono.connect() as conexao:
@@ -398,12 +409,12 @@ def test_antes_das_9h_e_rodada_simultanea(dono, ana, monkeypatch):
 def test_asaas_fora_fica_para_amanha(client, dono, ana, ligada, monkeypatch, caplog):
     monkeypatch.setattr(config(), "ASAAS_API_KEY", CHAVE_ASAAS)  # sandbox; a rede está bloqueada nos testes
     c = ana["conta"]["id"]
-    _encerrar(dono, c, dias=97, asaas_cliente_id="cus_000001", asaas_ambiente="sandbox")
-    _avisada(dono, c, HOJE, dias_atras=7)
+    _parar(dono, c, dias=187, asaas_cliente_id="cus_000001", asaas_ambiente="sandbox")
+    _avisada(dono, c, HOJE, dias_atras=30)
     with caplog.at_level(logging.INFO, logger="toqqi"):
         r = tarefas.limpeza()["encerradas"]
     assert (r["excluidas"], r["adiadas"]) == (0, 1) and _existe(dono, c)
-    assert sql(dono, "select exclusao_avisada_para from contas where id = :c", c=c) == [(HOJE,)]  # o aviso segue
+    assert _avisada_para(dono, c) == HOJE  # o aviso segue
     texto = caplog.text
     assert "ana@alfa.com.br" not in texto and "Alfa" not in texto  # o log não leva dado pessoal
     assert str(c) in texto
@@ -411,8 +422,8 @@ def test_asaas_fora_fica_para_amanha(client, dono, ana, ligada, monkeypatch, cap
 
 def test_log_da_exclusao_sem_dado_pessoal(client, dono, ana, ligada, caplog):
     c = ana["conta"]["id"]
-    _encerrar(dono, c, dias=97)
-    _avisada(dono, c, HOJE, dias_atras=7)
+    _parar(dono, c, dias=187)
+    _avisada(dono, c, HOJE, dias_atras=30)
     with caplog.at_level(logging.INFO, logger="toqqi"):
         assert tarefas.limpeza()["encerradas"]["excluidas"] == 1
     assert "excluída" in caplog.text and "ana@alfa.com.br" not in caplog.text and "Alfa" not in caplog.text
@@ -425,8 +436,8 @@ def test_aviso_que_nao_chegou_nao_vale(client, dono, ana, ligada, email):
     """Sem o e-mail do aviso aceito pelo provedor depois do aviso (nenhum, falhou, de um aviso anterior ou outro aviso
     aos administradores), com administrador ativo: não exclui, desfaz o aviso e a próxima rodada avisa de novo."""
     c = ana["conta"]["id"]
-    _encerrar(dono, c, dias=97)  # prevista = hoje − 7
-    _avisada(dono, c, HOJE, dias_atras=7, entregue=False)
+    _parar(dono, c, dias=187)  # prevista = hoje − 7
+    _avisada(dono, c, HOJE, dias_atras=30, entregue=False)
     if email == "falhou":
         _email_do_aviso(dono, c, HOJE, situacao="falhou")
     elif email == "antes_do_aviso":
@@ -437,45 +448,49 @@ def test_aviso_que_nao_chegou_nao_vale(client, dono, ana, ligada, email):
     assert (r["excluidas"], r["adiadas"]) == (0, 1) and _existe(dono, c)
     assert sql(dono, "select exclusao_avisada_para, exclusao_avisada_em from contas where id = :c", c=c) == [
         (None, None)]
-    assert client.get(f"{API}/eu", headers=ana["h"]).json()["conta"]["cobranca"]["exclusao_em"] is None
     sql(dono, "delete from auditoria where conta_id is null")
     r = tarefas.limpeza()["encerradas"]
     assert (r["avisadas"], r["excluidas"]) == (1, 0)
-    assert sql(dono, "select exclusao_avisada_para from contas where id = :c", c=c) == [(HOJE + timedelta(days=7),)]
+    assert _avisada_para(dono, c) == HOJE + timedelta(days=30)
 
 
 def test_aviso_com_falha_do_provedor_e_refeito(client, dono, ana, ligada, monkeypatch):
     c = ana["conta"]["id"]
-    _encerrar(dono, c, dias=90)
+    _parar(dono, c, dias=150)
     enviar = Memoria.enviar
     falhar_provedor(monkeypatch, erro_http(503))
     assert tarefas.limpeza()["encerradas"]["avisadas"] == 1
     assert sql(dono, "select situacao from emails_enviados where conta_id = :c and tipo = 'aviso'", c=c) == [
         ("falhou",)]
-    # 7 dias depois, nos dois relógios: o aviso não chegou → não exclui e desfaz o aviso
-    fixar_relogio(monkeypatch, sp(HOJE + timedelta(days=7), 10))
-    sql(dono, "update contas set exclusao_avisada_em = exclusao_avisada_em - interval '7 days' where id = :c", c=c)
-    sql(dono, "update emails_enviados set criado_em = criado_em - interval '7 days' where conta_id = :c", c=c)
+    # 30 dias depois, nos dois relógios (tudo da conta 30 dias para trás): o aviso não chegou → não exclui e desfaz
+    sql(dono, "update contas set exclusao_avisada_em = exclusao_avisada_em - interval '30 days', "
+              "exclusao_avisada_para = exclusao_avisada_para - 30, gratis_desde = gratis_desde - interval '30 days' "
+              "where id = :c", c=c)
+    sql(dono, "update usuarios set ultimo_acesso = ultimo_acesso - interval '30 days' where conta_id = :c", c=c)
+    sql(dono, "update sessoes set ultimo_uso = ultimo_uso - interval '30 days' where conta_id = :c", c=c)
+    sql(dono, "update emails_enviados set criado_em = criado_em - interval '30 days' where conta_id = :c", c=c)
+    sql(dono, "delete from auditoria where conta_id is null")  # a rodada de "30 dias atrás"
+    fixar_relogio(monkeypatch, AGORA)
     r = tarefas.limpeza()["encerradas"]
     assert (r["avisadas"], r["excluidas"], r["adiadas"]) == (0, 0, 1) and _existe(dono, c)
-    # no dia seguinte, com o provedor de volta, avisa de novo: exclusão daqui a 7 dias
+    # no dia seguinte, com o provedor de volta, avisa de novo: exclusão daqui a 30 dias
     monkeypatch.setattr(Memoria, "enviar", enviar)
-    fixar_relogio(monkeypatch, sp(HOJE + timedelta(days=8), 10))
+    fixar_relogio(monkeypatch, sp(HOJE + timedelta(days=1), 10))
     r = tarefas.limpeza()["encerradas"]
     assert (r["avisadas"], r["excluidas"]) == (1, 0)
-    assert sql(dono, "select exclusao_avisada_para from contas where id = :c", c=c) == [(HOJE + timedelta(days=15),)]
+    assert _avisada_para(dono, c) == HOJE + timedelta(days=31)
     assert [m.para for m in caixa_memoria if m.assunto.startswith("Sua conta no Toqqi será excluída")] == [
         "ana@alfa.com.br"]
 
 
-def test_sem_administrador_ativo_exclui_depois_dos_7_dias(client, dono, ana, ligada):
-    """Ninguém a avisar (o único administrador bloqueado; gestor não conta): exclui depois dos 7 dias sem o e-mail,
+def test_sem_administrador_ativo_exclui_depois_dos_30_dias(client, dono, ana, ligada):
+    """Ninguém a avisar (o único administrador bloqueado; gestor não conta): exclui depois dos 30 dias sem o e-mail,
     com `admins: 0` no evento global."""
     c = ana["conta"]["id"]
     membro(client, ana["h"], "gil@alfa.com.br", perfil="gestor")
     sql(dono, "update usuarios set situacao = 'bloqueado' where conta_id = :c and perfil = 'admin'", c=c)
-    _encerrar(dono, c, dias=97)
-    _avisada(dono, c, HOJE, dias_atras=7, entregue=False)
+    _parar(dono, c, dias=187)
+    _avisada(dono, c, HOJE, dias_atras=30, entregue=False)
     r = tarefas.limpeza()["encerradas"]
     assert (r["excluidas"], r["adiadas"]) == (1, 0) and not _existe(dono, c)
     ((detalhe,),) = sql(dono, "select detalhe from auditoria where conta_id is null "
@@ -499,14 +514,14 @@ def test_asaas_sem_a_chave_do_ambiente_do_cliente(client, dono, ana, ligada, mon
     if chave is not None:
         monkeypatch.setattr(config(), "ASAAS_API_KEY", CHAVE_ASAAS if chave == "sandbox" else CHAVE_PRODUCAO)
     c = ana["conta"]["id"]
-    _encerrar(dono, c, dias=97, asaas_cliente_id="cus_000001", asaas_ambiente=cliente)
-    _avisada(dono, c, HOJE, dias_atras=7)
+    _parar(dono, c, dias=187, asaas_cliente_id="cus_000001", asaas_ambiente=cliente)
+    _avisada(dono, c, HOJE, dias_atras=30)
     with caplog.at_level(logging.INFO, logger="toqqi"):
         r = tarefas.limpeza()["encerradas"]
     assert (r["excluidas"], r["adiadas"]) == ((1, 0) if excluida else (0, 1))
     assert _existe(dono, c) is not excluida
     if not excluida:
-        assert sql(dono, "select exclusao_avisada_para from contas where id = :c", c=c) == [(HOJE,)]
+        assert _avisada_para(dono, c) == HOJE
         assert any(str(c) in x.getMessage() and x.levelno == logging.WARNING for x in caplog.records)
     assert "ana@alfa.com.br" not in caplog.text and "Alfa" not in caplog.text
 
@@ -519,15 +534,14 @@ def test_exclusao_automatica_com_outro_valor_simula(client, dono, ana, monkeypat
     fixar_relogio(monkeypatch, AGORA)
     monkeypatch.setattr(config(), "EXCLUSAO_AUTOMATICA", "desligada")
     c = ana["conta"]["id"]
-    _encerrar(dono, c, dias=97)
-    _avisada(dono, c, HOJE, dias_atras=7)
+    _parar(dono, c, dias=187)
+    _avisada(dono, c, HOJE, dias_atras=30)
     b = conta_pronta(client, "bia@beta.com.br", empresa="Beta")
-    _encerrar(dono, b["conta"]["id"], dias=90)
+    _parar(dono, b["conta"]["id"], dias=150)
     caixa_memoria.clear()
     with caplog.at_level(logging.INFO, logger="toqqi"):
         r = tarefas.limpeza()["encerradas"]
-    assert r == {"modo": "simular", "avisadas": 1, "excluidas": 1, "adiadas": 0, "em_atraso_90_dias": 0,
-                 "sem_data": 0}
+    assert r == {"modo": "simular", "avisadas": 1, "excluidas": 1, "adiadas": 0}
     assert _existe(dono, c) and not caixa_memoria
     avisos = [x for x in caplog.records if "desligada" in x.getMessage()]
     assert len(avisos) == 1 and avisos[0].levelno == logging.WARNING

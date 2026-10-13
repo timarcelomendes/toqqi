@@ -163,23 +163,27 @@ def test_assinar_durante_o_teste(client, admin, dono, asaas_falso):
 
 
 def test_assinar_depois_do_teste_vence_amanha_e_libera_so_com_pagamento(client, admin, dono, asaas_falso, monkeypatch):
+    """Plano Grátis: o teste acabou sem assinar (a tarefa passou a conta para o Grátis). Assinar: a primeira fatura
+    vence amanhã e, até ela ser paga, a conta segue no Grátis (com os envios do Grátis)."""
     h, conta = admin["h"], admin["conta"]["id"]
     fixar_relogio(monkeypatch, momento("2026-10-20", 16))
-    sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=conta)
+    assert tarefas.executar("assinaturas")["assinaturas"]["contas_ao_gratis"] >= 1
+    assert situacao_conta(dono, conta)[0] == "gratis"
     d = assinar(client, h).json()
     assert d["assinatura"]["primeiro_vencimento"] == "2026-10-21"
-    assert (d["conta"]["situacao"], d["conta"]["liberada"]) == ("teste_expirado", False)
+    assert (d["conta"]["situacao"], d["conta"]["liberada"]) == ("gratis", True)
     eu = client.get(f"{API}/eu", headers=h).json()["conta"]["cobranca"]
-    # já assinou: o aviso é o da primeira fatura (os envios voltam quando ela for paga), não o de teste encerrado
-    assert eu["aviso"] == {"tipo": "aguardando_pagamento", "data": "2026-10-21", "dias": 1}
-    assert eu["liberada"] is False and eu["assinada"] is True
+    # já assinou: o aviso é o da primeira fatura (o plano começa quando ela for paga), não o da passagem ao Grátis
+    assert eu["aviso"] == {"tipo": "gratis_aguardando", "data": "2026-10-21", "dias": 1}
+    assert eu["liberada"] is True and eu["assinada"] is True
     r = client.get(f"{API}/envios/pre-condicoes", headers=h).json()["itens"][0]
-    assert r["mensagem"] == "Os envios voltam quando a fatura da assinatura for paga."
-    # venceu sem pagar: não ganha a carência de atraso (não estava coberto quando a fatura venceu)
+    assert (r["chave"], r["ok"], r["mensagem"]) == ("assinatura", True, None)
+    # venceu sem pagar: segue no Grátis (sem a carência de atraso: não estava coberta quando a fatura venceu)
     fixar_relogio(monkeypatch, momento("2026-10-22", 9))
     asaas_falso.simular("vencer", asaas_falso.cobrancas()[0]["id"])
-    assert situacao_conta(dono, conta) == ("teste_expirado", None, date(2026, 10, 21), date(2026, 10, 21))
-    assert client.get(f"{API}/eu", headers=h).json()["conta"]["cobranca"]["liberada"] is False
+    assert situacao_conta(dono, conta)[0] == "gratis"
+    eu = client.get(f"{API}/eu", headers=h).json()["conta"]["cobranca"]
+    assert (eu["liberada"], eu["aviso"]) == (True, {"tipo": "gratis_aguardando", "data": "2026-10-21", "dias": -1})
     # pagou: ativa
     pagar_tudo(asaas_falso)
     assert situacao_conta(dono, conta) == ("ativa", date(2026, 11, 20), None, date(2026, 10, 21))
@@ -429,10 +433,11 @@ def test_cancelar_no_teste_volta_ao_teste(client, admin, dono, asaas_falso, monk
     assert situacao_conta(dono, conta) == ("teste", None, None, None)
     assert sql(dono, "select gravidade, detalhe from auditoria where evento = 'assinatura_cancelada'") == [
         ("atencao", {"plano": "profissional"})]
-    # o teste acaba: a tarefa marca teste_expirado
+    # o teste acaba: a tarefa passa a conta para o Grátis (Plano Grátis)
     fixar_relogio(monkeypatch, momento("2026-10-15", 15))
-    assert tarefas.executar("assinaturas")["assinaturas"]["testes_expirados"] == 1
-    assert situacao_conta(dono, conta)[0] == "teste_expirado"
+    assert tarefas.executar("assinaturas")["assinaturas"]["contas_ao_gratis"] == 1
+    assert situacao_conta(dono, conta)[0] == "gratis"
+    assert sql(dono, "select gratis_motivo from contas where id = :c", c=conta) == [("teste",)]
 
 
 def test_cancelar_pago_usa_ate_o_fim_do_periodo(client, admin, dono, asaas_falso, monkeypatch):
@@ -452,7 +457,13 @@ def test_cancelar_pago_usa_ate_o_fim_do_periodo(client, admin, dono, asaas_falso
     assert (cobranca["liberada"], cobranca["aviso"]) == (
         False, {"tipo": "cancelada_encerrada", "data": "2026-11-14", "dias": None})
     assert client.get(f"{API}/envios/pre-condicoes", headers=h).json()["itens"][0]["mensagem"] == (
-        "A assinatura foi cancelada e o período pago terminou. Assine um plano para voltar a enviar.")
+        "A assinatura foi cancelada e o período pago terminou. A conta passa para o plano Grátis em instantes; para "
+        "continuar sem os limites dele, assine um plano.")
+    # Plano Grátis: a tarefa passa a conta para o Grátis (motivo: cancelamento) e os envios voltam, com os limites
+    assert tarefas.executar("assinaturas")["assinaturas"]["contas_ao_gratis"] == 1
+    cobranca = client.get(f"{API}/eu", headers=h).json()["conta"]["cobranca"]
+    assert (cobranca["liberada"], cobranca["aviso"]) == (
+        True, {"tipo": "gratis", "data": "2026-11-15", "dias": 0, "motivo": "cancelamento"})
 
 
 def test_cancelar_com_asaas_fora_nao_muda_nada(client, admin, dono, asaas_falso):
@@ -478,7 +489,8 @@ def test_assinar_de_novo_depois_do_periodo_pago(client, admin, dono, asaas_falso
     assert r.status_code == 201, r.text
     d = r.json()
     assert d["assinatura"]["primeiro_vencimento"] == "2026-12-02"  # amanhã
-    assert (d["conta"]["situacao"], d["conta"]["liberada"]) == ("cancelada", False)  # volta quando pagar
+    # Plano Grátis: o período pago acabou, então a conta está no Grátis até a fatura nova ser paga
+    assert (d["conta"]["situacao"], d["conta"]["liberada"]) == ("gratis", True)
     assert [c["situacao"] for c in d["cobrancas"]] == ["pendente", "paga"]
     pagar_tudo(asaas_falso, "BOLETO")
     assert situacao_conta(dono, conta) == ("ativa", date(2027, 1, 1), None, date(2026, 12, 2))
@@ -493,8 +505,11 @@ def test_assinar_de_novo_depois_do_periodo_pago(client, admin, dono, asaas_falso
     ("teste", {"teste_ate": "2026-10-25 14:30-03"}, None, True),
     ("teste", {"teste_ate": "2026-10-09 14:30-03"}, {"tipo": "teste_expirado", "data": "2026-10-09", "dias": None},
      False),
-    ("teste_expirado", {"teste_ate": "2026-10-09 14:30-03"},
-     {"tipo": "teste_expirado", "data": "2026-10-09", "dias": None}, False),
+    # Plano Grátis: nos 7 primeiros dias, o aviso da passagem (com o motivo); depois, nada
+    ("gratis", {"teste_ate": "2026-10-09 14:30-03", "gratis_desde": "2026-10-09 15:00-03", "gratis_motivo": "teste"},
+     {"tipo": "gratis", "data": "2026-10-09", "dias": 1, "motivo": "teste"}, True),
+    ("gratis", {"teste_ate": "2026-10-01 14:30-03", "gratis_desde": "2026-10-02 15:00-03", "gratis_motivo": "teste"},
+     None, True),
     ("atrasada", {"atrasada_desde": "2026-10-05"}, {"tipo": "atrasada", "data": "2026-10-13", "dias": 3}, True),
     ("atrasada", {"atrasada_desde": "2026-10-02"}, {"tipo": "pausada", "data": "2026-10-02", "dias": None}, False),
     ("cancelada", {"pago_ate": "2026-10-14", "teste_ate": "2026-09-01 10:00-03"},

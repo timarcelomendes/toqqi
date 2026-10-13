@@ -21,6 +21,13 @@ class EditarLinkIn(ResponderIn):
     chave: Annotated[str, Field(min_length=3, max_length=200)]
 
 
+class DenunciaIn(BaseModel):
+    """POST /publico/convites/{token}/denuncia e /publico/formularios/{codigo}/denuncia (Plano Grátis, "Denunciar esta
+    pesquisa"): o motivo e, se quiser, o que aconteceu."""
+    motivo: Literal["dados_pessoais", "golpe", "spam", "ofensa", "outro"]
+    detalhe: TextoAte(1000) = None
+
+
 class ErroSiteIn(BaseModel):
     """POST /publico/erros (etapa 5h): um erro do site. O corpo inteiro vai até 4 KB (`main.LIMITES_DE_CORPO`); a API
     limpa e corta cada texto (`core.erros`) antes de gravar."""

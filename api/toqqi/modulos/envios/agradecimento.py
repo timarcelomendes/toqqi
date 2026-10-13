@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from toqqi.core import relogio
 from toqqi.modelos import Contato, Resposta
-from toqqi.modulos.envios.configuracao import obter, pronto
+from toqqi.modulos.envios.configuracao import SO_PESQUISAS, obter, pronto
 from toqqi.modulos.envios.descadastro import esta_descadastrado
 from toqqi.modulos.envios.processamento import novo_envio
 from toqqi.modulos.respostas.eventos import GANCHOS
@@ -46,7 +46,7 @@ def ao_registrar_resposta(s: Session, r: Resposta) -> None:
     if not (cfg.agradecimento_ativo and r.grupo and contato.email) or esta_descadastrado(s, contato.email,
                                                                                          contato.telefone):
         return
-    if not pronto(s, cfg):
+    if not pronto(s, cfg, ignorar=SO_PESQUISAS):  # Plano Grátis: o agradecimento não conta no limite de envios
         return
     e = novo_envio(s, contato, "agradecimento", "resposta", resposta_id=r.id)
     lista = _coletados.get()

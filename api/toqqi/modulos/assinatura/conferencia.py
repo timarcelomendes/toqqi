@@ -1,8 +1,11 @@
 """Conferência com o Asaas, conciliação em segundo plano e a tarefa `assinaturas` (agendador; primeira em `tudo`, para
 a liberação valer antes dos envios):
-1. recalcula as contas cuja situação muda só pela data;
+1. recalcula as contas cuja situação muda só pela data (o teste e o período pago que acabaram passam para o Plano
+   Grátis);
 2. com o Asaas configurado: descarta o que era de sandbox quando a chave passa a ser de produção; tenta de novo as
-   remoções pendentes no Asaas; reprocessa os avisos do webhook; e, a partir das 6h, faz a conferência diária.
+   remoções pendentes no Asaas; reprocessa os avisos do webhook; a partir das 6h, faz a conferência diária; e cancela
+   as assinaturas com fatura vencida há `gratis.dias_atraso` dias (30), que passam para o Grátis
+   (`cancelar_por_atraso`).
 
 Conferência diária (uma vez por dia por conta com assinatura ativa ou cancelada há menos de 40 dias no ambiente atual,
 e por conta com cliente no Asaas ainda não conferida — um assinar que falhou ou caiu no meio):
@@ -23,9 +26,10 @@ from datetime import date, time, timedelta
 
 from sqlalchemy import and_, exists, func, or_, select, update
 
-from toqqi.core import asaas, relogio
+from toqqi.core import asaas, parametros, relogio
 from toqqi.core.auditoria import registrar
 from toqqi.core.db import em_conta, modo_sistema
+from toqqi.core.errors import AppError
 from toqqi.core.log_seguro import descrever_erro
 from toqqi.core.planos import travar_contatos
 from toqqi.core.texto import normalizar_documento, normalizar_telefone, telefone_canonico
@@ -54,8 +58,8 @@ def conta_da_referencia(ref) -> int | None:
 
 def recalcular_pelas_datas() -> int:
     """Contas cuja situação muda só pela data: teste que acabou, fatura pendente que passou do vencimento (o Asaas
-    marca como vencida na madrugada seguinte) e período pago que acabou com o teste ainda valendo. Devolve quantos
-    testes viraram `teste_expirado`."""
+    marca como vencida na madrugada seguinte) e período pago que acabou (com ou sem o teste ainda valendo). Devolve
+    quantas passaram para o Plano Grátis."""
     agora = relogio.agora()
     hoje = dia_de(agora)
     pendente_vencida = exists().where(
@@ -64,20 +68,54 @@ def recalcular_pelas_datas() -> int:
     with modo_sistema() as s:  # só ids; cada conta é recalculada em em_conta
         ids = s.scalars(select(Conta.id).where(or_(
             and_(Conta.situacao == "teste", or_(Conta.teste_ate.is_(None), Conta.teste_ate <= agora)),
-            and_(Conta.situacao.in_(("teste", "ativa")), pendente_vencida),
-            and_(Conta.situacao == "cancelada", Conta.pago_ate < hoje, Conta.teste_ate > agora),
+            and_(Conta.situacao.in_(("teste", "ativa", "gratis")), pendente_vencida),
+            and_(Conta.situacao == "cancelada", Conta.pago_ate < hoje),
         )).order_by(Conta.id)).all()
-    expirados = 0
+    ao_gratis = 0
     for conta_id in ids:
         try:
             with em_conta(conta_id) as s:
                 conta = servico.travar_conta(s, conta_id)
                 antes, depois = servico.recalcular(s, conta)
-            if antes == "teste" and depois == "teste_expirado":
-                expirados += 1
+            if antes != "gratis" and depois == "gratis":
+                ao_gratis += 1
         except Exception:  # noqa: BLE001 - uma conta não derruba as outras
             log.exception("Assinaturas: erro ao recalcular a conta %s.", conta_id)
-    return expirados
+    return ao_gratis
+
+
+def cancelar_por_atraso() -> int:
+    """Plano Grátis: a assinatura com fatura vencida há `gratis.dias_atraso` dias ou mais (30; os envios já estavam
+    pausados desde o 8º) é removida no Asaas (que apaga as faturas em aberto), cancelada aqui (auditoria
+    `assinatura_cancelada`, motivo `atraso`) e a conta passa para o Grátis, com o e-mail aos administradores
+    (`servico.recalcular` → `gratis.ao_entrar`). Vale também para a conta Grátis que assinou e nunca pagou. O Asaas
+    fora do ar deixa a conta para a próxima rodada. Devolve quantas foram canceladas."""
+    hoje = dia_de(relogio.agora())
+    limite = hoje - timedelta(days=parametros.valor("gratis.dias_atraso"))
+    with modo_sistema() as s:
+        ids = s.scalars(select(Conta.id).where(Conta.atrasada_desde <= limite, Conta.situacao != "cortesia")
+                        .order_by(Conta.id)).all()
+    feitas = 0
+    for conta_id in ids:
+        try:
+            with em_conta(conta_id) as s:
+                conta = servico.travar_conta(s, conta_id)
+                a = servico.assinatura_ativa(s, conta_id) if conta is not None else None
+                if a is None or conta.atrasada_desde is None or conta.atrasada_desde > limite:
+                    continue  # pagou ou foi cancelada no meio
+                vencida = conta.atrasada_desde
+                servico.remover_no_asaas(a.asaas_id)  # falhou: 503, nada muda (próxima rodada)
+                servico.encerrar(s, a, None)
+                registrar(s, "assinatura_cancelada", "atencao",
+                          {"plano": a.plano, "motivo": "atraso", "vencida_em": vencida.isoformat()}, conta_id=conta_id)
+                servico.recalcular(s, conta)
+            feitas += 1
+        except AppError as e:
+            log.warning("Assinaturas: a assinatura da conta %s, em atraso, não foi cancelada agora (%s); fica para a "
+                        "próxima rodada.", conta_id, e.codigo)
+        except Exception:  # noqa: BLE001 - uma conta não derruba as outras
+            log.exception("Assinaturas: erro ao cancelar a assinatura em atraso da conta %s.", conta_id)
+    return feitas
 
 
 # ---- conciliação ------------------------------------------------------------------------------
@@ -408,11 +446,12 @@ def executar() -> dict:
     """Tarefa `assinaturas`. Sem o Asaas configurado, só a parte das datas."""
     from toqqi.modulos.assinatura import webhook
 
-    resumo = {"testes_expirados": recalcular_pelas_datas(), "contas_de_outro_ambiente": 0, "remocoes_no_asaas": 0,
-              "eventos_reprocessados": 0, "contas_conferidas": 0}
+    resumo = {"contas_ao_gratis": recalcular_pelas_datas(), "contas_de_outro_ambiente": 0, "remocoes_no_asaas": 0,
+              "eventos_reprocessados": 0, "contas_conferidas": 0, "canceladas_por_atraso": 0}
     if asaas.disponivel():
         resumo["contas_de_outro_ambiente"] = tratar_outro_ambiente()
         resumo["remocoes_no_asaas"] = remover_pendentes()
         resumo["eventos_reprocessados"] = webhook.reprocessar()
         resumo["contas_conferidas"] = conferir_contas()
+        resumo["canceladas_por_atraso"] = cancelar_por_atraso()
     return resumo

@@ -32,6 +32,7 @@ import { PERFIS } from '@/utils/rotulos'
 const PLANOS: Record<string, string> = { essencial: 'Essencial', profissional: 'Profissional', empresa: 'Empresa', personalizado: 'Personalizado' }
 const SITUACOES_CONTA: Record<string, string> = {
   teste: 'Em teste',
+  gratis: 'Plano Grátis',
   teste_expirado: 'Teste encerrado',
   ativa: 'Assinante',
   atrasada: 'Pagamento atrasado',

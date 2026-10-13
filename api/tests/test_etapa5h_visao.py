@@ -3,7 +3,7 @@ os totais por situação (com `pausada`), pagantes e receita só das assinaturas
 em 7 e 30 dias, a conversão do teste (contas de 60 a 15 dias atrás que criaram assinatura, mesmo cancelada), os testes
 acabando em 7 dias (sem quem já assinou), a lista das contas (uso, ativação, IA do mês, assinatura) sem nomes de
 contatos e sem N+1 (o número de consultas não muda com o de contas)."""
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -90,7 +90,9 @@ def cenario(client, dono, sandbox):
     teta = _conta(client, dono, "teo@teta.com.br", "Teta", situacao="atrasada", teste_dias=-60, criada_dias=90,
                   atrasada_desde=HOJE - timedelta(days=20))
     _assinatura(dono, teta["id"], "799.00", plano="empresa")
-    iota = _conta(client, dono, "ivo@iota.com.br", "Iota", situacao="teste_expirado", teste_dias=-5, criada_dias=20)
+    # Plano Grátis: o teste acabou sem assinar há 5 dias (antes, `teste_expirado`)
+    iota = _conta(client, dono, "ivo@iota.com.br", "Iota", situacao="gratis", teste_dias=-5, criada_dias=20,
+                  gratis_desde=datetime.now(timezone.utc) - timedelta(days=5), gratis_motivo="teste")
     kapa = _conta(client, dono, "kai@kapa.com.br", "Kapa", situacao="cancelada", teste_dias=-10, criada_dias=30)
     _assinatura(dono, kapa["id"], "349.00", situacao="cancelada")  # assinou e cancelou: conta na conversão
     lam = _conta(client, dono, "lia@lambda.com.br", "Lambda", situacao="ativa", teste_dias=-40, criada_dias=70)
@@ -107,10 +109,12 @@ def _visao(client, h) -> dict:
 
 def test_totais_receita_e_novas(client, cenario):
     v = _visao(client, cenario["root"]["h"])
-    assert set(v) == {"gerado_em", "totais", "conversao", "testes_acabando", "contas", "origens", "teste"}  # origens: 5i; teste: melhoria 9
+    assert set(v) == {"gerado_em", "totais", "conversao", "testes_acabando", "contas", "origens", "teste",
+                      "gratis"}  # origens: 5i; teste: melhoria 9; gratis: Plano Grátis
+    assert v["gratis"] == {"contas": 1, "assinaram_30d": 0, "pausadas": 0, "entraram_30d": 1}  # Iota
     assert v["totais"] == {
         "contas": 10,
-        "por_situacao": {"teste": 3, "teste_expirado": 1, "ativa": 2, "atrasada": 1, "pausada": 1, "cancelada": 1,
+        "por_situacao": {"teste": 3, "gratis": 1, "ativa": 2, "atrasada": 1, "pausada": 1, "cancelada": 1,
                          "cortesia": 1},
         "pagantes": 4,  # Gama, Delta, Eta e Teta (a de produção, da Lambda, não conta com a chave de sandbox)
         "receita_mensal": 1446.0,  # 149 + 349 + 149 + 799

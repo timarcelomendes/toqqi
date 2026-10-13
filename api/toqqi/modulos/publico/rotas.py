@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from toqqi.core import erros
 from toqqi.core.errors import AppError, conta_do_pedido
 from toqqi.core.rate_limit import (
+    LIMITE_DENUNCIA,
     LIMITE_DESCADASTRO,
     LIMITE_ERROS_SITE,
     LIMITE_IMAGEM,
@@ -29,8 +30,9 @@ from toqqi.modulos.ia.servico import analisar as analisar_com_ia
 from toqqi.modulos.ia.servico import coletar_analises
 from toqqi.modulos.imagens import servico as imagens
 from toqqi.modulos.integracoes.webhooks import coletar_entregas, entregar_lista
+from toqqi.modulos.plataforma import avisos_equipe
 from toqqi.modulos.publico import servico
-from toqqi.modulos.publico.esquemas import EditarLinkIn, ErroSiteIn, ResponderIn, ResponderLinkIn
+from toqqi.modulos.publico.esquemas import DenunciaIn, EditarLinkIn, ErroSiteIn, ResponderIn, ResponderLinkIn
 
 router = APIRouter(prefix="/publico", tags=["publico"])
 
@@ -110,6 +112,31 @@ def editar_formulario(request: Request, codigo: str, dados: EditarLinkIn, tarefa
     tarefas.add_task(analisar_com_ia, analises)
     tarefas.add_task(sugerir_passos, passos)
     return resultado
+
+
+# ---- Plano Grátis: "Denunciar esta pesquisa" ---------------------------------
+
+MSG_DENUNCIA = "Recebemos a sua denúncia. A equipe Toqqi vai conferir esta pesquisa."
+
+
+def _denunciar(token: str | None, codigo: str | None, dados: DenunciaIn, request: Request,
+               tarefas: BackgroundTasks) -> dict:
+    aviso = servico.denunciar(token, codigo, dados.motivo, dados.detalhe, _ip(request))
+    if aviso is not None:
+        tarefas.add_task(avisos_equipe.denuncia, **aviso)  # e-mail à equipe, depois da resposta
+    return {"mensagem": MSG_DENUNCIA}
+
+
+@router.post("/convites/{token}/denuncia", status_code=201)
+@limiter.limit(LIMITE_DENUNCIA)
+def denunciar_convite(request: Request, token: str, dados: DenunciaIn, tarefas: BackgroundTasks):
+    return _denunciar(token, None, dados, request, tarefas)
+
+
+@router.post("/formularios/{codigo}/denuncia", status_code=201)
+@limiter.limit(LIMITE_DENUNCIA)
+def denunciar_formulario(request: Request, codigo: str, dados: DenunciaIn, tarefas: BackgroundTasks):
+    return _denunciar(None, codigo, dados, request, tarefas)
 
 
 # ---- descadastro (link do rodapé e List-Unsubscribe) -------------------------

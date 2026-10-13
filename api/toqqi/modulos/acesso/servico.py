@@ -37,6 +37,7 @@ from toqqi.modelos import Conta, DominioLiberado, PerfilPermissao, Sessao, Token
 from toqqi.modulos.acesso import emails, google, termos
 from toqqi.modulos.formularios.semear import semear_conta
 from toqqi.modulos.imagens.servico import logo_da_conta
+from toqqi.modulos.assinatura import gratis
 
 VALIDADE = {"confirmar_email": timedelta(hours=24), "redefinir_senha": timedelta(minutes=30)}
 SESSAO_LEMBRAR = timedelta(days=30)
@@ -185,10 +186,23 @@ def _recusa_situacao(u: Usuario) -> AppError | None:
     return None
 
 
+def _recusa_do_plano(u: Usuario) -> AppError | None:
+    """Plano Grátis: só os primeiros usuários da conta entram (`gratis.recusa_de_entrada`; 403 `plano_gratis`)."""
+    with em_conta(u.conta_id) as s:
+        recusa = gratis.recusa_de_entrada(s, s.get(Conta, u.conta_id), u.id)
+        if recusa is not None:
+            acessos.registrar(s, "login_falhou", conta_id=u.conta_id, usuario_id=u.id)
+    return recusa
+
+
 def _abrir_sessao(u: Usuario, lembrar: bool, ip: str | None, agente: str | None, valores: dict,
                   metodo: str | None = None, ligou_google: bool = False) -> dict:
     """A sessão de quem passou na entrada (senha ou Google): grava a sessão, o último acesso (e `valores` no usuário),
-    a auditoria e o registro de acesso, e devolve o que o site guarda."""
+    a auditoria e o registro de acesso, e devolve o que o site guarda. Na conta Grátis, quem não está entre os que
+    entram recebe 403 `plano_gratis` (nada é gravado além do registro de acesso)."""
+    recusa = _recusa_do_plano(u)
+    if recusa is not None:
+        raise recusa
     with em_conta(u.conta_id) as s:
         conta = s.get(Conta, u.conta_id)
         duracao = SESSAO_LEMBRAR if lembrar else timedelta(minutes=conta.sessao_minutos)
@@ -206,11 +220,12 @@ def _abrir_sessao(u: Usuario, lembrar: bool, ip: str | None, agente: str | None,
         acessos.registrar(s, "login", conta_id=u.conta_id, usuario_id=u.id)
         usuario = s.get(Usuario, u.id, populate_existing=True)
         permissoes = permissoes_do_perfil(s, usuario.perfil)
+        gratis.usar_conta(s, conta, u.id)  # Plano Grátis: entrar cancela a exclusão da conta parada
         return {
             "token": criar_token_acesso(u.id, u.conta_id, sessao.id, sessao.expira_em),
             "expira_em": sessao.expira_em,
             "usuario": {**usuario_json(usuario, preferencias=True), "aceite": termos.aceite_json(s, u.id)},
-            "conta": {**conta_json(conta), "logo_url": logo_da_conta(s, u.conta_id)},
+            "conta": {**conta_json(conta), "logo_url": logo_da_conta(s, u.conta_id), "gratis": gratis.resumo(s, conta)},
             "permissoes": permissoes,
         }
 
@@ -436,8 +451,9 @@ def eu(ctx: Contexto) -> dict:
     with em_conta(ctx.conta_id) as s:
         logo = logo_da_conta(s, ctx.conta_id)
         aceite = termos.aceite_json(s, ctx.usuario_id)
-    return {"usuario": {**ctx.usuario, "aceite": aceite}, "conta": {**ctx.conta, "logo_url": logo},
-            "permissoes": ctx.permissoes}
+        plano_gratis = gratis.resumo(s, s.get(Conta, ctx.conta_id)) if ctx.conta.get("situacao") == "gratis" else None
+    return {"usuario": {**ctx.usuario, "aceite": aceite},
+            "conta": {**ctx.conta, "logo_url": logo, "gratis": plano_gratis}, "permissoes": ctx.permissoes}
 
 
 def alterar_eu(ctx: Contexto, dados) -> dict:

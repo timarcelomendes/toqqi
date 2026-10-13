@@ -48,7 +48,7 @@ from toqqi.core.planos import (
 )
 from toqqi.core.texto import normalizar_telefone
 from toqqi.modelos import AsaasRemocao, Assinatura, Cobranca, Conta, Usuario
-from toqqi.modulos.assinatura import regras
+from toqqi.modulos.assinatura import gratis, regras
 from toqqi.modulos.assinatura.regras import assinou_no_teste, dia_de, fim_do_periodo_pago, fim_do_teste
 
 log = logging.getLogger("toqqi.assinatura")
@@ -256,7 +256,8 @@ def dados_sugeridos(s: Session, conta: Conta, usuario_id: int, email: str) -> di
 
 
 def estado(s: Session, conta: Conta, usuario_id: int, email: str) -> dict:
-    """Formato de GET /assinatura (e das rotas que mudam a assinatura). Só o ambiente da chave atual."""
+    """Formato de GET /assinatura (e das rotas que mudam a assinatura). Só o ambiente da chave atual. Plano Grátis:
+    `gratis` (`gratis.resumo`, null fora dele) e `limites_gratis` (`gratis.limites`)."""
     agora = relogio.agora()
     hoje = dia_de(agora)
     ativa = assinatura_ativa(s, conta.id)
@@ -283,6 +284,9 @@ def estado(s: Session, conta: Conta, usuario_id: int, email: str) -> dict:
         "assinatura": _assinatura_json(ativa) if ativa is not None else None,
         "fatura_aberta": _fatura_json(aberta, hoje) if aberta is not None else None,
         "cobrancas": [_cobranca_json(c, hoje) for c in recentes],
+        # Plano Grátis: o uso do mês da conta Grátis (null fora dele) e os limites dele (para o teste mostrar o depois)
+        "gratis": gratis.resumo(s, conta),
+        "limites_gratis": gratis.limites(),
     }
 
 
@@ -291,16 +295,16 @@ def estado(s: Session, conta: Conta, usuario_id: int, email: str) -> dict:
 def _situacao(s: Session, conta: Conta, ativa: Assinatura | None, agora: datetime) -> str:
     """Seção 3 do contrato, com duas proteções: só tem a carência de 7 dias (`atrasada`) e só fica `ativa` sem
     pagamento nesta assinatura quem estava coberto quando ela começou (pelo teste ou por um período pago que ela
-    continua). Quem assina sem teste válido e não paga não ganha envios por estar em atraso.
-    Sem assinatura ativa: período pago valendo → `cancelada`; senão teste valendo → `teste`; senão já pagou →
-    `cancelada`; senão `teste_expirado`."""
+    continua). Quem assina sem teste válido e não paga não ganha envios por estar em atraso: fica no Grátis até pagar.
+    Sem assinatura ativa: período pago valendo → `cancelada`; senão teste valendo → `teste`; senão `gratis` (Plano
+    Grátis, 13/10/2026: antes, `cancelada` ou `teste_expirado`, com os envios parados)."""
     hoje = dia_de(agora)
     if ativa is None:
         if conta.pago_ate is not None and conta.pago_ate >= hoje:
             return "cancelada"
         if conta.teste_ate is not None and agora < conta.teste_ate:
             return "teste"
-        return "cancelada" if conta.pago_ate is not None else "teste_expirado"
+        return "gratis"
     paga_nesta = s.scalar(select(exists().where(Cobranca.assinatura_id == ativa.id, Cobranca.situacao == "paga")))
     continua_paga = conta.pago_ate is not None and ativa.primeiro_vencimento <= conta.pago_ate + timedelta(days=1)
     if conta.atrasada_desde is not None and (paga_nesta or continua_paga or assinou_no_teste(conta)):
@@ -310,7 +314,7 @@ def _situacao(s: Session, conta: Conta, ativa: Assinatura | None, agora: datetim
     fim = fim_do_teste(conta)
     if fim is not None and agora < fim:
         return "teste"
-    return "cancelada" if conta.pago_ate is not None else "teste_expirado"
+    return "gratis"
 
 
 PERDEU_ASSINATURA = "toqqi_perdeu_assinatura"  # em `Session.info`: contas que perderam a assinatura na transação
@@ -326,7 +330,9 @@ def recalcular(s: Session, conta: Conta) -> tuple[str, str]:
     """Decide a situação da conta depois de qualquer mudança (assinar, cancelar, aviso, tarefa, plataforma) e refaz
     `pago_ate` (nunca diminui: maior vencimento pago + 1 mês − 1 dia, só de assinaturas do ambiente atual),
     `atrasada_desde` (vencimento mais antigo em atraso da assinatura ativa: vencida, ou pendente com o vencimento já
-    passado) e `primeiro_vencimento` (o da assinatura ativa). Quem perdeu a assinatura nesta transação (`encerrar`:
+    passado) e `primeiro_vencimento` (o da assinatura ativa). Entrou no Grátis ou saiu dele: `gratis.ao_entrar` /
+    `gratis.ao_sair` (Plano Grátis), pelas colunas da conta (vale também quando a situação mudou antes, como na
+    cortesia). Quem perdeu a assinatura nesta transação (`encerrar`:
     cancelou, removida ou não achada no Asaas; ou o descarte do sandbox) sem nunca ter pago volta ao plano do teste
     (`teste.plano` de hoje, a regra da 5a); o teste em andamento, que nunca assinou (ou voltou ao teste antes),
     fica no plano dele, mesmo que `teste.plano` mude depois (revisão da 5g). `cortesia` não muda por cobrança. Chame
@@ -358,6 +364,10 @@ def recalcular(s: Session, conta: Conta) -> tuple[str, str]:
             plano_do_teste = parametros.valor("teste.plano")
             if conta.plano != plano_do_teste:
                 conta.plano = plano_do_teste  # perdeu a assinatura sem nunca pagar: o plano do teste de hoje
+    if conta.situacao == "gratis" and conta.gratis_desde is None:
+        gratis.ao_entrar(s, conta, anterior)
+    elif conta.situacao != "gratis" and conta.gratis_desde is not None:
+        gratis.ao_sair(s, conta)
     s.flush()
     return anterior, conta.situacao
 
@@ -610,7 +620,9 @@ def _conferir_limite(s: Session, conta: Conta, contrato: Contrato, acao: str, tr
     if travar_inclusoes:
         travar_contatos(s, conta.id)
     plano = contrato.plano
-    limite = contrato.contatos if plano == "personalizado" else limite_contatos(s, plano, conta.situacao)
+    # o limite do plano assinado (no Grátis, o da conta é o do Grátis até a primeira fatura ser paga)
+    situacao = "ativa" if conta.situacao == "gratis" else conta.situacao
+    limite = contrato.contatos if plano == "personalizado" else limite_contatos(s, plano, situacao)
     if limite is None:
         return
     ativos = contatos_ativos(s)

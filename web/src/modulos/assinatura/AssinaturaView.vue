@@ -14,6 +14,10 @@
 // - Etapa 5k: antes dos planos, Mensal ou Anual (com o desconto) e, no mensal, Pix (com desconto) ou cartão e boleto;
 //   os cartões mostram o valor da fatura nessa escolha, e o Personalizado entra com a calculadora. O que vai em
 //   `preco` é sempre o valor mostrado (a API refaz a conta e devolve 409 `preco_mudou` se mudou).
+// - Plano Grátis (docs/api-plano-gratis.md): na conta Grátis, o cartão mostra "Plano Grátis", R$ 0 e o uso do mês
+//   (contatos ativos, envios por e-mail e ToqqiAI, com os limites) e o que muda no Grátis; os planos para assinar ficam
+//   embaixo, como sem assinatura. Quem assinou saindo do Grátis segue nele até a primeira fatura ser paga. No teste, uma
+//   linha diz para onde a conta vai se não assinar.
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ArrowRightLeft, CreditCard, ExternalLink, FileText, Pencil, RefreshCw, XCircle } from 'lucide-vue-next'
 import { assinaturaApi, mensagemDoErro, type EstadoAssinatura, type FaturaAberta } from '@/api'
@@ -34,6 +38,7 @@ import Medidor from '@/components/ui/Medidor.vue'
 import BotoesSegmentados from '@/components/ui/BotoesSegmentados.vue'
 import type { Ciclo, Forma } from '@/utils/precos'
 import CamposCobranca from './CamposCobranca.vue'
+import { itensDoGratis, resumoDosLimites, usoDoGratis } from './gratis'
 import ComparativoPlanos from './ComparativoPlanos.vue'
 import EscolhaPlano from './EscolhaPlano.vue'
 import HistoricoCobrancas from './HistoricoCobrancas.vue'
@@ -90,8 +95,13 @@ const limite = computed(() => {
   return planoAtual.value?.contatos ?? null
 })
 const proximo = computed(() => (dados.value ? proximoVencimento(dados.value) : null))
+const gratis = computed(() => dados.value?.gratis ?? null)
 const titulo = computed(() =>
-  assinatura.value ? `Plano ${assinatura.value.nome ?? planoAtual.value?.nome ?? assinatura.value.plano}` : (situacao.value?.titulo ?? 'Assinatura'),
+  gratis.value
+    ? 'Plano Grátis'
+    : assinatura.value
+      ? `Plano ${assinatura.value.nome ?? planoAtual.value?.nome ?? assinatura.value.plano}`
+      : (situacao.value?.titulo ?? 'Assinatura'),
 )
 const cicloAtual = computed<Ciclo>(() => assinatura.value?.ciclo ?? 'mensal')
 
@@ -464,13 +474,37 @@ onBeforeUnmount(() => {
           </div>
           <p v-if="situacao.descricao" class="mt-1.5 text-sm text-texto-suave">{{ situacao.descricao }}</p>
         </div>
-        <p v-if="assinatura" class="shrink-0 sm:text-right">
+        <p v-if="gratis" class="shrink-0 sm:text-right" data-preco-gratis>
+          <span class="block text-2xl font-bold tabular-nums text-texto">R$ 0</span>{{ ' ' }}<span class="text-sm text-texto-suave">por mês</span>
+        </p>
+        <p v-else-if="assinatura" class="shrink-0 sm:text-right">
           <span class="block text-2xl font-bold tabular-nums text-texto">{{ formatarMoeda(assinatura.valor) }}</span>{{ ' ' }}<span class="text-sm text-texto-suave">{{ cicloAtual === 'anual' ? 'por ano' : 'por mês' }}</span>
           <span v-if="assinatura.forma === 'pix' || cicloAtual === 'anual'" class="block text-xs text-texto-fraco" data-condicao>{{ cicloAtual === 'anual' ? 'Assinatura anual' : 'Mensal com Pix' }}</span>
         </p>
       </div>
 
-      <dl class="grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <!-- Plano Grátis: o uso do mês, com os limites -->
+      <template v-if="gratis">
+        <dl class="grid gap-3 sm:grid-cols-3" data-uso-gratis>
+          <div v-for="u in usoDoGratis(gratis)" :key="u.chave" class="flex flex-col gap-2 rounded-xl bg-superficie-2 p-4" :data-uso-item="u.chave">
+            <dt class="text-sm text-texto-fraco">{{ u.rotulo }}</dt>
+            <dd class="flex flex-col gap-2">
+              <p class="text-sm text-texto-suave">
+                <strong class="text-lg font-bold tabular-nums" :class="u.usado > u.limite ? 'text-erro' : 'text-texto'">{{ formatarNumero(u.usado) }}</strong>
+                de {{ formatarNumero(u.limite) }}
+              </p>
+              <Medidor :valor="Math.min(u.usado, u.limite)" :maximo="u.limite" :rotulo="u.rotulo" :texto="u.texto" />
+              <p class="text-xs text-texto-fraco">{{ u.dica }}</p>
+            </dd>
+          </div>
+        </dl>
+        <ul class="grid gap-x-6 gap-y-1.5 text-sm text-texto-suave sm:grid-cols-2" data-itens-gratis>
+          <li v-for="item in itensDoGratis(gratis)" :key="item" class="flex gap-2">
+            <span class="mt-2 size-1.5 shrink-0 rounded-full bg-texto-fraco" aria-hidden="true" />{{ item }}
+          </li>
+        </ul>
+      </template>
+      <dl v-else class="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <div class="col-span-2 flex flex-col gap-2 rounded-xl bg-superficie-2 p-4 lg:col-span-1">
           <dt class="text-sm text-texto-fraco">Contatos ativos</dt>
           <dd class="flex flex-col gap-2">
@@ -487,6 +521,9 @@ onBeforeUnmount(() => {
               :texto="`${formatarNumero(dados.contatos_ativos)} de ${formatarNumero(limite)} contatos ativos`"
             />
             <p v-if="limite !== null && planoAtual && !assinatura" class="text-xs text-texto-fraco">Limite do plano {{ planoAtual.nome }}{{ emTeste ? ', o do teste' : '' }}.</p>
+            <p v-if="emTeste && !assinatura && dados.limites_gratis" class="text-xs text-texto-fraco" data-depois-do-teste>
+              Se não assinar até o fim do teste, a conta passa para o plano Grátis: {{ resumoDosLimites(dados.limites_gratis) }}.
+            </p>
           </dd>
         </div>
         <div v-if="proximo" class="flex flex-col gap-1 rounded-xl bg-superficie-2 p-4">

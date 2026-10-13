@@ -2,17 +2,21 @@
 // O que falta para as pesquisas por e-mail saírem (GET /envios/pre-condicoes), com o atalho para resolver.
 // Etapa 5a: com a conta pausada pela assinatura, o WhatsApp também não sai (não o oferecemos), e o atalho para a
 // Assinatura só aparece para quem pode gerenciá-la; os outros leem que precisam do administrador.
+// Plano Grátis (docs/api-plano-gratis.md): entram os itens `revisao` (nota de risco: nem e-mail nem WhatsApp saem até a
+// equipe conferir), `contatos_do_plano` e `envios_do_mes`.
 import { computed } from 'vue'
 import { CheckCircle2, ChevronRight, CircleAlert } from 'lucide-vue-next'
 import type { PreCondicoes } from '@/api'
 import { FALE_COM_ADMIN } from '@/modulos/assinatura/logica'
 import { useSessaoStore } from '@/stores/sessao'
 
-defineProps<{ dados: PreCondicoes }>()
+const props = defineProps<{ dados: PreCondicoes }>()
 
 const sessao = useSessaoStore()
 /** A assinatura permite enviar (sem a informação, como antes: permite). */
 const liberada = computed(() => sessao.conta?.cobranca?.liberada !== false)
+/** Plano Grátis: a nota de risco pausou os envios até a equipe conferir (o link do WhatsApp também para). */
+const emRevisao = computed(() => props.dados.itens.some((i) => i.chave === 'revisao' && !i.ok))
 
 const interna = (rota: string) => rota.startsWith('/')
 /** O atalho da Assinatura exige `assinatura.gerenciar`; sem ela, a rota devolve para o início. */
@@ -21,8 +25,12 @@ const atalhoPermitido = (rota: string) => !rota.startsWith('/assinatura') || ses
 /** Texto para os itens já resolvidos (a API só manda mensagem do que falta). */
 const RESOLVIDOS: Record<string, string> = {
   assinatura: 'Assinatura em dia',
+  // Os três do plano Grátis (docs/api-plano-gratis.md).
+  revisao: 'Sem revisão pendente da equipe Toqqi',
   provedor: 'Envio de e-mails configurado',
   formulario: 'Formulário da pesquisa escolhido',
+  contatos_do_plano: 'Contatos ativos dentro do limite do Grátis',
+  envios_do_mes: 'Envios do plano Grátis disponíveis',
   envios_ativos: 'Envios ligados',
 }
 const texto = (i: PreCondicoes['itens'][number]) => i.mensagem || (i.ok ? (RESOLVIDOS[i.chave] ?? 'Pronto') : 'Falta resolver este item.')
@@ -37,11 +45,12 @@ const texto = (i: PreCondicoes['itens'][number]) => i.mensagem || (i.ok ? (RESOL
   >
     <h2 id="titulo-pre-condicoes" class="flex items-center gap-2 font-bold text-texto">
       <CircleAlert class="size-5 shrink-0 text-atencao" aria-hidden="true" />
-      {{ liberada ? 'Falta pouco para as pesquisas por e-mail começarem a sair' : 'Os envios estão pausados' }}
+      {{ liberada && !emRevisao ? 'Falta pouco para as pesquisas por e-mail começarem a sair' : 'Os envios estão pausados' }}
     </h2>
     <p class="mt-1 text-sm text-texto-suave">
-      <template v-if="liberada">Enquanto isso, você já pode mandar pelo WhatsApp. Resolva os itens abaixo para liberar o e-mail:</template>
-      <template v-else>Nem e-mail nem WhatsApp saem até resolver a assinatura. Os itens abaixo dizem o que falta:</template>
+      <template v-if="!liberada">Nem e-mail nem WhatsApp saem até resolver a assinatura. Os itens abaixo dizem o que falta:</template>
+      <template v-else-if="emRevisao">Nem e-mail nem WhatsApp saem enquanto a equipe Toqqi confere a conta. Os itens abaixo dizem o que falta:</template>
+      <template v-else>Enquanto isso, você já pode mandar pelo WhatsApp. Resolva os itens abaixo para liberar o e-mail:</template>
     </p>
     <ul class="mt-3 flex flex-col gap-2">
       <li v-for="item in dados.itens" :key="item.chave" class="flex flex-col gap-2 rounded-xl bg-superficie/70 px-3 py-2.5 text-sm sm:flex-row sm:items-center">

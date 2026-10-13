@@ -76,6 +76,22 @@ function aposTarefa() {
   fila.value?.recarregar()
   historico.value?.recarregar()
   panorama.value?.recarregar()
+  aposEnviarNoGratis()
+}
+
+/**
+ * Plano Grátis (docs/api-plano-gratis.md): os e-mails do mês e do dia mudaram; o aviso do topo, a tela de Assinatura e
+ * as pré-condições acompanham (a sessão é relida em segundo plano).
+ */
+function aposEnviarNoGratis() {
+  if (!sessao.conta?.gratis) return
+  sessao.recarregar().catch(() => undefined)
+  void carregarPreCondicoes()
+}
+
+function aposEnviar() {
+  panorama.value?.recarregar()
+  aposEnviarNoGratis()
 }
 
 async function enviarLembretes() {
@@ -179,7 +195,7 @@ onMounted(() => {
       ref="fila"
       :email-liberado="preCondicoes?.pronto ?? true"
       @pre-condicao="carregarPreCondicoes"
-      @enviou="panorama?.recarregar()"
+      @enviou="aposEnviar"
     />
     <AbaHistorico v-if="visitadas.has('historico')" v-show="aba === 'historico'" ref="historico" />
     <AbaDescadastros v-if="visitadas.has('descadastros')" v-show="aba === 'descadastros'" />

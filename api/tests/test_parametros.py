@@ -42,16 +42,20 @@ PADROES = {
                "planos.personalizado.ia_500": "30.00", "planos.personalizado.ia_2000": "120.00",
                "planos.personalizado.ia_5000": "250.00"},
     "ia": {"ia.cota.essencial": 100, "ia.cota.profissional": 500, "ia.cota.empresa": 2000, "ia.cota.cortesia": 200,
-           "ia.cota.teste": 50,
+           "ia.cota.teste": 50, "ia.cota.gratis": 10,
            "ia.modelo.rapido": "gpt-6-luna", "ia.esforco.rapido": "none", "ia.analises.rapido": 1,
            "ia.modelo.equilibrado": "gpt-6-luna", "ia.esforco.equilibrado": "low", "ia.analises.equilibrado": 1,
            "ia.modelo.detalhado": "gpt-6-sol", "ia.esforco.detalhado": "low", "ia.analises.detalhado": 3,
            "ia.teto.essencial": 1000, "ia.teto.profissional": 5000, "ia.teto.empresa": 15000,
-           "ia.teto.cortesia": 2000, "ia.teto.teste": 500},
+           "ia.teto.cortesia": 2000, "ia.teto.teste": 500, "ia.teto.gratis": 100},
     "whatsapp": {"whatsapp.franquia.essencial": None, "whatsapp.franquia.profissional": None,
                  "whatsapp.franquia.empresa": None, "whatsapp.franquia.personalizado": None,
-                 "whatsapp.franquia.cortesia": None, "whatsapp.franquia.teste": None},
+                 "whatsapp.franquia.cortesia": None, "whatsapp.franquia.teste": None,
+                 "whatsapp.franquia.gratis": None},
     "teste": {"teste.dias": 14, "teste.plano": "profissional", "teste.exclusao_automatica": "simular"},
+    # Plano Grátis (docs/api-plano-gratis.md)
+    "gratis": {"gratis.contatos": 100, "gratis.envios_mes": 200, "gratis.envios_dia": 100, "gratis.usuarios": 1,
+               "gratis.dias_sem_uso": 180, "gratis.dias_aviso": 30, "gratis.dias_atraso": 30},
 }
 
 @pytest.fixture
@@ -75,7 +79,8 @@ def test_tabela_vazia_tudo_como_hoje(client, root, config_limpa):
     assert r.status_code == 200
     grupos = r.json()["grupos"]
     assert [(g["grupo"], g["rotulo"]) for g in grupos] == [
-        ("planos", "Planos"), ("ia", "IA"), ("whatsapp", "WhatsApp automático"), ("teste", "Teste e cortesia")]
+        ("planos", "Planos"), ("ia", "IA"), ("whatsapp", "WhatsApp automático"), ("teste", "Teste e cortesia"),
+        ("gratis", "Plano Grátis")]
     for g in grupos:
         assert set(g) == {"grupo", "rotulo", "versao", "alterado_em", "alterado_por", "valores", "padroes", "origens"}
         assert (g["versao"], g["alterado_em"], g["alterado_por"]) == (0, None, None)
@@ -687,7 +692,8 @@ def test_planos_publicos(client, root):
                                                    {"ate": None, "preco": 6.0}],
                           "ia": [{"cota": 100, "preco": 0.0}, {"cota": 500, "preco": 30.0},
                                  {"cota": 2000, "preco": 120.0}, {"cota": 5000, "preco": 250.0}],
-                          "contatos_min": 100, "contatos_max": 100000, "passo": 100, "whatsapp": None}}
+                          "contatos_min": 100, "contatos_max": 100000, "passo": 100, "whatsapp": None},
+        "gratis": {"contatos": 100, "envios_mes": 200, "usuarios": 1, "ia_cota": 10}}
     assert salvar_parametros(client, root["h"], "planos", {"planos.essencial.preco": "159.90",
                                                            "planos.empresa.contatos": 9000}).status_code == 200
     assert salvar_parametros(client, root["h"], "teste", {"teste.dias": 7, "teste.plano": "essencial"}

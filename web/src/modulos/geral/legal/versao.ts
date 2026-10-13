@@ -20,6 +20,12 @@
 // Versão 8, vigente desde 08/10/2026: a Política de privacidade passa a descrever o "Entrar com o Google" (o Google envia
 // nome, e-mail e o identificador da conta, só se a pessoa usar o botão; o Google entre os fornecedores; o botão é
 // carregado do Google nas telas de entrar e de cadastro). Os Termos não mudam.
-export const VERSAO_DOCUMENTOS = 8
+// Versão 9 (Plano Grátis, docs/api-plano-gratis.md), vigente desde 13/10/2026: nos Termos, o plano Grátis (para onde vai
+// a conta no fim do teste sem assinar, depois do cancelamento e com 30 dias de atraso), os limites e o uso justo dele
+// (remetente, descanso de 30 dias, pesquisas que pedem senha ou cartão, denúncias, pausa para conferir sinais de abuso),
+// a exclusão da conta Grátis sem uso por 180 dias (aviso 30 dias antes) no lugar dos 90 dias depois do fim do teste ou do
+// período pago, e as mudanças no Grátis com 30 dias de aviso. Na Política, as denúncias (o que guardamos e por quanto
+// tempo) e a nova retenção.
+export const VERSAO_DOCUMENTOS = 9
 /** Data em que a versão atual (VERSAO_DOCUMENTOS) passou a valer (AAAA-MM-DD). */
-export const VIGENTE_DESDE = '2026-10-08'
+export const VIGENTE_DESDE = '2026-10-13'

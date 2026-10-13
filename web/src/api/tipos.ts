@@ -75,6 +75,40 @@ export interface Conta {
   ia_ativa?: boolean
   /** Etapa 5a (GET /eu e login): se os envios estão liberados e o aviso do topo das telas. */
   cobranca?: CobrancaConta
+  /** Plano Grátis (GET /eu e login): limites e uso do mês da conta Grátis; null (ou ausente) fora dele. */
+  gratis?: ResumoGratis | null
+}
+
+/** Plano Grátis (docs/api-plano-gratis.md): os limites dele e o que a conta já usou. */
+export interface ResumoGratis {
+  /** Quando a conta passou para o Grátis e por quê. */
+  desde: string | null
+  motivo: MotivoGratis | null
+  contatos: { ativos: number; limite: number }
+  /** E-mails de pesquisa (convites e lembretes) no mês e hoje; `volta_*` (AAAA-MM-DD): quando os limites zeram. */
+  envios: { mes: number; limite_mes: number; dia: number; limite_dia: number; volta_mes: string; volta_dia: string }
+  /** Perguntas ao ToqqiAI no mês. */
+  ia: { usadas: number; limite: number }
+  usuarios: number
+  formularios: number
+  descanso_minimo: number
+  dias_sem_uso: number
+  /** A nota de risco pausou os envios até a equipe Toqqi liberar. */
+  pausada_por_risco: boolean
+}
+
+export type MotivoGratis = 'teste' | 'cancelamento' | 'atraso' | (string & {})
+
+/** Os números do Grátis (GET /assinatura, `limites_gratis`). */
+export interface LimitesGratis {
+  contatos: number
+  envios_mes: number
+  envios_dia: number
+  usuarios: number
+  formularios: number
+  ia_cota: number
+  dias_sem_uso: number
+  descanso_minimo: number
 }
 
 // ───────────────────── Dados da empresa e logo (docs/api-dados-empresa.md) ─────────────────────
@@ -227,6 +261,34 @@ export interface ContaPlataforma {
   exclusao_em?: string | null
   /** A nota de risco (docs/api-plataforma-risco.md); null nas contas da equipe. Só na listagem. */
   risco?: RiscoConta | null
+  /** Plano Grátis: desde quando a conta está nele (null fora dele). */
+  gratis_desde?: string | null
+  /** Plano Grátis: a nota de risco gravada pausou os envios e a equipe ainda não liberou. */
+  envios_pausados?: boolean
+  /** Plano Grátis: quando a equipe liberou os envios da conta pausada (null se nunca liberou). */
+  risco_liberado_em?: string | null
+}
+
+/** Plano Grátis: denúncia de uma pesquisa (Plataforma › Feedback › Denúncias). */
+export type SituacaoDenuncia = 'aberta' | 'procedente' | 'descartada'
+
+export interface DenunciaPlataforma {
+  id: number | string
+  conta: { id: number | string; nome: string | null; situacao: SituacaoConta | null }
+  formulario: { id: number | string | null; nome: string | null }
+  origem: 'convite' | 'link_publico' | (string & {})
+  motivo: 'dados_pessoais' | 'golpe' | 'spam' | 'ofensa' | 'outro' | (string & {})
+  detalhe: string | null
+  situacao: SituacaoDenuncia | (string & {})
+  criada_em: string
+  resolvida_em: string | null
+  nota_interna: string | null
+}
+
+export interface ListaDenuncias {
+  itens: DenunciaPlataforma[]
+  /** Quantas estão abertas (em qualquer filtro). */
+  abertas: number
 }
 
 /** Risco da conta: a soma dos pontos dos sinais (0 a 100). `alto` 60 ou mais, `medio` 30 a 59. */
@@ -263,6 +325,8 @@ export type SinalRisco =
       trecho: string
     }
   | { tipo: 'estorno'; pontos: number; quantas: number; ultima_em: string }
+  /** Plano Grátis: "Denunciar esta pesquisa" nos últimos 30 dias (sem as descartadas), por pessoas diferentes. */
+  | { tipo: 'denuncias'; pontos: number; pessoas: number; denuncias: number }
 
 export interface AdminPlataforma {
   nome: string
@@ -281,7 +345,7 @@ export interface AtivacaoConta {
 }
 
 /** Situação na visão geral: a da conta, com `pausada` para a atrasada que passou dos 7 dias de carência. */
-export type SituacaoVisao = 'teste' | 'teste_expirado' | 'ativa' | 'atrasada' | 'pausada' | 'cancelada' | 'cortesia'
+export type SituacaoVisao = 'teste' | 'gratis' | 'ativa' | 'atrasada' | 'pausada' | 'cancelada' | 'cortesia'
 
 export interface TotaisVisao {
   contas: number
@@ -352,6 +416,11 @@ export interface OrigensVisao {
 export interface VisaoPlataforma {
   gerado_em: string
   origens?: OrigensVisao
+  /**
+   * Plano Grátis (ausente no servidor antigo): contas nele hoje, quantas entraram nos últimos 30 dias, quantas saíram
+   * dele pagando a primeira fatura nos últimos 30 dias e quantas estão pausadas pela nota de risco.
+   */
+  gratis?: { contas: number; entraram_30d: number; assinaram_30d: number; pausadas: number }
   totais: TotaisVisao
   conversao: ConversaoVisao
   testes_acabando: TesteAcabando[]
@@ -797,7 +866,15 @@ export interface Resposta {
 // ───────────────────────── Etapa 3a (docs/api-etapa-3.md) ─────────────────────────
 
 export interface ItemPreCondicao {
-  chave: 'assinatura' | 'provedor' | 'formulario' | 'envios_ativos' | (string & {})
+  chave:
+    | 'assinatura'
+    | 'revisao'
+    | 'provedor'
+    | 'formulario'
+    | 'contatos_do_plano'
+    | 'envios_do_mes'
+    | 'envios_ativos'
+    | (string & {})
   ok: boolean
   /** Vem null quando o item já está ok. */
   mensagem: string | null
@@ -1853,8 +1930,12 @@ export interface HistoricoEmpresa {
 
 // ───────────────────── Etapa 5a: assinatura e cobrança pelo Asaas (docs/api-etapa-5a.md) ─────────────────────
 
-/** Situação da conta (seção 3). Aceita outras strings para não quebrar se a API crescer. */
-export type SituacaoConta = 'teste' | 'teste_expirado' | 'ativa' | 'atrasada' | 'cancelada' | 'cortesia' | (string & {})
+/**
+ * Situação da conta (seção 3). Plano Grátis: `gratis` no lugar de `teste_expirado` (o teste que acaba sem assinatura e
+ * o período pago que acaba depois de cancelar passam para o Grátis). Aceita outras strings para não quebrar se a API
+ * crescer.
+ */
+export type SituacaoConta = 'teste' | 'gratis' | 'ativa' | 'atrasada' | 'cancelada' | 'cortesia' | (string & {})
 
 export type TipoAvisoCobranca =
   | 'teste_acabando'
@@ -1864,18 +1945,23 @@ export type TipoAvisoCobranca =
   | 'cancelada'
   | 'cancelada_encerrada'
   | 'aguardando_pagamento'
+  | 'gratis'
+  | 'gratis_aguardando'
 
 /** Aviso do topo das telas (`conta.cobranca.aviso`). */
 export interface AvisoCobranca {
   tipo: TipoAvisoCobranca | (string & {})
   /**
    * AAAA-MM-DD. teste_acabando e teste_expirado: último dia do teste; atrasada: dia em que os envios param;
-   * pausada: vencimento da fatura em atraso; cancelada e cancelada_encerrada: `pago_ate`; aguardando_pagamento:
-   * vencimento da primeira fatura de quem já assinou.
+   * pausada: vencimento da fatura em atraso; cancelada e cancelada_encerrada: `pago_ate`; aguardando_pagamento e
+   * gratis_aguardando: vencimento da primeira fatura de quem já assinou; gratis: o dia em que a conta passou para o
+   * Grátis. teste_expirado e cancelada_encerrada só aparecem até a tarefa passar a conta para o Grátis.
    */
   data: string | null
-  /** Dias até `data` (0 = hoje), em teste_acabando, atrasada e cancelada. */
+  /** Dias até `data` (0 = hoje), em teste_acabando, atrasada, cancelada e gratis_aguardando; no gratis, desde `data`. */
   dias: number | null
+  /** No `gratis`: por que a conta passou para ele. */
+  motivo?: MotivoGratis | null
 }
 
 export interface CobrancaConta {
@@ -2007,6 +2093,9 @@ export interface EstadoAssinatura {
   fatura_aberta: FaturaAberta | null
   /** As 12 mais recentes. */
   cobrancas: CobrancaAssinatura[]
+  /** Plano Grátis (ausentes no servidor antigo): o uso da conta Grátis (null fora dele) e os números do Grátis. */
+  gratis?: ResumoGratis | null
+  limites_gratis?: LimitesGratis
 }
 
 // ───────────────────────── Etapa 5b (docs/api-etapa-5b.md) ─────────────────────────
@@ -2599,8 +2688,8 @@ export interface GrupoAuditoria {
 
 // ───────────────────────── Etapa 5g (docs/api-etapa-5g.md) ─────────────────────────
 
-/** Os quatro grupos de Plataforma › Parâmetros, na ordem da tela. */
-export type GrupoParametros = 'planos' | 'ia' | 'whatsapp' | 'teste'
+/** Os grupos de Plataforma › Parâmetros, na ordem da tela (o Plano Grátis por último). */
+export type GrupoParametros = 'planos' | 'ia' | 'whatsapp' | 'teste' | 'gratis'
 
 /** De onde vem o valor em uso: salvo na tela (banco), da variável de ambiente ou do código. */
 export type OrigemParametro = 'banco' | 'ambiente' | 'codigo'
@@ -2689,6 +2778,8 @@ export interface PlanosPublicos {
   /** Etapa 5k. */
   descontos?: DescontosPlanos
   personalizado?: TabelaPersonalizado & { whatsapp: number | null }
+  /** Plano Grátis (ausente no servidor antigo): onde a conta fica depois do teste, se não assinar. */
+  gratis?: { contatos: number; envios_mes: number; usuarios: number; ia_cota: number }
 }
 
 // ---- etapa 5i: Relatórios › Desfecho ----------------------------------------------------

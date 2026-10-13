@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Plataforma › Parâmetros (etapa 5g, docs/api-etapa-5g.md §7): os quatro grupos (Planos, IA, WhatsApp automático, Teste
-// e cortesia), cada um com o seu formulário e o seu "Salvar alterações", e o histórico de alterações. Salvar um grupo
+// Plataforma › Parâmetros (etapa 5g, docs/api-etapa-5g.md §7): os grupos (Planos, IA, WhatsApp automático, Teste
+// e cortesia, Plano Grátis), cada um com o seu formulário e o seu "Salvar alterações", e o histórico de alterações. Salvar um grupo
 // relê o histórico; "Recarregar" (depois do 409 de outra pessoa) relê só aquele grupo. O `teste.dias` gravado (lido, salvo
 // ou relido) sobe em `diasTeste`, para a aba Contas usar o mesmo número no "+N dias" sem recarregar a página.
 import { onMounted, ref, watch } from 'vue'

@@ -20,6 +20,7 @@ from toqqi.core.errors import AppError
 from toqqi.core.rate_limit import chave_ip
 from toqqi.core.security import hash_token
 from toqqi.modelos import Conta, IntegracaoChave
+from toqqi.modulos.assinatura import gratis
 
 PREFIXO = "tq_live_"
 _TAMANHO = len(PREFIXO) + 40
@@ -67,10 +68,12 @@ def contexto_integracao(request: Request) -> ContextoIntegracao:
     if conta_id is None:
         raise chave_invalida()
     with em_conta(conta_id) as s:
-        nome = s.scalar(select(Conta.nome))
-    if nome is None:
+        linha = s.execute(select(Conta.nome, Conta.situacao)).one_or_none()
+    if linha is None:
         raise chave_invalida()
-    return ContextoIntegracao(conta_id=conta_id, conta_nome=nome)
+    if linha.situacao == gratis.GRATIS:
+        raise gratis.erro_recurso("A API do Toqqi")  # a chave fica guardada e volta a valer ao assinar
+    return ContextoIntegracao(conta_id=conta_id, conta_nome=linha.nome)
 
 
 # ---- tela de Integrações (perfil admin) ------------------------------------
@@ -84,6 +87,7 @@ def ver(ctx: Contexto) -> dict:
 
 
 def gerar(ctx: Contexto) -> dict:
+    gratis.exigir_recurso_ctx(ctx, "A chave de API")
     chave = PREFIXO + secrets.token_urlsafe(30)
     prefixo, agora = _prefixo(chave), relogio.agora()
     valores = {"hash": hash_token(chave), "prefixo": prefixo, "usuario_id": ctx.usuario_id, "criada_em": agora,

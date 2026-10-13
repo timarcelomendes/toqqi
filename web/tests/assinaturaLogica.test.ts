@@ -115,7 +115,8 @@ describe('datas da assinatura (São Paulo)', () => {
     expect(r.envios).toBeNull()
     const vencido = resumoPrimeiraFatura(ESSENCIAL, { teste_ate: '2026-09-20T10:00:00-03:00', pago_ate: null }, AGORA)
     expect(t(vencido.texto)).toBe('Primeira fatura de R$ 149,00 com vencimento amanhã, 02/10/2026. Ela cobre de 02/10 a 01/11/2026. Depois, todo dia 2.')
-    expect(vencido.envios).toBe('Os envios voltam assim que o pagamento for confirmado: Pix e cartão em segundos, boleto em até 3 dias úteis.')
+    // Plano Grátis: sem teste nem período pago, a conta segue no Grátis até o pagamento.
+    expect(vencido.envios).toBe('O plano começa assim que o pagamento for confirmado (Pix e cartão em segundos, boleto em até 3 dias úteis); até lá, a conta segue no Grátis.')
     const pago = resumoPrimeiraFatura(EMPRESA, { teste_ate: null, pago_ate: '2026-11-14' }, AGORA)
     expect(t(pago.texto)).toBe('Primeira fatura de R$ 799,00 com vencimento em 15/11/2026, no dia seguinte ao fim do período já pago. Ela cobre de 15/11 a 14/12/2026. Depois, todo dia 15.')
     const hoje = resumoPrimeiraFatura(PROFISSIONAL, { teste_ate: '2026-10-01T20:00:00-03:00', pago_ate: null }, AGORA)
@@ -152,9 +153,10 @@ describe('aviso do topo das telas', () => {
       acao: 'pagar',
       dispensavel: false,
     })
+    // Plano Grátis: o teste encerrado só aparece até a tarefa passar a conta para o Grátis (minutos).
     expect(textoDoAviso({ tipo: 'teste_expirado', data: '2026-09-30', dias: null })).toEqual({
-      texto: 'Seu teste grátis terminou. Os envios estão pausados; seus dados continuam guardados.',
-      tom: 'atencao',
+      texto: 'Seu teste grátis terminou. A conta passa para o plano Grátis em instantes.',
+      tom: 'info',
       acao: 'escolher',
       dispensavel: false,
     })
@@ -179,7 +181,12 @@ describe('aviso do topo das telas', () => {
       dispensavel: true,
     })
     expect(textoDoAviso({ tipo: 'cancelada', data: '2026-10-01', dias: 0 })?.texto).toBe('Assinatura cancelada. Você usa até hoje.')
-    expect(textoDoAviso({ tipo: 'cancelada_encerrada', data: '2026-09-14', dias: null })).toMatchObject({ acao: 'escolher', dispensavel: false, tom: 'atencao' })
+    expect(textoDoAviso({ tipo: 'cancelada_encerrada', data: '2026-09-14', dias: null })).toMatchObject({
+      texto: 'Assinatura cancelada e o período pago terminou. A conta passa para o plano Grátis em instantes.',
+      acao: 'escolher',
+      dispensavel: false,
+      tom: 'info',
+    })
   })
 
   it('sem aviso, nada; tipo desconhecido, um aviso genérico que leva à assinatura', () => {
@@ -193,7 +200,7 @@ describe('aviso do topo das telas', () => {
 })
 
 describe('situação na tela de Assinatura', () => {
-  it('sem assinatura: teste com a data de fim, teste encerrado e cancelada', () => {
+  it('sem assinatura: teste com a data de fim, teste encerrado, cancelada e Grátis', () => {
     const teste = situacaoNaTela(estado({ conta: { teste_ate: '2026-10-15T14:30:00-03:00' } }), AGORA)
     expect(teste).toMatchObject({ rotulo: 'Em teste', titulo: 'Teste grátis até 15/10/2026' })
     expect(teste.descricao).toContain('Faltam 14 dias.')
@@ -201,8 +208,18 @@ describe('situação na tela de Assinatura', () => {
       rotulo: 'Teste encerrado',
       titulo: 'Seu teste grátis terminou em 20/09/2026',
     })
-    expect(situacaoNaTela(estado({ conta: { situacao: 'cancelada', pago_ate: '2026-11-14', liberada: true } }), AGORA).descricao).toContain('Você usa até 14/11/2026.')
-    expect(situacaoNaTela(estado({ conta: { situacao: 'cancelada', pago_ate: '2026-09-14', liberada: false } }), AGORA).descricao).toContain('os envios estão pausados')
+    expect(situacaoNaTela(estado({ conta: { situacao: 'cancelada', pago_ate: '2026-11-14', liberada: true } }), AGORA).descricao).toBe(
+      'Você usa até 14/11/2026. Depois disso, a conta passa para o plano Grátis.',
+    )
+    expect(situacaoNaTela(estado({ conta: { situacao: 'cancelada', pago_ate: '2026-09-14', liberada: false } }), AGORA).descricao).toBe(
+      'O período pago terminou. A conta passa para o plano Grátis em instantes.',
+    )
+    expect(situacaoNaTela(estado({ conta: { situacao: 'gratis', teste_ate: '2026-09-20T10:00:00-03:00', liberada: true } }), AGORA)).toEqual({
+      rotulo: 'Grátis',
+      tom: 'neutro',
+      titulo: 'Plano Grátis',
+      descricao: 'Os contatos, as respostas e os formulários continuam aqui. Assine quando quiser para enviar sem os limites.',
+    })
   })
 
   it('teste que já acabou e a API ainda não marcou: aparece como encerrado', () => {
@@ -289,12 +306,14 @@ describe('faturas e cobranças', () => {
 
   it('confirmação de cancelar: até quando usa, sem multa', () => {
     const aberta = { valor: 1, vencimento: '2026-11-15', situacao: 'pendente', link: null }
-    expect(mensagemCancelamento(estado({ conta: { situacao: 'ativa', pago_ate: '2026-11-14' } }), AGORA)).toBe('Você continua usando até 14/11/2026. Sem multa e sem devolução.')
+    expect(mensagemCancelamento(estado({ conta: { situacao: 'ativa', pago_ate: '2026-11-14' } }), AGORA)).toBe(
+      'Você continua usando até 14/11/2026; depois, a conta passa para o plano Grátis. Sem multa e sem devolução.',
+    )
     expect(mensagemCancelamento(estado({ conta: { situacao: 'ativa', pago_ate: '2026-11-14' }, fatura_aberta: aberta }), AGORA)).toBe(
-      'Você continua usando até 14/11/2026. Sem multa e sem devolução. A fatura em aberto é cancelada no Asaas.',
+      'Você continua usando até 14/11/2026; depois, a conta passa para o plano Grátis. Sem multa e sem devolução. A fatura em aberto é cancelada no Asaas.',
     )
     expect(mensagemCancelamento(estado({ conta: { teste_ate: '2026-10-15T14:30:00-03:00' } }), AGORA)).toBe('Você volta para o teste grátis, que vai até 15/10/2026. Sem multa.')
-    expect(mensagemCancelamento(estado({ conta: { situacao: 'teste_expirado', liberada: false } }), AGORA)).toContain('Os envios ficam pausados')
+    expect(mensagemCancelamento(estado({ conta: { situacao: 'gratis', liberada: true } }), AGORA)).toBe('A conta segue no plano Grátis, com os dados guardados. Sem multa.')
   })
 })
 

@@ -49,12 +49,15 @@ def mes_atual() -> date:
 
 
 def chave_do_limite(conta: Conta) -> str:
-    """O parâmetro da cota da conta: cortesia → `ia.cota.cortesia`; teste (ou teste expirado) sem assinatura →
-    `ia.cota.teste` (etapa 5k; antes, a do plano do teste); Personalizado → `planos.personalizado` (a cota fica na
-    conta, `limite`); demais → pelo plano da conta (desconhecido → o de `teste.plano`)."""
+    """O parâmetro da cota da conta: cortesia → `ia.cota.cortesia`; Grátis (mesmo tendo assinado: o plano começa no
+    pagamento) → `ia.cota.gratis`; teste sem assinatura → `ia.cota.teste` (etapa 5k; antes, a do plano do teste);
+    Personalizado → `planos.personalizado` (a cota fica na conta, `limite`); demais → pelo plano da conta
+    (desconhecido → o de `teste.plano`)."""
     if conta.situacao == "cortesia":
         return "ia.cota.cortesia"
-    if conta.situacao in ("teste", "teste_expirado") and conta.primeiro_vencimento is None:
+    if conta.situacao == "gratis":
+        return "ia.cota.gratis"
+    if conta.situacao == "teste" and conta.primeiro_vencimento is None:
         return "ia.cota.teste"
     if conta.plano == "personalizado":
         return "planos.personalizado"

@@ -107,6 +107,10 @@ export const PADROES_SITE: Record<string, string | number | null> = {
   'planos.desconto.pix': 3,
   'planos.desconto.anual': 10,
   'planos.personalizado.base': '99.00',
+  // Plano Grátis (docs/api-plano-gratis.md)
+  'gratis.contatos': 100,
+  'gratis.envios_mes': 200,
+  'gratis.usuarios': 1,
 }
 
 type Objeto = Record<string, unknown>
@@ -114,7 +118,8 @@ const ehObjeto = (v: unknown): v is Objeto => typeof v === 'object' && v !== nul
 
 /**
  * Acha o valor de uma chave do §2 no corpo de GET /publico/planos (`{planos: [{chave, preco, contatos, whatsapp,
- * ia_cota, ia_teto}], teste: {dias, plano, whatsapp, ia_teto}, ia_analises: {…}}`). Chave que não está lá → undefined.
+ * ia_cota, ia_teto}], teste: {dias, plano, whatsapp, ia_teto}, ia_analises: {…}, gratis: {contatos, envios_mes,
+ * usuarios, ia_cota}}`). Chave que não está lá → undefined.
  */
 export function valorPublico(corpo: unknown, chave: string): unknown {
   if (!ehObjeto(corpo)) return undefined
@@ -125,7 +130,9 @@ export function valorPublico(corpo: unknown, chave: string): unknown {
   const campo = (o: Objeto | undefined, nome: string) => (o && nome in o ? o[nome] : undefined)
   if (grupo === 'planos' && b === 'preco') return campo(plano(a), 'preco')
   if (grupo === 'planos' && b === 'contatos') return campo(plano(a), 'contatos')
-  if (grupo === 'ia' && a === 'cota') return b === 'teste' ? campo(teste, 'ia_cota') : campo(plano(b), 'ia_cota')
+  const gratis = ehObjeto(corpo.gratis) ? corpo.gratis : undefined
+  if (grupo === 'gratis') return campo(gratis, a ?? '')
+  if (grupo === 'ia' && a === 'cota') return b === 'teste' ? campo(teste, 'ia_cota') : b === 'gratis' ? campo(gratis, 'ia_cota') : campo(plano(b), 'ia_cota')
   if (grupo === 'planos' && a === 'desconto') return ehObjeto(corpo.descontos) ? campo(corpo.descontos, b ?? '') : undefined
   if (grupo === 'planos' && a === 'personalizado') return ehObjeto(corpo.personalizado) ? campo(corpo.personalizado, b ?? '') : undefined
   if (grupo === 'ia' && a === 'teto') return b === 'teste' ? campo(teste, 'ia_teto') : campo(plano(b), 'ia_teto')

@@ -71,6 +71,7 @@ const PLANOS_NOVOS = {
     ia: [{ cota: 100, preco: '0.00' }, { cota: 500, preco: '40.00' }, { cota: 2000, preco: '150.00' }, { cota: 5000, preco: '300.00' }],
     contatos_min: 100, contatos_max: 100000, passo: 100, whatsapp: null,
   },
+  gratis: { contatos: 80, envios_mes: 150, usuarios: 2, ia_cota: 5 },
 }
 
 describe('números dos planos (etapa 5g)', () => {
@@ -86,6 +87,9 @@ describe('números dos planos (etapa 5g)', () => {
     expect(valorPublico(PLANOS_NOVOS, 'teste.dias')).toBe(7)
     expect(valorPublico(PLANOS_NOVOS, 'teste.plano')).toBe('essencial')
     expect(valorPublico(PLANOS_NOVOS, 'ia.analises.detalhado')).toBe(4)
+    // Plano Grátis
+    expect(['gratis.contatos', 'gratis.envios_mes', 'gratis.usuarios', 'ia.cota.gratis'].map((k) => valorPublico(PLANOS_NOVOS, k))).toEqual([80, 150, 2, 5])
+    expect(valorPublico({ planos: [] }, 'gratis.contatos')).toBeUndefined()
     // O que não está lá (ou corpo estranho) fica undefined: o HTML não muda.
     expect(valorPublico(PLANOS_NOVOS, 'ia.cota.cortesia')).toBeUndefined()
     expect(valorPublico(PLANOS_NOVOS, 'ia.modelo.rapido')).toBeUndefined()
@@ -144,7 +148,7 @@ describe('index.html', () => {
   it('cada data-p traz o padrão do código, no formato da página', () => {
     document.body.innerHTML = corpo.replace(/<script[\s\S]*?<\/script>/g, '')
     const marcados = Array.from(document.querySelectorAll<HTMLElement>('[data-p]'))
-    expect(marcados).toHaveLength(40)
+    expect(marcados).toHaveLength(45) // Plano Grátis: + 5 (a faixa e a dúvida do fim do teste)
     for (const el of marcados) {
       const chave = el.dataset.p!
       expect(chave in PADROES_SITE, chave).toBe(true)
@@ -157,6 +161,28 @@ describe('index.html', () => {
     // Etapa 5k: WhatsApp sem franquia e o Empresa com 5.000 contatos
     expect(document.querySelector('[data-p="whatsapp.franquia.essencial"]')!.textContent).toBe('Sem franquia')
     expect(marcados.filter((el) => el.dataset.p === 'planos.empresa.contatos').map((el) => el.textContent)).toEqual(['5.000', '5.000'])
+    // Plano Grátis: a faixa (contatos e envios) e a dúvida (contatos, envios e usuários).
+    expect(marcados.filter((el) => el.dataset.p?.startsWith('gratis.')).map((el) => `${el.dataset.p}=${el.textContent}`)).toEqual([
+      'gratis.contatos=100',
+      'gratis.envios_mes=200',
+      'gratis.contatos=100',
+      'gratis.envios_mes=200',
+      'gratis.usuarios=1',
+    ])
+    document.body.innerHTML = ''
+  })
+  it('Plano Grátis: a faixa embaixo dos planos diz o que é e para onde vai a conta que não assina', () => {
+    document.body.innerHTML = corpo.replace(/<script[\s\S]*?<\/script>/g, '')
+    const faixa = document.querySelector<HTMLElement>('[data-faixa-gratis]')!
+    expect(faixa.querySelector('h3')!.textContent).toBe('Grátis')
+    expect(faixa.textContent!.replace(/\s+/g, ' ').trim()).toBe(
+      'GrátisR$ 0 Até 100 contatos e 200 envios por e-mail por mês, além do link da pesquisa e do WhatsApp. É onde sua conta fica se você não assinar depois do teste: nada se perde e você assina quando quiser.',
+    )
+    // Depois do Personalizado e antes de "Comparar todos os recursos".
+    const ordem = Array.from(document.querySelectorAll('[data-calc], [data-faixa-gratis], [data-comparar]')).map((el) =>
+      el.hasAttribute('data-calc') ? 'personalizado' : el.hasAttribute('data-faixa-gratis') ? 'gratis' : 'comparar',
+    )
+    expect(ordem).toEqual(['personalizado', 'gratis', 'comparar'])
     document.body.innerHTML = ''
   })
   it('nos botões, o número fica dentro de um texto só (solto, ele vira item do flex e o gap abre espaço em volta)', () => {
@@ -196,10 +222,14 @@ describe('index.html', () => {
       expect(so).toContain(frase)
     }
   })
-  it('a descrição para redes sociais não cita os dias (robô não roda script); 90/7 dias ficam', () => {
+  it('a descrição para redes sociais não cita os dias (robô não roda script); o fim do teste leva ao Grátis (sem os 90 dias)', () => {
     expect(html).toContain('<meta property="og:description" content="Pesquisa de NPS e CSAT por e-mail e WhatsApp, comentários lidos por IA e planos de ação. Teste grátis, sem cartão." />')
     expect(html.slice(0, html.indexOf('<body>'))).not.toContain('14 dias')
-    expect(corpo).toContain('ficam guardados por 90 dias; sem assinatura, a conta é excluída depois disso, com aviso por e-mail 7 dias antes.')
+    const texto = corpo.replace(/<[^>]+>/g, '')
+    expect(texto).toContain(
+      'A conta passa para o plano Grátis: até 100 contatos, 200 envios por e-mail por mês e 1 usuário, sem as integrações. Contatos, respostas e relatórios continuam lá, e você assina quando quiser.',
+    )
+    expect(corpo).not.toContain('guardados por 90 dias')
   })
   it('a nota abaixo da tabela de planos: no nível Mais detalhado, cada pergunta, resumo ou parecer conta 3 (5k)', () => {
     const tabela = corpo.indexOf('id="tabela-planos"')

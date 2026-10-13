@@ -57,6 +57,7 @@ LIMITE_IMAGEM = "600/minute"           # imagens públicas (logo): os e-mails ab
 LIMITE_ASAAS_WEBHOOK = "300/minute"    # avisos do Asaas (poucos IPs, rajadas na madrugada)
 LIMITE_ACEITE = "20/minute"          # POST /eu/aceite (por usuário)
 LIMITE_PLANOS_PUBLICOS = "60/minute"  # GET /publico/planos (site da raiz, etapa 5g)
+LIMITE_DENUNCIA = "3/minute;10/hour;20/day"  # Plano Grátis: "Denunciar esta pesquisa" (cada uma vira e-mail à equipe)
 LIMITE_FEEDBACK = "5/minute;30/hour;100/day"      # POST /feedback (por usuário): cada um vira e-mail para a equipe
 LIMITE_FEEDBACK_MENSAGEM = "10/minute;120/hour"   # POST /feedback/{id}/mensagens (por usuário)
 LIMITE_REGISTRO_WHATSAPP = "2/minute"  # POST /integracoes/whatsapp/registrar (por usuário; e 8 em 72 h por conta)

@@ -79,6 +79,15 @@ class Conta(Base):
     exclusao_avisada_em: Mapped[datetime | None] = mapped_column(TZ)
     # etapa 5i: de onde veio o cadastro ({utm_source, utm_medium, utm_campaign}, só as presentes); nula = sem origem
     origem: Mapped[dict | None] = mapped_column(JSONB)
+    # Plano Grátis (docs/api-plano-gratis.md): desde quando e por quê (teste | cancelamento | atraso), só no Grátis
+    gratis_desde: Mapped[datetime | None] = mapped_column(TZ)
+    gratis_motivo: Mapped[str | None] = mapped_column(Text)
+    # a nota de risco gravada pela tarefa (plataforma.risco) e a liberação da equipe (no Grátis, 60+ pausa os envios
+    # até a equipe liberar; uma nota acima da liberada pausa de novo)
+    risco_pontos: Mapped[int | None] = mapped_column(SmallInteger)
+    risco_em: Mapped[datetime | None] = mapped_column(TZ)
+    risco_liberado_pontos: Mapped[int | None] = mapped_column(SmallInteger)
+    risco_liberado_em: Mapped[datetime | None] = mapped_column(TZ)
 
 
 class Usuario(Base):
@@ -521,6 +530,34 @@ class WhatsappUso(Base):
     excedentes: Mapped[int] = mapped_column(Integer, server_default="0")
     avisou_80: Mapped[bool] = mapped_column(Boolean, server_default="false")
     avisou_100: Mapped[bool] = mapped_column(Boolean, server_default="false")
+
+
+class EnvioUso(Base):
+    """Plano Grátis: e-mails de pesquisa (convites e lembretes) agendados no mês e no dia (São Paulo)."""
+    __tablename__ = "envios_uso"
+    conta_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, server_default=CONTA_ATUAL)
+    mes: Mapped[date] = mapped_column(Date, primary_key=True)  # dia 1 do mês
+    emails: Mapped[int] = mapped_column(Integer, server_default="0")
+    dia: Mapped[date] = mapped_column(Date)
+    emails_dia: Mapped[int] = mapped_column(Integer, server_default="0")
+    avisou_fim: Mapped[bool] = mapped_column(Boolean, server_default="false")
+
+
+class Denuncia(Base):
+    """"Denunciar esta pesquisa" (Plano Grátis): só o modo sistema lê e grava."""
+    __tablename__ = "denuncias"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger)
+    formulario_id: Mapped[int | None] = mapped_column(BigInteger)
+    formulario_nome: Mapped[str | None] = mapped_column(Text)
+    origem: Mapped[str] = mapped_column(Text)  # convite | link_publico
+    motivo: Mapped[str] = mapped_column(Text)
+    detalhe: Mapped[str | None] = mapped_column(Text)
+    ip_hash: Mapped[str | None] = mapped_column(Text)
+    situacao: Mapped[str] = mapped_column(Text, server_default="aberta")  # aberta | procedente | descartada
+    criada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    resolvida_em: Mapped[datetime | None] = mapped_column(TZ)
+    nota_interna: Mapped[str | None] = mapped_column(Text)
 
 
 class EventoIdempotencia(Base):

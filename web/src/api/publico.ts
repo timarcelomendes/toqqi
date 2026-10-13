@@ -63,4 +63,25 @@ export const publicoApi = {
    */
   pedirLinkDescadastro: (email: string) =>
     api.post<{ mensagem: string }>('/publico/descadastro/pedir-link', { email }, publico),
+  /**
+   * Plano Grátis: "Denunciar esta pesquisa" (201 `{mensagem}`; a mesma pessoa de novo no mesmo dia também volta 201;
+   * 429 depois de 3 no minuto). Pelo convite (`token`) ou pelo link público (`codigo`).
+   */
+  denunciar: (onde: { token: string } | { codigo: string }, dados: { motivo: MotivoDenuncia; detalhe?: string }) =>
+    api.post<{ mensagem: string }>(
+      'token' in onde ? `/publico/convites/${seg(onde.token)}/denuncia` : `/publico/formularios/${seg(onde.codigo)}/denuncia`,
+      dados,
+      publico,
+    ),
 }
+
+export type MotivoDenuncia = 'dados_pessoais' | 'golpe' | 'spam' | 'ofensa' | 'outro'
+
+/** Os motivos da denúncia, na ordem da tela. */
+export const MOTIVOS_DENUNCIA: { valor: MotivoDenuncia; rotulo: string }[] = [
+  { valor: 'dados_pessoais', rotulo: 'Pede senha, cartão ou dados bancários' },
+  { valor: 'golpe', rotulo: 'Finge ser outra empresa' },
+  { valor: 'spam', rotulo: 'Não pedi para receber' },
+  { valor: 'ofensa', rotulo: 'Tem conteúdo ofensivo' },
+  { valor: 'outro', rotulo: 'Outro motivo' },
+]

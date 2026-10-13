@@ -1,6 +1,7 @@
 """Etapa 5a: envios, robô, lembretes, CSAT (disparo por evento) e IA respeitam a regra de "liberada" nas situações
 novas: atrasada (até o fim do 7º dia), cancelada (até o fim do dia `pago_ate`) e teste de quem assinou (até o fim do
-7º dia depois do primeiro vencimento: a carência da primeira fatura)."""
+7º dia depois do primeiro vencimento: a carência da primeira fatura). O Grátis (sempre liberado, com os limites dele)
+tem os testes em test_plano_gratis.py."""
 from datetime import timedelta
 
 import pytest
@@ -40,7 +41,8 @@ CASOS = {
                                                     "primeiro_vencimento": HOJE - timedelta(days=7)}, True, None),
     "teste_depois_da_carencia": ("teste", {"teste_ate": SEGUNDA - timedelta(days=8),
                                            "primeiro_vencimento": HOJE - timedelta(days=8)}, False, MSG_AGUARDANDO),
-    "teste_expirado": ("teste_expirado", {}, False, MSG_TESTE),
+    # o teste acabou e a tarefa ainda não passou a conta para o Grátis (Plano Grátis)
+    "teste_acabou": ("teste", {"teste_ate": SEGUNDA - timedelta(hours=1)}, False, MSG_TESTE),
 }
 
 

@@ -12,7 +12,8 @@ from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.paginacao import Pagina
 from toqqi.core.texto import so_digitos
-from toqqi.modelos import Cargo, Contato, Empresa, Formulario, PerfilContato, Resposta
+from toqqi.modelos import Cargo, Conta, Contato, Empresa, Formulario, PerfilContato, Resposta
+from toqqi.modulos.assinatura import gratis
 from toqqi.modulos.empresas.servico import conferir_referencias, ref
 from toqqi.modulos.envios.configuracao import obter as obter_config_envios
 from toqqi.modulos.crescimento.indicacoes import telefone_legivel
@@ -226,19 +227,22 @@ def excluir(ctx: Contexto, contato_id: int) -> None:
 
 
 def formulario_para_envio(s: Session, formulario_id: int | None) -> Formulario:
+    """O formulário de um link de contato (copiar ou WhatsApp): o pedido, ou o NPS padrão. No Plano Grátis, o que pede
+    dado sensível ou está fora dos que entram nos envios é recusado (`gratis.exigir_formulario`)."""
     if formulario_id is None:
         f = s.scalar(select(Formulario).where(Formulario.padrao_nps.is_(True)))
         if f is None:
             msg = "Escolha o formulário da pesquisa."
             raise AppError(422, "dados_invalidos", msg, {"formulario_id": msg})
-        return f
-    f = s.get(Formulario, formulario_id)
-    if f is None or f.arquivado:
-        raise AppError(422, "dados_invalidos", "Formulário não encontrado.",
-                       {"formulario_id": "Formulário não encontrado."})
-    if not f.ativo:
-        msg = "Este formulário está desativado."
-        raise AppError(422, "dados_invalidos", msg, {"formulario_id": msg})
+    else:
+        f = s.get(Formulario, formulario_id)
+        if f is None or f.arquivado:
+            raise AppError(422, "dados_invalidos", "Formulário não encontrado.",
+                           {"formulario_id": "Formulário não encontrado."})
+        if not f.ativo:
+            msg = "Este formulário está desativado."
+            raise AppError(422, "dados_invalidos", msg, {"formulario_id": msg})
+    gratis.exigir_formulario(s, s.scalar(select(Conta)), f)
     return f
 
 

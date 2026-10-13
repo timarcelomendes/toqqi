@@ -19,6 +19,7 @@ from toqqi.core.email import FalhaEnvio, enviar_mensagem
 from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.paginacao import Pagina
 from toqqi.modelos import Conta, Contato, Empresa, Envio, Formulario, Imagem, Usuario
+from toqqi.modulos.assinatura import gratis
 from toqqi.modulos.contatos.servico import formulario_para_envio
 from toqqi.modulos.envios import automacao, mensagens
 from toqqi.modulos.envios.configuracao import (
@@ -91,6 +92,8 @@ def _validar(s, v: dict, conta_id: int) -> None:
         campos["formulario_id"] = "Escolha um formulário ativo da conta."
     if v["email_imagem_topo_id"] is not None and not _imagem_do_banco(s, conta_id, v["email_imagem_topo_id"]):
         campos["email_imagem_topo_id"] = MSG_IMAGEM_TOPO
+    if v["descanso_dias"] < gratis.DESCANSO_MINIMO and gratis.eh_gratis(s.get(Conta, conta_id)):
+        campos["descanso_dias"] = gratis.MSG_DESCANSO
     if campos:
         raise AppError(422, "dados_invalidos", "Confira os campos destacados.", campos)
 
@@ -127,12 +130,14 @@ def enviar_teste(ctx: Contexto) -> dict:
         cfg = obter(s)
         exigir(s, cfg, ("provedor", "formulario"))
         f = s.get(Formulario, cfg.formulario_id)
-        empresa = s.scalar(select(Conta.nome))
+        conta = s.get(Conta, ctx.conta_id)
+        empresa = conta.nome
+        remetente_nome, responder_para = gratis.remetente(s, conta, cfg.remetente_nome, cfg.responder_para)
         m = mensagens.email_pesquisa(
             conta_id=ctx.conta_id, para=ctx.email, empresa=empresa, assunto=cfg.assunto_convite,
             texto=cfg.texto_convite, perguntas=f.perguntas, link=mensagens.link_formulario_publico(f.codigo_publico),
-            v=mensagens.variaveis(empresa, ctx.usuario.get("nome")), remetente_nome=cfg.remetente_nome,
-            responder_para=cfg.responder_para, visual=visual(s, cfg, ctx.conta_id, f.tema))
+            v=mensagens.variaveis(empresa, ctx.usuario.get("nome")), remetente_nome=remetente_nome,
+            responder_para=responder_para, visual=visual(s, cfg, ctx.conta_id, f.tema))
     try:
         enviar_mensagem(m, conta_id=ctx.conta_id, tipo="teste")
     except FalhaEnvio as falha:
@@ -195,6 +200,9 @@ def disparar(ctx: Contexto, dados) -> tuple[dict, Pares]:
     with em_conta(ctx.conta_id) as s:
         cfg = obter(s)
         exigir(s, cfg)
+        conta = s.get(Conta, ctx.conta_id)
+        no_gratis = gratis.eh_gratis(conta)
+        ignorar_descanso = dados.ignorar_descanso and not no_gratis  # no Grátis, o descanso sempre vale
         hoje = relogio.hoje()
         q = consulta_fila(cfg, hoje)
         if dados.contato_ids:
@@ -210,10 +218,12 @@ def disparar(ctx: Contexto, dados) -> tuple[dict, Pares]:
         envios: Pares = []
         ignorados = []
         for linha in linhas:
-            motivo = _motivo(linha, cfg, hoje, dados.ignorar_descanso, wa)
+            motivo = _motivo(linha, cfg, hoje, ignorar_descanso, wa)
             e = None if motivo else criar_convite(s, cfg, s.get(Contato, linha.id), "manual", ordem_canais(cfg),
                                                   wa, usuario_id=ctx.usuario_id)
             if e is None:
+                if not motivo and no_gratis and linha.email and not gratis.tem_email(s, conta):
+                    motivo = gratis.mensagem_envios(s, conta)  # os e-mails do mês (ou do dia) do Grátis acabaram
                 ignorados.append({"contato_id": linha.id, "nome": linha.nome,
                                   "motivo": motivo or "Sem e-mail e a franquia de WhatsApp do mês acabou"})
                 continue
@@ -242,6 +252,9 @@ def tentar_de_novo(ctx: Contexto, envio_id: int) -> tuple[dict, Pares]:
         if not _pode_receber(s, contato):
             raise AppError(409, "nao_pode_receber",
                            "Este contato não pode receber pesquisas agora (inativo, sem e-mail ou fora da lista).")
+        conta = s.get(Conta, ctx.conta_id)
+        if e.tipo in ("convite", "lembrete") and not gratis.reservar_email(s, conta):
+            raise erro_pre_condicao(gratis.mensagem_envios(s, conta) or "Os envios por e-mail acabaram.")
         novo = novo_envio(s, contato, e.tipo, "manual", convite_id=e.convite_id, resposta_id=e.resposta_id,
                           lembrete=e.lembrete, usuario_id=ctx.usuario_id)
         return {"mensagem": "Estamos tentando enviar de novo."}, [(ctx.conta_id, novo.id)]
@@ -294,7 +307,7 @@ def whatsapp(ctx: Contexto, contato_id: int, dados) -> dict:
         if c is None:
             raise nao_encontrado("Contato não encontrado.")
         cfg = obter(s)
-        exigir(s, cfg, ("assinatura",))
+        exigir(s, cfg, ("assinatura", "revisao"))
         if not c.telefone:
             msg = "Este contato não tem telefone."
             raise AppError(422, "dados_invalidos", msg, {"telefone": msg})
@@ -304,6 +317,7 @@ def whatsapp(ctx: Contexto, contato_id: int, dados) -> dict:
             raise AppError(409, "saiu_da_lista", "Este contato saiu da lista e não recebe mais pesquisas.")
         if dados.formulario_id is None and formulario_ok(s, cfg):
             f = s.get(Formulario, cfg.formulario_id)
+            gratis.exigir_formulario(s, s.get(Conta, ctx.conta_id), f)
         else:
             f = formulario_para_envio(s, dados.formulario_id)
         agora = relogio.agora()

@@ -1,25 +1,22 @@
 """Regras da assinatura sem banco: quando os envios estão liberados, quando param, o aviso do topo das telas e o
 primeiro vencimento. Saem só da linha da conta (lida a cada requisição): `situacao` (decidida por
-`servico.recalcular`), `teste_ate`, `pago_ate`, `atrasada_desde` e `primeiro_vencimento` (cópia do da assinatura
-ativa). Dias no fuso de São Paulo (`relogio`; os testes trocam o relógio).
+`servico.recalcular`), `teste_ate`, `pago_ate`, `atrasada_desde`, `primeiro_vencimento` (cópia do da assinatura
+ativa) e, no Grátis, `gratis_desde`/`gratis_motivo`. Dias no fuso de São Paulo (`relogio`; os testes trocam o relógio).
 
 Liberada (envios, robô, lembretes, CSAT, análise por IA, e-mails de pico e resumo semanal):
-- `cortesia` e `ativa`: sempre;
+- `cortesia`, `ativa` e `gratis`: sempre (no Grátis, dentro dos limites dele: `gratis.py`);
 - `teste` e `cancelada`: até o mais tarde entre o fim do teste e o fim do dia `pago_ate` (o "+14 dias" dentro de um
   período pago e o cancelamento depois de pagar no teste não abrem buraco); quem assinou durante o teste (o primeiro
   vencimento cai no último dia dele) e ainda não pagou segue liberado pela carência da primeira fatura, até o fim do
   7º dia depois do primeiro vencimento — sem buraco entre a meia-noite do vencimento e a tarefa que muda a situação
   para `atrasada`;
-- `atrasada`: até o fim do 7º dia depois de `atrasada_desde`;
-- `teste_expirado`: nunca.
+- `atrasada`: até o fim do 7º dia depois de `atrasada_desde`.
+Depois do prazo, a tarefa passa a conta para o Grátis (Plano Grátis, 13/10/2026: antes ela ficava encerrada e era
+excluída em 90 dias); até a tarefa rodar, os envios ficam parados.
 
-Exclusão automática (etapa 5f; a rotina diária fica em `exclusao.py`):
-- encerrada = `teste_expirado` ou `cancelada`, sem assinatura ativa (`primeiro_vencimento` nulo; a rotina também
-  confere `assinaturas`, de qualquer ambiente) e não liberada; nunca cortesia, ativa, atrasada ou teste;
-- fim do serviço = o mais tarde entre `teste_ate` e o início do dia seguinte ao `pago_ate` (sem os dois → nunca);
-  `encerrada_em` = o dia (São Paulo) do fim; `prevista` = `encerrada_em` + 90 dias (`encerramento`);
-- `exclusao_em` = `exclusao_avisada_para` enquanto vale (igual ou depois da `prevista` e a conta ainda encerrada),
-  senão nulo: vai em `conta.cobranca` (login e /eu) e na lista da Plataforma.
+Exclusão automática (etapa 5f; desde o Grátis, só da conta Grátis parada; a rotina diária fica em `exclusao.py`):
+`exclusao_em` = `exclusao_avisada_para` da conta Grátis avisada, senão nulo: vai em `conta.cobranca` (login e /eu) e na
+lista da Plataforma. Usar o Toqqi (entrar ou abrir o site com a sessão) cancela o aviso.
 """
 import calendar
 from datetime import date, datetime, time, timedelta, timezone
@@ -29,14 +26,15 @@ from toqqi.modelos import Conta
 
 DIAS_ATRASO = 7  # envios liberados até o fim do 7º dia depois do vencimento da fatura em atraso
 DIAS_AVISO_TESTE = 5  # "teste acabando" com 5 dias ou menos
-SEMPRE_LIBERADAS = ("cortesia", "ativa")
-ENCERRADAS = ("teste_expirado", "cancelada")
-DIAS_ATE_EXCLUSAO = 90  # depois do fim do período pago (ou do teste não assinado)
+DIAS_AVISO_GRATIS = 7  # "a conta passou para o Grátis" nos 7 primeiros dias dele
+SEMPRE_LIBERADAS = ("cortesia", "ativa", "gratis")
 
-MSG_TESTE = "O período de teste acabou. Assine um plano para voltar a enviar."
+MSG_TESTE = ("O período de teste acabou. A conta passa para o plano Grátis em instantes; para continuar sem os "
+             "limites dele, assine um plano.")
 MSG_AGUARDANDO = "Os envios voltam quando a fatura da assinatura for paga."
 MSG_ATRASADA = "Os envios estão pausados por falta de pagamento. Pague a fatura em aberto para voltar a enviar."
-MSG_CANCELADA = "A assinatura foi cancelada e o período pago terminou. Assine um plano para voltar a enviar."
+MSG_CANCELADA = ("A assinatura foi cancelada e o período pago terminou. A conta passa para o plano Grátis em "
+                 "instantes; para continuar sem os limites dele, assine um plano.")
 
 
 def inicio_do_dia(d: date) -> datetime:
@@ -124,54 +122,46 @@ def pausa_em(conta: Conta, agora: datetime | None = None) -> datetime | None:
     return prazo.astimezone(timezone.utc)
 
 
-def fim_do_servico(conta: Conta) -> datetime | None:
-    """O mais tarde entre o fim do teste e o fim do dia `pago_ate`; None sem os dois."""
-    return max((m for m in (conta.teste_ate, fim_do_periodo_pago_em(conta)) if m is not None), default=None)
+def exclusao_em(conta: Conta) -> date | None:
+    """O dia da exclusão automática avisado aos administradores da conta Grátis parada (`exclusao.py`); senão None."""
+    return conta.exclusao_avisada_para if conta.situacao == "gratis" else None
 
 
-def encerramento(conta: Conta, agora: datetime | None = None) -> tuple[date, date] | None:
-    """(encerrada_em, prevista) da conta encerrada; None se não está encerrada ou não tem data (regra no
-    cabeçalho)."""
-    if conta.situacao not in ENCERRADAS or conta.primeiro_vencimento is not None or liberada(conta, agora):
-        return None
-    fim = fim_do_servico(conta)
-    if fim is None:
-        return None
-    encerrada_em = dia_de(fim)
-    return encerrada_em, encerrada_em + timedelta(days=DIAS_ATE_EXCLUSAO)
-
-
-def exclusao_em(conta: Conta, agora: datetime | None = None) -> date | None:
-    """O dia da exclusão automática avisado aos administradores, enquanto o aviso vale; senão None."""
-    avisada = conta.exclusao_avisada_para
-    if avisada is None:
-        return None
-    enc = encerramento(conta, agora)
-    return avisada if enc is not None and avisada >= enc[1] else None
-
-
-def _aviso(tipo: str, data: date | None = None, dias: int | None = None) -> dict:
-    return {"tipo": tipo, "data": data, "dias": dias}
+def _aviso(tipo: str, data: date | None = None, dias: int | None = None, **extra) -> dict:
+    return {"tipo": tipo, "data": data, "dias": dias, **extra}
 
 
 def aviso(conta: Conta, agora: datetime | None = None) -> dict | None:
-    """Aviso do topo das telas: {tipo, data, dias} ou None.
+    """Aviso do topo das telas: {tipo, data, dias} (no `gratis`, também `motivo`) ou None.
+    - gratis: nos 7 primeiros dias do Grátis; data = o dia em que a conta passou para ele, dias = dias desde então,
+      motivo = `gratis_motivo` (teste | cancelamento | atraso);
+    - gratis_aguardando: conta Grátis que assinou e ainda não pagou a primeira fatura (o plano começa no pagamento);
+      data = primeiro vencimento, dias = dias até ele (negativo: vencida);
     - teste_acabando: teste liberado com 5 dias ou menos; data = último dia do teste, dias = dias até ele (0 = hoje);
-    - teste_expirado: data = último dia do teste;
+    - teste_expirado: o teste acabou e a tarefa ainda não passou a conta para o Grátis; data = último dia do teste;
     - atrasada: dentro dos 7 dias; data = dia em que os envios param, dias = dias até lá;
     - pausada: atrasada depois dos 7 dias; data = vencimento da fatura em atraso;
     - cancelada: ainda liberada pelo período pago; data = último dia com envios (o `pago_ate`, ou o fim do teste se
       for depois), dias = dias até ele (0 = hoje);
-    - cancelada_encerrada: data = `pago_ate`;
+    - cancelada_encerrada: o período pago acabou e a tarefa ainda não passou a conta para o Grátis; data = `pago_ate`;
     - aguardando_pagamento: tem assinatura ativa ainda sem pagamento (no lugar dos avisos de teste e de cancelada);
       data = primeiro vencimento, dias = dias até ele. Assinou no teste (liberada): só a partir de 5 dias antes do
-      vencimento (e, vencida, o aviso de atrasada da carência); assinou sem teste válido (envios pausados até pagar):
-      sempre."""
+      vencimento (e, vencida, o aviso de atrasada da carência); assinou e o teste ou o período pago acabou antes da
+      tarefa passar a conta para o Grátis: sempre."""
     agora = agora or relogio.agora()
     hoje = dia_de(agora)
     situacao = conta.situacao
+    if situacao == "gratis":
+        if conta.primeiro_vencimento is not None:
+            return _aviso("gratis_aguardando", conta.primeiro_vencimento, (conta.primeiro_vencimento - hoje).days)
+        if conta.gratis_desde is not None:
+            desde = dia_de(conta.gratis_desde)
+            dias = (hoje - desde).days
+            if dias < DIAS_AVISO_GRATIS:
+                return _aviso("gratis", desde, dias, motivo=conta.gratis_motivo)
+        return None
     livre = liberada(conta, agora)
-    if conta.primeiro_vencimento is not None and situacao in ("teste", "teste_expirado", "cancelada"):
+    if conta.primeiro_vencimento is not None and situacao in ("teste", "cancelada"):
         dias = (conta.primeiro_vencimento - hoje).days
         if livre and dias < 0:  # a primeira fatura venceu: carência (a tarefa já vai marcar atrasada)
             para = dia_da_pausa(conta.primeiro_vencimento)
@@ -187,7 +177,7 @@ def aviso(conta: Conta, agora: datetime | None = None) -> dict | None:
             return _aviso("teste_acabando", ultimo, dias) if dias <= DIAS_AVISO_TESTE else None
         ultimo = dia_de(_prazo(conta) - timedelta(microseconds=1))  # liberada pelo período pago (pagou e cancelou)
         return _aviso("cancelada", ultimo, (ultimo - hoje).days)
-    if situacao in ("teste", "teste_expirado"):
+    if situacao == "teste":
         return _aviso("teste_expirado", ultimo_dia_do_teste(conta))
     if situacao == "atrasada":
         if livre:
@@ -200,12 +190,12 @@ def aviso(conta: Conta, agora: datetime | None = None) -> dict | None:
 
 
 def cobranca_json(conta: Conta, agora: datetime | None = None) -> dict:
-    """`conta.cobranca` em /eu e no login. `assinada` = tem assinatura ativa; `exclusao_em` (etapa 5f) = o dia da
-    exclusão automática avisado (`exclusao_em`), ou null."""
+    """`conta.cobranca` em /eu e no login. `assinada` = tem assinatura ativa; `exclusao_em` (etapa 5f; desde o Grátis,
+    a da conta Grátis parada) = o dia da exclusão automática avisado (`exclusao_em`), ou null."""
     agora = agora or relogio.agora()
     return {"liberada": liberada(conta, agora), "assinada": conta.primeiro_vencimento is not None,
             "pago_ate": conta.pago_ate, "atrasada_desde": conta.atrasada_desde, "pausa_em": pausa_em(conta, agora),
-            "aviso": aviso(conta, agora), "exclusao_em": exclusao_em(conta, agora)}
+            "aviso": aviso(conta, agora), "exclusao_em": exclusao_em(conta)}
 
 
 def mensagem_pausa(conta: Conta) -> str:

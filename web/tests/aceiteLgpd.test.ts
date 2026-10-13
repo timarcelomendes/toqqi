@@ -344,10 +344,10 @@ describe('tela "Antes de continuar"', () => {
   })
 
   it('versão nova: texto de atualização, com a data em que a versão atual passou a valer', async () => {
-    // Etapa 5f: a versão atual (8, a do Entrar com o Google) vale desde 08/10/2026 (VIGENTE_DESDE).
+    // Etapa 5f: a versão atual (9, a do Plano Grátis) vale desde 13/10/2026 (VIGENTE_DESDE).
     entrar({ versao_atual: 2, versao_aceita: 1, aceito_em: '2026-01-01T12:00:00Z', pendente: true })
     const w = await abrir(AceiteView, '/aceite')
-    expect(t(w.get('[data-teste="abertura"]').text())).toMatch(/^Atualizamos os Termos de uso e a Política de privacidade em 08\/10\/2026\./)
+    expect(t(w.get('[data-teste="abertura"]').text())).toMatch(/^Atualizamos os Termos de uso e a Política de privacidade em 13\/10\/2026\./)
   })
 
   it('409 com a API na mesma versão do site: recarrega /eu, desmarca e mostra o aviso; fica na tela', async () => {
@@ -689,7 +689,7 @@ describe('retirar o aceite', () => {
     }
     const w = await abrir(DocumentoLegalView, '/privacidade', { tipo: 'privacidade' })
     expect(t(w.get('section#finalidades-e-bases-legais').text())).toContain(
-      'O aceite destes documentos não é um consentimento: ele registra que você conhece e concorda com as regras de uso do Toqqi, contratado pela sua empresa. Mesmo assim, você pode retirá-lo quando quiser em Minha conta › Privacidade › Retirar meu aceite. Ao retirar, você sai do Toqqi e só volta a usá-lo aceitando de novo; guardamos o registro do aceite anterior e da retirada como prova, pelo tempo descrito em Retenção, e você deixa de receber os e-mails do Toqqi. Retirar o aceite não apaga a sua conta nem os seus dados: para isso, veja Seus direitos. Para encerrar o uso pela empresa, o administrador cancela a assinatura.',
+      'O aceite destes documentos não é um consentimento: ele registra que você conhece e concorda com as regras de uso do Toqqi, contratado pela sua empresa. Mesmo assim, você pode retirá-lo quando quiser em Minha conta › Privacidade › Retirar meu aceite. Ao retirar, você sai do Toqqi e só volta a usá-lo aceitando de novo; guardamos o registro do aceite anterior e da retirada como prova, pelo tempo descrito em Retenção, e você deixa de receber os e-mails do Toqqi. Retirar o aceite não apaga a sua conta nem os seus dados: para isso, veja Seus direitos. Para encerrar o uso pela empresa, o administrador cancela a assinatura e pode pedir a exclusão da conta.',
     )
   })
 })

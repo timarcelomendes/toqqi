@@ -1,5 +1,6 @@
-"""Parâmetros da plataforma (etapa 5g): preços e limites dos planos, IA, WhatsApp automático e teste, editáveis pela
-equipe Toqqi em Plataforma › Parâmetros (serviço e rotas em `modulos.plataforma.parametros`).
+"""Parâmetros da plataforma (etapa 5g): preços e limites dos planos, IA, WhatsApp automático, teste e, desde 13/10/2026,
+o Plano Grátis (grupo `gratis`, docs/api-plano-gratis.md), editáveis pela equipe Toqqi em Plataforma › Parâmetros
+(serviço e rotas em `modulos.plataforma.parametros`).
 
 Valor de cada chave = linha em `parametros` > variável de ambiente (só as que já existiam) > código. O banco guarda
 só o que difere do padrão: salvar um valor igual ao padrão apaga a linha (a chave volta a seguir o padrão). Tabela
@@ -62,7 +63,8 @@ class ParametrosIndisponiveis(RuntimeError):
 class ParametroInvalido(RuntimeError):
     """O preço gravado no banco está fora do formato e não há valor bom lido antes dele: não dá para cobrar."""
 
-GRUPOS = {"planos": "Planos", "ia": "IA", "whatsapp": "WhatsApp automático", "teste": "Teste e cortesia"}
+GRUPOS = {"planos": "Planos", "ia": "IA", "whatsapp": "WhatsApp automático", "teste": "Teste e cortesia",
+          "gratis": "Plano Grátis"}
 PLANOS = ("essencial", "profissional", "empresa")
 NOMES_PLANOS = {"essencial": "Essencial", "profissional": "Profissional", "empresa": "Empresa"}
 NIVEIS = ("rapido", "equilibrado", "detalhado")
@@ -79,9 +81,10 @@ PRECOS = {"essencial": Decimal("149.00"), "profissional": Decimal("349.00"), "em
 CONTATOS = {"essencial": 300, "profissional": 1500, "empresa": 5000}  # o mesmo da função limite_contatos (0025)
 COTAS = {"essencial": 100, "profissional": 500, "empresa": 2000}
 COTA_TESTE = 50  # etapa 5k: o teste tem cota própria do ToqqiAI (antes, a do plano do teste)
-TETOS = {"essencial": 1000, "profissional": 5000, "empresa": 15000, "cortesia": 2000, "teste": 500}
+COTA_GRATIS = 10  # Plano Grátis
+TETOS = {"essencial": 1000, "profissional": 5000, "empresa": 15000, "cortesia": 2000, "teste": 500, "gratis": 100}
 # etapa 5k: WhatsApp sem franquia (o número é do cliente e a Meta cobra a conta dele); None = sem limite
-FRANQUIAS_DE = ("essencial", "profissional", "empresa", "personalizado", "cortesia", "teste")
+FRANQUIAS_DE = ("essencial", "profissional", "empresa", "personalizado", "cortesia", "teste", "gratis")
 DESCONTOS = {"pix": (3, 30), "anual": (10, 50)}  # padrão e máximo (%), etapa 5k
 # Personalizado (etapa 5k, docs/api-etapa-5k.md §3): base + contatos em faixas (preço a cada 100) + pacote do ToqqiAI
 PERSONALIZADO = {"base": Decimal("99.00"), "ate_1500": Decimal("18.00"), "ate_10000": Decimal("11.00"),
@@ -89,6 +92,17 @@ PERSONALIZADO = {"base": Decimal("99.00"), "ate_1500": Decimal("18.00"), "ate_10
                  "ia_5000": Decimal("250.00")}
 DIAS_TESTE = 14
 PLANO_DO_TESTE = "profissional"
+# Plano Grátis (docs/api-plano-gratis.md): chave → (padrão, mínimo, máximo). A cota do ToqqiAI, o teto da análise das
+# respostas e a franquia do WhatsApp do Grátis ficam nos grupos IA e WhatsApp, com os dos outros planos.
+GRATIS = {
+    "contatos": (100, 1, 1_000_000),  # contatos ativos (o mesmo da função limite_contatos, 0030)
+    "envios_mes": (200, 1, 100_000),  # e-mails de pesquisa (convites e lembretes) por mês
+    "envios_dia": (100, 1, 100_000),  # ... e por dia
+    "usuarios": (1, 1, 10),  # quem entra: os mais antigos (administradores primeiro)
+    "dias_sem_uso": (180, 60, 730),  # conta parada (ninguém usou) é excluída depois disso
+    "dias_aviso": (30, 7, 60),  # ... com o aviso por e-mail este tanto de dias antes
+    "dias_atraso": (30, 10, 120),  # fatura vencida há este tanto de dias: a assinatura é cancelada (vai ao Grátis)
+}
 
 MSG_INVALIDOS = "Confira os campos destacados."
 
@@ -156,16 +170,19 @@ def _montar() -> dict[str, Campo]:
     campos += [Campo(f"ia.cota.{p}", "inteiro", _codigo(COTAS[p]), 0, 100_000) for p in PLANOS]
     campos.append(Campo("ia.cota.cortesia", "inteiro", _cota_cortesia, 0, 100_000))
     campos.append(Campo("ia.cota.teste", "inteiro", _codigo(COTA_TESTE), 0, 100_000))
+    campos.append(Campo("ia.cota.gratis", "inteiro", _codigo(COTA_GRATIS), 0, 100_000))
     for n in NIVEIS:
         campos += [Campo(f"ia.modelo.{n}", "modelo", _variavel(*_MODELO[n])),
                    Campo(f"ia.esforco.{n}", "esforco", _variavel(*_ESFORCO[n], vazio_vale=True)),
                    Campo(f"ia.analises.{n}", "inteiro", _analises(n), 1, 10)]
     campos += [Campo(f"ia.teto.{p}", "inteiro", _codigo(TETOS[p]), 0, 1_000_000)
-               for p in (*PLANOS, "cortesia", "teste")]
+               for p in (*PLANOS, "cortesia", "teste", "gratis")]
     campos += [Campo(f"whatsapp.franquia.{p}", "limite", _codigo(None), 0, 100_000) for p in FRANQUIAS_DE]
     campos += [Campo("teste.dias", "inteiro", _codigo(DIAS_TESTE), 1, 90),
                Campo("teste.plano", "plano", _codigo(PLANO_DO_TESTE)),
                Campo("teste.exclusao_automatica", "exclusao", _exclusao)]
+    campos += [Campo(f"gratis.{k}", "inteiro", _codigo(padrao_g), minimo, maximo)
+               for k, (padrao_g, minimo, maximo) in GRATIS.items()]
     return {c.chave: c for c in campos}
 
 
@@ -330,6 +347,16 @@ def _regras_dos_niveis(limpos: dict, campos: dict[str, str]) -> None:
                                  f"{NOMES_NIVEIS[menor]}.")
 
 
+def _regras_do_gratis(limpos: dict, campos: dict[str, str]) -> None:
+    """Envios do dia que cabem no mês e o aviso antes da exclusão."""
+    dia, mes = limpos.get("gratis.envios_dia"), limpos.get("gratis.envios_mes")
+    if dia is not None and mes is not None and dia > mes:
+        campos.setdefault("gratis.envios_dia", "Os envios do dia não podem passar dos envios do mês.")
+    aviso, parada = limpos.get("gratis.dias_aviso"), limpos.get("gratis.dias_sem_uso")
+    if aviso is not None and parada is not None and aviso >= parada:
+        campos.setdefault("gratis.dias_aviso", "O aviso precisa sair antes da exclusão.")
+
+
 def validar(nome: str, valores) -> dict:
     """Todos os valores do grupo, conferidos e normalizados (tipo do Python), na ordem de `CAMPOS`. 422
     `dados_invalidos` com `campos` pela chave; chave que falta ou de fora do grupo → campo `valores`."""
@@ -353,6 +380,8 @@ def validar(nome: str, valores) -> dict:
         _regras_dos_planos(limpos, campos)
     if nome == "ia":
         _regras_dos_niveis(limpos, campos)
+    if nome == "gratis":
+        _regras_do_gratis(limpos, campos)
     if campos:
         raise AppError(422, "dados_invalidos", MSG_INVALIDOS, campos)
     return limpos

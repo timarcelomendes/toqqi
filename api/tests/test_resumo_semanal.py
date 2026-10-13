@@ -184,7 +184,8 @@ def test_quem_nao_recebe(client, conta, dono, monkeypatch, ajuste):
         monkeypatch.setattr(config(), "EMAIL_PROVIDER", "console")
         monkeypatch.setattr(config(), "AMBIENTE", "producao")
     elif ajuste == "assinatura":
-        sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=a["conta"]["id"])
+        # conta pausada (fatura vencida há mais de 7 dias; desde o Plano Grátis, o teste que acaba vai ao Grátis)
+        sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c", c=a["conta"]["id"])
     elif ajuste == "preferencia":
         client.patch(f"{API}/eu", headers=a["h"], json={"recebe_resumo_semanal": False})
         m = membro(client, a["h"], "gil@alfa.com.br", "gestor")

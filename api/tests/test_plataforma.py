@@ -73,8 +73,9 @@ def test_estender_teste_conta_do_fim_atual_ou_de_agora(client, dono):
     novo = datetime.fromisoformat(r.json()["teste_ate"])
     assert abs(novo - (fim_atual + timedelta(days=14))) < timedelta(seconds=1)
 
-    # teste já vencido: soma a partir de agora e volta a 'teste'
-    sql(dono, "update contas set situacao='teste_expirado', teste_ate = now() - interval '10 days' where id=:c", c=cid)
+    # teste já vencido (no Grátis, desde o fim dele): soma a partir de agora e volta a 'teste'
+    sql(dono, "update contas set situacao='gratis', gratis_desde = now() - interval '10 days', gratis_motivo = 'teste', "
+              "teste_ate = now() - interval '10 days' where id=:c", c=cid)
     r = client.post(f"{API}/plataforma/contas/{cid}/estender-teste", headers=root["h"], json={"dias": 7})
     novo = datetime.fromisoformat(r.json()["teste_ate"])
     assert r.json()["situacao"] == "teste"
@@ -85,6 +86,7 @@ def test_estender_teste_conta_do_fim_atual_ou_de_agora(client, dono):
     assert client.post(f"{API}/plataforma/contas/999999/cortesia", headers=root["h"]).status_code == 404
     eventos = [e for (e,) in sql(dono, "select evento from auditoria where conta_id=:c", c=cid)]
     assert eventos.count("teste_estendido") == 2 and "cortesia" in eventos
+    assert "plano_gratis_saiu" in eventos  # Plano Grátis: saiu do Grátis com o teste novo
 
 
 def test_admin_de_conta_nao_consegue_criar_o_email_do_superadmin(client):

@@ -82,12 +82,13 @@ def test_pre_condicoes_e_409(client, admin, dono, monkeypatch):
     assert r.json()["erro"]["mensagem"] == "Escolha o formulário usado nos convites."
     sql(dono, "update formularios set ativo = true where id = :f", f=nps["id"])
 
-    # teste vencido vem primeiro
+    # teste vencido vem primeiro (Plano Grátis: até a tarefa passar a conta para o Grátis)
     sql(dono, "update contas set situacao = 'teste', teste_ate = now() - interval '1 day' where id = :c",
         c=admin["conta"]["id"])
     d = client.get(f"{API}/envios/pre-condicoes", headers=h).json()
     assert d["itens"][0] == {"chave": "assinatura", "ok": False,
-                             "mensagem": "O período de teste acabou. Assine um plano para voltar a enviar.",
+                             "mensagem": "O período de teste acabou. A conta passa para o plano Grátis em instantes; "
+                                         "para continuar sem os limites dele, assine um plano.",
                              "acao": {"rotulo": "Assinatura", "rota": "/assinatura"}}
     r = disparar(client, h, [c["id"]])
     assert r.status_code == 409 and "período de teste acabou" in r.json()["erro"]["mensagem"]
@@ -525,6 +526,8 @@ def test_whatsapp_regras(client, admin, dono):
     assert client.post(f"{API}/contatos/99999/whatsapp", headers=h, json={}).status_code == 404
     consulta = membro(client, h, "caio@alfa.com.br", "consulta")
     assert client.post(f"{API}/contatos/{ok['id']}/whatsapp", headers=consulta["h"], json={}).status_code == 403
-    sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=admin["conta"]["id"])
+    # conta pausada (fatura vencida há mais de 7 dias): o link também para
+    sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c",
+        c=admin["conta"]["id"])
     r = client.post(f"{API}/contatos/{ok['id']}/whatsapp", headers=h, json={})
     assert r.status_code == 409 and r.json()["erro"]["codigo"] == "pre_condicao"

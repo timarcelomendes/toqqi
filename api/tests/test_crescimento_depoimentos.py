@@ -68,7 +68,7 @@ def test_desligado_conta_parada_e_link_invalido(client, dono, alfa):
     assert client.post(f"{API}/publico/convites/{token}/depoimento").status_code == 409
 
     client.put(f"{API}/crescimento/configuracao", headers=h, json={"depoimentos_ativos": True})
-    sql(dono, "update contas set situacao = 'teste_expirado' where id = :c", c=alfa["conta"]["id"])
+    sql(dono, "update contas set situacao = 'atrasada', atrasada_desde = current_date - 30 where id = :c", c=alfa["conta"]["id"])  # pausada
     assert _responder(client, alfa, 10, "Ótimo")[1]["depoimento"] is None
 
 

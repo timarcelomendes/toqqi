@@ -109,7 +109,7 @@ ROTULOS_SITUACAO_USUARIO = {"ativo": "Ativo", "pendente": "Pendente", "bloqueado
 ROTULOS_ORIGEM_ACEITE = {"cadastro": "Cadastro", "tela": "Tela de aceite"}
 ROTULOS_GRAVIDADE = {"info": "Informação", "sucesso": "Sucesso", "atencao": "Atenção", "erro": "Erro"}
 ROTULOS_SITUACAO_EMAIL = {"enviado": "Enviado", "falhou": "Falhou"}
-ROTULOS_SITUACAO_CONTA = {"teste": "Em teste", "teste_expirado": "Teste encerrado", "cortesia": "Cortesia",
+ROTULOS_SITUACAO_CONTA = {"teste": "Em teste", "gratis": "Plano Grátis", "cortesia": "Cortesia",
                           "ativa": "Ativa", "atrasada": "Atrasada", "cancelada": "Cancelada"}
 ROTULOS_CANAL_ENVIOS = {"email": "E-mail", "whatsapp": "WhatsApp", "whatsapp_e_email": "WhatsApp e e-mail"}
 

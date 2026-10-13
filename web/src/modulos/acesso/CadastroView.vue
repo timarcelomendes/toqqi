@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { MailCheck } from 'lucide-vue-next'
 import { authApi, mensagemDoErro } from '@/api'
 import { useFormulario } from '@/composables/formulario'
-import { usarDiasTeste } from '@/composables/planosPublicos'
+import { textoDepoisDoTeste, usarTesteEGratis } from '@/composables/planosPublicos'
 import { useSessaoStore } from '@/stores/sessao'
 import { apenasDigitos, emailValido, formatarTelefone } from '@/utils/validacao'
 import Alerta from '@/components/ui/Alerta.vue'
@@ -24,8 +24,12 @@ const senhaOk = ref(false)
 const locais = reactive<Record<string, string | undefined>>({})
 const concluido = ref<string | null>(null)
 const reenvio = reactive({ enviando: false, mensagem: '' })
-/** Etapa 5g: os dias do teste vêm de Plataforma › Parâmetros (GET /publico/planos); carregando ou com falha, 14. */
-const diasTeste = usarDiasTeste()
+/**
+ * Etapa 5g: os dias do teste vêm de Plataforma › Parâmetros (GET /publico/planos); carregando ou com falha, 14. Plano
+ * Grátis: embaixo do botão, onde a conta fica depois do teste se não assinar (os números da mesma resposta).
+ */
+const { dias: diasTeste, gratis } = usarTesteEGratis()
+const depoisDoTeste = computed(() => textoDepoisDoTeste(gratis.value))
 
 // Entrar com o Google (docs/api-login-google.md): quem não tem conta termina aqui, só com o nome da empresa (o e-mail
 // vem confirmado pelo Google). Vem do botão desta tela ou do de Entrar (o pendente fica na sessão, só em memória).
@@ -178,6 +182,7 @@ async function reenviar() {
         <p v-if="erro('aceite_termos')" class="pl-8 text-sm font-medium text-erro">{{ erro('aceite_termos') }}</p>
       </div>
       <Botao tipo="submit" tamanho="lg" bloco :carregando="enviando" class="mt-2">Começar {{ diasTeste }} dias grátis</Botao>
+      <p class="text-center text-sm text-texto-suave" data-depois-do-teste>{{ depoisDoTeste }}</p>
     </form>
     <p class="mt-6 border-t border-borda pt-6 text-center text-sm text-texto-suave">
       Não é você? <button type="button" class="link" @click="usarOutroEmail">Usar outro e-mail</button>
@@ -230,6 +235,7 @@ async function reenviar() {
         <p v-if="erro('aceite_termos')" class="pl-8 text-sm font-medium text-erro">{{ erro('aceite_termos') }}</p>
       </div>
       <Botao tipo="submit" tamanho="lg" bloco :carregando="enviando" class="mt-2">Começar {{ diasTeste }} dias grátis</Botao>
+      <p class="text-center text-sm text-texto-suave" data-depois-do-teste>{{ depoisDoTeste }}</p>
     </form>
     <p class="mt-6 border-t border-borda pt-6 text-center text-sm text-texto-suave">
       Já tem conta? <RouterLink to="/entrar" class="link">Entrar</RouterLink>

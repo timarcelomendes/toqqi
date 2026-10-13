@@ -3,8 +3,11 @@
 // e da pré-visualização do editor. Não importa Pinia, router nem ícones externos.
 // Etapa 5l (docs/api-etapa-5l.md §5.2): a navegação segue o caminho da lógica (mostrar se, pular), recalculado a cada
 // resposta; o bloco de conteúdo é um passo próprio; títulos citam respostas ({{id}}); o final pode vir da lógica.
+// Plano Grátis (docs/api-plano-gratis.md): com `formulario.denuncia` e `denunciar`, o link "Denunciar esta pesquisa"
+// embaixo de "Pesquisa feita com Toqqi" abre um formulário curto (motivo e, se quiser, o que aconteceu).
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { API_URL } from '@/api/cliente'
+import { MOTIVOS_DENUNCIA, type MotivoDenuncia } from '@/api/publico'
 import BlocoHtml from './BlocoHtml.vue'
 import CampoPergunta from './CampoPergunta.vue'
 import CartaoDepoimento from './CartaoDepoimento.vue'
@@ -83,6 +86,11 @@ const props = withDefaults(
     motivoFoco?: string | null
     /** Prévia: o botão "Reiniciar prévia" embaixo da pesquisa (a prévia do editor tem o dela, na barra). */
     reiniciavel?: boolean
+    /**
+     * Plano Grátis: manda a denúncia e devolve a mensagem de obrigado. Só aparece com `formulario.denuncia` (a pesquisa
+     * de uma conta Grátis) e fora da prévia. Erro: lança `{mensagem}`.
+     */
+    denunciar?: (dados: { motivo: MotivoDenuncia; detalhe?: string }) => Promise<string | void>
   }>(),
   {
     variaveis: () => ({}),
@@ -98,6 +106,7 @@ const props = withDefaults(
     focoId: null,
     motivoFoco: null,
     reiniciavel: true,
+    denunciar: undefined,
   },
 )
 
@@ -550,6 +559,7 @@ function aoTeclar(e: KeyboardEvent) {
   if (etapa.value !== 'perguntas' || !umaPorVez.value || e.ctrlKey || e.metaKey || e.altKey) return
   const alvo = e.target as HTMLElement | null
   if (alvo && (alvo.tagName === 'TEXTAREA' || alvo.tagName === 'SELECT' || alvo.isContentEditable || (alvo.tagName === 'INPUT' && !['radio', 'checkbox'].includes((alvo as HTMLInputElement).type)))) return
+  if (alvo?.closest?.('[data-form-denuncia]')) return
   if (props.previa && raiz.value && !raiz.value.contains(alvo)) return
   const p = atuais.value[0]
   if (!p || p.tipo !== 'nps' || !/^\d$/.test(e.key)) return
@@ -571,6 +581,46 @@ function aoTeclar(e: KeyboardEvent) {
       temporizador = null
       avancar()
     }, n === 1 ? 750 : 400)
+  }
+}
+
+// Plano Grátis: "Denunciar esta pesquisa".
+const MSG_DENUNCIA = 'Recebemos a sua denúncia. A equipe Toqqi vai conferir esta pesquisa.'
+const mostrarDenuncia = computed(() => !!props.formulario.denuncia && !!props.denunciar && !props.previa)
+const denuncia = reactive({ aberta: false, motivo: '' as MotivoDenuncia | '', detalhe: '', enviando: false, erro: '', feita: '' })
+const formDenuncia = ref<HTMLFormElement | null>(null)
+const botaoDenunciar = ref<HTMLButtonElement | null>(null)
+
+async function abrirDenuncia() {
+  Object.assign(denuncia, { aberta: true, erro: '' })
+  await nextTick()
+  formDenuncia.value?.querySelector<HTMLInputElement>('input[type="radio"]')?.focus()
+}
+
+async function fecharDenuncia() {
+  denuncia.aberta = false
+  await nextTick()
+  botaoDenunciar.value?.focus()
+}
+
+async function enviarDenuncia() {
+  if (denuncia.enviando || !props.denunciar) return
+  if (!denuncia.motivo) {
+    denuncia.erro = 'Escolha o motivo da denúncia.'
+    return
+  }
+  denuncia.enviando = true
+  denuncia.erro = ''
+  try {
+    const detalhe = denuncia.detalhe.trim()
+    const msg = await props.denunciar({ motivo: denuncia.motivo, ...(detalhe ? { detalhe } : {}) })
+    denuncia.feita = msg || MSG_DENUNCIA
+    denuncia.aberta = false
+  } catch (e) {
+    const mensagem = e && typeof e === 'object' && 'mensagem' in e ? (e as { mensagem?: string }).mensagem : undefined
+    denuncia.erro = mensagem || 'Não deu para enviar a denúncia. Tente de novo.'
+  } finally {
+    denuncia.enviando = false
   }
 }
 
@@ -753,6 +803,70 @@ defineExpose({ recomecar: iniciar, irParaPergunta })
         >{{ formulario.mencao_toqqi.texto }}</a
       >
     </p>
+    <!-- Plano Grátis: "Denunciar esta pesquisa" (a empresa que mandou não vê a denúncia) -->
+    <div v-if="mostrarDenuncia" class="text-center text-xs text-slate-600" :class="compacto ? 'mt-1' : 'mt-2'" data-denuncia>
+      <p v-if="denuncia.feita" role="status" class="mx-auto max-w-md" data-denuncia-feita>{{ denuncia.feita }}</p>
+      <button
+        v-else-if="!denuncia.aberta"
+        ref="botaoDenunciar"
+        type="button"
+        class="inline-flex min-h-6 items-center rounded underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+        data-denunciar
+        @click="abrirDenuncia"
+      >
+        Denunciar esta pesquisa
+      </button>
+      <form
+        v-else
+        ref="formDenuncia"
+        class="mx-auto mt-1 max-w-md rounded-2xl border border-slate-200 bg-white p-4 text-left text-sm text-slate-700 shadow-sm"
+        novalidate
+        aria-labelledby="titulo-denuncia"
+        data-form-denuncia
+        @submit.prevent="enviarDenuncia"
+        @keydown.esc="fecharDenuncia"
+      >
+        <fieldset class="m-0 border-0 p-0" :aria-describedby="denuncia.erro ? 'erro-denuncia' : undefined">
+          <legend id="titulo-denuncia" class="p-0 font-bold text-slate-900">Por que você quer denunciar esta pesquisa?</legend>
+          <p class="mt-1 text-slate-600">A equipe Toqqi confere. A empresa que mandou a pesquisa não vê a denúncia.</p>
+          <div class="mt-3 flex flex-col">
+            <label v-for="m in MOTIVOS_DENUNCIA" :key="m.valor" class="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-lg px-2 hover:bg-slate-50">
+              <input v-model="denuncia.motivo" type="radio" name="motivo-denuncia" :value="m.valor" class="size-4 shrink-0 accent-slate-900" @change="denuncia.erro = ''" />
+              {{ m.rotulo }}
+            </label>
+          </div>
+        </fieldset>
+        <label class="mt-3 block">
+          <span class="font-semibold text-slate-900">O que aconteceu? <span class="font-normal text-slate-500">(opcional)</span></span>
+          <textarea
+            v-model="denuncia.detalhe"
+            rows="3"
+            maxlength="1000"
+            class="mt-1 block w-full rounded-xl border border-slate-300 bg-white p-2.5 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          />
+        </label>
+        <p v-if="denuncia.erro" id="erro-denuncia" role="alert" class="mt-2 font-medium text-red-700">{{ denuncia.erro }}</p>
+        <div class="mt-3 flex justify-end gap-2">
+          <button
+            type="button"
+            class="inline-flex h-10 items-center rounded-xl px-3 font-semibold text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-slate-900"
+            :disabled="denuncia.enviando"
+            @click="fecharDenuncia"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="inline-flex h-10 items-center rounded-xl bg-slate-900 px-4 font-bold text-white hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-60"
+            :disabled="denuncia.enviando"
+            :aria-busy="denuncia.enviando || undefined"
+            data-enviar-denuncia
+          >
+            Enviar denúncia
+          </button>
+        </div>
+      </form>
+    </div>
     <p v-if="previa && reiniciavel" class="text-center" :class="compacto ? 'mt-3' : 'mt-4'">
       <button
         type="button"

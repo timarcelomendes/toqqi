@@ -22,9 +22,13 @@ export const GRAVIDADES: Record<Gravidade, { rotulo: string; tom: Tom }> = {
   erro: { rotulo: 'Erro', tom: 'erro' },
 }
 
-/** Situação da conta (etapa 5a: teste, teste_expirado, ativa, atrasada, cancelada, cortesia); outras aparecem como vieram. */
+/**
+ * Situação da conta (etapa 5a: teste, ativa, atrasada, cancelada, cortesia; Plano Grátis: gratis, no lugar de
+ * teste_expirado, que fica para os dados antigos); outras aparecem como vieram.
+ */
 const SITUACOES_CONTA: Record<string, { rotulo: string; tom: Tom }> = {
   teste: { rotulo: 'Em teste', tom: 'info' },
+  gratis: { rotulo: 'Grátis', tom: 'neutro' },
   teste_expirado: { rotulo: 'Teste encerrado', tom: 'atencao' },
   cortesia: { rotulo: 'Cortesia', tom: 'marca' },
   ativa: { rotulo: 'Ativa', tom: 'sucesso' },

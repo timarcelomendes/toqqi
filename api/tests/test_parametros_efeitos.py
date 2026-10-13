@@ -395,7 +395,8 @@ def test_conferencia_e_virada_do_teste_nao_mudam_o_plano_do_teste_em_andamento(c
     assert sql(dono, "select plano, situacao from contas where id = :c", c=c) == [("profissional", "teste")]
     sql(dono, "update contas set teste_ate = :t where id = :c", t=relogio.agora() - timedelta(hours=1), c=c)
     assert conferencia.recalcular_pelas_datas() == 1
-    assert sql(dono, "select plano, situacao from contas where id = :c", c=c) == [("profissional", "teste_expirado")]
+    # Plano Grátis: o teste acabou e a conta foi para o Grátis, com o plano de antes guardado
+    assert sql(dono, "select plano, situacao from contas where id = :c", c=c) == [("profissional", "gratis")]
 
 
 def test_quem_cancela_sem_nunca_pagar_volta_ao_plano_do_teste_atual(client, root, ana, dono, asaas_falso,
@@ -427,12 +428,15 @@ def test_assinatura_removida_no_asaas_sem_pagar_volta_ao_plano_do_teste_atual(cl
 # ---- exclusão automática ----------------------------------------------------------------------------------
 
 def _rodada(client, dono, monkeypatch) -> dict:
+    """Plano Grátis: a conta Grátis parada há 150 dias (a exclusão prevista é daqui a 30: a hora do aviso)."""
     hoje = date(2026, 10, 3)
     fixar_relogio(monkeypatch, datetime.combine(hoje, time(10), tzinfo=FUSO))
     a = conta_pronta(client, "ana@alfa.com.br", empresa="Alfa")
-    sql(dono, "update contas set situacao = 'teste_expirado', teste_ate = :t, criada_em = now() - interval '200 days' "
-              "where id = :c", t=datetime.combine(hoje - timedelta(days=90), time(12), tzinfo=FUSO),
-        c=a["conta"]["id"])
+    quando = datetime.combine(hoje - timedelta(days=150), time(12), tzinfo=FUSO)
+    sql(dono, "update contas set situacao = 'gratis', gratis_desde = :q, gratis_motivo = 'teste', teste_ate = :q, "
+              "criada_em = now() - interval '400 days' where id = :c", q=quando, c=a["conta"]["id"])
+    sql(dono, "update usuarios set ultimo_acesso = :q where conta_id = :c", q=quando, c=a["conta"]["id"])
+    sql(dono, "update sessoes set ultimo_uso = :q, criada_em = :q where conta_id = :c", q=quando, c=a["conta"]["id"])
     return tarefas.limpeza()["encerradas"]
 
 
@@ -441,7 +445,7 @@ def test_exclusao_ligada_no_banco_vence_a_variavel(client, dono, monkeypatch):
     gravar_parametro(dono, "teste.exclusao_automatica", "ligada")
     resumo = _rodada(client, dono, monkeypatch)
     assert (resumo["modo"], resumo["avisadas"]) == ("ligada", 1)
-    assert sql(dono, "select exclusao_avisada_para from contas") == [(date(2026, 10, 10),)]
+    assert sql(dono, "select exclusao_avisada_para from contas") == [(date(2026, 11, 2),)]
 
 
 def test_exclusao_simular_no_banco_vence_a_variavel(client, dono, monkeypatch, caplog):

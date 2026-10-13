@@ -37,7 +37,8 @@ def planos_json() -> list[dict]:
 
 
 def limite_contatos(s: Session, plano: str, situacao: str) -> int | None:
-    """Contatos ativos permitidos (None = ilimitado; cortesia nunca tem limite), pela regra do gatilho do banco."""
+    """Contatos ativos permitidos (None = ilimitado; cortesia nunca tem limite; no Grátis, `gratis.contatos`), pela
+    regra do gatilho do banco."""
     return s.scalar(select(func.limite_contatos(plano, situacao)))
 
 
@@ -88,10 +89,11 @@ def erro_limite(limite: int) -> AppError:
 
 
 def limite_da_conta(s: Session, conta_id: int) -> int | None:
-    """O limite de contatos ativos da conta (a regra do gatilho do banco; no Personalizado, o contratado)."""
+    """O limite de contatos ativos da conta (a regra do gatilho do banco; no Personalizado, o contratado; no Plano
+    Grátis, o dele, `gratis.contatos`, qualquer que seja o plano)."""
     plano, situacao, contratado = s.execute(select(Conta.plano, Conta.situacao, Conta.contatos_personalizado)
                                             .where(Conta.id == conta_id)).one()
-    if plano == "personalizado" and situacao != "cortesia":
+    if plano == "personalizado" and situacao not in ("cortesia", "gratis"):
         return contratado
     return limite_contatos(s, plano, situacao)
 

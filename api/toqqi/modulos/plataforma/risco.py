@@ -7,10 +7,13 @@ equipe olhar primeiro as contas que podem estar abusando do Toqqi:
   de teste e o mesmo CPF/CNPJ, telefone, domínio ou nome de outra conta;
 - lista comprada (o que mais estraga a entrega dos e-mails do Toqqi): muita gente pedindo para sair, endereços e números
   que não existem, quase ninguém respondendo, muito envio logo nos primeiros dias;
-- golpe: formulário com pergunta aberta pedindo senha, cartão, dados bancários ou código de verificação;
+- golpe: formulário com pergunta aberta pedindo senha, cartão, dados bancários ou código de verificação; denúncias de
+  quem recebeu a pesquisa ("Denunciar esta pesquisa", nas contas Grátis);
 - pagamento estornado.
 
-A nota é um alerta para alguém olhar, não uma decisão: nada é bloqueado por ela. Níveis: `alto` (60 ou mais), `medio`
+A nota é um alerta para alguém olhar, não uma decisão: nos planos pagos, nada é bloqueado por ela. No Plano Grátis
+(docs/api-plano-gratis.md), a nota gravada pela tarefa `riscos` (`gravar`) pausa os envios a partir de 60 pontos, até a
+equipe liberar (`assinatura.gratis.pausada_por_risco`). Níveis: `alto` (60 ou mais), `medio`
 (30 a 59), `baixo` (menos de 30). Sem IP, de propósito: os registros de acesso ficam em sigilo (Marco Civil;
 `core.acessos`) e nenhuma tela os lê. As contas da equipe (algum administrador em SUPERADMIN_EMAILS) ficam sem nota
 (`None`) e fora das comparações de repetidos.
@@ -21,15 +24,16 @@ import re
 import unicodedata
 from datetime import timedelta
 
-from sqlalchemy import Text, cast, exists, func, select
+from sqlalchemy import Text, cast, exists, func, select, update
 
 from toqqi.core import relogio
+from toqqi.core.auditoria import registrar
 from toqqi.core.config import config
-from toqqi.core.db import sem_jit
+from toqqi.core.db import modo_sistema, sem_jit
 from toqqi.core.email import MSG_ENDERECO
 from toqqi.core.texto import telefone_canonico
 from toqqi.core.validacao import DOMINIOS_GRATUITOS, dominio_do_email
-from toqqi.modelos import Assinatura, Cobranca, Conta, Convite, Descadastro, Envio, Formulario, Usuario
+from toqqi.modelos import Assinatura, Cobranca, Conta, Convite, Denuncia, Descadastro, Envio, Formulario, Usuario
 from toqqi.modulos.envios.fila import SAIU
 from toqqi.modulos.whatsapp.graph import MSG_NUMERO
 
@@ -41,6 +45,7 @@ MAX_CONTAS_CITADAS = 3
 # Pontos de cada sinal (os de duas faixas: o primeiro é o da faixa alta)
 PONTOS = {
     "formulario_sensivel": 60,
+    "denuncias": (60, 30),  # Plano Grátis: 2 ou mais pessoas diferentes / 1, nos últimos 30 dias
     "email_temporario": 40,
     "descadastros": (35, 20),
     "invalidos": (30, 15),
@@ -204,6 +209,11 @@ def calcular(s) -> dict[int, dict | None]:
     estornos = {cid: (n, quando) for cid, n, quando in s.execute(
         select(Cobranca.conta_id, func.count(), func.max(Cobranca.atualizada_em))
         .where(Cobranca.situacao == "estornada").group_by(Cobranca.conta_id))}
+    # pessoas diferentes (pelo IP cifrado; sem ele, cada denúncia conta como uma) e o total, fora as descartadas
+    quem = func.coalesce(Denuncia.ip_hash, cast(Denuncia.id, Text))
+    denuncias = {cid: (pessoas, total) for cid, pessoas, total in s.execute(
+        select(Denuncia.conta_id, func.count(func.distinct(quem)), func.count())
+        .where(Denuncia.criada_em >= desde, Denuncia.situacao != "descartada").group_by(Denuncia.conta_id))}
 
     # Repetidos: o mesmo valor em mais de uma conta (fora as da equipe)
     nomes = {c.id: c.nome for c in contas}
@@ -290,6 +300,9 @@ def calcular(s) -> dict[int, dict | None]:
 
         if c.id in sensiveis:
             sinal("formulario_sensivel", **sensiveis[c.id])
+        if c.id in denuncias:
+            pessoas, total = denuncias[c.id]
+            sinal("denuncias", PONTOS["denuncias"][0 if pessoas >= 2 else 1], pessoas=pessoas, denuncias=total)
         if c.id in estornos:
             sinal("estorno", quantas=estornos[c.id][0], ultima_em=estornos[c.id][1])
 
@@ -299,3 +312,37 @@ def calcular(s) -> dict[int, dict | None]:
                        "sinais": sinais}
     return notas
 
+
+
+def pausaria(situacao: str | None, pontos: int | None, liberado: int | None) -> bool:
+    """A regra de `assinatura.gratis.pausada_por_risco` com os valores soltos (para comparar antes e depois)."""
+    return situacao == "gratis" and pontos is not None and pontos >= ALTO and (liberado is None or pontos > liberado)
+
+
+def gravar() -> dict:
+    """Tarefa `riscos` (a cada rodada do agendador): grava a nota de cada conta em `contas.risco_pontos` (e
+    `risco_em`, quando ela muda) para o Plano Grátis pausar os envios; a lista da Plataforma segue calculando na hora.
+    A conta Grátis que passa a ficar pausada ganha a auditoria `risco_pausou` (sem os sinais: a conta vê a auditoria)
+    e a equipe recebe um e-mail com as contas pausadas na rodada. Devolve {contas, mudaram, pausadas}."""
+    agora = relogio.agora()
+    pausadas: list[dict] = []
+    mudaram = 0
+    with modo_sistema() as s:
+        notas = calcular(s)
+        for cid, nome, situacao, antes, liberado in s.execute(
+                select(Conta.id, Conta.nome, Conta.situacao, Conta.risco_pontos, Conta.risco_liberado_pontos)).all():
+            nota = notas.get(cid)
+            pontos = nota["pontos"] if nota else None
+            if pontos == antes:
+                continue
+            mudaram += 1
+            s.execute(update(Conta).where(Conta.id == cid).values(risco_pontos=pontos, risco_em=agora))
+            if pausaria(situacao, pontos, liberado) and not pausaria(situacao, antes, liberado):
+                registrar(s, "risco_pausou", "atencao", None, conta_id=cid)
+                pausadas.append({"id": cid, "nome": nome, "pontos": pontos,
+                                 "sinais": [x["tipo"] for x in nota["sinais"]]})
+    if pausadas:
+        from toqqi.modulos.plataforma import avisos_equipe  # import tardio: os avisos usam os e-mails da plataforma
+
+        avisos_equipe.contas_pausadas(pausadas)
+    return {"contas": len(notas), "mudaram": mudaram, "pausadas": len(pausadas)}

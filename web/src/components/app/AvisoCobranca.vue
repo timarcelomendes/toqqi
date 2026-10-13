@@ -8,12 +8,16 @@
 // Etapa 5f: conta encerrada com dia marcado para a exclusão (`cobranca.exclusao_em`): este aviso fica no lugar do de
 // cobrança, em todas as telas (inclusive Assinatura) e sem fechar. O administrador vê "Baixar os dados" e "Escolher
 // plano" (o botão da própria tela em que ele está some); os outros, "Fale com o administrador da conta.".
+// Plano Grátis (docs/api-plano-gratis.md): a conta Grátis que passou de um limite (`conta.gratis`: envios pausados
+// pela nota de risco, contatos acima do limite, e-mails do mês ou do dia acabaram) vê esse aviso no lugar do de
+// cobrança, fora da tela de Assinatura; "Ver planos" só para quem cuida da assinatura.
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { AlertTriangle, CalendarX, Info, X, XCircle } from 'lucide-vue-next'
 import { useSessaoStore } from '@/stores/sessao'
 import Botao from '@/components/ui/Botao.vue'
 import { FALE_COM_ADMIN, ROTULOS_ACAO_AVISO, chaveDoAviso, textoDoAviso } from '@/modulos/assinatura/logica'
+import { ROTAS_ACAO_GRATIS, ROTULOS_ACAO_GRATIS, avisoDoGratis } from '@/modulos/assinatura/gratis'
 import { ROTA_DADOS_CONTA, textoAvisoExclusao } from '@/modulos/configuracoes/dadosConta'
 
 const CHAVE_FECHADOS = 'toqqi.avisos-fechados'
@@ -32,19 +36,30 @@ function lerFechados(): string[] {
 const fechados = ref<string[]>(lerFechados())
 
 const aviso = computed(() => sessao.conta?.cobranca?.aviso ?? null)
-const texto = computed(() => textoDoAviso(aviso.value, sessao.conta?.cobranca))
+const texto = computed(() => textoDoAviso(aviso.value, sessao.conta?.cobranca, sessao.conta?.gratis))
 const chave = computed(() => (aviso.value ? chaveDoAviso(aviso.value) : ''))
 const visivel = computed(
   () => !!texto.value && rota.path !== '/assinatura' && !(texto.value.dispensavel && fechados.value.includes(chave.value)),
 )
 const podeGerenciar = computed(() => sessao.pode('assinatura.gerenciar'))
 
+const limite = computed(() => avisoDoGratis(sessao.conta?.gratis))
+const limiteVisivel = computed(
+  () =>
+    !!limite.value &&
+    rota.path !== '/assinatura' &&
+    !(limite.value.dispensavel && fechados.value.includes(limite.value.chave)),
+)
+const acoesLimite = computed(() =>
+  (limite.value?.acoes ?? []).filter((a) => (a === 'planos' ? podeGerenciar.value : rota.path !== ROTAS_ACAO_GRATIS[a])),
+)
+
 const exclusao = computed(() => textoAvisoExclusao(sessao.conta?.cobranca?.exclusao_em, sessao.admin))
 const botaoBaixar = computed(() => !!exclusao.value?.admin && rota.path !== ROTA_DADOS_CONTA)
 const botaoPlano = computed(() => !!exclusao.value?.admin && podeGerenciar.value && rota.path !== '/assinatura')
 
-function fechar() {
-  fechados.value = [...fechados.value.filter((c) => c !== chave.value), chave.value].slice(-20)
+function fechar(qual: string = chave.value) {
+  fechados.value = [...fechados.value.filter((c) => c !== qual), qual].slice(-20)
   try {
     sessionStorage.setItem(CHAVE_FECHADOS, JSON.stringify(fechados.value))
   } catch {
@@ -70,6 +85,47 @@ const CORES_ICONE = { info: 'text-info', atencao: 'text-atencao', erro: 'text-er
         <Botao v-if="botaoBaixar" variante="secundario" tamanho="sm" :para="ROTA_DADOS_CONTA" data-acao-exclusao="baixar">Baixar os dados</Botao>
         <Botao v-if="botaoPlano" variante="secundario" tamanho="sm" para="/assinatura" data-acao-exclusao="plano">Escolher plano</Botao>
       </div>
+    </div>
+  </section>
+  <section
+    v-else-if="limiteVisivel && limite"
+    class="border-b"
+    :class="FUNDOS[limite.tom]"
+    aria-label="Aviso sobre o plano Grátis"
+    data-aviso-gratis
+    :data-chave="limite.chave"
+  >
+    <div class="mx-auto flex w-full max-w-6xl items-start gap-2 px-4 py-3 sm:items-center sm:px-6 lg:px-10">
+      <div class="flex min-w-0 flex-1 flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
+        <p class="flex min-w-0 flex-1 items-start gap-2.5 text-sm text-texto" role="status">
+          <component :is="ICONES[limite.tom]" class="mt-0.5 size-5 shrink-0" :class="CORES_ICONE[limite.tom]" aria-hidden="true" />
+          <span class="min-w-0">
+            {{ limite.texto }}
+            <span v-if="!podeGerenciar && limite.acoes.includes('planos')" class="text-texto-suave">{{ FALE_COM_ADMIN }}</span>
+          </span>
+        </p>
+        <div v-if="acoesLimite.length" class="ml-[1.875rem] flex flex-wrap gap-2 sm:ml-0">
+          <Botao
+            v-for="(a, i) in acoesLimite"
+            :key="a"
+            :variante="i === acoesLimite.length - 1 && a === 'planos' ? 'primario' : 'secundario'"
+            tamanho="sm"
+            :para="ROTAS_ACAO_GRATIS[a]"
+            :data-acao-gratis="a"
+          >
+            {{ ROTULOS_ACAO_GRATIS[a] }}
+          </Botao>
+        </div>
+      </div>
+      <button
+        v-if="limite.dispensavel"
+        type="button"
+        class="-my-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-texto-suave hover:bg-superficie/70 hover:text-texto"
+        aria-label="Fechar aviso"
+        @click="fechar(limite.chave)"
+      >
+        <X class="size-4" aria-hidden="true" />
+      </button>
     </div>
   </section>
   <section v-else-if="visivel && texto" class="border-b" :class="FUNDOS[texto.tom]" aria-label="Aviso sobre a assinatura" data-aviso-cobranca :data-tipo="aviso?.tipo">
@@ -99,7 +155,7 @@ const CORES_ICONE = { info: 'text-info', atencao: 'text-atencao', erro: 'text-er
         type="button"
         class="-my-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-texto-suave hover:bg-superficie/70 hover:text-texto"
         aria-label="Fechar aviso"
-        @click="fechar"
+        @click="fechar()"
       >
         <X class="size-4" aria-hidden="true" />
       </button>

@@ -23,8 +23,11 @@ from toqqi.modelos import AceiteTermos, Usuario
 # nos Termos, o preço é o da contratação (só muda por reajuste) e limites e cotas podem mudar, com aviso; a IA usa as
 # análises do nível escolhido (a tela mostra quantas); 7 (etapa 5k): Personalizado, mensal ou anual (Pix com desconto),
 # trocar forma ou ciclo = cancelar e assinar de novo, WhatsApp cobrado pela Meta direto da Empresa; 8 (08/10): na
-# Política, o "Entrar com o Google" (o que o Google envia, o Google entre os fornecedores e o botão carregado do Google)
-VERSAO_DOCUMENTOS = 8
+# Política, o "Entrar com o Google" (o que o Google envia, o Google entre os fornecedores e o botão carregado do Google);
+# 9 (13/10, docs/api-plano-gratis.md): o plano Grátis nos Termos (para onde vai a conta, limites, uso justo, exclusão da
+# conta Grátis sem uso por 180 dias com aviso 30 dias antes, no lugar dos 90 dias) e, na Política, as denúncias e a
+# nova retenção
+VERSAO_DOCUMENTOS = 9
 
 AGENTE_MAX = 400
 ORIGENS = ("cadastro", "tela")

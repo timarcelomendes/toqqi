@@ -53,7 +53,9 @@ const COR: Record<Tom, string> = {
   erro: 'text-erro',
 }
 
-const cartoes = computed(() => (dados.value ? indicadores(dados.value.totais, dados.value.conversao, dados.value.testes_acabando.length) : []))
+const cartoes = computed(() =>
+  dados.value ? indicadores(dados.value.totais, dados.value.conversao, dados.value.testes_acabando.length, dados.value.gratis) : [],
+)
 const contas = computed(() => (dados.value ? contasFiltradas(dados.value.contas, filtro) : []))
 const situacoes = computed(() => opcoesSituacao(dados.value?.contas ?? []))
 const filtrando = computed(() => !!filtro.busca.trim() || !!filtro.situacao)

@@ -64,6 +64,7 @@ const PADROES: Record<string, Record<string, ValorParametro>> = {
     'ia.cota.empresa': 2000,
     'ia.cota.cortesia': 500,
     'ia.cota.teste': 50,
+    'ia.cota.gratis': 10,
     'ia.modelo.rapido': 'gpt-5-nano',
     'ia.esforco.rapido': 'minimal',
     'ia.analises.rapido': 1,
@@ -78,6 +79,7 @@ const PADROES: Record<string, Record<string, ValorParametro>> = {
     'ia.teto.empresa': 20000,
     'ia.teto.cortesia': 5000,
     'ia.teto.teste': 1000,
+    'ia.teto.gratis': 100,
   },
   whatsapp: {
     'whatsapp.franquia.essencial': 40,
@@ -86,10 +88,21 @@ const PADROES: Record<string, Record<string, ValorParametro>> = {
     'whatsapp.franquia.personalizado': 200,
     'whatsapp.franquia.cortesia': 200,
     'whatsapp.franquia.teste': 20,
+    'whatsapp.franquia.gratis': null,
   },
   teste: { 'teste.dias': 14, 'teste.plano': 'profissional', 'teste.exclusao_automatica': 'simular' },
+  // Plano Grátis (docs/api-plano-gratis.md): só nos testes que o pedem (o GET de PARAMETROS traz os quatro de antes).
+  gratis: {
+    'gratis.contatos': 100,
+    'gratis.envios_mes': 200,
+    'gratis.envios_dia': 100,
+    'gratis.usuarios': 1,
+    'gratis.dias_sem_uso': 180,
+    'gratis.dias_aviso': 30,
+    'gratis.dias_atraso': 30,
+  },
 }
-const ROTULOS: Record<string, string> = { planos: 'Planos', ia: 'IA', whatsapp: 'WhatsApp automático', teste: 'Teste e cortesia' }
+const ROTULOS: Record<string, string> = { planos: 'Planos', ia: 'IA', whatsapp: 'WhatsApp automático', teste: 'Teste e cortesia', gratis: 'Plano Grátis' }
 
 function grupo(nome: string, valores: Record<string, ValorParametro> = {}, extra: Partial<GrupoParametrosPlataforma> = {}): GrupoParametrosPlataforma {
   const padroes = PADROES[nome]!
@@ -254,7 +267,42 @@ describe('Plataforma › Parâmetros', () => {
     expect(campo('teste.dias')!.value).toBe('14')
     expect($<HTMLInputElement>('[data-parametro="teste.exclusao_automatica"] input[value="simular"]')!.checked).toBe(true)
     expect(t($('[data-parametro="teste.exclusao_automatica"]')!.textContent)).toContain('Ligada: avisa e exclui')
-    expect(t(cartao('teste').querySelector('[data-nota]')!.textContent)).toBe('Cota, teto e franquia da cortesia e do teste ficam em IA e WhatsApp automático.')
+    expect(t(cartao('teste').querySelector('[data-nota]')!.textContent)).toBe(
+      'Cota, teto e franquia da cortesia e do teste ficam em IA e WhatsApp automático. Os prazos da exclusão ficam em Plano Grátis.',
+    )
+  })
+
+  it('Plano Grátis: o grupo com os limites e os prazos lado a lado; o aviso do dia maior que o mês e do aviso depois da exclusão; a prévia com as contas Grátis', async () => {
+    entrar()
+    const api = apiParametros({
+      'GET /plataforma/parametros': () => ({ grupos: [...PARAMETROS().grupos, grupo('gratis')] }),
+      'POST /plataforma/parametros/gratis/previa': () => ({
+        mudancas: [{ chave: 'gratis.contatos', de: 100, para: 80 }],
+        precisa_confirmar: true,
+        impactos: [{ chave: 'gratis.contatos', contas: 2, exemplos: [{ id: 4, nome: 'Alfa', uso: 140 }, { id: 9, nome: 'Beta', uso: 90 }] }],
+      }),
+    })
+    await abrir('/plataforma/parametros')
+    expect($$('section[data-grupo]').map((s) => s.dataset.grupo)).toEqual(['planos', 'ia', 'whatsapp', 'teste', 'gratis'])
+    expect(Array.from(cartao('gratis').querySelectorAll('fieldset[data-bloco] > legend')).map((l) => t(l.textContent))).toEqual(['Limites', 'Prazos'])
+    expect(campo('gratis.envios_mes')!.value).toBe('200')
+    // Envios do dia acima do mês e aviso depois da exclusão: a tela diz antes de chamar a API.
+    await digitar(campo('gratis.envios_dia'), '300')
+    await digitar(campo('gratis.dias_aviso'), '60')
+    await digitar(campo('gratis.dias_sem_uso'), '60')
+    await salvar('gratis')
+    expect(chamadasDe(api, 'POST', '/plataforma/parametros/gratis/previa')).toHaveLength(0)
+    expect(t(cartao('gratis').textContent)).toContain('Os envios do dia não podem passar dos envios do mês.')
+    expect(t(cartao('gratis').textContent)).toContain('O aviso precisa sair antes da exclusão.')
+    await digitar(campo('gratis.envios_dia'), '100')
+    await digitar(campo('gratis.dias_aviso'), '30')
+    await digitar(campo('gratis.dias_sem_uso'), '180')
+    await digitar(campo('gratis.contatos'), '80')
+    await salvar('gratis')
+    expect(chamadasDe(api, 'POST', '/plataforma/parametros/gratis/previa')).toHaveLength(1)
+    expect(t(dialogo()!.querySelector('li')!.textContent)).toBe(
+      'Contatos do Grátis: 100 → 80. 2 contas Grátis (Alfa e Beta) têm mais de 80 contatos ativos: os envios param até elas ficarem dentro do limite.',
+    )
   })
 
   it('salvar e descartar só com mudança; descartar volta ao valor em uso', async () => {
@@ -596,7 +644,7 @@ describe('Plataforma › Parâmetros', () => {
     await clicar(Array.from(historico.querySelectorAll<HTMLButtonElement>('button')).find((b) => t(b.textContent) === 'Próxima')!)
     expect(chamadasDe(api, 'GET', '/plataforma/parametros/historico').at(-1)!.url.searchParams.get('pagina')).toBe('2')
     const filtro = historico.querySelector<HTMLSelectElement>('select')!
-    expect(Array.from(filtro.options).map((o) => o.text)).toEqual(['Todos', 'Planos', 'IA', 'WhatsApp automático', 'Teste e cortesia'])
+    expect(Array.from(filtro.options).map((o) => o.text)).toEqual(['Todos', 'Planos', 'IA', 'WhatsApp automático', 'Teste e cortesia', 'Plano Grátis'])
     await escolher(filtro, 'teste')
     const ultima = chamadasDe(api, 'GET', '/plataforma/parametros/historico').at(-1)!
     expect([ultima.url.searchParams.get('grupo'), ultima.url.searchParams.get('pagina')]).toEqual(['teste', '1'])

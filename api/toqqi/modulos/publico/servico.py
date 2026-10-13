@@ -18,6 +18,10 @@ responder (`registro.pode_editar`):
   só na página aberta: reabrir o link começa outra resposta). Chave errada ou prazo vencido: 409
   `edicao_indisponivel`.
 Nas duas, a tela final traz `edicao` {ate} (e a chave, no link público) enquanto der para mudar.
+
+Plano Grátis (docs/api-plano-gratis.md): a pesquisa da conta Grátis vai com `denuncia: true` (o link "Denunciar esta
+pesquisa", ao lado de "Pesquisa feita com Toqqi") e `denunciar` grava a denúncia (só o modo sistema lê; a conta nunca
+vê), sem repetir a mesma pessoa (IP cifrado do dia) no mesmo formulário no mesmo dia, e avisa a equipe.
 """
 import hashlib
 import hmac
@@ -33,7 +37,7 @@ from toqqi.core.config import config
 from toqqi.core.db import em_conta, modo_sistema
 from toqqi.core.errors import AppError
 from toqqi.core.security import hash_token
-from toqqi.modelos import Conta, Contato, Convite, Formulario, Resposta
+from toqqi.modelos import Conta, Contato, Convite, Denuncia, Formulario, Resposta
 from toqqi.modulos.crescimento import depoimentos, indicacoes
 from toqqi.modulos.envios import configuracao as config_envios
 from toqqi.modulos.imagens.servico import logo_para_cliente
@@ -92,6 +96,7 @@ def _publico(s, conta_id: int, f: Formulario, v: dict) -> dict:
     # etapa 5i: "Pesquisa feita com Toqqi" (null onde a conta tirou e o plano permite)
     aparece = config_envios.mencao(s, config_envios.obter(s, criar=False))["aparece"]
     dados["mencao_toqqi"] = {"texto": "Pesquisa feita com Toqqi", "url": url_mencao("pagina")} if aparece else None
+    dados["denuncia"] = s.scalar(select(Conta.situacao)) == "gratis"  # Plano Grátis: "Denunciar esta pesquisa"
     return dados
 
 
@@ -266,3 +271,32 @@ def editar_formulario(codigo: str, dados, ip: str | None) -> dict:
         r = editar_resposta(s, f, r, dados.respostas, v)
         acessos.registrar(s, "resposta", conta_id=conta_id, item_id=r.id)
         return {**tela_final(f, v, r.respostas), "edicao": {"chave": dados.chave, "ate": prazo_edicao(r)}}
+
+
+# ---- Plano Grátis: denunciar a pesquisa ----------------------------------------------------
+
+def denunciar(token: str | None, codigo: str | None, motivo: str, detalhe: str | None, ip: str | None) -> dict | None:
+    """Grava a denúncia da pesquisa (pelo convite ou pelo link público, com o formulário ainda no ar) e devolve o que
+    vai no aviso à equipe ({conta_nome, formulario_nome, motivo, detalhe}); None quando a mesma pessoa já denunciou
+    este formulário hoje (a resposta para quem denunciou é a mesma)."""
+    if token is not None:
+        conta_id, convite_id = _achar_convite(token)
+        with em_conta(conta_id, leitura=True) as s:
+            f, _, _ = _dados_convite(s, s.get(Convite, convite_id))
+            formulario_id, formulario_nome, conta_nome = f.id, f.nome, _nome_conta(s)
+        origem = "convite"
+    else:
+        conta_id, form_id = _achar_formulario(codigo or "")
+        with em_conta(conta_id, leitura=True) as s:
+            f = _form_publico(s, form_id)
+            formulario_id, formulario_nome, conta_nome = f.id, f.nome, _nome_conta(s)
+        origem = "link_publico"
+    marca = ip_hash(ip)
+    with modo_sistema() as s:
+        if marca is not None and s.scalar(select(exists().where(
+                Denuncia.conta_id == conta_id, Denuncia.formulario_id == formulario_id, Denuncia.ip_hash == marca,
+                Denuncia.criada_em >= func.now() - timedelta(days=1)))):  # relógio do banco, como a gravação
+            return None
+        s.add(Denuncia(conta_id=conta_id, formulario_id=formulario_id, formulario_nome=formulario_nome[:200],
+                       origem=origem, motivo=motivo, detalhe=detalhe, ip_hash=marca))
+    return {"conta_nome": conta_nome, "formulario_nome": formulario_nome, "motivo": motivo, "detalhe": detalhe}

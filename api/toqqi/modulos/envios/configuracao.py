@@ -7,17 +7,19 @@ envio), `email_mostrar_logo`, `email_imagem_topo_id` (uma imagem do banco de ima
 """
 from datetime import time
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from toqqi.core import planos
 from toqqi.core.config import config
 from toqqi.core.errors import AppError
-from toqqi.modelos import ConfigEnvios, Conta, Formulario, Imagem
+from toqqi.modelos import ConfigEnvios, Conta, Contato, Formulario, Imagem
+from toqqi.modulos.assinatura import gratis
 from toqqi.modulos.assinatura.regras import liberada, mensagem_pausa
 from toqqi.modulos.envios import mensagens
 from toqqi.modulos.imagens.servico import logo_para_cliente, url_publica
+from toqqi.modulos.whatsapp import franquia
 
 DIAS_LEMBRETES_PADRAO = [3, 7, 15]
 PADROES = {
@@ -60,6 +62,10 @@ PADROES = {
 CAMPOS = list(PADROES) + ["formulario_id"]
 ROTA_CONFIG = "/configuracoes/envios"
 ROTA_ASSINATURA = "/assinatura"
+ROTA_CONTATOS = "/contatos"
+ROTA_FEEDBACK = "/feedback"
+# Plano Grátis: o que não para o agradecimento (não é convite nem lembrete, e não conta no limite)
+SO_PESQUISAS = ("contatos_do_plano", "envios_do_mes")
 
 
 def obter(s: Session, criar: bool = True, travar: bool = False) -> ConfigEnvios:
@@ -134,7 +140,10 @@ def na_janela(cfg: ConfigEnvios, momento) -> bool:
 
 # ---- pré-condições ----------------------------------------------------------
 # A da assinatura é a regra de "liberada" (assinatura.regras.liberada), a mesma do robô, dos lembretes, do CSAT,
-# da IA e dos e-mails do painel.
+# da IA e dos e-mails do painel. No Plano Grátis (assinatura.gratis), mais três: `revisao` (nota de risco alta, até a
+# equipe liberar), `contatos_do_plano` (mais contatos ativos que o limite) e `envios_do_mes` (os e-mails do mês ou do
+# dia acabaram; não para quem envia pelo WhatsApp automático), e o formulário não pode pedir dado sensível nem estar
+# fora dos que entram nos envios.
 
 def provedor_ok() -> bool:
     cfg = config()
@@ -158,16 +167,48 @@ def _item(chave: str, ok: bool, mensagem: str, acao: tuple[str, str] | None = No
             "acao": {"rotulo": acao[0], "rota": acao[1]} if acao and not ok else None}
 
 
+def _item_formulario(s: Session, cfg: ConfigEnvios, conta: Conta) -> dict:
+    if not formulario_ok(s, cfg):
+        return _item("formulario", False, "Escolha o formulário usado nos convites.",
+                     ("Configurações de envio", ROTA_CONFIG))
+    recusa = gratis.recusa_do_formulario(s, conta, s.get(Formulario, cfg.formulario_id))
+    if recusa is None:
+        return _item("formulario", True, "")
+    if recusa[0] == "sensivel":
+        return _item("formulario", False, recusa[1], ("Editar o formulário", f"/formularios/{cfg.formulario_id}"))
+    return _item("formulario", False, recusa[1], ("Configurações de envio", ROTA_CONFIG))
+
+
+def _itens_do_gratis(s: Session, cfg: ConfigEnvios, conta: Conta) -> list[dict]:
+    limite = planos.limite_da_conta(s, conta.id)
+    ativos = s.scalar(select(func.count()).select_from(Contato).where(Contato.ativo.is_(True)))
+    sem_email = gratis.mensagem_envios(s, conta)
+    pelo_whatsapp = cfg.canal != "email" and franquia.disponivel(s) is not None
+    return [
+        _item("contatos_do_plano", limite is None or ativos <= limite,
+              f"Sua conta tem {planos.numero(ativos)} contatos ativos e o plano Grátis envia para até "
+              f"{planos.numero(limite or 0)}. Desative os que não quer pesquisar, ou assine um plano.",
+              ("Contatos", ROTA_CONTATOS)),
+        _item("envios_do_mes", sem_email is None or pelo_whatsapp, sem_email or "", ("Ver planos", ROTA_ASSINATURA)),
+    ]
+
+
 def pre_condicoes(s: Session, cfg: ConfigEnvios) -> dict:
     conta = s.scalar(select(Conta))
-    itens = [
-        _item("assinatura", liberada(conta), mensagem_pausa(conta), ("Assinatura", ROTA_ASSINATURA)),
+    no_gratis = gratis.eh_gratis(conta)
+    itens = [_item("assinatura", liberada(conta), mensagem_pausa(conta), ("Assinatura", ROTA_ASSINATURA))]
+    if no_gratis:
+        itens.append(_item("revisao", not gratis.pausada_por_risco(conta), gratis.MSG_RISCO,
+                           ("Feedback", ROTA_FEEDBACK)))
+    itens += [
         _item("provedor", provedor_ok(), "O envio de e-mails ainda não foi configurado na plataforma."),
-        _item("formulario", formulario_ok(s, cfg), "Escolha o formulário usado nos convites.",
-              ("Configurações de envio", ROTA_CONFIG)),
-        _item("envios_ativos", cfg.envios_ativos, "Os envios estão desligados. Ligue em Configurações de envio.",
-              ("Configurações de envio", ROTA_CONFIG)),
+        _item_formulario(s, cfg, conta),
     ]
+    if no_gratis:
+        itens += _itens_do_gratis(s, cfg, conta)
+    itens.append(_item("envios_ativos", cfg.envios_ativos,
+                       "Os envios estão desligados. Ligue em Configurações de envio.",
+                       ("Configurações de envio", ROTA_CONFIG)))
     return {"pronto": all(i["ok"] for i in itens), "itens": itens}
 
 
@@ -182,5 +223,6 @@ def exigir(s: Session, cfg: ConfigEnvios, chaves: tuple[str, ...] | None = None)
             raise erro_pre_condicao(item["mensagem"])
 
 
-def pronto(s: Session, cfg: ConfigEnvios) -> bool:
-    return pre_condicoes(s, cfg)["pronto"]
+def pronto(s: Session, cfg: ConfigEnvios, ignorar: tuple[str, ...] = ()) -> bool:
+    """Todas as pré-condições valem (menos as de `ignorar`)."""
+    return all(i["ok"] for i in pre_condicoes(s, cfg)["itens"] if i["chave"] not in ignorar)

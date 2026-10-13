@@ -31,7 +31,7 @@ FRANQUIAS = parametros.FRANQUIAS_DE
 
 
 def plano_da_franquia(conta: Conta) -> str:
-    return conta.situacao if conta.situacao in ("cortesia", "teste") else conta.plano
+    return conta.situacao if conta.situacao in ("cortesia", "teste", "gratis") else conta.plano
 
 
 def limite(conta: Conta) -> int | None:
@@ -72,8 +72,10 @@ def franquia_json(s: Session) -> dict:
 
 
 def reservar(s: Session, wc: WhatsappConta) -> str | None:
-    """Gasta uma mensagem do mês: "franquia", "excedente" ou None (acabou e o excedente está desligado)."""
-    lim = limite(s.scalar(select(Conta)))
+    """Gasta uma mensagem do mês: "franquia", "excedente" ou None (acabou e o excedente está desligado; no Grátis, que
+    não tem fatura para cobrar o excedente, sempre)."""
+    conta = s.scalar(select(Conta))
+    lim = limite(conta)
     uso = _uso(s, travar=True)
     if lim is None:  # sem franquia (padrão da 5k)
         uso.usadas += 1
@@ -83,7 +85,7 @@ def reservar(s: Session, wc: WhatsappConta) -> str | None:
         _avisar(s, uso, lim, wc)
         return "franquia"
     _avisar(s, uso, lim, wc)  # a franquia baixou abaixo do já usado: o "acabou" sai uma vez (avisou_100)
-    if wc.excedente_ativo:
+    if wc.excedente_ativo and conta.situacao != "gratis":
         uso.excedentes += 1
         return "excedente"
     return None

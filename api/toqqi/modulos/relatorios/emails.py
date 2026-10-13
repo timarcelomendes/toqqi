@@ -92,8 +92,7 @@ def _contas_em_dia() -> list[int]:
     """Contas liberadas (assinatura em dia, pela regra de `assinatura.regras.liberada`)."""
     agora = relogio.agora()
     with modo_sistema() as s:  # só ids; o trabalho de cada conta roda em em_conta(conta)
-        return [c.id for c in s.scalars(select(Conta).where(Conta.situacao != "teste_expirado").order_by(Conta.id))
-                if liberada(c, agora)]
+        return [c.id for c in s.scalars(select(Conta).order_by(Conta.id)) if liberada(c, agora)]
 
 
 def _plural(n: int, singular: str, plural: str) -> str:

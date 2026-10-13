@@ -5,7 +5,9 @@ import type {
   CadastroGooglePendente,
   ContaPlataforma,
   DadosSessao,
+  DenunciaPlataforma,
   Gravidade,
+  ListaDenuncias,
   Mensagem,
   PaginaAuditoria,
   Perfil,
@@ -15,6 +17,7 @@ import type {
   Seguranca,
   Sessao,
   SessaoAparelho,
+  SituacaoDenuncia,
   SituacaoUsuario,
   Usuario,
 } from './tipos'
@@ -170,6 +173,14 @@ export const plataformaApi = {
     api.post<ContaPlataforma>(`/plataforma/contas/${encodeURIComponent(String(id))}/estender-teste`, { dias }),
   cortesia: (id: ContaPlataforma['id']) =>
     api.post<ContaPlataforma>(`/plataforma/contas/${encodeURIComponent(String(id))}/cortesia`),
+  /** Plano Grátis: libera os envios da conta pausada pela nota de risco (409 `nao_pausada`). */
+  liberarEnvios: (id: ContaPlataforma['id']) =>
+    api.post<ContaPlataforma>(`/plataforma/contas/${encodeURIComponent(String(id))}/liberar-envios`),
+  /** Plano Grátis: as denúncias das pesquisas ("abertas" ou "todas"). */
+  denuncias: (situacao: 'abertas' | 'todas' = 'abertas', sinal?: AbortSignal) =>
+    api.get<ListaDenuncias>('/plataforma/denuncias', { query: { situacao }, sinal }),
+  alterarDenuncia: (id: DenunciaPlataforma['id'], dados: { situacao?: SituacaoDenuncia; nota_interna?: string | null }) =>
+    api.patch<DenunciaPlataforma>(`/plataforma/denuncias/${encodeURIComponent(String(id))}`, dados),
 }
 export * from './etapa5iSaude'
 export * from './etapa5jConectores'

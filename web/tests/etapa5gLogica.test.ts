@@ -13,6 +13,7 @@ import {
   CAMPOS,
   LAYOUT_GRUPOS,
   aplicarPadrao,
+  campoDaChave,
   campoMudou,
   camposDoGrupo,
   casasDecimais,
@@ -72,22 +73,41 @@ function grupoPlanos(valores: Record<string, ValorParametro> = {}): GrupoParamet
 }
 
 describe('catálogo e layout', () => {
-  it('as 43 chaves (5g + 5k), cada uma num grupo, todas na tela (e só uma vez)', () => {
-    expect(CAMPOS).toHaveLength(43)
+  it('as 53 chaves (5g + 5k + Plano Grátis), cada uma num grupo, todas na tela (e só uma vez)', () => {
+    expect(CAMPOS).toHaveLength(53)
     expect(camposDoGrupo('planos')).toHaveLength(15)
-    expect(camposDoGrupo('ia')).toHaveLength(19)
-    expect(camposDoGrupo('whatsapp')).toHaveLength(6)
+    expect(camposDoGrupo('ia')).toHaveLength(21)
+    expect(camposDoGrupo('whatsapp')).toHaveLength(7)
     expect(camposDoGrupo('teste').map((c) => c.chave)).toEqual(['teste.dias', 'teste.plano', 'teste.exclusao_automatica'])
+    expect(camposDoGrupo('gratis').map((c) => c.chave)).toEqual([
+      'gratis.contatos',
+      'gratis.envios_mes',
+      'gratis.envios_dia',
+      'gratis.usuarios',
+      'gratis.dias_sem_uso',
+      'gratis.dias_aviso',
+      'gratis.dias_atraso',
+    ])
+    expect(['ia.cota.gratis', 'ia.teto.gratis', 'whatsapp.franquia.gratis'].map((k) => campoDaChave(k)?.nome)).toEqual([
+      'Cota de IA do Grátis',
+      'Teto de IA do Grátis',
+      'Franquia de WhatsApp do Grátis',
+    ])
     for (const c of CAMPOS) expect(c.chave.startsWith(`${c.grupo}.`)).toBe(true)
     const naTela = Object.values(LAYOUT_GRUPOS).flatMap((l) => l.blocos.flatMap((b) => [...b.chaves, ...(b.blocos ?? []).flatMap((s) => s.chaves)]))
     expect([...naTela].sort()).toEqual(CAMPOS.map((c) => c.chave).sort())
     expect(rotuloGrupo('whatsapp')).toBe('WhatsApp automático')
     expect(rotuloGrupo('teste')).toBe('Teste e cortesia')
+    expect(rotuloGrupo('gratis')).toBe('Plano Grátis')
   })
   it('as notas de cada grupo', () => {
     expect(LAYOUT_GRUPOS.planos.nota).toBe('O preço novo vale para assinaturas novas e trocas de plano. Quem já assina continua com o valor contratado. O anual não soma o desconto do Pix.')
     expect(LAYOUT_GRUPOS.ia.nota).toBe('Ao salvar um modelo ou esforço novo, o Toqqi faz uma chamada curta à OpenAI para conferir.')
-    expect(LAYOUT_GRUPOS.teste.nota).toBe('Cota, teto e franquia da cortesia e do teste ficam em IA e WhatsApp automático.')
+    expect(LAYOUT_GRUPOS.teste.nota).toBe('Cota, teto e franquia da cortesia e do teste ficam em IA e WhatsApp automático. Os prazos da exclusão ficam em Plano Grátis.')
+    expect(LAYOUT_GRUPOS.gratis.nota).toBe(
+      'Cota e teto do ToqqiAI e franquia do WhatsApp do Grátis ficam em IA e WhatsApp automático; ligar ou simular a exclusão, em Teste e cortesia. Os Termos prometem aviso de 30 dias antes de piorar o Grátis.',
+    )
+    expect(LAYOUT_GRUPOS.gratis.blocos.map((b) => b.legenda)).toEqual(['Limites', 'Prazos'])
     expect(LAYOUT_GRUPOS.ia.blocos.map((b) => b.legenda)).toEqual([
       'Análises por mês (cota do plano)',
       'Níveis de modelo',
@@ -316,7 +336,7 @@ describe('diálogo de confirmação e histórico', () => {
     expect(c.aviso).toBe(AVISO_DIMINUI)
     const e = textoConfirmacao('Teste e cortesia', { mudancas: [m('teste.exclusao_automatica', 'simular', 'ligada'), m('teste.dias', 14, 7)], impactos: [] })
     expect(e.linhas.map((l) => l.texto)).toEqual([
-      'Exclusão automática: Simular → Ligada. Na próxima rodada (9h), contas encerradas há 90 dias passam a ser avisadas e excluídas de vez.',
+      'Exclusão automática: Simular → Ligada. Na próxima rodada (9h), as contas Grátis paradas passam a ser avisadas e, no fim do prazo, excluídas de vez.',
       'Dias de teste: 14 → 7.',
     ])
     // Ligar a exclusão e mudar os dias não diminuem limites: sem o aviso.
@@ -379,7 +399,7 @@ describe('dias do teste (GET /publico/planos)', () => {
 describe('Termos de uso v6 (etapa 5g)', () => {
   const texto = JSON.stringify(TERMOS)
   it('versão 6, vigente desde 03/10/2026', () => {
-    expect([VERSAO_DOCUMENTOS, VIGENTE_DESDE]).toEqual([8, '2026-10-08'])
+    expect([VERSAO_DOCUMENTOS, VIGENTE_DESDE]).toEqual([9, '2026-10-13'])
   })
   it('o preço é o da contratação; limites e cotas podem mudar, com aviso se diminuírem', () => {
     expect(texto).toContain(

@@ -62,7 +62,7 @@ const CONTAS: ContaVisao[] = [
   conta({ id: 3, nome: 'Beta Logística', admin_email: 'bia@beta.com.br', criada_em: '2026-10-02T12:00:00Z' }),
   conta({ id: 4, nome: 'Gama Foods', situacao: 'ativa', admin_email: 'gui@gama.com.br', criada_em: '2026-07-01T12:00:00Z', ultimo_acesso: '2026-10-04T10:00:00Z', respostas_30d: 30, respostas_total: 300, ativacao: ativacao(4), assinatura: { plano: 'profissional', valor: 349 } }),
   conta({ id: 5, nome: 'Delta Peças', situacao: 'pausada', admin_email: 'davi@delta.com.br', criada_em: '2026-06-01T12:00:00Z', ultimo_acesso: '2026-08-01T12:00:00Z', respostas_30d: 2, respostas_total: 50, ativacao: ativacao(4), assinatura: { plano: 'essencial', valor: '149.00' } }),
-  conta({ id: 6, nome: 'Éta Ótica', situacao: 'teste_expirado', admin_email: 'eva@eta.com.br', criada_em: '2026-08-15T12:00:00Z', ultimo_acesso: '2026-09-01T12:00:00Z', ativacao: ativacao(1) }),
+  conta({ id: 6, nome: 'Éta Ótica', situacao: 'gratis', admin_email: 'eva@eta.com.br', criada_em: '2026-08-15T12:00:00Z', ultimo_acesso: '2026-09-01T12:00:00Z', ativacao: ativacao(1) }),
 ]
 
 function visao(extra: Partial<VisaoPlataforma> = {}): VisaoPlataforma {
@@ -70,7 +70,7 @@ function visao(extra: Partial<VisaoPlataforma> = {}): VisaoPlataforma {
     gerado_em: '2026-10-04T18:00:00Z',
     totais: {
       contas: 5,
-      por_situacao: { teste: 2, teste_expirado: 1, ativa: 1, atrasada: 0, pausada: 1, cancelada: 0, cortesia: 0 },
+      por_situacao: { teste: 2, gratis: 1, ativa: 1, atrasada: 0, pausada: 1, cancelada: 0, cortesia: 0 },
       pagantes: 2,
       receita_mensal: 498,
       ambiente: 'sandbox',
@@ -78,6 +78,7 @@ function visao(extra: Partial<VisaoPlataforma> = {}): VisaoPlataforma {
       novas_30d: 3,
     },
     conversao: { de: '2026-08-05', ate: '2026-09-19', contas: 4, assinaram: 3, taxa: 0.75 },
+    gratis: { contas: 1, assinaram_30d: 2, pausadas: 0, entraram_30d: 3 },
     testes_acabando: [{ id: 2, nome: 'Alfa Distribuidora', email: 'ana@alfa.com.br', teste_ate: '2026-10-07T15:00:00Z', dias: 3, ultimo_acesso: '2026-10-03T12:00:00Z', ativacao: ativacao(2) }],
     contas: CONTAS,
     ...extra,
@@ -247,7 +248,7 @@ describe('Plataforma › Visão geral', () => {
     expect(pedidos).toBe(3)
   })
 
-  it('indicadores: em teste, pagantes, receita com "sandbox", testes acabando, novas e conversão', async () => {
+  it('indicadores: em teste (com os que acabam), Plano Grátis, pagantes, receita com "sandbox", novas e conversão', async () => {
     entrar()
     apiFalsa({ 'GET /plataforma/visao': () => visao() })
     await abrir('/plataforma')
@@ -256,11 +257,11 @@ describe('Plataforma › Visão geral', () => {
       valor: t(indicador(chave).querySelector('[data-valor]')!.textContent),
       detalhe: t(indicador(chave).querySelector('[data-detalhe]')!.textContent),
     })
-    expect(['teste', 'pagantes', 'receita', 'acabando', 'novas', 'conversao'].map(ler)).toEqual([
-      { rotulo: 'Em teste', valor: '2', detalhe: '1 teste encerrado sem assinar' },
+    expect(['teste', 'gratis', 'pagantes', 'receita', 'novas', 'conversao'].map(ler)).toEqual([
+      { rotulo: 'Em teste', valor: '2', detalhe: '1 acaba nos próximos 7 dias (a lista está abaixo)' },
+      { rotulo: 'Plano Grátis', valor: '1', detalhe: '3 entraram e 2 assinaram em 30 dias' },
       { rotulo: 'Pagantes', valor: '2', detalhe: '1 com fatura atrasada · 5 contas no total' },
       { rotulo: 'Receita mensal', valor: 'R$ 498,00', detalhe: 'das 2 assinaturas ativas' },
-      { rotulo: 'Testes acabando em 7 dias', valor: '1', detalhe: 'A lista está logo abaixo' },
       { rotulo: 'Novas em 30 dias', valor: '3', detalhe: '1 nova nos últimos 7 dias' },
       { rotulo: 'Conversão do teste', valor: '75%', detalhe: '3 de 4 contas criadas entre 05/08 e 19/09 assinaram.' },
     ])
@@ -303,7 +304,7 @@ describe('Plataforma › Visão geral', () => {
     apiFalsa({ 'GET /plataforma/visao': () => visao({ testes_acabando: [] }) })
     await abrir('/plataforma')
     expect(t($('[data-testes-acabando]')!.textContent)).toContain('Nenhum teste acaba nos próximos 7 dias')
-    expect(t(indicador('acabando').querySelector('[data-detalhe]')!.textContent)).toBe('Nenhum teste acaba nesta semana')
+    expect(t(indicador('teste').querySelector('[data-detalhe]')!.textContent)).toBe('Nenhum acaba nesta semana')
   })
 
   it('contas: ordem por último acesso, busca sem acento pelo nome ou e-mail, filtro por situação e a lista do celular', async () => {
@@ -334,7 +335,7 @@ describe('Plataforma › Visão geral', () => {
     expect(nomesTabela()).toHaveLength(5)
     // filtro por situação: só as que aparecem, com a contagem
     const situacao = selecao('Situação', $('[data-contas-visao]')!)
-    expect(Array.from(situacao.options).map((o) => o.text)).toEqual(['Todas', 'Em teste (2)', 'Teste encerrado (1)', 'Ativa (1)', 'Pausada (1)'])
+    expect(Array.from(situacao.options).map((o) => o.text)).toEqual(['Todas', 'Em teste (2)', 'Grátis (1)', 'Ativa (1)', 'Pausada (1)'])
     await escolher(situacao, 'teste')
     expect(nomesTabela()).toEqual(['Alfa Distribuidora', 'Beta Logística'])
     await escolher(situacao, '')
