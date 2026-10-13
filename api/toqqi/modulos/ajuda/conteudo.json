@@ -3733,13 +3733,13 @@
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Em Integrações › Sistemas, o administrador conecta o Omie com o App Key e o App Secret de um aplicativo do Omie. As chaves ficam guardadas cifradas."
+              "texto": "Em Integrações › Sistemas, o administrador conecta o Omie com o App Key e o App Secret do aplicativo da empresa no Omie (cada empresa já é um aplicativo: não precisa criar outro). Para achá-los, entre no Omie com um usuário administrador, abra a Área do Desenvolvedor (o botão “Developer” ou developer.omie.com.br), clique em Aplicativos e no aplicativo da empresa. Não use “Gerar nova chave de acesso”: as integrações que já usam a chave de agora param. No Toqqi, as chaves ficam guardadas cifradas."
             },
             {
               "tipo": "lista",
               "itens": [
                 "Sincronizar agora: cada cliente ativo do Omie vira uma empresa (nome fantasia, CNPJ ou CPF) com um contato (o e-mail e o telefone do cadastro). Nunca apaga nem muda quem já está no Toqqi, e para no limite de contatos do plano.",
-                "Pesquisar quando um pedido for faturado: copie o endereço mostrado pelo Toqqi e cadastre-o como webhook do aplicativo no portal do desenvolvedor do Omie, ligando os eventos de pedido faturado e nota autorizada. O cliente do pedido recebe a pesquisa NPS, uma vez por pedido, pelas regras de envio da conta.",
+                "Pesquisar quando um pedido for faturado: copie o endereço mostrado pelo Toqqi; na Área do Desenvolvedor do Omie, em Aplicativos, clique no aplicativo da empresa e em “Adicionar novo webhook”, cole o endereço, ligue os eventos de pedido faturado e nota autorizada e salve. O cliente do pedido recebe a pesquisa NPS, uma vez por pedido, pelas regras de envio da conta.",
                 "Desconectar apaga as chaves; remova também o webhook no Omie."
               ]
             }

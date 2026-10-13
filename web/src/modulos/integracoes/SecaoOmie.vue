@@ -122,8 +122,19 @@ onMounted(carregar)
     <Alerta v-if="erroCarga" tom="erro">{{ erroCarga }} <button type="button" class="link" @click="carregar">Tentar de novo</button></Alerta>
 
     <form v-else-if="estado && !estado.conectado" class="flex flex-col gap-4" novalidate @submit.prevent="conectar">
-      <ol class="list-decimal pl-5 text-sm text-texto-suave">
-        <li>No Omie, em Configurações › Integrações (ou no portal do desenvolvedor), crie um aplicativo e copie o <strong>App Key</strong> e o <strong>App Secret</strong>.</li>
+      <!-- Caminho conferido na Central de Ajuda do Omie em 13/10/2026 ("Obtendo a chave de acesso para integrações de
+           API"): só administrador vê as chaves; no Omie, cada empresa já é um aplicativo (não precisa criar outro). -->
+      <ol class="flex list-decimal flex-col gap-1.5 pl-5 text-sm text-texto-suave" data-passos-omie>
+        <li>
+          No Omie, entre com um usuário administrador e abra a <strong>Área do Desenvolvedor</strong>: o botão “Developer”, ou
+          <a href="https://developer.omie.com.br" target="_blank" rel="noopener noreferrer" class="link">developer.omie.com.br</a>
+          com o mesmo e-mail e senha.
+        </li>
+        <li>
+          Clique em <strong>Aplicativos</strong> e no aplicativo da sua empresa (no Omie, cada empresa já é um aplicativo:
+          não precisa criar outro). Copie o <strong>App Key</strong> e o <strong>App Secret</strong>. Não use “Gerar nova
+          chave de acesso”: as integrações que já usam a chave de agora param.
+        </li>
         <li>Cole aqui e conecte. As chaves ficam guardadas cifradas.</li>
       </ol>
       <div class="grid gap-4 sm:grid-cols-2">
@@ -154,7 +165,11 @@ onMounted(carregar)
       </div>
       <div v-if="pesquisar && estado.url_aviso" class="flex flex-col gap-2 rounded-xl bg-superficie-2 p-4 text-sm" data-url-aviso-omie>
         <p class="font-semibold text-texto">Cadastre este endereço nos webhooks do aplicativo no Omie</p>
-        <p class="text-texto-suave">No portal do desenvolvedor do Omie, abra o aplicativo, clique em “Adicionar novo webhook”, cole o endereço e ligue os eventos {{ (estado.eventos ?? []).join(', ') }}.</p>
+        <p class="text-texto-suave">
+          Na Área do Desenvolvedor do Omie (developer.omie.com.br), em Aplicativos, clique no aplicativo da sua empresa e em
+          “Adicionar novo webhook”. Cole o endereço, ligue os eventos {{ (estado.eventos ?? []).join(', ') }} e clique em
+          “Salvar”.
+        </p>
         <div class="flex items-center gap-2">
           <code class="min-w-0 flex-1 truncate rounded-lg border border-borda bg-superficie px-3 py-2 text-xs">{{ estado.url_aviso }}</code>
           <BotaoCopiar :texto="estado.url_aviso" rotulo="Copiar endereço" />
