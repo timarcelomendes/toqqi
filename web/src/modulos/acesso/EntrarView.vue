@@ -53,10 +53,10 @@ async function enviar() {
 }
 
 /** Entrar com o Google: quem já tem conta entra; quem não tem vai terminar o cadastro (o nome da empresa). */
-async function entrarGoogle(credencial: string) {
+async function entrarGoogle(token: string) {
   aviso.value = null
   entrandoGoogle.value = true
-  const r = await executar(() => sessao.entrarComGoogle(credencial, dados.lembrar))
+  const r = await executar(() => sessao.entrarComGoogle(token, dados.lembrar))
   entrandoGoogle.value = false
   if (r === 'entrou') router.replace(destinoSeguro(rota.query.voltar))
   else if (r === 'novo') router.push({ name: 'cadastro' })
@@ -103,7 +103,7 @@ async function reenviarConfirmacao() {
     </template>
   </div>
 
-  <BotaoGoogle texto="signin_with" divisor="ou entre com seu e-mail" :ocupado="entrandoGoogle" @credencial="entrarGoogle" />
+  <BotaoGoogle divisor="ou entre com seu e-mail" :ocupado="entrandoGoogle" @token="entrarGoogle" />
 
   <form class="flex flex-col gap-4" novalidate @submit.prevent="enviar">
     <Campo

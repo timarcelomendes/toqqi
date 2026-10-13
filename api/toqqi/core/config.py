@@ -29,6 +29,10 @@ class Config(BaseSettings):
     # Cloud, terminado em .apps.googleusercontent.com. Não é segredo (vai para o navegador). Vazio = sem o botão.
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CHAVES_URL: str = "https://www.googleapis.com/oauth2/v3/certs"
+    # O botão do Toqqi (desde 13/10/2026) manda um token de acesso: o Google confirma de quem é e para qual app foi
+    # emitido (tokeninfo) e, para quem ainda não tem conta, o nome (userinfo). docs/api-login-google.md
+    GOOGLE_TOKENINFO_URL: str = "https://oauth2.googleapis.com/tokeninfo"
+    GOOGLE_USERINFO_URL: str = "https://openidconnect.googleapis.com/v1/userinfo"
     # Cifra segredos guardados no banco (token do WhatsApp, segredos dos webhooks). Fora de produção,
     # vazio = derivada do JWT_SECRET.
     SEGREDOS_KEY: str = ""

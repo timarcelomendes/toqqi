@@ -1,76 +1,77 @@
 <script setup lang="ts">
-// O botão oficial "Entrar com o Google" (Google Identity Services) e, embaixo, o "ou" para o formulário de e-mail
-// (docs/api-login-google.md). Só aparece quando a API tem o ID do cliente do Google; se o script do Google não carrega
-// (bloqueador, sem internet), some e a entrada com e-mail e senha segue sozinha. O botão é desenhado pelo Google (num
-// iframe dele): o tema acompanha o claro e o escuro do Toqqi.
-import { nextTick, onMounted, ref, watch } from 'vue'
-import { carregarGoogle, idClienteGoogle, type GoogleId } from '@/composables/google'
-import { useTema } from '@/composables/tema'
+// "Continuar com o Google" e, embaixo, o "ou" para o formulário de e-mail (docs/api-login-google.md).
+// Desde 13/10/2026 (Marcelo: "melhore o botão entrar com google") o botão é do Toqqi: a mesma altura, os mesmos cantos
+// e a mesma letra do "Entrar", no estilo secundário, claro ou escuro como o resto da tela. O botão oficial (num iframe
+// do Google) ficava mais baixo, de cantos retos, com outra letra, e trocava sozinho para "Fazer login como Fulano".
+// Seguem as regras de marca do Google: o "G" original (a imagem servida pelo próprio Google) e o texto oficial
+// "Continuar com o Google", que vale para quem já tem conta e para quem vai criar.
+// Ao clicar, a janela do Google (modelo de token do Google Identity Services) devolve um token de acesso, que vai para a
+// tela (evento `token`) e dali para a API, onde o próprio Google confirma de quem é. Janela fechada ou recusada: nada
+// muda; janela bloqueada pelo navegador: o aviso embaixo do botão.
+// Só aparece quando a API tem o ID do cliente do Google; se o script do Google não carrega (bloqueador, sem internet),
+// some, e a entrada com e-mail e senha segue sozinha.
+import { onMounted, ref } from 'vue'
+import Botao from '@/components/ui/Botao.vue'
+import { ESCOPOS_GOOGLE, URL_LOGO_GOOGLE, carregarGoogle, idClienteGoogle, type ClienteTokenGoogle } from '@/composables/google'
 
 const props = defineProps<{
-  /** O texto do botão, escrito pelo Google: "Fazer login com o Google" ou "Continuar com o Google". */
-  texto: 'signin_with' | 'continue_with'
   /** O texto entre o botão e o formulário ("ou entre com seu e-mail"). */
   divisor: string
-  /** A API está conferindo o token: o botão fica apagado e aparece "Entrando com o Google…". */
+  /** A API está conferindo o token: o botão fica apagado, com "Entrando com o Google…". */
   ocupado?: boolean
 }>()
-const emit = defineEmits<{ credencial: [string] }>()
+const emit = defineEmits<{ token: [string] }>()
 
-const alvo = ref<HTMLElement | null>(null)
-/** 'nada': sem ID do cliente (ou o script falhou); 'carregando': há ID, esperando o script; 'pronto': botão desenhado. */
+const MSG_BLOQUEADA = 'O navegador bloqueou a janela do Google. Permita janelas pop-up neste site e tente de novo.'
+const MSG_FALHOU = 'Não deu para entrar com o Google agora. Tente de novo ou entre com e-mail e senha.'
+
+/** 'nada': sem ID do cliente (ou o script falhou); 'carregando': há ID, esperando o script; 'pronto': abre a janela. */
 const estado = ref<'nada' | 'carregando' | 'pronto'>('nada')
-const { tema } = useTema()
-let gid: GoogleId | null = null
-
-function desenhar() {
-  if (!gid || !alvo.value) return
-  const largura = alvo.value.clientWidth || 400
-  gid.renderButton(alvo.value, {
-    type: 'standard',
-    theme: tema.value === 'escuro' ? 'filled_black' : 'outline',
-    size: 'large',
-    text: props.texto,
-    shape: 'rectangular',
-    logo_alignment: 'center',
-    width: Math.round(Math.max(200, Math.min(400, largura))),
-    locale: 'pt-BR',
-  })
-}
+const erro = ref<string | null>(null)
+let cliente: ClienteTokenGoogle | null = null
 
 onMounted(async () => {
   const cid = await idClienteGoogle()
   if (!cid) return
   estado.value = 'carregando'
-  gid = await carregarGoogle()
-  if (!gid) {
+  const oauth2 = await carregarGoogle()
+  if (!oauth2) {
     estado.value = 'nada'
     return
   }
-  gid.initialize({
+  cliente = oauth2.initTokenClient({
     client_id: cid,
+    scope: ESCOPOS_GOOGLE,
+    prompt: 'select_account',
     callback: (r) => {
-      if (r?.credential) emit('credencial', r.credential)
+      if (r?.access_token) emit('token', r.access_token)
+      else if (r?.error && r.error !== 'access_denied') erro.value = MSG_FALHOU // "access_denied": a pessoa recusou
     },
-    ux_mode: 'popup',
-    auto_select: false,
-    context: props.texto === 'signin_with' ? 'signin' : 'signup',
-    itp_support: true,
+    error_callback: (e) => {
+      if (e?.type === 'popup_failed_to_open') erro.value = MSG_BLOQUEADA
+      else if (e?.type !== 'popup_closed') erro.value = MSG_FALHOU // fechou a janela: desistiu, sem aviso
+    },
   })
   estado.value = 'pronto'
-  await nextTick()
-  desenhar()
 })
 
-watch(tema, () => desenhar())
+/** Abre a janela do Google. Direto no clique: depois de um `await`, o navegador bloquearia a janela. */
+function abrir() {
+  if (props.ocupado || !cliente) return
+  erro.value = null
+  cliente.requestAccessToken()
+}
 </script>
 
 <template>
   <div v-if="estado !== 'nada'" data-entrar-google :data-estado="estado">
-    <div class="flex min-h-11 justify-center">
-      <div ref="alvo" class="w-full max-w-[400px] transition-opacity" :class="ocupado ? 'pointer-events-none opacity-50' : ''" />
-    </div>
-    <p v-if="ocupado" class="mt-2 text-center text-sm text-texto-suave" role="status" data-entrando-google>Entrando com o Google…</p>
+    <Botao variante="secundario" tamanho="lg" bloco focavel :carregando="ocupado" data-botao-google @click="abrir">
+      <span class="flex items-center gap-3">
+        <img v-if="!ocupado" :src="URL_LOGO_GOOGLE" alt="" width="20" height="20" class="size-5 shrink-0" referrerpolicy="no-referrer" decoding="async" />
+        {{ ocupado ? 'Entrando com o Google…' : 'Continuar com o Google' }}
+      </span>
+    </Botao>
+    <p v-if="erro" class="mt-2 text-sm text-erro" role="alert" data-erro-google>{{ erro }}</p>
     <div class="my-6 flex items-center gap-3 text-sm text-texto-fraco">
       <span class="h-px flex-1 bg-borda" aria-hidden="true" />
       {{ divisor }}

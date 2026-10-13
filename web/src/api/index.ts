@@ -64,9 +64,12 @@ export const authApi = {
   regrasSenha: () => api.get<RegrasSenha>('/auth/regras-senha', publico),
   /** Entrar com o Google (docs/api-login-google.md): o ID do cliente para o botão; null = sem o botão. */
   googleConfig: () => api.get<{ client_id: string | null }>('/auth/google/config', publico),
-  /** A sessão (como em `entrar`) ou, para quem ainda não tem conta, o token para terminar o cadastro. */
-  entrarGoogle: (credencial: string, lembrar: boolean) =>
-    api.post<Sessao | CadastroGooglePendente>('/auth/google', { credencial, lembrar }, publico),
+  /**
+   * Com o token de acesso da janela do Google (a API confere com o Google): a sessão (como em `entrar`) ou, para quem
+   * ainda não tem conta, o token para terminar o cadastro.
+   */
+  entrarGoogle: (tokenAcesso: string, lembrar: boolean) =>
+    api.post<Sessao | CadastroGooglePendente>('/auth/google', { token_acesso: tokenAcesso, lembrar }, publico),
   cadastrarGoogle: (dados: {
     cadastro: string
     empresa: string

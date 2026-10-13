@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from pydantic import AfterValidator, BaseModel, Field, StrictBool
+from pydantic import AfterValidator, BaseModel, Field, StrictBool, model_validator
 from pydantic_core import PydanticCustomError
 
 from toqqi.core.validacao import Email, SenhaForte, Texto, normalizar_email
@@ -23,8 +23,17 @@ class CadastroIn(BaseModel):
 
 
 class EntrarGoogleIn(BaseModel):
-    credencial: Annotated[str, Field(min_length=1, max_length=4096)]  # o token de identidade do botão do Google
+    """Um dos dois tokens do Google: `token_acesso` (o botão do Toqqi, desde 13/10/2026) ou `credencial` (o token de
+    identidade do botão oficial do Google, de antes; continua valendo para abas abertas com o site antigo)."""
+    token_acesso: Annotated[str, Field(min_length=1, max_length=4096)] | None = None
+    credencial: Annotated[str, Field(min_length=1, max_length=4096)] | None = None
     lembrar: bool = False
+
+    @model_validator(mode="after")
+    def _um_token(self):
+        if (self.token_acesso is None) == (self.credencial is None):
+            raise PydanticCustomError("toqqi_google", "Entre de novo pelo botão do Google.")
+        return self
 
 
 class CadastroGoogleIn(BaseModel):

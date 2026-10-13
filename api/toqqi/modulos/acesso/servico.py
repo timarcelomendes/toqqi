@@ -218,14 +218,17 @@ def _abrir_sessao(u: Usuario, lembrar: bool, ip: str | None, agente: str | None,
 # ---- entrar com o Google ----------------------------------------------------
 
 def entrar_google(dados, ip: str | None, agente: str | None) -> dict:
-    """Com o token do Google: entra quem já tem usuário (pela conta do Google já ligada a ele ou, na primeira vez, pelo
-    e-mail, que fica ligado); quem não tem recebe {novo, cadastro, email, nome} para terminar o cadastro."""
-    g = google.verificar(dados.credencial)
+    """Com o token do Google (o de acesso, do botão do Toqqi; ou o de identidade, do botão oficial de antes): entra quem
+    já tem usuário (pela conta do Google já ligada a ele ou, na primeira vez, pelo e-mail, que fica ligado); quem não
+    tem recebe {novo, cadastro, email, nome} para terminar o cadastro."""
+    g = google.verificar_acesso(dados.token_acesso) if dados.token_acesso else google.verificar(dados.credencial)
     with modo_sistema() as s:  # como na entrada com senha: ainda não se sabe a conta
         u = s.scalar(select(Usuario).where(Usuario.google_sub == g["sub"]))
         if u is None:
             u = s.scalar(select(Usuario).where(Usuario.email == g["email"]))
     if u is None:
+        if dados.token_acesso and not g["nome"]:  # o token de acesso não traz o nome: o Google diz (userinfo)
+            g["nome"] = google.nome_pelo_acesso(dados.token_acesso, g["sub"])
         return {"novo": True, "cadastro": google.token_cadastro(g), "email": g["email"], "nome": g["nome"]}
     if u.google_sub and u.google_sub != g["sub"]:
         with em_conta(u.conta_id) as s:

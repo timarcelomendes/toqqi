@@ -1,11 +1,17 @@
 """Entrar com o Google (pedido do Marcelo em 08/10/2026, 10h56: "implementar login com google"). Contrato:
 docs/api-login-google.md.
 
-O site mostra o botão oficial do Google (Google Identity Services) e manda à API o token de identidade (um JWT assinado
-pelo Google) que o botão devolve. Aqui ele é conferido com as chaves públicas do Google: assinatura RS256, emissor
-accounts.google.com, destinatário igual a GOOGLE_CLIENT_ID e validade (com 60 s de tolerância de relógio). Só vale
-e-mail verificado pelo Google. Não há segredo do cliente nem token do Google guardado: do Google, o Toqqi guarda só o
-`sub` (o identificador da conta do Google) no usuário, na primeira entrada.
+Dois caminhos, o mesmo resultado ({sub, email, nome}):
+- `verificar_acesso` (o botão do Toqqi, desde 13/10/2026: "melhore o botão entrar com google"): a janela do Google
+  (modelo de token do Google Identity Services) devolve ao site um token de acesso. Ele não é assinado para o Toqqi,
+  então quem confirma é o próprio Google (tokeninfo, com o token no corpo do POST, nunca na URL): só vale o token
+  emitido para o nosso ID do cliente (`aud` e `azp`), ainda válido, com e-mail verificado. Um token que outro app
+  recebeu da mesma pessoa não entra. O nome (userinfo) só é buscado para quem ainda não tem conta.
+- `verificar` (o botão oficial do Google, de antes; abas abertas com o site antigo): o token de identidade (um JWT
+  assinado pelo Google) é conferido com as chaves públicas do Google: assinatura RS256, emissor accounts.google.com,
+  destinatário igual a GOOGLE_CLIENT_ID e validade (com 60 s de tolerância de relógio).
+Só vale e-mail verificado pelo Google. Não há segredo do cliente nem token do Google guardado: do Google, o Toqqi guarda
+só o `sub` (o identificador da conta do Google) no usuário, na primeira entrada.
 
 Quem ainda não tem conta recebe um token de cadastro (15 minutos, assinado com uma chave derivada do JWT_SECRET, que não
 vale como sessão) para terminar o cadastro com o nome da empresa e o aceite dos termos, sem precisar do Google de novo.
@@ -113,6 +119,60 @@ def verificar(credencial: str) -> dict:
     if not sub or len(sub) > 255:
         raise _invalido()
     return {"sub": sub, "email": email, "nome": " ".join(str(dados.get("name") or "").split())[:MAX_NOME]}
+
+
+def _google(metodo: str, url: str, **kw) -> httpx.Response:
+    """Pedido ao Google (tokeninfo e userinfo). Sem resposta: 503."""
+    try:
+        with httpx.Client(timeout=10, transport=transporte, follow_redirects=False) as c:
+            return c.request(metodo, url, **kw)
+    except httpx.HTTPError:
+        raise AppError(503, "google_fora_do_ar", MSG_FORA)
+
+
+def verificar_acesso(token: str) -> dict:
+    """Confere o token de acesso do botão do Toqqi com o Google → {sub, email, nome: ""}. 404 sem GOOGLE_CLIENT_ID;
+    401 token inválido, vencido ou de outro app; 403 e-mail não verificado; 503 sem resposta do Google."""
+    cid = client_id()
+    if not cid:
+        raise AppError(404, "google_desligado", MSG_DESLIGADO)
+    r = _google("POST", config().GOOGLE_TOKENINFO_URL, data={"access_token": token})
+    if r.status_code in (400, 401):  # inválido ou vencido
+        raise _invalido()
+    if r.status_code != 200:
+        raise AppError(503, "google_fora_do_ar", MSG_FORA)
+    try:
+        dados = r.json()
+    except ValueError:
+        raise AppError(503, "google_fora_do_ar", MSG_FORA)
+    if not isinstance(dados, dict) or dados.get("aud") != cid or dados.get("azp", cid) != cid:
+        raise _invalido()
+    try:
+        vale_ainda = int(dados.get("expires_in") or 0) > 0
+    except (TypeError, ValueError):
+        vale_ainda = False
+    if not vale_ainda:
+        raise _invalido()
+    email = str(dados.get("email") or "").strip().lower()
+    if not email or dados.get("email_verified") not in (True, "true"):
+        raise AppError(403, "google_email_nao_verificado", MSG_NAO_VERIFICADO)
+    sub = str(dados.get("sub") or "")
+    if not sub or len(sub) > 255:
+        raise _invalido()
+    return {"sub": sub, "email": email, "nome": ""}
+
+
+def nome_pelo_acesso(token: str, sub: str) -> str:
+    """O nome da conta do Google (userinfo), para o "Falta pouco" de quem ainda não tem conta. Qualquer falha: "" (a
+    pessoa digita o nome)."""
+    try:
+        r = _google("GET", config().GOOGLE_USERINFO_URL, headers={"Authorization": f"Bearer {token}"})
+        dados = r.json() if r.status_code == 200 else None
+    except (AppError, ValueError):
+        return ""
+    if not isinstance(dados, dict) or str(dados.get("sub") or "") != sub:
+        return ""
+    return " ".join(str(dados.get("name") or "").split())[:MAX_NOME]
 
 
 # ---- token de cadastro (quem entrou pelo Google e ainda não tem conta) --------------------------------------------

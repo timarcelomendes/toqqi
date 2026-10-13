@@ -1,8 +1,10 @@
 """Entrar com o Google (docs/api-login-google.md): o token do Google conferido com as chaves (falsas) do Google, a conta
-do Google ligada na primeira entrada, o cadastro de quem ainda não tem conta e as recusas."""
+do Google ligada na primeira entrada, o cadastro de quem ainda não tem conta e as recusas. No fim, o token de acesso do
+botão do Toqqi (desde 13/10/2026), conferido com o tokeninfo (falso) do Google."""
 import json
 import time
 from types import SimpleNamespace
+from urllib.parse import parse_qs
 
 import httpx
 import jwt
@@ -211,3 +213,121 @@ def test_pedido_de_acesso_pendente_e_bloqueado(client, dono, g):
     sql(dono, "update usuarios set situacao = 'bloqueado' where email = 'nina@alfa.com.br'")
     r = _google(client, g.token(sub="5005", email="nina@alfa.com.br"))
     assert r.status_code == 403 and r.json()["erro"]["codigo"] == "acesso_bloqueado"
+
+
+# ---- o botão do Toqqi: token de acesso, conferido pelo Google (desde 13/10/2026) ------------------------------------
+
+@pytest.fixture
+def ga(monkeypatch):
+    """O Google falso do token de acesso: tokeninfo (POST, com o token no corpo) e userinfo (Bearer). `contas`: o que o
+    tokeninfo responde para cada token (sem a chave: 400, token inválido); `nomes`: o que o userinfo responde."""
+    monkeypatch.setattr(config(), "GOOGLE_CLIENT_ID", CLIENT_ID)
+    estado = SimpleNamespace(pedidos=[], contas={}, nomes={}, falhar=None)
+
+    def responder(req: httpx.Request) -> httpx.Response:
+        estado.pedidos.append(req)
+        if estado.falhar == "rede":
+            raise httpx.ConnectError("sem rede", request=req)
+        url = str(req.url)
+        if url == config().GOOGLE_TOKENINFO_URL:
+            assert req.method == "POST"
+            if estado.falhar == "tokeninfo":
+                return httpx.Response(500)
+            info = estado.contas.get(parse_qs(req.content.decode())["access_token"][0])
+            if info is None:
+                return httpx.Response(400, json={"error": "invalid_token", "error_description": "Invalid Value"})
+            return httpx.Response(200, json=info)
+        if url == config().GOOGLE_USERINFO_URL:
+            assert req.method == "GET"
+            if estado.falhar == "userinfo":
+                return httpx.Response(500)
+            dados = estado.nomes.get(req.headers["authorization"].removeprefix("Bearer "))
+            return httpx.Response(200, json=dados) if dados else httpx.Response(401, json={"error": "invalid_request"})
+        raise AssertionError(f"pedido inesperado: {url}")
+
+    monkeypatch.setattr(google, "transporte", httpx.MockTransport(responder))
+
+    def token(nome="tok-ana", **campos):
+        estado.contas[nome] = {
+            "azp": CLIENT_ID, "aud": CLIENT_ID, "sub": "1001", "access_type": "online",
+            "scope": "openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+            "exp": str(int(time.time()) + 3599), "expires_in": "3599", "email": "ana@alfa.com.br", "email_verified": "true",
+            **campos}
+        return nome
+
+    estado.token = token
+    return estado
+
+
+def _acesso(client, token: str, lembrar: bool = False):
+    return client.post(f"{API}/auth/google", json={"token_acesso": token, "lembrar": lembrar})
+
+
+def test_acesso_usuario_existente_entra_sem_pedir_o_nome(client, dono, ga):
+    conta_pronta(client, "ana@alfa.com.br", empresa="Alfa")
+    r = _acesso(client, ga.token(), lembrar=True)
+    assert r.status_code == 200, r.text
+    assert r.json()["usuario"]["email"] == "ana@alfa.com.br" and "novo" not in r.json()
+    assert sql(dono, "select google_sub from usuarios where email = 'ana@alfa.com.br'") == [("1001",)]
+    assert [e for e in _eventos(dono, "ana@alfa.com.br") if e[0] == "login_ok"][-1] == ("login_ok", "google")
+    # só o tokeninfo, com o token no corpo do POST (nunca na URL); quem já tem conta não precisa do nome (userinfo)
+    assert [str(p.url) for p in ga.pedidos] == [config().GOOGLE_TOKENINFO_URL]
+    assert "tok-ana" not in str(ga.pedidos[0].url) and parse_qs(ga.pedidos[0].content.decode()) == {
+        "access_token": ["tok-ana"]}
+    # a conta do Google ligada vale para o botão antigo também: outra conta do Google com o mesmo e-mail é recusada
+    r = _acesso(client, ga.token("tok-outra", sub="2002"))
+    assert r.status_code == 409 and r.json()["erro"]["codigo"] == "google_outra_conta"
+
+
+def test_acesso_quem_nao_tem_conta_recebe_o_nome_do_google(client, dono, ga):
+    ga.nomes["tok-bia"] = {"sub": "3003", "name": "Bia   Lima", "email": "bia@beta.com.br", "email_verified": True}
+    r = _acesso(client, ga.token("tok-bia", sub="3003", email="Bia@Beta.com.br"))
+    assert r.status_code == 200, r.text
+    novo = r.json()
+    assert (novo["novo"], novo["email"], novo["nome"]) == (True, "bia@beta.com.br", "Bia Lima")
+    assert ga.pedidos[-1].headers["authorization"] == "Bearer tok-bia"
+    r = client.post(f"{API}/auth/google/cadastro", json={
+        "cadastro": novo["cadastro"], "empresa": "Beta Atacado", "nome": "Bia Lima", "aceite_termos": True})
+    assert r.status_code == 201, r.text
+    assert sql(dono, "select google_sub, email_confirmado from usuarios where email = 'bia@beta.com.br'") == [
+        ("3003", True)]
+    # o nome é só uma ajuda: userinfo de outra conta, sem resposta ou fora do ar → nome em branco (a pessoa digita)
+    ga.nomes["tok-rui"] = {"sub": "9999", "name": "Outra Pessoa"}
+    assert _acesso(client, ga.token("tok-rui", sub="4004", email="rui@gama.com.br")).json()["nome"] == ""
+    assert _acesso(client, ga.token("tok-sem", sub="4005", email="lia@gama.com.br")).json()["nome"] == ""
+    ga.falhar = "userinfo"
+    ga.nomes["tok-eva"] = {"sub": "4006", "name": "Eva"}
+    r = _acesso(client, ga.token("tok-eva", sub="4006", email="eva@gama.com.br"))
+    assert r.status_code == 200 and r.json()["novo"] is True and r.json()["nome"] == ""
+
+
+@pytest.mark.parametrize("campos,status,codigo", [
+    ({"aud": "outro.apps.googleusercontent.com", "azp": "outro.apps.googleusercontent.com"}, 401, "google_invalido"),
+    ({"azp": "outro.apps.googleusercontent.com"}, 401, "google_invalido"),
+    ({"expires_in": "0"}, 401, "google_invalido"),
+    ({"expires_in": "x"}, 401, "google_invalido"),
+    ({"sub": ""}, 401, "google_invalido"),
+    ({"email_verified": "false"}, 403, "google_email_nao_verificado"),
+    ({"email": ""}, 403, "google_email_nao_verificado"),
+])
+def test_acesso_recusado(client, ga, campos, status, codigo):
+    """Token de outro app (o Google o emitiu para outro ID do cliente), vencido, sem conta ou sem e-mail verificado."""
+    r = _acesso(client, ga.token(**campos))
+    assert r.status_code == status and r.json()["erro"]["codigo"] == codigo, r.text
+
+
+def test_acesso_token_que_o_google_nao_conhece_e_google_fora_do_ar(client, ga):
+    r = _acesso(client, "tok-inventado")
+    assert r.status_code == 401 and r.json()["erro"]["codigo"] == "google_invalido"
+    for falha in ("tokeninfo", "rede"):
+        ga.falhar = falha
+        r = _acesso(client, ga.token())
+        assert r.status_code == 503 and r.json()["erro"]["codigo"] == "google_fora_do_ar", falha
+
+
+def test_um_token_so_e_google_desligado(client, monkeypatch):
+    for corpo in ({}, {"lembrar": True}, {"token_acesso": "a", "credencial": "b"}):
+        r = client.post(f"{API}/auth/google", json=corpo)
+        assert r.status_code == 422, corpo
+    r = _acesso(client, "tok-ana")
+    assert r.status_code == 404 and r.json()["erro"]["codigo"] == "google_desligado"

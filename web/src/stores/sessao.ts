@@ -181,9 +181,12 @@ export const useSessaoStore = defineStore('sessao', () => {
     if (s.conta && !('logo_url' in s.conta)) recarregar().catch(() => {})
   }
 
-  /** Entrar com o Google: 'entrou' (sessão aberta) ou 'novo' (falta o cadastro: fica em `googlePendente`). */
-  async function entrarComGoogle(credencial: string, lembrarDeMim: boolean): Promise<'entrou' | 'novo'> {
-    const r = await authApi.entrarGoogle(credencial, lembrarDeMim)
+  /**
+   * Entrar com o Google, com o token de acesso que a janela do Google devolveu: 'entrou' (sessão aberta) ou 'novo' (falta
+   * o cadastro: fica em `googlePendente`).
+   */
+  async function entrarComGoogle(tokenAcesso: string, lembrarDeMim: boolean): Promise<'entrou' | 'novo'> {
+    const r = await authApi.entrarGoogle(tokenAcesso, lembrarDeMim)
     if ('novo' in r && r.novo) {
       googlePendente.value = r
       return 'novo'

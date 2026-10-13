@@ -42,9 +42,9 @@ watch(
   { immediate: true },
 )
 
-async function viaGoogle(credencial: string) {
+async function viaGoogle(token: string) {
   entrandoGoogle.value = true
-  const r = await executar(() => sessao.entrarComGoogle(credencial, false))
+  const r = await executar(() => sessao.entrarComGoogle(token, false))
   entrandoGoogle.value = false
   if (r === 'entrou') router.replace('/inicio') // já tinha conta: entra direto
 }
@@ -187,7 +187,7 @@ async function reenviar() {
   <template v-else>
     <CabecalhoAcesso titulo="Crie sua conta" :descricao="`Em poucos minutos você começa a ouvir seus clientes. ${diasTeste} dias grátis, sem cartão.`" />
     <Alerta v-if="erroGeral" tom="erro" class="mb-5">{{ erroGeral }}</Alerta>
-    <BotaoGoogle texto="continue_with" divisor="ou cadastre com seu e-mail" :ocupado="entrandoGoogle" @credencial="viaGoogle" />
+    <BotaoGoogle divisor="ou cadastre com seu e-mail" :ocupado="entrandoGoogle" @token="viaGoogle" />
     <form class="flex flex-col gap-4" novalidate @submit.prevent="enviar">
       <Campo v-model="dados.empresa" rotulo="Nome da empresa" autocomplete="organization" obrigatorio :erro="erro('empresa')" />
       <Campo v-model="dados.nome" rotulo="Seu nome" autocomplete="name" obrigatorio :erro="erro('nome')" />
