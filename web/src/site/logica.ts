@@ -110,7 +110,12 @@ export const PADROES_SITE: Record<string, string | number | null> = {
   // Plano Grátis (docs/api-plano-gratis.md)
   'gratis.contatos': 100,
   'gratis.envios_mes': 200,
+  'gratis.envios_dia': 100,
   'gratis.usuarios': 1,
+  'gratis.formularios': 2,
+  'ia.cota.gratis': 10,
+  'ia.teto.gratis': 100,
+  'whatsapp.franquia.gratis': null,
 }
 
 type Objeto = Record<string, unknown>
@@ -119,7 +124,7 @@ const ehObjeto = (v: unknown): v is Objeto => typeof v === 'object' && v !== nul
 /**
  * Acha o valor de uma chave do §2 no corpo de GET /publico/planos (`{planos: [{chave, preco, contatos, whatsapp,
  * ia_cota, ia_teto}], teste: {dias, plano, whatsapp, ia_teto}, ia_analises: {…}, gratis: {contatos, envios_mes,
- * usuarios, ia_cota}}`). Chave que não está lá → undefined.
+ * envios_dia, usuarios, formularios, ia_cota, ia_teto, whatsapp}}`). Chave que não está lá → undefined.
  */
 export function valorPublico(corpo: unknown, chave: string): unknown {
   if (!ehObjeto(corpo)) return undefined
@@ -135,8 +140,8 @@ export function valorPublico(corpo: unknown, chave: string): unknown {
   if (grupo === 'ia' && a === 'cota') return b === 'teste' ? campo(teste, 'ia_cota') : b === 'gratis' ? campo(gratis, 'ia_cota') : campo(plano(b), 'ia_cota')
   if (grupo === 'planos' && a === 'desconto') return ehObjeto(corpo.descontos) ? campo(corpo.descontos, b ?? '') : undefined
   if (grupo === 'planos' && a === 'personalizado') return ehObjeto(corpo.personalizado) ? campo(corpo.personalizado, b ?? '') : undefined
-  if (grupo === 'ia' && a === 'teto') return b === 'teste' ? campo(teste, 'ia_teto') : campo(plano(b), 'ia_teto')
-  if (grupo === 'whatsapp' && a === 'franquia') return b === 'teste' ? campo(teste, 'whatsapp') : campo(plano(b), 'whatsapp')
+  if (grupo === 'ia' && a === 'teto') return b === 'teste' ? campo(teste, 'ia_teto') : b === 'gratis' ? campo(gratis, 'ia_teto') : campo(plano(b), 'ia_teto')
+  if (grupo === 'whatsapp' && a === 'franquia') return b === 'teste' ? campo(teste, 'whatsapp') : b === 'gratis' ? campo(gratis, 'whatsapp') : campo(plano(b), 'whatsapp')
   if (grupo === 'teste' && (a === 'dias' || a === 'plano')) return campo(teste, a)
   if (grupo === 'ia' && a === 'analises') return ehObjeto(corpo.ia_analises) ? campo(corpo.ia_analises, b ?? '') : undefined
   return undefined

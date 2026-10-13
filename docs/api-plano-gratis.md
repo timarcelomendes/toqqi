@@ -32,7 +32,8 @@ grupos IA e WhatsApp, com os dos outros planos.
 Fixos no código: até **2 formulários** recebendo respostas (`FORMULARIOS`), descanso de **30 dias** entre duas
 pesquisas para o mesmo contato (`DESCANSO_MINIMO`) e nota de risco **60** para pausar (`RISCO_PAUSA`). Diminuir um
 número do Grátis pede confirmação na tela, com as contas Grátis atingidas (contatos, envios do mês ou do dia,
-usuários). `GET /publico/planos` ganhou `gratis: {contatos, envios_mes, usuarios, ia_cota}` (site e cadastro).
+usuários). `GET /publico/planos` ganhou `gratis: {contatos, envios_mes, envios_dia, usuarios, formularios, ia_cota,
+ia_teto, whatsapp}` (site e cadastro; `formularios` é o fixo do código).
 
 ## Passagens
 
@@ -125,8 +126,12 @@ entregue, Asaas conferível, limites do dia, `teste.exclusao_automatica` ligada 
 - **Plataforma**: situação "Grátis" e "Envios pausados" (com "Liberar envios") em Contas (`?suspeitas=1`, `?busca=`),
   o cartão "Plano Grátis" na Visão geral (`gratis: {contas, assinaram_30d, pausadas, entraram_30d}`), o grupo Plano
   Grátis em Parâmetros e Feedback › Denúncias (`?denuncias=1`).
-- **Site e cadastro**: a faixa "Grátis" em Planos, a dúvida "O que acontece quando o teste acaba?" e, embaixo do botão
-  do cadastro, "Depois do teste, se não assinar, a conta continua no plano Grátis: …".
+- **Site e cadastro**: no topo e na chamada do fim, "Depois do teste, continue grátis com até 100 contatos"; em "Tudo
+  incluído", o que fica de fora no Grátis; em Planos, o texto de abertura (continue no Grátis ou assine; o cancelamento
+  volta ao Grátis), o cartão "Grátis" (R$ 0, os limites, "Criar conta grátis", que leva ao cadastro e ao teste) e a
+  coluna Grátis na tabela de comparação (no celular, a tabela rola de lado com o nome do recurso fixo); as dúvidas "O
+  que acontece quando o teste acaba?" e "O plano Grátis tem prazo?"; no guia de customer success, a frase dos planos.
+  Embaixo do botão do cadastro, "Depois do teste, se não assinar, a conta continua no plano Grátis: …".
 - **Termos e Política, versão 9** (`acesso/termos.py` e `web/src/modulos/geral/legal/`): o plano Grátis, o uso justo,
   a exclusão da conta Grátis sem uso (no lugar dos 90 dias), as denúncias e a nova retenção. Todo mundo vê a tela de
   aceite de novo.

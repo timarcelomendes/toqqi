@@ -71,7 +71,7 @@ const PLANOS_NOVOS = {
     ia: [{ cota: 100, preco: '0.00' }, { cota: 500, preco: '40.00' }, { cota: 2000, preco: '150.00' }, { cota: 5000, preco: '300.00' }],
     contatos_min: 100, contatos_max: 100000, passo: 100, whatsapp: null,
   },
-  gratis: { contatos: 80, envios_mes: 150, usuarios: 2, ia_cota: 5 },
+  gratis: { contatos: 80, envios_mes: 150, envios_dia: 60, usuarios: 2, formularios: 2, ia_cota: 5, ia_teto: 70, whatsapp: 300 },
 }
 
 describe('números dos planos (etapa 5g)', () => {
@@ -89,7 +89,10 @@ describe('números dos planos (etapa 5g)', () => {
     expect(valorPublico(PLANOS_NOVOS, 'ia.analises.detalhado')).toBe(4)
     // Plano Grátis
     expect(['gratis.contatos', 'gratis.envios_mes', 'gratis.usuarios', 'ia.cota.gratis'].map((k) => valorPublico(PLANOS_NOVOS, k))).toEqual([80, 150, 2, 5])
+    expect(['gratis.envios_dia', 'gratis.formularios', 'ia.teto.gratis', 'whatsapp.franquia.gratis'].map((k) => valorPublico(PLANOS_NOVOS, k))).toEqual([60, 2, 70, 300])
     expect(valorPublico({ planos: [] }, 'gratis.contatos')).toBeUndefined()
+    // Servidor de antes dos campos novos do Grátis: o HTML fica.
+    expect(valorPublico({ gratis: { contatos: 80, envios_mes: 150, usuarios: 2, ia_cota: 5 } }, 'ia.teto.gratis')).toBeUndefined()
     // O que não está lá (ou corpo estranho) fica undefined: o HTML não muda.
     expect(valorPublico(PLANOS_NOVOS, 'ia.cota.cortesia')).toBeUndefined()
     expect(valorPublico(PLANOS_NOVOS, 'ia.modelo.rapido')).toBeUndefined()
@@ -148,36 +151,70 @@ describe('index.html', () => {
   it('cada data-p traz o padrão do código, no formato da página', () => {
     document.body.innerHTML = corpo.replace(/<script[\s\S]*?<\/script>/g, '')
     const marcados = Array.from(document.querySelectorAll<HTMLElement>('[data-p]'))
-    expect(marcados).toHaveLength(45) // Plano Grátis: + 5 (a faixa e a dúvida do fim do teste)
+    // Plano Grátis: + 21 (o topo, o "tudo incluído", o cartão do Grátis, a coluna da tabela, a nota, a dúvida e o fim)
+    expect(marcados).toHaveLength(61)
     for (const el of marcados) {
       const chave = el.dataset.p!
       expect(chave in PADROES_SITE, chave).toBe(true)
       expect(el.textContent, chave).toBe(textoNumeroSite(chave, PADROES_SITE[chave], el.hasAttribute('data-p-maiuscula')))
     }
-    // Todas as chaves aparecem; os seis "14 dias" e os preços nos cartões e na tabela.
+    // Todas as chaves aparecem; os sete "14 dias" (com o do cartão do Grátis) e os preços nos cartões e na tabela.
     expect(new Set(marcados.map((el) => el.dataset.p))).toEqual(new Set(Object.keys(PADROES_SITE)))
-    expect(marcados.filter((el) => el.dataset.p === 'teste.dias')).toHaveLength(6)
+    expect(marcados.filter((el) => el.dataset.p === 'teste.dias')).toHaveLength(7)
     expect(marcados.filter((el) => el.dataset.p === 'planos.essencial.preco').map((el) => el.textContent)).toEqual(['149', '149'])
     // Etapa 5k: WhatsApp sem franquia e o Empresa com 5.000 contatos
     expect(document.querySelector('[data-p="whatsapp.franquia.essencial"]')!.textContent).toBe('Sem franquia')
     expect(marcados.filter((el) => el.dataset.p === 'planos.empresa.contatos').map((el) => el.textContent)).toEqual(['5.000', '5.000'])
-    // Plano Grátis: a faixa (contatos e envios) e a dúvida (contatos, envios e usuários).
-    expect(marcados.filter((el) => el.dataset.p?.startsWith('gratis.')).map((el) => `${el.dataset.p}=${el.textContent}`)).toEqual([
+    // Plano Grátis: o topo, o "tudo incluído", o cartão, a coluna da tabela, a nota, a dúvida e a chamada do fim.
+    const doGratis = (el: HTMLElement) => el.dataset.p!.startsWith('gratis.') || el.dataset.p!.endsWith('.gratis')
+    expect(marcados.filter(doGratis).map((el) => `${el.dataset.p}=${el.textContent}`)).toEqual([
       'gratis.contatos=100',
-      'gratis.envios_mes=200',
+      'gratis.usuarios=1',
+      // o cartão
       'gratis.contatos=100',
       'gratis.envios_mes=200',
       'gratis.usuarios=1',
+      'gratis.formularios=2',
+      'whatsapp.franquia.gratis=Sem franquia',
+      'ia.cota.gratis=10',
+      // a coluna da tabela
+      'gratis.contatos=100',
+      'gratis.usuarios=1',
+      'gratis.envios_mes=200',
+      'gratis.formularios=2',
+      'whatsapp.franquia.gratis=Sem franquia',
+      'ia.cota.gratis=10',
+      'ia.teto.gratis=100',
+      // a nota, a dúvida e a chamada do fim
+      'gratis.envios_dia=100',
+      'gratis.contatos=100',
+      'gratis.envios_mes=200',
+      'gratis.usuarios=1',
+      'gratis.contatos=100',
     ])
     document.body.innerHTML = ''
   })
-  it('Plano Grátis: a faixa embaixo dos planos diz o que é e para onde vai a conta que não assina', () => {
+  it('Plano Grátis: o cartão embaixo dos planos diz o que é, os limites e para onde vai a conta que não assina', () => {
     document.body.innerHTML = corpo.replace(/<script[\s\S]*?<\/script>/g, '')
     const faixa = document.querySelector<HTMLElement>('[data-faixa-gratis]')!
     expect(faixa.querySelector('h3')!.textContent).toBe('Grátis')
-    expect(faixa.textContent!.replace(/\s+/g, ' ').trim()).toBe(
-      'GrátisR$ 0 Até 100 contatos e 200 envios por e-mail por mês, além do link da pesquisa e do WhatsApp. É onde sua conta fica se você não assinar depois do teste: nada se perde e você assina quando quiser.',
+    expect(faixa.querySelector('p')!.textContent).toBe(
+      'É onde a conta fica se você não assinar depois do teste. Não tem prazo nem cartão, e nada se perde: você assina quando quiser.',
     )
+    const limites = Array.from(faixa.querySelectorAll('.limite')).map((l) => l.textContent!.replace(/\s+/g, ' ').trim())
+    expect(limites).toEqual([
+      'Contatos ativos100',
+      'E-mails de pesquisa200/mês',
+      'Usuários1',
+      'Formulários ativos2',
+      'WhatsApp automáticoSem franquia',
+      'Perguntas ao ToqqiAI10/mês',
+    ])
+    expect(faixa.textContent).toContain('Sem as integrações (RD Station, Omie, Bling, API e webhooks)')
+    // Entra pelo cadastro, como os outros: o teste primeiro, o Grátis depois.
+    const botao = faixa.querySelector<HTMLAnchorElement>('a.btn')!
+    expect([botao.textContent, botao.getAttribute('href')]).toEqual(['Criar conta grátis', '/cadastro'])
+    expect(faixa.textContent!.replace(/\s+/g, ' ')).toContain('Começa pelo teste de 14 dias, com tudo liberado.')
     // Depois do Personalizado e antes de "Comparar todos os recursos".
     const ordem = Array.from(document.querySelectorAll('[data-calc], [data-faixa-gratis], [data-comparar]')).map((el) =>
       el.hasAttribute('data-calc') ? 'personalizado' : el.hasAttribute('data-faixa-gratis') ? 'gratis' : 'comparar',
@@ -212,7 +249,9 @@ describe('index.html', () => {
       'Comece grátis por 14 dias',
       'Testar 14 dias grátis',
       'No teste grátis valem 50 perguntas ao ToqqiAI e até 500 comentários lidos pela IA.',
-      'pague por mês (3% de desconto no Pix) ou por ano (10% de desconto)',
+      'continue no Grátis ou assine: por mês (3% de desconto no Pix) ou por ano (10% de desconto)',
+      'Depois do teste, continue grátis com até 100 contatos.',
+      'No Grátis, saem até 100 e-mails de pesquisa por dia, dentro do limite do mês.',
       'Base de R$ 99 por mês.',
       'Restam 497 de 500 perguntas no mês',
       'Contatos ativos1.500',
@@ -223,13 +262,48 @@ describe('index.html', () => {
     }
   })
   it('a descrição para redes sociais não cita os dias (robô não roda script); o fim do teste leva ao Grátis (sem os 90 dias)', () => {
-    expect(html).toContain('<meta property="og:description" content="Pesquisa de NPS e CSAT por e-mail e WhatsApp, comentários lidos por IA e planos de ação. Teste grátis, sem cartão." />')
+    expect(html).toContain('<meta property="og:description" content="Pesquisa de NPS e CSAT por e-mail e WhatsApp, comentários lidos por IA e planos de ação. Teste grátis, sem cartão, e plano Grátis depois." />')
     expect(html.slice(0, html.indexOf('<body>'))).not.toContain('14 dias')
     const texto = corpo.replace(/<[^>]+>/g, '')
     expect(texto).toContain(
       'A conta passa para o plano Grátis: até 100 contatos, 200 envios por e-mail por mês e 1 usuário, sem as integrações. Contatos, respostas e relatórios continuam lá, e você assina quando quiser.',
     )
     expect(corpo).not.toContain('guardados por 90 dias')
+    expect(texto).not.toContain('Depois, pague por mês')
+    expect(texto).toContain('Cancele quando quiser: a conta volta ao Grátis no fim do período pago.')
+    expect(texto).toContain(
+      'Não. A conta fica no Grátis enquanto for usada, sem cartão e sem cobrança. Se ninguém entrar nela por 180 dias, ela é excluída, com aviso por e-mail 30 dias antes.',
+    )
+  })
+  it('Plano Grátis: a tabela de comparação tem a coluna do Grátis, com as integrações de fora', () => {
+    document.body.innerHTML = corpo.replace(/<script[\s\S]*?<\/script>/g, '')
+    const tabela = document.querySelector<HTMLTableElement>('.tplanos')!
+    const cabecalho = Array.from(tabela.tHead!.rows[0]!.cells).map((c) => c.textContent!.replace(/\s+/g, ' ').trim())
+    expect(cabecalho).toEqual(['Recurso', 'GrátisR$ 0', 'EssencialR$ 149', 'ProfissionalR$ 349', 'EmpresaR$ 799'])
+    const linhas = Array.from(tabela.tBodies[0]!.rows)
+    // Cada linha tem as 4 colunas (os grupos ocupam a linha inteira).
+    for (const tr of linhas) {
+      if (tr.querySelector('.tgrupo')) expect(tr.cells[0]!.getAttribute('colspan')).toBe('5')
+      else expect(tr.cells, tr.cells[0]!.textContent!).toHaveLength(5)
+    }
+    const doGratis = (rotulo: string) => {
+      const tr = linhas.find((l) => l.cells[0]!.textContent!.startsWith(rotulo))!
+      const td = tr.cells[1]!
+      return td.querySelector('svg')?.getAttribute('aria-label') ?? td.textContent
+    }
+    expect(['Contatos ativos', 'Usuários', 'E-mails de pesquisa por mês', 'Formulários recebendo respostas'].map(doGratis)).toEqual([
+      '100',
+      '1',
+      '200',
+      '2',
+    ])
+    expect(doGratis('RD Station, Omie e Bling')).toBe('Não incluído')
+    expect(doGratis('API e webhooks')).toBe('Não incluído')
+    expect(doGratis('Planos de ação automáticos com prazo')).toBe('Incluído')
+    // Só as integrações ficam de fora no Grátis.
+    const fora = linhas.filter((l) => l.cells[1]?.querySelector('[aria-label="Não incluído"]')).map((l) => l.cells[0]!.textContent)
+    expect(fora).toEqual(['RD Station, Omie e Bling opcional', 'API e webhooks para o seu sistema opcional'])
+    document.body.innerHTML = ''
   })
   it('a nota abaixo da tabela de planos: no nível Mais detalhado, cada pergunta, resumo ou parecer conta 3 (5k)', () => {
     const tabela = corpo.indexOf('id="tabela-planos"')
@@ -280,7 +354,7 @@ describe('comportamento da página', () => {
     expect(url.pathname).toBe('/api/v1/publico/planos')
     expect(new Headers(fetch.mock.calls[0]![1]?.headers).has('Authorization')).toBe(false)
     const n = numeros()
-    expect(n['teste.dias']).toEqual(['7', '7', '7', '7', '7', '7'])
+    expect(n['teste.dias']).toEqual(['7', '7', '7', '7', '7', '7', '7'])
     expect(n['planos.essencial.preco']).toEqual(['149,90', '149,90'])
     expect(n['planos.profissional.preco']).toEqual(['399', '399'])
     expect(n['planos.empresa.preco']).toEqual(['1.299', '1.299'])
@@ -306,6 +380,20 @@ describe('comportamento da página', () => {
     )
     expect(texto('[data-nota-ia]')).toBe('No nível “Mais detalhado” da IA, cada pergunta ao ToqqiAI, resumo ou parecer conta como 4.')
     expect(texto('#planos h2')).toBe('Comece grátis por 7 dias')
+    // Plano Grátis: o cartão, a coluna da tabela e a nota acompanham Plataforma › Parâmetros.
+    expect(n['gratis.contatos']).toEqual(['80', '80', '80', '80', '80'])
+    expect(n['gratis.envios_mes']).toEqual(['150', '150', '150'])
+    expect(n['gratis.usuarios']).toEqual(['2', '2', '2', '2'])
+    expect(n['gratis.formularios']).toEqual(['2', '2'])
+    expect(n['whatsapp.franquia.gratis']).toEqual(['300', '300'])
+    expect(n['ia.cota.gratis']).toEqual(['5', '5'])
+    expect(n['ia.teto.gratis']).toEqual(['70'])
+    expect(texto('[data-nota-gratis]')).toBe(
+      'No Grátis, saem até 60 e-mails de pesquisa por dia, dentro do limite do mês. O link da pesquisa, o link de cada contato e o WhatsApp não gastam esses e-mails.',
+    )
+    expect(texto('[data-hero-gratis]')).toBe(
+      'Sem cartão de crédito. Depois do teste, continue grátis com até 80 contatos. Feito para a LGPD desde o primeiro dia.',
+    )
   })
 
   it('a conversa animada passa a contar da cota nova (e recomeça nela a cada volta)', async () => {

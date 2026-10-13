@@ -2778,8 +2778,20 @@ export interface PlanosPublicos {
   /** Etapa 5k. */
   descontos?: DescontosPlanos
   personalizado?: TabelaPersonalizado & { whatsapp: number | null }
-  /** Plano Grátis (ausente no servidor antigo): onde a conta fica depois do teste, se não assinar. */
-  gratis?: { contatos: number; envios_mes: number; usuarios: number; ia_cota: number }
+  /**
+   * Plano Grátis (ausente no servidor antigo): onde a conta fica depois do teste, se não assinar. `envios_dia`,
+   * `formularios`, `ia_teto` e `whatsapp` (null = sem franquia) vieram depois, para a tabela do site.
+   */
+  gratis?: {
+    contatos: number
+    envios_mes: number
+    usuarios: number
+    ia_cota: number
+    envios_dia?: number
+    formularios?: number
+    ia_teto?: number
+    whatsapp?: number | null
+  }
 }
 
 // ---- etapa 5i: Relatórios › Desfecho ----------------------------------------------------

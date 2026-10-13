@@ -693,7 +693,8 @@ def test_planos_publicos(client, root):
                           "ia": [{"cota": 100, "preco": 0.0}, {"cota": 500, "preco": 30.0},
                                  {"cota": 2000, "preco": 120.0}, {"cota": 5000, "preco": 250.0}],
                           "contatos_min": 100, "contatos_max": 100000, "passo": 100, "whatsapp": None},
-        "gratis": {"contatos": 100, "envios_mes": 200, "usuarios": 1, "ia_cota": 10}}
+        "gratis": {"contatos": 100, "envios_mes": 200, "envios_dia": 100, "usuarios": 1, "formularios": 2,
+                   "ia_cota": 10, "ia_teto": 100, "whatsapp": None}}
     assert salvar_parametros(client, root["h"], "planos", {"planos.essencial.preco": "159.90",
                                                            "planos.empresa.contatos": 9000}).status_code == 200
     assert salvar_parametros(client, root["h"], "teste", {"teste.dias": 7, "teste.plano": "essencial"}

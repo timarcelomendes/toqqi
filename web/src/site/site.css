@@ -97,16 +97,37 @@ details[open] .mais{transform:rotate(45deg)}
 .tplanos thead th span{display:block;font-size:12px;font-weight:600;color:#64748B;margin-top:2px}
 /* O preço dentro do "R$ 149" do cabeçalho (data-p, trocado pelo site.ts) fica na mesma linha. */
 .tplanos thead th span span{display:inline;margin:0;font-size:inherit;color:inherit}
-.tplanos td{font-weight:700;color:#0F172A;width:18%}
+/* Plano Grátis: 4 colunas de planos (Grátis, Essencial, Profissional, Empresa); o nome do recurso fica com ~40%. */
+.tplanos td{font-weight:700;color:#0F172A;width:15%}
 .tplanos td svg{display:inline-block;vertical-align:middle}
 .tplanos .tdest{background:#FFF8F6}
 .tplanos thead .tdest{background:#FFF4F1;color:#B02F13}
 .tgrupo{text-align:left !important;font-size:12px;font-weight:700 !important;color:#64748B !important;text-transform:uppercase;letter-spacing:.06em;background:#F8FAFC;padding-top:18px !important}
 .topc{font-size:11px;font-weight:700;color:#475569;background:#F1F5F9;border-radius:999px;padding:2px 7px;white-space:nowrap;margin-left:4px}
 @media (max-width:760px){.nav{display:none !important}.so-largo{display:none !important}}
-@media (max-width:600px){.tplanos{min-width:0;font-size:13px}.tplanos th,.tplanos td{padding:10px 6px}.tplanos tbody th{padding-left:14px}.tplanos thead th{font-size:13px}.tplanos td{width:19%}.topc{display:inline-block;margin:2px 0 0}}
+/* No celular, as 4 colunas de planos não cabem: a tabela rola de lado dentro do cartão, com o nome do recurso fixo
+   à esquerda (Plano Grátis, 13/10/2026). */
+.so-estreito{display:none}
+@media (max-width:600px){
+  .tplanos{min-width:500px;font-size:13px}
+  .tplanos th,.tplanos td{padding:10px 6px}
+  .tplanos thead th{font-size:13px;z-index:2}
+  .tplanos td{width:auto}
+  .tplanos tbody th:not(.tgrupo),.tplanos thead th:first-child{position:sticky;left:0;z-index:1;width:124px;min-width:124px;padding-left:12px;background:#FFFFFF;box-shadow:inset -1px 0 0 #E2E8F0}
+  .tplanos thead th:first-child{z-index:3;background:#F8FAFC}
+  .topc{display:inline-block;margin:2px 0 0}
+  .so-estreito{display:block}
+  /* o nome do grupo também fica à vista quando a tabela rola */
+  .tgrupo span{position:sticky;left:12px}
+}
+/* Cartão do Grátis: as linhas dos limites, como as dos cartões dos planos. */
+.limite{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:#475569;padding:9px 0;border-bottom:1px dashed #E2E8F0}
+.limite b{color:#0F172A;font-size:15px;white-space:nowrap}
 /* Menu com 6 itens (Guias, 06/10): não quebra linha; entre 761 e 1080 px fica mais justo e, abaixo de 960, some (os
    guias seguem no rodapé). */
 .nav a,.btn{white-space:nowrap}
 @media (max-width:1080px){.nav{gap:20px !important}.nav a{font-size:14px}}
 @media (max-width:960px){.nav{display:none !important}}
+.limites-gratis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:32px}
+@media (max-width:900px){.limites-gratis{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}}
+@media (max-width:560px){.limites-gratis{grid-template-columns:minmax(0,1fr)}}

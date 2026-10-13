@@ -488,9 +488,14 @@ def test_visao_geral_e_parametros(client, dono, ana, root, monkeypatch):
     assert grupo_parametros(client, root["h"], "whatsapp")["valores"]["whatsapp.franquia.gratis"] is None
 
 
-def test_planos_publicos_trazem_o_gratis(client):
+def test_planos_publicos_trazem_o_gratis(client, root):
+    """O site mostra o cartão e a coluna do Grátis com estes números (os formulários são fixos no código)."""
     r = client.get(f"{API}/publico/planos").json()
-    assert r["gratis"] == {"contatos": 100, "envios_mes": 200, "usuarios": 1, "ia_cota": 10}
+    assert r["gratis"] == {"contatos": 100, "envios_mes": 200, "envios_dia": 100, "usuarios": 1, "formularios": 2,
+                           "ia_cota": 10, "ia_teto": 100, "whatsapp": None}
+    # acompanham Plataforma › Parâmetros
+    assert salvar_parametros(client, root["h"], "gratis", {"gratis.envios_dia": 80}).status_code == 200
+    assert client.get(f"{API}/publico/planos").json()["gratis"]["envios_dia"] == 80
 
 
 def test_assinar_saindo_do_gratis_usa_o_limite_do_plano_assinado(client, dono, ana, monkeypatch, asaas_falso):

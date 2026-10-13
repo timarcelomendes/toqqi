@@ -52,6 +52,7 @@ from toqqi.core.errors import AppError, nao_encontrado
 from toqqi.core.planos import PLANOS, descontos_json, personalizado_json
 from toqqi.core.rate_limit import LIMITE_PLANOS_PUBLICOS, limiter
 from toqqi.modelos import Conta, Contato, EnvioUso, IaUsoMensal, Parametro, ParametroHistorico, Usuario, WhatsappUso
+from toqqi.modulos.assinatura.gratis import FORMULARIOS as FORMULARIOS_GRATIS
 from toqqi.modulos.ia import cota, regras
 from toqqi.modulos.whatsapp import franquia
 
@@ -389,9 +390,12 @@ def planos_publicos() -> dict:
         "ia_analises": {n: v(f"ia.analises.{n}") for n in ia_texto.NIVEIS},
         "descontos": descontos_json(),
         "personalizado": {**personalizado_json(), "whatsapp": v("whatsapp.franquia.personalizado")},
-        # Plano Grátis: onde a conta fica depois do teste, se não assinar (site e cadastro)
+        # Plano Grátis: onde a conta fica depois do teste, se não assinar (site e cadastro). Os formulários são fixos
+        # no código (assinatura/gratis.py); o resto vem de Plataforma › Parâmetros.
         "gratis": {"contatos": v("gratis.contatos"), "envios_mes": v("gratis.envios_mes"),
-                   "usuarios": v("gratis.usuarios"), "ia_cota": v("ia.cota.gratis")},
+                   "envios_dia": v("gratis.envios_dia"), "usuarios": v("gratis.usuarios"),
+                   "formularios": FORMULARIOS_GRATIS, "ia_cota": v("ia.cota.gratis"), "ia_teto": v("ia.teto.gratis"),
+                   "whatsapp": v("whatsapp.franquia.gratis")},
     }
 
 
