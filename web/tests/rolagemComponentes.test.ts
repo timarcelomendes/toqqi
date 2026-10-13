@@ -167,4 +167,23 @@ describe('botões segmentados', () => {
     await radios[2]!.setValue(true)
     expect(valor.value).toBe('c')
   })
+  it('o selo (ex.: o desconto) fica ao lado do nome, em verde, e o leitor de tela ouve os dois', () => {
+    const w = mount(BotoesSegmentados, {
+      props: {
+        opcoes: [
+          { valor: 'mensal', rotulo: 'Mensal' },
+          { valor: 'anual', rotulo: 'Anual', selo: '10% off' },
+        ],
+        rotulo: 'Ciclo da cobrança',
+        modelValue: 'mensal',
+      },
+    })
+    const [mensal, anual] = w.findAll('label')
+    expect(mensal!.find('[data-selo]').exists()).toBe(false)
+    expect(anual!.get('[data-selo]').text()).toBe('10% off')
+    expect(anual!.get('[data-selo]').classes()).toEqual(expect.arrayContaining(['bg-sucesso-suave', 'text-sucesso']))
+    // "Anual, 10% off": a vírgula só para o leitor de tela
+    expect(anual!.text().replace(/\s+/g, ' ')).toBe('Anual , 10% off')
+    expect(anual!.get('span.sr-only').text()).toBe(',')
+  })
 })

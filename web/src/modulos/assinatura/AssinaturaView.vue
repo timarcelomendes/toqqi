@@ -245,12 +245,13 @@ const contatosPers = ref(1000)
 const cotaPers = ref(500)
 const descontos = computed(() => descontosDe(dados.value))
 const tabela = computed(() => tabelaDe(dados.value))
+// O desconto vai no selo verde ao lado do nome (BotoesSegmentados); sem desconto, só o nome.
 const OPCOES_CICLO = computed(() => [
   { valor: 'mensal' as Ciclo, rotulo: 'Mensal' },
-  { valor: 'anual' as Ciclo, rotulo: descontos.value.anual ? `Anual: ${descontos.value.anual}% off` : 'Anual' },
+  { valor: 'anual' as Ciclo, rotulo: 'Anual', selo: descontos.value.anual ? `${descontos.value.anual}% off` : undefined },
 ])
 const OPCOES_FORMA = computed(() => [
-  { valor: 'pix' as Forma, rotulo: descontos.value.pix ? `Pix: ${descontos.value.pix}% off` : 'Pix' },
+  { valor: 'pix' as Forma, rotulo: 'Pix', selo: descontos.value.pix ? `${descontos.value.pix}% off` : undefined },
   { valor: 'qualquer' as Forma, rotulo: 'Cartão ou boleto' },
 ])
 const planosExibidos = computed<PlanoExibido[]>(() =>
