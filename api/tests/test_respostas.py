@@ -606,3 +606,28 @@ def test_dia_de_sao_paulo_na_lista(client, admin, dono):
     sql(dono, "update respostas set respondida_em = '2026-04-11 00:30-03' where id = :r", r=b["id"])
     assert [x["id"] for x in lista_respostas(client, h, de="2026-04-10", ate="2026-04-10")["itens"]] == [a["id"]]
     assert [x["id"] for x in lista_respostas(client, h, de="2026-04-11", ate="2026-04-11")["itens"]] == [b["id"]]
+
+
+def test_registrar_em_outro_formulario(client, admin):
+    """14/10/2026: a resposta registrada à mão vai para o formulário escolhido (com pergunta de nota NPS ou CSAT)."""
+    h = admin["h"]
+    c = criar_contato(client, h, nome="Rui")
+    csat = form_padrao(client, h, "csat")
+    r = registrar_resposta(client, h, c["id"], 4, formulario_id=csat["id"])
+    assert r.status_code == 201, r.text
+    d = r.json()
+    assert (d["tipo_nota"], d["nota"], d["grupo"]) == ("csat", 4, "satisfeito")
+    # no CSAT, de 1 a 5
+    r = registrar_resposta(client, h, c["id"], 7, formulario_id=csat["id"])
+    assert r.status_code == 422 and r.json()["erro"]["campos"] == {"nota": "A nota precisa ser de 1 a 5."}
+    # outro formulário de NPS, que não é o padrão
+    outro = criar_form(client, h, [{"tipo": "nps", "titulo": "Recomendaria?"}], nome="NPS pós-venda")
+    d = registrar_resposta(client, h, c["id"], 2, formulario_id=outro["id"]).json()
+    assert (d["tipo_nota"], d["grupo"]) == ("nps", "detrator")
+    # formulário sem pergunta de nota, ou de outra conta / inexistente
+    sem = criar_form(client, h, [{"tipo": "comentario", "titulo": "Sugestões?"}], nome="Sugestões")
+    r = registrar_resposta(client, h, c["id"], 5, formulario_id=sem["id"])
+    assert r.status_code == 422
+    assert r.json()["erro"]["campos"] == {"formulario_id": "Este formulário não tem pergunta de nota (NPS ou CSAT)."}
+    r = registrar_resposta(client, h, c["id"], 5, formulario_id=999999)
+    assert r.status_code == 422 and r.json()["erro"]["campos"] == {"formulario_id": "Formulário não encontrado."}

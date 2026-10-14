@@ -5,6 +5,7 @@ import type {
   DadosAnaliseResposta,
   FiltroSentimento,
   FiltrosRespostas,
+  FormularioResumo,
   GrupoNota,
   Id,
   OrigemResposta,
@@ -381,13 +382,30 @@ export interface DadosRegistro {
   nota: number | null
   data: string
   comentario: string
+  /** O tipo da nota do formulário escolhido (14/10/2026); sem ele, NPS. */
+  tipo?: TipoNota
+}
+
+/** Os formulários em que dá para registrar uma resposta à mão: os que têm pergunta de nota (NPS ou CSAT), os ativos
+ * primeiro, com o padrão de NPS no topo; os desativados ganham "(desativado)" no nome. */
+export function formulariosParaRegistro(lista: readonly FormularioResumo[]): { valor: string; rotulo: string; tipo: TipoNota }[] {
+  return lista
+    .filter((f) => f.tipo_principal === 'nps' || f.tipo_principal === 'csat')
+    .slice()
+    .sort((a, b) => Number(b.padrao_nps) - Number(a.padrao_nps) || Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome, 'pt-BR'))
+    .map((f) => ({
+      valor: String(f.id),
+      rotulo: `${f.nome} (${f.tipo_principal === 'nps' ? 'NPS' : 'CSAT'})${f.ativo ? '' : ' (desativado)'}`,
+      tipo: f.tipo_principal as TipoNota,
+    }))
 }
 
 /** Erros por campo (mesmas chaves da API) antes de enviar. */
 export function validarRegistro(d: DadosRegistro, hoje: string = hojeIso()): Record<string, string> {
   const e: Record<string, string> = {}
   if (d.contatoId === null || d.contatoId === '') e.contato_id = 'Escolha o contato que deu a nota.'
-  if (d.nota === null || !Number.isInteger(d.nota) || d.nota < 0 || d.nota > 10) e.nota = 'Escolha a nota, de 0 a 10.'
+  const [min, max] = d.tipo === 'csat' ? [1, 5] : [0, 10]
+  if (d.nota === null || !Number.isInteger(d.nota) || d.nota < min || d.nota > max) e.nota = `Escolha a nota, de ${min} a ${max}.`
   if (d.data) {
     if (!dataIsoValida(d.data)) e.data = 'Confira a data.'
     else if (d.data > hoje) e.data = 'A data não pode ser depois de hoje.'

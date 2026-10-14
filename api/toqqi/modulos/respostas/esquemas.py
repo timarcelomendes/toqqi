@@ -65,7 +65,9 @@ def _nota_nps(v: int) -> int:
 
 class RespostaManualIn(BaseModel):
     contato_id: int
-    nota: Annotated[int, AfterValidator(_nota_nps)]
+    nota: Annotated[int, AfterValidator(_nota_nps)]  # de 0 a 10; no CSAT, de 1 a 5 (conferido no serviço)
+    # 14/10/2026: o formulário da resposta (com pergunta de nota NPS ou CSAT); vazio = o padrão de NPS
+    formulario_id: int | None = None
     canal: Literal[CANAIS_MANUAIS] = "manual"  # type: ignore[valid-type]
     comentario: TextoAte(4000) = None
     data: date | None = None

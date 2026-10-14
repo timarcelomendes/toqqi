@@ -1316,6 +1316,8 @@ export interface DadosRegistroResposta {
   comentario?: string
   /** AAAA-MM-DD; sem ela, vale hoje. */
   data?: string
+  /** 14/10/2026: o formulário da resposta (com pergunta de nota NPS ou CSAT); sem ele, o padrão de NPS. */
+  formulario_id?: Id
 }
 
 /** PATCH /respostas/{id}: só o que mudou. Mandar `temas` marca os temas como escolhidos à mão. */

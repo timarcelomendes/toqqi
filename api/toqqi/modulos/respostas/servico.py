@@ -30,7 +30,7 @@ from toqqi.modulos.acoes.regras import prazo_selo
 from toqqi.modulos.empresas.servico import ref
 from toqqi.modulos.formularios.servico import ROTULOS_CONTEXTO, _celula
 from toqqi.modulos.formularios.logica import respondivel, sem_citacoes
-from toqqi.modulos.formularios.validacao import grupo_da_nota, pergunta_principal
+from toqqi.modulos.formularios.validacao import grupo_da_nota, pergunta_principal, tipo_nota_de
 from toqqi.modulos.ia.regras import ORIGENS as ORIGENS_IA
 from toqqi.modulos.ia.regras import ia_ativa, texto_qualifica
 from toqqi.modulos.ia.servico import limpar_analise, marcar_pendente, temas_automaticos
@@ -317,7 +317,8 @@ def obter(ctx: Contexto, resposta_id: int) -> dict:
 # ---- registro à mão ---------------------------------------------------------
 
 def registrar_manual(ctx: Contexto, dados) -> dict:
-    """Resposta registrada por alguém da conta (telefone, reunião...): formulário padrão de NPS, origem manual.
+    """Resposta registrada por alguém da conta (telefone, reunião...): o formulário escolhido (com pergunta de nota) ou,
+    sem escolha, o padrão de NPS; origem manual.
     Passa pelo ponto único (grupo, temas, ação automática, alerta, webhook), sem agradecimento."""
     if dados.data is not None:
         if dados.data > relogio.hoje():
@@ -331,16 +332,31 @@ def registrar_manual(ctx: Contexto, dados) -> dict:
         if contato is None:
             raise AppError(422, "dados_invalidos", "Confira os campos destacados.",
                            {"contato_id": "Contato não encontrado."})
-        f = s.scalar(select(Formulario).where(Formulario.padrao_nps.is_(True)))
-        principal = pergunta_principal(f.perguntas) if f else None
-        if principal is None or principal["tipo"] != "nps":
-            raise AppError(409, "sem_formulario_nps",
-                           "Escolha um formulário padrão de NPS em Formulários antes de registrar respostas.")
+        if dados.formulario_id is not None:
+            # 14/10/2026: qualquer formulário da conta com pergunta de nota (NPS, ou CSAT/estrelas de 1 a 5)
+            f = s.get(Formulario, dados.formulario_id)
+            if f is None:
+                raise AppError(422, "dados_invalidos", "Confira os campos destacados.",
+                               {"formulario_id": "Formulário não encontrado."})
+            principal = pergunta_principal(f.perguntas)
+            if principal is None:
+                raise AppError(422, "dados_invalidos", "Confira os campos destacados.",
+                               {"formulario_id": "Este formulário não tem pergunta de nota (NPS ou CSAT)."})
+        else:
+            f = s.scalar(select(Formulario).where(Formulario.padrao_nps.is_(True)))
+            principal = pergunta_principal(f.perguntas) if f else None
+            if principal is None or principal["tipo"] != "nps":
+                raise AppError(409, "sem_formulario_nps",
+                               "Escolha um formulário padrão de NPS em Formulários antes de registrar respostas.")
+        tipo = tipo_nota_de(principal)
+        if tipo == "csat" and not 1 <= dados.nota <= 5:
+            raise AppError(422, "dados_invalidos", "Confira os campos destacados.",
+                           {"nota": "A nota precisa ser de 1 a 5."})
         # data de hoje (a tela sempre manda): vale a hora real de entrada, não 12:00 (que poderia ficar no futuro)
         informada = dados.data if dados.data is not None and dados.data != relogio.hoje() else None
         r = gravar_resposta(
             s, f, None, dados.canal, variaveis(""), contato=contato,
-            respostas_validadas=({principal["id"]: dados.nota}, dados.nota, "nps", grupo_da_nota("nps", dados.nota)),
+            respostas_validadas=({principal["id"]: dados.nota}, dados.nota, tipo, grupo_da_nota(tipo, dados.nota)),
             origem="manual", comentario=dados.comentario or "",
             respondida_em=data_informada(informada) if informada else None, registrada_por=ctx.usuario_id)
         return _uma(s, r.id)

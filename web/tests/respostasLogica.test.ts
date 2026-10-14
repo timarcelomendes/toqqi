@@ -1,3 +1,4 @@
+import type { FormularioResumo } from '@/api/tipos'
 import { describe, expect, it } from 'vitest'
 import {
   FILTROS_PADRAO,
@@ -19,6 +20,7 @@ import {
   tomCategoria,
   validarAnalise,
   validarRegistro,
+  formulariosParaRegistro,
   type FiltrosTela,
 } from '@/modulos/respostas/logica'
 
@@ -192,6 +194,30 @@ describe('registrar resposta', () => {
     expect(validarRegistro({ ...ok, data: '2026-10-02' }, HOJE).data).toBe('A data não pode ser depois de hoje.')
     expect(validarRegistro({ ...ok, data: '1999-12-31' }, HOJE).data).toContain('2000')
     expect(validarRegistro({ ...ok, comentario: 'x'.repeat(4001) }, HOJE)).toHaveProperty('comentario')
+  })
+
+  it('no formulário de CSAT, a nota vai de 1 a 5 (14/10/2026)', () => {
+    expect(validarRegistro({ ...ok, nota: 4, tipo: 'csat' }, HOJE)).toEqual({})
+    expect(validarRegistro({ ...ok, nota: 7, tipo: 'csat' }, HOJE).nota).toBe('Escolha a nota, de 1 a 5.')
+    expect(validarRegistro({ ...ok, nota: 0, tipo: 'csat' }, HOJE)).toHaveProperty('nota')
+    expect(validarRegistro({ ...ok, nota: 11 }, HOJE).nota).toBe('Escolha a nota, de 0 a 10.')
+  })
+
+  it('os formulários para escolher: só com pergunta de nota, o padrão de NPS primeiro, os desativados marcados', () => {
+    const f = (id: number, nome: string, tipo_principal: 'nps' | 'csat' | 'personalizado', extra = {}) =>
+      ({ id, nome, tipo_principal, ativo: true, padrao_nps: false, padrao_csat: false, ...extra }) as unknown as FormularioResumo
+    expect(
+      formulariosParaRegistro([
+        f(1, 'Sugestões', 'personalizado'),
+        f(2, 'CSAT atendimento', 'csat', { padrao_csat: true }),
+        f(3, 'NPS antigo', 'nps', { ativo: false }),
+        f(4, 'Pesquisa NPS', 'nps', { padrao_nps: true }),
+      ]),
+    ).toEqual([
+      { valor: '4', rotulo: 'Pesquisa NPS (NPS)', tipo: 'nps' },
+      { valor: '2', rotulo: 'CSAT atendimento (CSAT)', tipo: 'csat' },
+      { valor: '3', rotulo: 'NPS antigo (NPS) (desativado)', tipo: 'nps' },
+    ])
   })
 })
 
