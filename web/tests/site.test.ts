@@ -152,7 +152,7 @@ describe('index.html', () => {
     document.body.innerHTML = corpo.replace(/<script[\s\S]*?<\/script>/g, '')
     const marcados = Array.from(document.querySelectorAll<HTMLElement>('[data-p]'))
     // Plano Grátis: + 21 (o topo, o "tudo incluído", o cartão do Grátis, a coluna da tabela, a nota, a dúvida e o fim)
-    expect(marcados).toHaveLength(61)
+    expect(marcados).toHaveLength(62)
     for (const el of marcados) {
       const chave = el.dataset.p!
       expect(chave in PADROES_SITE, chave).toBe(true)
@@ -169,6 +169,7 @@ describe('index.html', () => {
     const doGratis = (el: HTMLElement) => el.dataset.p!.startsWith('gratis.') || el.dataset.p!.endsWith('.gratis')
     expect(marcados.filter(doGratis).map((el) => `${el.dataset.p}=${el.textContent}`)).toEqual([
       'gratis.contatos=100',
+      'gratis.envios_mes=200',
       'gratis.usuarios=1',
       // o cartão
       'gratis.contatos=100',
@@ -214,7 +215,7 @@ describe('index.html', () => {
     // Entra pelo cadastro, como os outros: o teste primeiro, o Grátis depois.
     const botao = faixa.querySelector<HTMLAnchorElement>('a.btn')!
     expect([botao.textContent, botao.getAttribute('href')]).toEqual(['Criar conta grátis', '/cadastro'])
-    expect(faixa.textContent!.replace(/\s+/g, ' ')).toContain('Começa pelo teste de 14 dias, com tudo liberado.')
+    expect(faixa.textContent!.replace(/\s+/g, ' ')).toContain('Começa pelo teste de 14 dias, com todos os recursos do plano completo.')
     // Depois do Personalizado e antes de "Comparar todos os recursos".
     const ordem = Array.from(document.querySelectorAll('[data-calc], [data-faixa-gratis], [data-comparar]')).map((el) =>
       el.hasAttribute('data-calc') ? 'personalizado' : el.hasAttribute('data-faixa-gratis') ? 'gratis' : 'comparar',
@@ -225,12 +226,11 @@ describe('index.html', () => {
   it('nos botões, o número fica dentro de um texto só (solto, ele vira item do flex e o gap abre espaço em volta)', () => {
     document.body.innerHTML = corpo.replace(/<script[\s\S]*?<\/script>/g, '')
     const botoes = Array.from(document.querySelectorAll<HTMLElement>('.btn')).filter((b) => b.querySelector('[data-p]'))
-    expect(botoes.map((b) => b.textContent)).toEqual([
-      'Começar 14 dias grátis',
-      'Testar 14 dias grátis',
-      'Testar 14 dias grátis',
-      'Testar 14 dias grátis',
-      'Começar 14 dias grátis',
+    expect(botoes.map((b) => b.textContent)).toEqual(['Testar 14 dias grátis', 'Testar 14 dias grátis', 'Testar 14 dias grátis'])
+    // 15/10/2026: o topo e a chamada do fim dizem "Começar grátis" (o Grátis sem prazo vem logo abaixo)
+    expect(Array.from(document.querySelectorAll<HTMLElement>('#inicio .btn-p, #comecar .btn-p')).map((b) => b.textContent)).toEqual([
+      'Começar grátis',
+      'Começar grátis',
     ])
     for (const b of botoes) {
       // Um filho só, o <span> do texto, sem texto solto ao lado; o número fica dentro dele.
@@ -245,12 +245,14 @@ describe('index.html', () => {
     const texto = (html: string) => html.replace(/<[^>]+>/g, '')
     const so = texto(corpo)
     for (const frase of [
-      'Começar 14 dias grátis',
-      'Comece grátis por 14 dias',
+      'Grátis para usar, sem prazo: até 100 contatos e 200 e-mails de pesquisa por mês, com WhatsApp e IA.',
+      'Nos primeiros 14 dias, todos os recursos do plano completo.',
+      'Use de graça. Assine quando crescer.',
+      'Os primeiros 14 dias têm todos os recursos do plano completo',
       'Testar 14 dias grátis',
       'No teste grátis valem 50 perguntas ao ToqqiAI e até 500 comentários lidos pela IA.',
       'continue no Grátis ou assine: por mês (3% de desconto no Pix) ou por ano (10% de desconto)',
-      'Depois do teste, continue grátis com até 100 contatos.',
+      'Grátis para usar com até 100 contatos, sem prazo e sem cartão. Os primeiros 14 dias têm todos os recursos do plano completo.',
       'No Grátis, saem até 100 e-mails de pesquisa por dia, dentro do limite do mês.',
       'Base de R$ 99 por mês.',
       'Restam 497 de 500 perguntas no mês',
@@ -379,10 +381,10 @@ describe('comportamento da página', () => {
       'No teste grátis valem 40 perguntas ao ToqqiAI e até 800 comentários lidos pela IA.',
     )
     expect(texto('[data-nota-ia]')).toBe('No nível “Mais detalhado” da IA, cada pergunta ao ToqqiAI, resumo ou parecer conta como 4.')
-    expect(texto('#planos h2')).toBe('Comece grátis por 7 dias')
+    expect(texto('#planos h2')).toBe('Use de graça. Assine quando crescer.')
     // Plano Grátis: o cartão, a coluna da tabela e a nota acompanham Plataforma › Parâmetros.
     expect(n['gratis.contatos']).toEqual(['80', '80', '80', '80', '80'])
-    expect(n['gratis.envios_mes']).toEqual(['150', '150', '150'])
+    expect(n['gratis.envios_mes']).toEqual(['150', '150', '150', '150'])
     expect(n['gratis.usuarios']).toEqual(['2', '2', '2', '2'])
     expect(n['gratis.formularios']).toEqual(['2', '2'])
     expect(n['whatsapp.franquia.gratis']).toEqual(['300', '300'])
@@ -392,7 +394,7 @@ describe('comportamento da página', () => {
       'No Grátis, saem até 60 e-mails de pesquisa por dia, dentro do limite do mês. O link da pesquisa, o link de cada contato e o WhatsApp não gastam esses e-mails.',
     )
     expect(texto('[data-hero-gratis]')).toBe(
-      'Sem cartão de crédito. Depois do teste, continue grátis com até 80 contatos. Feito para a LGPD desde o primeiro dia.',
+      'Grátis para usar, sem prazo: até 80 contatos e 150 e-mails de pesquisa por mês, com WhatsApp e IA. Nos primeiros 7 dias, todos os recursos do plano completo. Sem cartão de crédito. Assine só se precisar de mais.',
     )
   })
 
