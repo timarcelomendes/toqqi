@@ -131,3 +131,13 @@ details[open] .mais{transform:rotate(45deg)}
 .limites-gratis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:32px}
 @media (max-width:900px){.limites-gratis{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}}
 @media (max-width:560px){.limites-gratis{grid-template-columns:minmax(0,1fr)}}
+
+/* Topo: com duas colunas, o painel começa na linha do título e termina com a caixa do Grátis. No celular, os dois
+   botões ocupam a largura toda, um embaixo do outro, com a mesma largura da caixa verde. */
+@media (min-width:1000px){
+  .heroi .heroi-painel{padding-top:60px}
+  .heroi .heroi-painel>.cartao{flex:1}
+}
+@media (max-width:520px){
+  .heroi-botoes>.btn{flex:1 1 100%;justify-content:center}
+}
