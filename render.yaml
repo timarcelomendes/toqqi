@@ -173,6 +173,9 @@ services:
         source: /guias
         destination: /guias.html
       - type: rewrite
+        source: /bling
+        destination: /bling.html
+      - type: rewrite
         source: /reduzir-churn
         destination: /reduzir-churn.html
       - type: rewrite

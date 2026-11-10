@@ -51,6 +51,23 @@ export interface ConectorBling {
   erro?: string | null
 }
 
+/** Um passo do teste de homologação do Bling. `intervalo_ms`: desde o fim do pedido anterior (o Bling aceita até 2 s). */
+export interface PassoHomologacao {
+  passo: string
+  metodo: string
+  status: number
+  ms: number
+  intervalo_ms: number | null
+  renovou: boolean
+}
+
+export interface HomologacaoBling {
+  ok: boolean
+  passos: PassoHomologacao[]
+  erro: string | null
+  total_ms: number | null
+}
+
 export const conectoresApi = {
   ver: () =>
     api.get<{ rdstation_crm: ConectorRd; omie: ConectorOmie; bling: ConectorBling; pipedrive: ConectorCrm; hubspot: ConectorCrm }>('/integracoes/conectores'),
@@ -58,6 +75,8 @@ export const conectoresApi = {
   alterarBling: (pesquisar_ao_faturar: boolean) => api.patch<ConectorBling>('/integracoes/conectores/bling', { pesquisar_ao_faturar }),
   sincronizarBling: () => api.post<ConectorBling>('/integracoes/conectores/bling/sincronizar'),
   desconectarBling: () => api.delete('/integracoes/conectores/bling'),
+  /** Liga à conta a instalação feita pela loja do Bling (/conectar/bling?instalacao=). */
+  ligarInstalacaoBling: (instalacao: string) => api.post<ConectorBling>('/integracoes/conectores/bling/instalacao', { instalacao }),
   conectarOmie: (app_key: string, app_secret: string, pesquisar_ao_faturar: boolean) =>
     api.put<ConectorOmie>('/integracoes/conectores/omie', { app_key, app_secret, pesquisar_ao_faturar }),
   alterarOmie: (pesquisar_ao_faturar: boolean) => api.patch<ConectorOmie>('/integracoes/conectores/omie', { pesquisar_ao_faturar }),

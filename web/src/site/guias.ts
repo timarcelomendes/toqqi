@@ -20,8 +20,11 @@ export const GUIAS: readonly Guia[] = [
 /** A página que lista os guias (`/guias`, link "Guias" no menu do site). */
 export const INDICE: Guia = { caminho: 'guias', rotulo: 'Guias' }
 
-/** Todas as páginas de conteúdo servidas como HTML próprio: o índice e cada guia. */
-export const PAGINAS: readonly Guia[] = [INDICE, ...GUIAS]
+/** Páginas das integrações (a página inicial e o manual de cada aplicativo nas lojas dos parceiros), fora do índice. */
+export const INTEGRACOES: readonly Guia[] = [{ caminho: 'bling', rotulo: 'Integração com o Bling' }]
+
+/** Todas as páginas de conteúdo servidas como HTML próprio: o índice, cada guia e as integrações. */
+export const PAGINAS: readonly Guia[] = [INDICE, ...GUIAS, ...INTEGRACOES]
 
 /** O guia de um endereço (`/reduzir-churn`, `/reduzir-churn/` ou `/reduzir-churn.html`), ou null. */
 export function guiaDoEndereco(url: string): Guia | null {

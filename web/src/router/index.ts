@@ -41,6 +41,8 @@ const rotas: RouteRecordRaw[] = [
       { path: 'termos', name: 'termos', component: () => import('@/modulos/geral/DocumentoLegalView.vue'), props: { tipo: 'termos' }, meta: { titulo: 'Termos de uso', ancoras: true } },
       // Aceite dos termos e da política (docs/api-aceite-lgpd.md §3): bloqueia o app até aceitar; fora do AppLayout.
       { path: 'aceite', name: 'aceite', component: () => import('@/modulos/geral/AceiteView.vue'), meta: { titulo: 'Termos e privacidade', logado: true } },
+      // Instalação pela loja do Bling: entra (ou cria a conta) e liga o Bling à conta (ConectarBlingView).
+      { path: 'conectar/bling', name: 'conectar-bling', component: () => import('@/modulos/integracoes/ConectarBlingView.vue'), meta: { titulo: 'Conectar o Bling' } },
       { path: 'privacidade', name: 'privacidade', component: () => import('@/modulos/geral/DocumentoLegalView.vue'), props: { tipo: 'privacidade' }, meta: { titulo: 'Política de privacidade', ancoras: true } },
     ],
   },

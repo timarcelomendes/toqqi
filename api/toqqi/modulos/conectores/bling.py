@@ -151,3 +151,77 @@ def contato_do_aviso(dados: dict) -> str | None:
 
 
 EVENTOS_PESQUISA = ("invoice.created", "consumer_invoice.created")
+
+
+# ---- teste de homologação (para publicar o aplicativo na loja do Bling) ----------------------------------------------
+
+HOMOLOGACAO = "/homologacao/produtos"
+CABECALHO_HOMOLOGACAO = "x-bling-homologacao"
+
+
+def homologacao(tokens: dict, renovar_tokens) -> dict:
+    """Roda a sequência que o Bling exige para homologar o aplicativo (developer.bling.com.br/homologacao): GET, POST
+    (com o que o GET devolveu), PUT (nome "Copo"), PATCH da situação ("I") e DELETE em /homologacao/produtos, cada
+    pedido com o hash `x-bling-homologacao` da resposta anterior, um logo depois do outro (o Bling exige tudo em até 10 s
+    e no máximo 2 s entre os pedidos). Numa das etapas o Bling invalida o access token de propósito: com 401, renova
+    pelo refresh token (`renovar_tokens(tokens) -> tokens novos`, que também salva) e repete a etapa uma vez.
+    Devolve {ok, passos: [{passo, metodo, status, ms, intervalo_ms, renovou}], erro, total_ms}."""
+    base = config().BLING_API_URL
+    passos: list[dict] = []
+    estado = {"hash": None, "tokens": tokens, "fim_anterior": None}
+    inicio = time.monotonic()
+
+    def chamar(passo: str, metodo: str, caminho: str, corpo: dict | None = None) -> dict:
+        renovou = False
+        while True:
+            cab = {"Authorization": f"Bearer {estado['tokens']['access']}", "Accept": "application/json"}
+            if estado["hash"]:
+                cab[CABECALHO_HOMOLOGACAO] = estado["hash"]
+            antes = time.monotonic()
+            intervalo = None if estado["fim_anterior"] is None else round((antes - estado["fim_anterior"]) * 1000)
+            try:
+                r = httpx.request(metodo, f"{base}{caminho}", json=corpo, headers=cab, timeout=TEMPO)
+            except httpx.HTTPError:
+                raise ErroBling(f"{passo}: não conseguimos falar com o Bling.")
+            estado["fim_anterior"] = time.monotonic()
+            if r.status_code == 401 and not renovou:
+                estado["tokens"] = renovar_tokens(estado["tokens"])  # o Bling invalidou o token de propósito
+                renovou = True
+                continue
+            passos.append({"passo": passo, "metodo": metodo, "status": r.status_code,
+                           "ms": round((estado["fim_anterior"] - antes) * 1000), "intervalo_ms": intervalo,
+                           "renovou": renovou})
+            novo = r.headers.get(CABECALHO_HOMOLOGACAO)
+            if novo:
+                estado["hash"] = novo
+            if r.status_code >= 400:
+                raise ErroBling(f"{passo}: o Bling respondeu {r.status_code}. {_mensagem(r)}".strip())
+            return r.json() if r.content else {}
+
+    try:
+        produto = chamar("1. Buscar o produto", "GET", HOMOLOGACAO).get("data") or {}
+        if not isinstance(produto, dict) or not produto:
+            raise ErroBling("1. Buscar o produto: o Bling não devolveu o produto de teste.")
+        criado = chamar("2. Criar o produto", "POST", HOMOLOGACAO, produto).get("data") or {}
+        pid = criado.get("id") if isinstance(criado, dict) else None
+        if not pid:
+            raise ErroBling("2. Criar o produto: o Bling não devolveu o id do produto criado.")
+        chamar("3. Alterar o nome para Copo", "PUT", f"{HOMOLOGACAO}/{pid}", {**produto, "nome": "Copo"})
+        chamar("4. Mudar a situação", "PATCH", f"{HOMOLOGACAO}/{pid}/situacoes", {"situacao": "I"})
+        chamar("5. Apagar o produto", "DELETE", f"{HOMOLOGACAO}/{pid}")
+        erro = None
+    except ErroBling as e:
+        erro = str(e)
+    total = round((time.monotonic() - inicio) * 1000)
+    return {"ok": erro is None, "passos": passos, "erro": erro, "total_ms": total}
+
+
+def _mensagem(r: httpx.Response) -> str:
+    try:
+        d = r.json()
+    except ValueError:
+        return ""
+    e = (d or {}).get("error") if isinstance(d, dict) else None
+    if isinstance(e, dict):
+        return str(e.get("description") or e.get("message") or "")[:200]
+    return ""

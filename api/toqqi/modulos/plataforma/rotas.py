@@ -88,3 +88,11 @@ def resolver_erro(erro_id: IdErro, ctx: Contexto = Depends(requer_superadmin)):
 @router.post("/erros/{erro_id}/reabrir")
 def reabrir_erro(erro_id: IdErro, ctx: Contexto = Depends(requer_superadmin)):
     return erros.reabrir(erro_id)
+
+
+@router.post("/bling/homologacao")
+def homologacao_bling(ctx: Contexto = Depends(requer_superadmin)):
+    """Roda o teste de homologação do Bling (para publicar na Central de Extensões) com o Bling da sua conta."""
+    from toqqi.modulos.conectores import servico_bling
+
+    return servico_bling.homologacao(ctx)

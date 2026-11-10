@@ -15,6 +15,7 @@ import MenuSuspenso from '@/components/ui/MenuSuspenso.vue'
 import AssistenteFlutuante from '@/modulos/assistente/AssistenteFlutuante.vue'
 import ModalFeedback from '@/modulos/feedback/ModalFeedback.vue'
 import BarraLateral from './BarraLateral.vue'
+import { instalacaoGuardada } from '@/modulos/integracoes/instalacaoBling'
 
 const sessao = useSessaoStore()
 const assistente = useAssistenteStore()
@@ -46,6 +47,8 @@ function aoVoltarParaAba() {
 onMounted(() => {
   relogio = setInterval(() => (agora.value = Date.now()), 60_000)
   document.addEventListener('visibilitychange', aoVoltarParaAba)
+  // Instalação pela loja do Bling pendente (a pessoa criou a conta e confirmou o e-mail): volta para ligar.
+  if (sessao.admin && instalacaoGuardada()) void router.push('/conectar/bling')
 })
 onBeforeUnmount(() => {
   clearInterval(relogio)

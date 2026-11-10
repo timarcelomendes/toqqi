@@ -746,6 +746,17 @@ class Cobranca(Base):
     atualizada_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
 
 
+class BlingInstalacao(Base):
+    """Instalação pela loja do Bling esperando a ligação a uma conta (tabela da plataforma: só em modo sistema)."""
+    __tablename__ = "bling_instalacoes"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    codigo_hash: Mapped[str] = mapped_column(Text)
+    tokens_cifrado: Mapped[str] = mapped_column(Text)
+    empresa_bling: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
+    expira_em: Mapped[datetime] = mapped_column(TZ)
+
+
 class AsaasEvento(Base):
     """Avisos do webhook do Asaas (tabela da plataforma: só em modo sistema). Só ids e tipo, nunca o corpo."""
     __tablename__ = "asaas_eventos"

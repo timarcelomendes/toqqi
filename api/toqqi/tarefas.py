@@ -64,10 +64,14 @@ def _ia() -> dict:
 def limpeza() -> dict:
     """Tarefa `limpeza`: apaga o que passou do prazo de guarda (e-mails enviados com mais de 90 dias, registros de
     acesso com mais de 184, erros sem ocorrência há mais de 30, imagens dos feedbacks concluídos ou encerrados há mais
-    de 180) e roda a exclusão automática das contas Grátis paradas (uma vez por dia, a partir das 9h)."""
+    de 180, instalações pela loja do Bling não usadas em 24 h) e roda a exclusão automática das contas Grátis paradas
+    (uma vez por dia, a partir das 9h)."""
+    from toqqi.modulos.conectores import servico_bling
+
     return {"emails_apagados": emails_enviados.limpar(), "acessos_apagados": acessos.limpar(),
             "encerradas": exclusao.executar(), "erros_apagados": erros.limpar_antigos(),
-            "feedback_imagens_apagadas": feedback.limpar_imagens_antigas()}
+            "feedback_imagens_apagadas": feedback.limpar_imagens_antigas(),
+            "bling_instalacoes_apagadas": servico_bling.limpar_instalacoes()}
 
 
 def _passos() -> list[tuple[str, Callable[[], object]]]:

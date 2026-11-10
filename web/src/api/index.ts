@@ -1,3 +1,4 @@
+import type { HomologacaoBling } from './etapa5jConectores'
 import { api } from './cliente'
 import type {
   Aceite,
@@ -152,6 +153,8 @@ export interface FiltrosErros {
 }
 
 export const plataformaApi = {
+  /** Teste de homologação do Bling (para publicar na Central de Extensões), com o Bling da conta de quem pede. */
+  homologacaoBling: () => api.post<HomologacaoBling>('/plataforma/bling/homologacao'),
   /** Etapa 5h: a visão geral do negócio (totais, conversão, testes acabando e as contas). */
   visao: (sinal?: AbortSignal) => api.get<VisaoPlataforma>('/plataforma/visao', { sinal }),
   /** Etapa 5h: os erros da API, do site e das tarefas (até 500), a última ocorrência mais recente primeiro. */

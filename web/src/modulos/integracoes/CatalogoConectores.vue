@@ -34,6 +34,12 @@ const ITENS: Item[] = [
   { chave: 'bling', nome: 'Bling', tipo: 'ERP', iniciais: 'BL', resumo: 'Clientes do ERP; pesquisa na nota emitida.', componente: SecaoBling },
 ]
 
+const MENSAGENS_BLING: Record<string, string> = {
+  negado: 'A autorização no Bling foi cancelada.',
+  plano: 'O Plano Grátis não inclui os conectores. Assine um plano para conectar o Bling.',
+  outra_conta: 'Esta empresa do Bling já está conectada a outra conta do Toqqi. Desconecte lá antes.',
+}
+
 const emit = defineEmits<{ irParaApi: [] }>()
 const conectados = ref<Record<string, boolean>>({})
 /** Conectores que dependem de configuração do Toqqi ainda ausente (ex.: o aplicativo no Bling). */
@@ -72,7 +78,7 @@ onMounted(() => {
   const { conector, resultado, ...resto } = rota.query
   if (conector === 'bling' && resultado) {
     if (resultado === 'ok') avisar.sucesso('Bling conectado. Traga os clientes com “Sincronizar agora”.')
-    else avisar.erro(resultado === 'negado' ? 'A autorização no Bling foi cancelada.' : 'Não conseguimos conectar o Bling. Tente de novo.')
+    else avisar.erro(MENSAGENS_BLING[String(resultado)] ?? 'Não conseguimos conectar o Bling. Tente de novo.')
     router.replace({ query: resto })
     const item = ITENS.find((i) => i.chave === 'bling')
     if (item) abrir(item)

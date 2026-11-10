@@ -61,6 +61,7 @@ ROTULOS = {
     "conector_ligado": "Conector ligado (CRM ou ERP)",
     "conector_desligado": "Conector desligado (CRM ou ERP)",
     "conector_sincronizado": "Empresas e contatos sincronizados pelo conector",
+    "bling_homologacao": "Teste de homologação do Bling rodado (equipe Toqqi)",
     "chave_revogada": "Chave de integração revogada",
     "webhook_desativado": "Webhook desativado após falhas seguidas",
     "whatsapp_conectado": "WhatsApp automático conectado",

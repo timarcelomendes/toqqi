@@ -11,8 +11,9 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
+import httpx
 import jwt
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import DBAPIError
 
 from toqqi.core import relogio
@@ -23,7 +24,7 @@ from toqqi.core.deps import Contexto
 from toqqi.core.errors import AppError, erro_do_banco
 from toqqi.core.segredos import cifrar, decifrar
 from toqqi.core.texto import telefone_canonico
-from toqqi.modelos import Conector, Conta, Contato, Empresa
+from toqqi.modelos import BlingInstalacao, Conector, Conta, Contato, Empresa
 from toqqi.modulos.conectores import bling
 from toqqi.modulos.conectores.servico import _hash, _texto
 from toqqi.modulos.empresas.desfecho import marcar
@@ -37,6 +38,7 @@ RECURSO = "O conector do Bling"
 MAX_CONTATOS = 5000
 MAX_DETALHES = 600
 VALIDADE_STATE = timedelta(minutes=15)
+VALIDADE_INSTALACAO = timedelta(hours=24)
 
 
 def _obter(s) -> Conector | None:
@@ -81,14 +83,46 @@ def _volta(resultado: str) -> str:
     return f"{config().FRONTEND_URL.rstrip('/')}/integracoes?aba=crm&conector=bling&resultado={resultado}"
 
 
+def _volta_loja(**params: str) -> str:
+    return str(httpx.URL(f"{config().FRONTEND_URL.rstrip('/')}/conectar/bling", params=params))
+
+
+def _em_outra_conta(empresa_bling: str | None, conta_id: int | None) -> bool:
+    """A mesma empresa do Bling já ligada a outra conta do Toqqi (os avisos de nota acham a conta pelo `companyId`)."""
+    if not empresa_bling:
+        return False
+    with modo_sistema() as s:
+        q = select(Conector.conta_id).where(Conector.provedor == PROVEDOR,
+                                            Conector.opcoes["empresa_bling"].astext == empresa_bling)
+        if conta_id is not None:
+            q = q.where(Conector.conta_id != conta_id)
+        return s.scalar(q.limit(1)) is not None
+
+
+def _gravar_conector(conta_id: int, usuario_id: int | None, tokens: dict, empresa_bling: str | None,
+                     origem: str) -> None:
+    with em_conta(conta_id) as s:
+        c = _obter(s) or Conector(conta_id=conta_id, provedor=PROVEDOR)
+        c.token_cifrado = cifrar(json.dumps(tokens))
+        c.segredo_hash = c.segredo_hash or _hash(secrets.token_urlsafe(32))
+        c.opcoes = {"pesquisar_ao_faturar": (c.opcoes or {}).get("pesquisar_ao_faturar", True),
+                    "empresa_bling": empresa_bling}
+        c.erro, c.atualizado_em = None, relogio.agora()
+        s.add(c)
+        s.flush()
+        registrar(s, "conector_ligado", "info", {"provedor": PROVEDOR, "origem": origem}, usuario_id=usuario_id)
+
+
 def retorno(codigo: str | None, state: str | None) -> str:
-    """Endereço do site para onde o navegador volta (com `resultado=ok|erro|negado`)."""
+    """Endereço do site para onde o navegador volta. Começou no Toqqi (com `state`): Integrações com
+    `resultado=ok|erro|negado|plano|outra_conta`. Começou na loja do Bling (sem `state` do Toqqi): /conectar/bling com
+    o código da instalação (`instalacao=`) ou `resultado=erro|negado`."""
     try:
         dados = jwt.decode(state or "", config().JWT_SECRET, algorithms=["HS256"])
     except jwt.PyJWTError:
-        return _volta("erro")
+        return _instalacao_da_loja(codigo)
     if dados.get("p") != PROVEDOR:
-        return _volta("erro")
+        return _instalacao_da_loja(codigo)
     if not codigo:
         return _volta("negado")
     with em_conta(int(dados["c"])) as s:
@@ -99,17 +133,60 @@ def retorno(codigo: str | None, state: str | None) -> str:
         empresa_bling = bling.empresa(tokens)
     except bling.ErroBling:
         return _volta("erro")
-    with em_conta(int(dados["c"])) as s:
-        c = _obter(s) or Conector(conta_id=int(dados["c"]), provedor=PROVEDOR)
-        c.token_cifrado = cifrar(json.dumps(tokens))
-        c.segredo_hash = c.segredo_hash or _hash(secrets.token_urlsafe(32))
-        c.opcoes = {"pesquisar_ao_faturar": (c.opcoes or {}).get("pesquisar_ao_faturar", True),
-                    "empresa_bling": empresa_bling}
-        c.erro, c.atualizado_em = None, relogio.agora()
-        s.add(c)
-        s.flush()
-        registrar(s, "conector_ligado", "info", {"provedor": PROVEDOR}, usuario_id=dados.get("u"))
+    if _em_outra_conta(empresa_bling, int(dados["c"])):
+        return _volta("outra_conta")
+    _gravar_conector(int(dados["c"]), dados.get("u"), tokens, empresa_bling, "toqqi")
     return _volta("ok")
+
+
+def _instalacao_da_loja(codigo: str | None) -> str:
+    if not codigo or not bling.disponivel():
+        return _volta_loja(resultado="negado" if bling.disponivel() else "erro")
+    try:
+        tokens = bling.trocar_codigo(codigo)
+        empresa_bling = bling.empresa(tokens)
+    except bling.ErroBling:
+        return _volta_loja(resultado="erro")
+    instalacao = secrets.token_urlsafe(32)
+    with modo_sistema() as s:
+        s.add(BlingInstalacao(codigo_hash=_hash(instalacao), tokens_cifrado=cifrar(json.dumps(tokens)),
+                              empresa_bling=empresa_bling, expira_em=relogio.agora() + VALIDADE_INSTALACAO))
+    return _volta_loja(instalacao=instalacao)
+
+
+def ligar_instalacao(ctx: Contexto, instalacao: str) -> dict:
+    """Liga à conta de quem entrou a instalação feita pela loja do Bling (administrador; fora do Plano Grátis)."""
+    gratis.exigir_recurso_ctx(ctx, RECURSO)
+    with modo_sistema() as s:
+        pendente = s.scalar(select(BlingInstalacao).where(BlingInstalacao.codigo_hash == _hash(instalacao.strip()),
+                                                          BlingInstalacao.expira_em > relogio.agora()))
+        if pendente is None:
+            raise AppError(404, "instalacao_vencida", "Esta instalação venceu ou já foi usada. Instale o Toqqi de novo "
+                           "pela Central de Extensões do Bling ou conecte por Integrações.")
+        tokens, empresa_bling = _tokens_texto(pendente.tokens_cifrado), pendente.empresa_bling
+    if tokens is None:
+        raise AppError(404, "instalacao_vencida", "Esta instalação não pode mais ser lida. Instale o Toqqi de novo.")
+    if _em_outra_conta(empresa_bling, ctx.conta_id):
+        raise AppError(409, "bling_em_outra_conta", "Esta empresa do Bling já está conectada a outra conta do Toqqi. "
+                       "Desconecte lá antes, ou entre com a conta certa.")
+    _gravar_conector(ctx.conta_id, ctx.usuario_id, tokens, empresa_bling, "loja")
+    with modo_sistema() as s:
+        s.execute(delete(BlingInstalacao).where(BlingInstalacao.codigo_hash == _hash(instalacao.strip())))
+    return ver(ctx)
+
+
+def _tokens_texto(cifrado: str) -> dict | None:
+    try:
+        texto = decifrar(cifrado)
+        return json.loads(texto) if texto else None
+    except ValueError:
+        return None
+
+
+def limpar_instalacoes() -> int:
+    """Tarefa `limpeza`: apaga as instalações pela loja que venceram sem ser ligadas a uma conta."""
+    with modo_sistema() as s:
+        return s.execute(delete(BlingInstalacao).where(BlingInstalacao.expira_em <= relogio.agora())).rowcount or 0
 
 
 def _tokens_validos(conta_id: int) -> dict:
@@ -127,6 +204,34 @@ def _tokens_validos(conta_id: int) -> dict:
             if c:
                 c.token_cifrado = cifrar(json.dumps(tokens))
     return tokens
+
+
+def homologacao(ctx: Contexto) -> dict:
+    """Plataforma (superadmin): roda o teste de homologação do Bling com o Bling conectado na conta de quem pediu."""
+    if not bling.disponivel():
+        raise AppError(503, "conector_indisponivel", "Configure BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render antes.")
+    try:
+        tokens = _tokens_validos(ctx.conta_id)
+    except bling.ErroBling:
+        raise AppError(409, "bling_desconectado", "Conecte o Bling nesta conta (Integrações › Bling) e rode o teste "
+                       "de novo: o teste usa a conexão da sua conta.")
+
+    def renovar(atuais: dict) -> dict:
+        novos = bling.renovar(atuais["refresh"])
+        novos = {**novos, "refresh": novos.get("refresh") or atuais["refresh"]}
+        with em_conta(ctx.conta_id) as s:
+            c = _obter(s)
+            if c:
+                c.token_cifrado = cifrar(json.dumps(novos))
+        return novos
+
+    try:
+        r = bling.homologacao(tokens, renovar)
+    except bling.ErroBling as e:  # a renovação do token falhou
+        r = {"ok": False, "passos": [], "erro": str(e), "total_ms": None}
+    with em_conta(ctx.conta_id) as s:
+        registrar(s, "bling_homologacao", "info", {"ok": r["ok"], "total_ms": r["total_ms"]}, usuario_id=ctx.usuario_id)
+    return r
 
 
 def alterar(ctx: Contexto, pesquisar: bool) -> dict:

@@ -123,6 +123,16 @@ def autorizar_bling(ctx: Contexto = Depends(requer_admin)):
     return servico_bling.autorizar(ctx)
 
 
+class InstalacaoBlingIn(BaseModel):
+    instalacao: str = Field(min_length=20, max_length=100)
+
+
+@router.post("/bling/instalacao")
+def ligar_instalacao_bling(dados: InstalacaoBlingIn, ctx: Contexto = Depends(requer_admin)):
+    """Liga à conta a instalação feita pela loja do Bling (o código vem em /conectar/bling?instalacao=)."""
+    return servico_bling.ligar_instalacao(ctx, dados.instalacao)
+
+
 @router.patch("/bling")
 def alterar_bling(dados: AlterarBlingIn, ctx: Contexto = Depends(requer_admin)):
     return servico_bling.alterar(ctx, dados.pesquisar_ao_faturar)

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Toqqi + Bling: pesquisa NPS a cada nota emitida · manual de uso</title>
+    <meta name="description" content="Integração do Toqqi com o Bling: traga os clientes do ERP e mande a pesquisa NPS a cada nota fiscal emitida. Manual, requisitos, instalação e privacidade." />
+    <!-- canonical -->
+    <meta name="theme-color" content="#FF5A36" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Toqqi" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Toqqi + Bling: pesquisa NPS a cada nota emitida" />
+    <meta property="og:description" content="Integração do Toqqi com o Bling: traga os clientes do ERP e mande a pesquisa NPS a cada nota fiscal emitida. Manual, requisitos, instalação e privacidade." />
+    <link rel="icon" href="/favicon.ico?v=2" sizes="32x32" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
+    <script type="module" src="/src/site/guia.ts"></script>
+  </head>
+  <body>
+<!-- Página do aplicativo do Toqqi na Central de Extensões do Bling (src/site/guias.ts, INTEGRACOES): página inicial do
+     aplicativo e manual de uso (#manual), sem login, como o Bling pede para publicar. -->
+<header class="topo-guia">
+<div class="wrap">
+<a href="/" aria-label="Toqqi, página inicial" style="display:flex;align-items:center"><img src="/marca/toqqi-logo.svg" alt="toqqi" style="height:30px;width:auto;display:block"></a>
+<nav class="nav" aria-label="Principal" style="display:flex;gap:28px">
+<a href="/#como">Como funciona</a>
+<a href="/#reter">Retenção</a>
+<a href="/#planos">Planos</a>
+<a href="/#duvidas">Dúvidas</a>
+<a href="/guias">Guias</a>
+</nav>
+<div style="display:flex;align-items:center;gap:12px">
+<a href="/entrar" data-entrar class="so-largo" style="font-weight:600;font-size:15px;color:#0F172A;text-decoration:none;padding:12px 8px">Entrar</a>
+<a href="/cadastro?utm_source=toqqi&amp;utm_medium=integracao&amp;utm_campaign=bling" class="btn btn-p" style="min-height:44px;font-size:15px;padding:0 18px">Começar grátis</a>
+</div>
+</div>
+</header>
+
+<main>
+<div class="wrap abertura" style="display:flex;flex-direction:column;gap:20px">
+<nav aria-label="Você está em"><ol class="trilha"><li><a href="/">Toqqi</a></li><li aria-current="page">Integração com o Bling</li></ol></nav>
+<h1>Toqqi + Bling: a pesquisa NPS sai a cada nota emitida</h1>
+<p class="lead">Conecte o Bling ao Toqqi e cada cliente que recebe uma nota fiscal ganha, sozinho, um convite para dizer o que achou: por e-mail ou WhatsApp, na hora certa. A resposta chega lida por IA, com plano de ação para quem está insatisfeito e indicação de quem recomenda você.</p>
+<div style="display:flex;flex-wrap:wrap;gap:12px">
+<a href="/cadastro?utm_source=toqqi&amp;utm_medium=integracao&amp;utm_campaign=bling" class="btn btn-p">Começar grátis</a>
+<a href="#manual" class="btn btn-s">Ler o manual</a>
+</div>
+<p class="meta">Sem cartão de crédito. Os primeiros 14 dias têm todos os recursos, incluindo a integração com o Bling.</p>
+</div>
+
+<div class="wrap corpo">
+<details class="indice cartao" open>
+<summary style="display:flex;justify-content:space-between;align-items:center">Nesta página<span class="mais" style="font-size:20px;font-weight:400;color:#64748B;transition:transform .16s">+</span></summary>
+<ol><li><a href="#o-que-faz">O que a integração faz</a></li><li><a href="#manual">Manual de uso</a></li><li><a href="#requisitos">Requisitos</a></li><li><a href="#instalar">Como instalar</a></li><li><a href="#configurar">Configurações</a></li><li><a href="#sincronizar">Trazer os clientes</a></li><li><a href="#desinstalar">Desconectar e desinstalar</a></li><li><a href="#dados">Dados e privacidade</a></li><li><a href="#duvidas">Dúvidas frequentes</a></li><li><a href="#suporte">Suporte</a></li></ol>
+</details>
+<article class="artigo">
+<section id="o-que-faz" aria-labelledby="t-o-que-faz">
+<h2 id="t-o-que-faz">O que a integração faz</h2>
+<ul>
+<li><strong>Pesquisa a cada nota emitida.</strong> Quando o Bling emite uma NF-e ou uma NFC-e, o Toqqi manda ao cliente da nota a pesquisa NPS (de 0 a 10, com espaço para comentar). Uma vez por nota, respeitando o intervalo mínimo entre pesquisas e quem pediu para não receber.</li>
+<li><strong>Clientes do Bling no Toqqi.</strong> “Sincronizar agora” traz os clientes ativos do Bling: cada um vira uma empresa no Toqqi, com o contato do cadastro (e-mail e telefone). Nada do que já está no Toqqi é apagado ou trocado.</li>
+<li><strong>A resposta vira ação.</strong> No Toqqi, a nota baixa abre um plano de ação com prazo para o responsável; o comentário é lido por IA e separado por tema (prazo, preço, atendimento…); quem dá nota alta pode indicar outros clientes.</li>
+<li><strong>Só leitura no Bling.</strong> O Toqqi lê os dados básicos da empresa, os contatos e o aviso de nota emitida. Ele não cria, não altera e não apaga nada no Bling.</li>
+</ul>
+</section>
+
+<section id="manual" aria-labelledby="t-manual">
+<h2 id="t-manual">Manual de uso</h2>
+<p>Este manual mostra como instalar, configurar e usar o aplicativo do Toqqi no Bling. As telas citadas são do Toqqi (toqqi.com) e do Bling (Central de Extensões).</p>
+</section>
+
+<section id="requisitos" aria-labelledby="t-requisitos">
+<h2 id="t-requisitos">Requisitos</h2>
+<ul>
+<li>Uma conta no Bling com acesso de administrador, para autorizar o aplicativo.</li>
+<li>Uma conta no Toqqi com o perfil de administrador. Quem ainda não tem conta cria uma na instalação, sem cartão.</li>
+<li>A integração está nos planos pagos do Toqqi e nos 14 dias iniciais de teste. No Plano Grátis os conectores ficam fechados.</li>
+<li>Para a pesquisa sair, o cadastro do cliente no Bling precisa ter e-mail ou celular.</li>
+</ul>
+</section>
+
+<section id="instalar" aria-labelledby="t-instalar">
+<h2 id="t-instalar">Como instalar</h2>
+<h3>Pela Central de Extensões do Bling</h3>
+<ol class="passos">
+<li><h3>Instale o aplicativo</h3><p>No Bling, abra a Central de Extensões, procure “Toqqi” e clique em “Instalar aplicativo”.</p></li>
+<li><h3>Autorize</h3><p>Confira as permissões (leitura de contatos e de notas fiscais) e autorize. O Bling leva você ao Toqqi.</p></li>
+<li><h3>Entre ou crie a conta</h3><p>Já usa o Toqqi? Clique em “Já tenho conta” e entre. Se não, clique em “Criar conta grátis”. Ao entrar, o Toqqi liga o Bling à sua conta sozinho. A autorização fica guardada no navegador por 24 horas; depois disso, instale de novo.</p></li>
+</ol>
+<h3>Pelo Toqqi</h3>
+<p>No Toqqi, abra <strong>Integrações › Sistemas</strong>, clique em <strong>Bling</strong> e em <strong>Conectar com o Bling</strong>. Autorize no Bling e você volta ao Toqqi já conectado.</p>
+</section>
+
+<section id="configurar" aria-labelledby="t-configurar">
+<h2 id="t-configurar">Configurações</h2>
+<ul>
+<li><strong>Pesquisar quando uma nota for emitida</strong> (em Integrações › Bling): ligado, cada NF-e e NFC-e emitida manda a pesquisa NPS ao cliente da nota. Desligue para só trazer os clientes.</li>
+<li><strong>Canal:</strong> a pesquisa sai por e-mail ou por WhatsApp, conforme as regras de envio da sua conta (Configurações › Envios). O WhatsApp automático precisa estar conectado no Toqqi.</li>
+<li><strong>Intervalo entre pesquisas:</strong> quem respondeu há pouco não recebe outra pesquisa até passar o intervalo da conta, mesmo com notas novas. Assim o cliente que compra toda semana não recebe pesquisa toda semana.</li>
+<li><strong>Quem não quer receber:</strong> todo convite tem o link para sair da lista. Quem sai não recebe mais, de nenhuma nota.</li>
+</ul>
+</section>
+
+<section id="sincronizar" aria-labelledby="t-sincronizar">
+<h2 id="t-sincronizar">Trazer os clientes</h2>
+<p>Em <strong>Integrações › Bling</strong>, clique em <strong>Sincronizar agora</strong>. A sincronização roda em segundo plano:</p>
+<ul>
+<li>cada cliente ativo do Bling vira uma empresa no Toqqi, com o nome fantasia (ou o nome), o CPF ou CNPJ e um contato com o e-mail e o telefone do cadastro;</li>
+<li>cada rodada traz até 600 clientes novos (o Bling limita os pedidos por segundo). Tem mais? Clique de novo: ela continua de onde parou;</li>
+<li>clientes inativos e sem e-mail nem telefone ficam de fora, e o resumo mostra quantos;</li>
+<li>a sincronização para no limite de contatos do seu plano.</li>
+</ul>
+<p>Mesmo sem sincronizar, o cliente da nota emitida entra no Toqqi na hora da pesquisa.</p>
+</section>
+
+<section id="desinstalar" aria-labelledby="t-desinstalar">
+<h2 id="t-desinstalar">Desconectar e desinstalar</h2>
+<ul>
+<li>No Toqqi: <strong>Integrações › Bling › Desconectar</strong> apaga os tokens do Bling. As empresas, os contatos e as respostas já trazidos continuam no Toqqi.</li>
+<li>No Bling: <strong>Central de Extensões › Minhas instalações</strong>, desinstale o Toqqi. O acesso do Toqqi ao Bling acaba na hora.</li>
+<li>Uma empresa do Bling fica ligada a uma só conta do Toqqi. Para trocar de conta, desconecte na conta antiga antes.</li>
+</ul>
+</section>
+
+<section id="dados" aria-labelledby="t-dados">
+<h2 id="t-dados">Dados e privacidade</h2>
+<ul>
+<li><strong>O que o Toqqi lê do Bling:</strong> o identificador da sua empresa no Bling, os contatos (nome, nome fantasia, CPF ou CNPJ, e-mail, telefone e situação) e, a cada nota emitida, o número da nota e o contato dela.</li>
+<li><strong>Como guarda:</strong> os tokens de acesso ficam cifrados; os avisos de nota são conferidos pela assinatura do Bling.</li>
+<li><strong>Para que usa:</strong> só para cadastrar seus clientes no Toqqi e mandar a pesquisa em nome da sua empresa. O Toqqi não vende nem compartilha esses dados.</li>
+<li>O tratamento segue a <a href="/privacidade">Política de privacidade</a> e os <a href="/termos">Termos de uso</a> do Toqqi, de acordo com a LGPD.</li>
+</ul>
+</section>
+
+<section id="duvidas" aria-labelledby="t-duvidas">
+<h2 id="t-duvidas">Dúvidas frequentes</h2>
+<details><summary>A pesquisa sai para toda nota?</summary><p>Sai para cada NF-e e NFC-e emitida, uma vez por nota, se o cliente tem e-mail ou celular no Bling, não pediu para sair e não respondeu há pouco (o intervalo da sua conta).</p></details>
+<details><summary>Preciso cadastrar os clientes de novo?</summary><p>Não. “Sincronizar agora” traz os clientes do Bling, e o cliente de cada nota entra no Toqqi na hora da pesquisa.</p></details>
+<details><summary>O Toqqi muda alguma coisa no meu Bling?</summary><p>Não. O aplicativo só lê contatos, os dados básicos da empresa e os avisos de nota.</p></details>
+<details><summary>Quanto custa?</summary><p>A integração faz parte dos planos pagos do Toqqi e dos 14 dias iniciais de teste, sem cartão. Os preços estão em <a href="/#planos">toqqi.com</a>.</p></details>
+<details><summary>Instalei pela Central e a página pediu para entrar. E agora?</summary><p>Entre com a sua conta do Toqqi ou crie uma: o Toqqi termina a conexão sozinho. Se passaram mais de 24 horas, instale de novo pela Central de Extensões.</p></details>
+</section>
+
+<section id="suporte" aria-labelledby="t-suporte">
+<h2 id="t-suporte">Suporte</h2>
+<p>Fale com a equipe do Toqqi por <a href="mailto:contato@toqqi.com">contato@toqqi.com</a>. Dentro do Toqqi, use também o botão “Feedback” no menu. Respondemos em dias úteis.</p>
+</section>
+</article>
+</div>
+
+<section style="padding:0 0 96px">
+<div class="wrap">
+<div style="background:#FFF4F1;border:1px solid #FFC9B8;border-radius:24px;padding:clamp(32px,6vw,64px);display:flex;flex-wrap:wrap;gap:32px;align-items:center;justify-content:space-between">
+<div style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:12px">
+<h2 class="h2">Saiba o que cada cliente achou da última entrega</h2>
+<p class="lead">Conecte o Bling e a pesquisa sai sozinha a cada nota emitida.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+<a href="/cadastro?utm_source=toqqi&amp;utm_medium=integracao&amp;utm_campaign=bling" class="btn btn-p" style="min-height:56px;font-size:17px;padding:0 28px">Começar grátis</a>
+<span style="font-size:14px;color:#64748B">Sem cartão de crédito</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+
+<footer style="background:#0B1120;color:#CBD5E1;padding:48px 0">
+<div class="wrap" style="display:flex;flex-wrap:wrap;gap:32px;justify-content:space-between;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:12px;max-width:320px">
+<img src="/marca/toqqi-logo-escuro.svg" alt="toqqi" style="height:28px;width:auto;align-self:flex-start">
+<p style="margin:0;font-size:14px;line-height:1.6;color:#94A3B8">Pesquisa de satisfação que vira ação.</p>
+</div>
+<nav aria-label="Guias" style="display:flex;flex-direction:column;gap:12px;font-size:14px">
+<a href="/guias" style="font-weight:700;color:#FFFFFF;text-decoration:none">Guias</a>
+<a href="/reduzir-churn" style="color:#CBD5E1;text-decoration:none">Como reduzir o churn</a><a href="/clientes-insatisfeitos" style="color:#CBD5E1;text-decoration:none">Clientes insatisfeitos e receita em risco</a><a href="/customer-success" style="color:#CBD5E1;text-decoration:none">Software de customer success</a>
+</nav>
+<nav aria-label="Rodapé" style="display:flex;flex-wrap:wrap;gap:24px;font-size:14px">
+<a href="/termos" style="color:#CBD5E1;text-decoration:none">Termos de uso</a>
+<a href="/privacidade" style="color:#CBD5E1;text-decoration:none">Política de privacidade</a>
+<a href="/sair" style="color:#CBD5E1;text-decoration:none">Sair ou voltar a receber pesquisas</a>
+<a href="mailto:privacidade@toqqi.com" style="color:#CBD5E1;text-decoration:none">privacidade@toqqi.com</a>
+<a href="/entrar" style="color:#CBD5E1;text-decoration:none">Entrar</a>
+</nav>
+</div>
+<div class="wrap" style="margin-top:32px;padding-top:24px;border-top:1px solid #1F2A3C;font-size:13px;color:#94A3B8">© 2026 Toqqi</div>
+</footer>
+  </body>
+</html>

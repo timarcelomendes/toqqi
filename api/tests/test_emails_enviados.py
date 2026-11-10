@@ -275,7 +275,8 @@ def test_tarefa_limpeza(client, admin, dono, monkeypatch):
     monkeypatch.setattr(relogio, "agora", lambda: datetime.now(relogio.FUSO))
     assert tarefas.executar("limpeza") == {"limpeza": {"emails_apagados": 6, "acessos_apagados": 0,
                                                        "encerradas": None, "erros_apagados": 0,  # 5h: erros
-                                                       "feedback_imagens_apagadas": 0}}
+                                                       "feedback_imagens_apagadas": 0,
+                                                       "bling_instalacoes_apagadas": 0}}
     assert sql(dono, "select count(*) from emails_enviados")[0][0] == 3
     assert tarefas.executar("limpeza")["limpeza"]["emails_apagados"] == 0
     assert tarefas.main(["limpeza"]) == 0

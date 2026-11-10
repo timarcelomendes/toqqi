@@ -82,9 +82,10 @@ def test_autorizar_e_voltar(client, dono, admin, falso):
     # vezes, quando o texto aleatório da cifra trazia "r1" por acaso)
     assert cifrado.startswith("gAAAAA") and "r1" in (decifrar(cifrado) or "")
     assert opcoes["empresa_bling"] == "emp-123"
+    # state que não é do Toqqi: é a instalação pela loja do Bling (test_bling_loja.py)
     r = client.get(f"{API}/publico/conectores/bling/retorno", params={"code": "c1", "state": "falso"},
                    follow_redirects=False)
-    assert r.headers["location"].endswith("resultado=erro")
+    assert "/conectar/bling?instalacao=" in r.headers["location"]
     gestor = membro(client, h, "gil@alfa.com.br", perfil="gestor")
     assert client.post(f"{API}/integracoes/conectores/bling/autorizar", headers=gestor["h"]).status_code == 403
 

@@ -22,6 +22,7 @@ import Etiqueta from '@/components/ui/Etiqueta.vue'
 import Selecao from '@/components/ui/Selecao.vue'
 import Tabela, { type Coluna } from '@/components/ui/Tabela.vue'
 import TextoEmail from '@/components/ui/TextoEmail.vue'
+import HomologacaoBling from './HomologacaoBling.vue'
 import MarcadoresAtivacao from './MarcadoresAtivacao.vue'
 import {
   ORDENS_CONTAS,
@@ -328,5 +329,6 @@ onBeforeUnmount(() => controlador?.abort())
         </template>
       </section>
     </template>
+    <HomologacaoBling />
   </div>
 </template>
