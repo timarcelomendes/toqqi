@@ -82,8 +82,45 @@ function versaoDoSite(): Plugin {
   }
 }
 
+/**
+ * CSS do site da raiz sem piscar: index.html é o site (rota "/") e o app (as outras), então o site.ts entra por import
+ * dinâmico e o CSS dele só chegava depois do JavaScript. Até lá, a página aparecia sem o `.wrap` (largura toda) e
+ * depois "pulava" para o centro. No build, a marca `/*css-do-site*\/[]` do script do <head> vira a lista dos arquivos CSS
+ * do site.ts; o script os escreve com document.write só na rota "/", e assim eles bloqueiam a primeira pintura como um
+ * <link> comum (as rotas do app não baixam). No dev, a lista fica vazia (o Vite injeta o CSS como sempre).
+ */
+export const MARCA_CSS_SITE = '/*css-do-site*/[]'
+
+function cssDoSite(): Plugin {
+  return {
+    name: 'toqqi-css-do-site',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!html.includes(MARCA_CSS_SITE) || !ctx.bundle) return html
+        const site = Object.values(ctx.bundle).find(
+          (c) => c.type === 'chunk' && (c.facadeModuleId ?? '').replace(/\\/g, '/').endsWith('/src/site/site.ts'),
+        )
+        // o CSS do site.ts e o dos pedaços que ele importa (o site.css e as fontes ficam num pedaço dividido com os guias)
+        const css = new Set<string>()
+        const visitar = (nome: string, vistos: Set<string>) => {
+          const c = ctx.bundle?.[nome]
+          if (!c || c.type !== 'chunk' || vistos.has(nome)) return
+          vistos.add(nome)
+          c.imports.forEach((i) => visitar(i, vistos))
+          c.viteMetadata?.importedCss.forEach((f) => css.add(f))
+        }
+        if (site && site.type === 'chunk') visitar(site.fileName, new Set())
+        if (!css.size) this.error('css-do-site: não achei o CSS de src/site/site.ts no build')
+        return html.replace(MARCA_CSS_SITE, JSON.stringify([...css].map((f) => `/${f}`)))
+      },
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [paginasPublicas(), guiasDoSite(), versaoDoSite(), vue(), tailwindcss()],
+  plugins: [paginasPublicas(), guiasDoSite(), versaoDoSite(), cssDoSite(), vue(), tailwindcss()],
   define: { __TOQQI_VERSAO__: JSON.stringify(versaoSite) },
   resolve: {
     alias: { '@': raiz('./src') },

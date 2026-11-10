@@ -19,6 +19,16 @@ import { ehSite } from '@/site/rota'
 const html = readFileSync(resolve(__dirname, '../index.html'), 'utf8')
 const corpo = html.slice(html.indexOf('<body>') + 6, html.indexOf('</body>'))
 
+describe('CSS do site antes de desenhar (sem piscar na largura toda)', () => {
+  it('o script do <head> escreve os links do CSS do site só na rota "/", com a marca que o build troca', () => {
+    const cabeca = html.slice(0, html.indexOf('</head>'))
+    expect(cabeca).toContain('var cssSite = /*css-do-site*/[];')
+    expect(cabeca).toMatch(/if \(site\) for \(var i = 0; i < cssSite\.length; i\+\+\) document\.write\('<link rel="stylesheet" href="' \+ cssSite\[i\] \+ '">'\);/)
+    // o script vem antes do <body>: o CSS entra antes da primeira pintura
+    expect(html.indexOf('document.write')).toBeLessThan(html.indexOf('<body>'))
+  })
+})
+
 describe('rota do site', () => {
   it('só a raiz é o site; o resto é o app', () => {
     expect(ehSite('/')).toBe(true)
