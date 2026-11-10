@@ -17,6 +17,7 @@ simples de `traduzir_falha` (nunca o corpo do provedor). O assunto vai como saiu
 gravação usa uma transação própria (`em_conta`), depois da tentativa: nunca derruba o envio — falha ao gravar só vai
 para o log.
 """
+import base64
 import html as html_lib
 import logging
 from dataclasses import dataclass, field
@@ -52,6 +53,7 @@ TIPOS = {
     "boas_vindas": "Boas-vindas",
     "alerta_risco": "Alerta de risco",
     "resumo_semanal": "Resumo semanal",
+    "relatorio_mensal": "Relatório mensal",
     "pico": "Pico de reclamações",
     "indicacao": "Nova indicação",
     "aviso": "Aviso aos administradores",
@@ -71,6 +73,18 @@ class Mensagem:
     remetente_nome: str | None = None      # vira "{remetente_nome} via Toqqi"
     responder_para: str | None = None
     cabecalhos: dict[str, str] = field(default_factory=dict)
+    anexos: list["Anexo"] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class Anexo:
+    """Arquivo anexo de um e-mail do sistema (ex.: o PDF do relatório mensal)."""
+    nome: str
+    tipo: str  # media type, ex.: application/pdf
+    conteudo: bytes
+
+    def base64(self) -> str:
+        return base64.b64encode(self.conteudo).decode()
 
 
 class FalhaEnvio(Exception):
@@ -126,6 +140,8 @@ class ZeptoMail(Provedor):
             corpo["reply_to"] = [{"address": m.responder_para}]
         if m.cabecalhos:
             corpo["mime_headers"] = m.cabecalhos
+        if m.anexos:
+            corpo["attachments"] = [{"content": a.base64(), "mime_type": a.tipo, "name": a.nome} for a in m.anexos]
         token = config().ZEPTOMAIL_TOKEN
         if not token.lower().startswith("zoho-enczapikey"):
             token = f"Zoho-enczapikey {token}"
@@ -144,6 +160,8 @@ class Resend(Provedor):
             corpo["reply_to"] = [m.responder_para]
         if m.cabecalhos:
             corpo["headers"] = m.cabecalhos
+        if m.anexos:
+            corpo["attachments"] = [{"filename": a.nome, "content": a.base64()} for a in m.anexos]
         r = httpx.post(
             self.URL, json=corpo, headers={"Authorization": f"Bearer {config().RESEND_API_KEY}"}, timeout=10
         )
@@ -260,19 +278,20 @@ def _html(paragrafos: list[Paragrafo], botao: tuple[str, str] | None,
 
 def enviar(para: str, assunto: str, paragrafos: list[Paragrafo], botao: tuple[str, str] | None = None,
            rodape: tuple[str, str, str] | None = None, assunto_no_log: str | None = None, *,
-           conta_id: int | None = None, tipo: str | None = None) -> None:
+           conta_id: int | None = None, tipo: str | None = None, anexos: list[Anexo] | None = None) -> None:
     """E-mail do sistema. `paragrafos`: textos (ou Titulo/Link); `botao` = (rótulo, link); `rodape` = (texto,
     trecho do texto que vira link, link), ex.: o "Minha conta" dos e-mails do painel. `assunto_no_log`: o que vai para
     o log e para o registro de e-mails enviados no lugar do assunto (assunto com dados de pessoas, como o aviso de
     indicação: excluir a indicação a pedido da pessoa não pode deixar o nome dela no registro). `conta_id` e `tipo`
-    (`TIPOS`): a conta em nome de quem o e-mail sai, para o registro de e-mails enviados."""
+    (`TIPOS`): a conta em nome de quem o e-mail sai, para o registro de e-mails enviados. `anexos`: arquivos (o PDF do
+    relatório mensal)."""
     texto = "\n\n".join(_parte_texto(p) for p in paragrafos)
     if botao:
         texto += f"\n\n{botao[0]}: {botao[1]}"
     texto += "\n\nEquipe Toqqi"
     if rodape:
         texto += f"\n\n{rodape[0]} {rodape[2]}"
-    m = Mensagem(para=para, assunto=assunto, texto=texto, html=_html(paragrafos, botao, rodape))
+    m = Mensagem(para=para, assunto=assunto, texto=texto, html=_html(paragrafos, botao, rodape), anexos=list(anexos or []))
     erro = None
     try:
         provedor().enviar(m)

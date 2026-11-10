@@ -106,6 +106,7 @@ class Usuario(Base):
     criado_em: Mapped[datetime] = mapped_column(TZ, server_default=AGORA)
     # etapa 4b: e-mails do Toqqi (Minha conta)
     recebe_resumo_semanal: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    recebe_relatorio_mensal: Mapped[bool] = mapped_column(Boolean, server_default="true")
     recebe_alertas: Mapped[bool] = mapped_column(Boolean, server_default="true")
     # Entrar com o Google: o `sub` da conta do Google ligada na primeira entrada por ela (docs/api-login-google.md)
     google_sub: Mapped[str | None] = mapped_column(Text)
@@ -690,6 +691,16 @@ class ResumoSemanal(Base):
     destinatarios: Mapped[int] = mapped_column(Integer, server_default="0")
 
 
+class RelatorioMensal(Base):
+    """O e-mail do relatório mensal em PDF que saiu para a conta (um por mês; `relatorios/mensal.py`)."""
+    __tablename__ = "relatorios_mensais"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
+    mes: Mapped[date] = mapped_column(Date)  # o dia 1 do mês relatado
+    enviado_em: Mapped[datetime | None] = mapped_column(TZ)
+    destinatarios: Mapped[int] = mapped_column(Integer, server_default="0")
+
+
 # ---- etapa 5a: assinatura e cobrança (Asaas) ----------------------------------------
 
 class Assinatura(Base):
@@ -927,7 +938,7 @@ class Conector(Base):
     __tablename__ = "conectores"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     conta_id: Mapped[int] = mapped_column(BigInteger, server_default=CONTA_ATUAL)
-    provedor: Mapped[str] = mapped_column(Text)  # rdstation_crm
+    provedor: Mapped[str] = mapped_column(Text)  # rdstation_crm | omie | bling | pipedrive | hubspot
     token_cifrado: Mapped[str] = mapped_column(Text)
     segredo_hash: Mapped[str] = mapped_column(Text)
     webhook_externo: Mapped[str | None] = mapped_column(Text)  # id do webhook cadastrado no provedor

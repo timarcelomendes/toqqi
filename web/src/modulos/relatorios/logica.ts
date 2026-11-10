@@ -660,3 +660,24 @@ export function nomeDoCampo(v: string | { nome?: string | null } | null | undefi
   if (!v) return ''
   return (typeof v === 'string' ? v : (v.nome ?? '')).trim()
 }
+
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+
+/**
+ * Os meses do relatório mensal em PDF, do atual para trás (13: o atual, "até hoje", e os 12 anteriores). `valor` =
+ * AAAA-MM; o primeiro rótulo diz que o mês está em andamento.
+ */
+export function mesesDoRelatorio(hoje: string): { valor: string; rotulo: string }[] {
+  let [ano, mes] = hoje.split('-').map(Number) as [number, number]
+  const itens: { valor: string; rotulo: string }[] = []
+  for (let i = 0; i < 13; i++) {
+    const rotulo = `${MESES[mes - 1]!.replace(/^./, (c) => c.toUpperCase())} de ${ano}`
+    itens.push({ valor: `${ano}-${String(mes).padStart(2, '0')}`, rotulo: i === 0 ? `${rotulo} (até hoje)` : rotulo })
+    mes -= 1
+    if (mes === 0) {
+      mes = 12
+      ano -= 1
+    }
+  }
+  return itens
+}

@@ -1,6 +1,7 @@
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from toqqi.core.deps import Contexto, requer
@@ -8,6 +9,7 @@ from toqqi.core.filtros import DataFiltro
 from toqqi.core.paginacao import Pagina, pagina
 from toqqi.modulos.ia import pareceres
 from toqqi.modulos.relatorios import desfecho as relatorio_desfecho
+from toqqi.modulos.relatorios import mensal
 from toqqi.modulos.relatorios import servico
 from toqqi.modulos.relatorios.parecer_ia import TIPO as PARECER_IA
 from toqqi.modulos.relatorios.regras import FAIXAS_TEMPO, FAIXAS_VALOR, QUADRANTES, ROTULOS_DIMENSAO
@@ -63,6 +65,15 @@ class FiltrosEntregas(FiltrosComuns):
 class Periodo(BaseModel):
     de: DataFiltro = None
     ate: DataFiltro = None
+
+
+@router.get("/mensal.pdf")
+def relatorio_mensal(mes: Annotated[str | None, Query(max_length=7)] = None, ctx: Contexto = Depends(VER)):
+    """O relatório do mês em PDF (`mes` = AAAA-MM; sem ele, o mês anterior)."""
+    inicio = mensal.ler_mes(mes)
+    return Response(mensal.pdf_da_conta(ctx.conta_id, inicio), media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{mensal.nome_arquivo(inicio)}"',
+                             "Cache-Control": "no-store"})
 
 
 @router.get("/empresas")

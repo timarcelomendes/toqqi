@@ -2642,6 +2642,35 @@
           ]
         },
         {
+          "id": "relatorio-mensal-em-pdf",
+          "titulo": "Relatório mensal em PDF",
+          "somente_admin": false,
+          "atalho": "relatorios",
+          "palavras": [
+            "pdf",
+            "relatório mensal",
+            "imprimir",
+            "baixar relatório",
+            "enviar para o dono",
+            "diretoria",
+            "mês"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Relatórios, “Relatório mensal (PDF)” baixa o resumo de um mês para encaminhar ou imprimir: NPS e a variação sobre o mês anterior, respostas, taxa de resposta, receita em risco, o NPS dos últimos 12 meses, os temas mais citados, as empresas de menor e maior NPS, os planos de ação abertos e o que os clientes disseram."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Escolha o mês atual (até hoje) ou um dos 12 anteriores. Os números são os do Início com o mês como período, só empresas ativas.",
+                "Os planos de ação e a receita em risco mostram a situação do dia em que o PDF foi gerado.",
+                "No dia 1, o Toqqi manda por e-mail o PDF do mês anterior a quem acompanha o painel. Para não receber, desligue “Relatório mensal (PDF)” em Minha conta."
+              ]
+            }
+          ]
+        },
+        {
           "id": "empresas-nps-cobertura-e-receita",
           "titulo": "Aba Empresas: NPS, cobertura e receita em risco",
           "somente_admin": false,
@@ -3775,6 +3804,71 @@
           ]
         },
         {
+          "id": "conectar-o-pipedrive",
+          "titulo": "Conectar o Pipedrive",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "pipedrive",
+            "crm",
+            "conector",
+            "token de api",
+            "negócio ganho",
+            "sincronizar",
+            "integração crm"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Integrações › Sistemas, clique em Pipedrive. No Pipedrive, abra Configurações › Preferências pessoais › API, copie o seu token de API pessoal e cole no Toqqi. O token fica guardado cifrado e tem as permissões do seu usuário: conecte com quem vê os negócios da equipe."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Sincronizar agora: traz as organizações e as pessoas do Pipedrive que ainda não estão no Toqqi (com e-mail ou telefone). Nunca apaga nem muda quem já está cadastrado, e para no limite de contatos do plano.",
+                "Pesquisar quando um negócio for ganho: o Toqqi cadastra um aviso no Pipedrive. Quando um negócio vira ganho, as pessoas dele recebem a pesquisa NPS na hora, pelas regras de envio da conta. O mesmo negócio não gera pesquisa duas vezes.",
+                "A nota de volta: quando o cliente responde, o Toqqi anota no negócio a nota e o comentário, em até 30 minutos.",
+                "Desconectar apaga o token e o aviso cadastrado no Pipedrive; o que já foi trazido continua no Toqqi."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "conectar-o-hubspot",
+          "titulo": "Conectar o HubSpot",
+          "somente_admin": true,
+          "atalho": "integracoes",
+          "palavras": [
+            "hubspot",
+            "crm",
+            "conector",
+            "chave de serviço",
+            "service key",
+            "aplicativo privado",
+            "negócio ganho",
+            "sincronizar"
+          ],
+          "blocos": [
+            {
+              "tipo": "paragrafo",
+              "texto": "Em Integrações › Sistemas, clique em HubSpot. No HubSpot, com um usuário superadministrador, abra Development › Keys › Service keys e clique em Create service key. Dê o nome “Toqqi”, adicione os escopos crm.objects.contacts.read, crm.objects.companies.read e crm.objects.deals.read, crie e copie a chave. Cole no Toqqi: ela fica guardada cifrada."
+            },
+            {
+              "tipo": "lista",
+              "itens": [
+                "Sincronizar agora: traz as empresas e os contatos do HubSpot que ainda não estão no Toqqi (com e-mail ou telefone), sem apagar nem mudar quem já está cadastrado.",
+                "Pesquisar quando um negócio for ganho: a cada 30 minutos, o Toqqi confere os negócios que viraram ganhos desde a última vez, e os contatos de cada um recebem a pesquisa NPS. Negócios ganhos antes de ligar não recebem; o mesmo negócio nunca gera pesquisa duas vezes.",
+                "A chave só lê: o Toqqi não muda nada no HubSpot e não devolve a nota para lá.",
+                "Desconectar apaga a chave no Toqqi. Para cortar de vez, apague a chave também no HubSpot."
+              ]
+            },
+            {
+              "tipo": "dica",
+              "texto": "Já tem um aplicativo privado no HubSpot com esses escopos? O token dele também serve. Desde 26/10/2026, o HubSpot não deixa criar aplicativos privados novos: use a chave de serviço."
+            }
+          ]
+        },
+        {
           "id": "campos-e-respostas-da-integracao",
           "titulo": "Campos e respostas da integração (para o técnico)",
           "somente_admin": true,
@@ -4885,7 +4979,7 @@
                 "Usuários: {{gratis.usuarios}}. Só entram os mais antigos, administradores primeiro; os outros veem um aviso ao entrar.",
                 "Formulários: até 2 recebendo respostas ao mesmo tempo. Com mais de 2 ativos, os links já enviados seguem valendo, mas os envios novos usam só os formulários padrão (NPS e CSAT).",
                 "ToqqiAI: {{ia.cota.gratis}} análises por mês.",
-                "Integrações: RD Station, Omie, Bling, a chave de API e os avisos (webhooks) ficam desligados, com a configuração guardada. O WhatsApp automático continua."
+                "Integrações: RD Station, Pipedrive, HubSpot, Omie, Bling, a chave de API e os avisos (webhooks) ficam desligados, com a configuração guardada. O WhatsApp automático continua."
               ]
             },
             {
@@ -5317,7 +5411,7 @@
         },
         {
           "id": "emails-do-toqqi",
-          "titulo": "E-mails do Toqqi: resumo semanal e alerta de pico",
+          "titulo": "E-mails do Toqqi: resumo semanal, alerta de pico e relatório mensal",
           "somente_admin": false,
           "atalho": "minha_conta",
           "palavras": [
@@ -5332,23 +5426,27 @@
             "não recebi o resumo",
             "pico",
             "reclamações em alta",
-            "preferências de e-mail"
+            "preferências de e-mail",
+            "relatório mensal",
+            "pdf",
+            "dia 1"
           ],
           "blocos": [
             {
               "tipo": "paragrafo",
-              "texto": "Em “E-mails do Toqqi”, na Minha conta, você escolhe os avisos que chegam no seu e-mail sobre o painel da empresa. A seção aparece para quem pode ver o painel (o Início). Cada interruptor vale na hora, sem botão de salvar, e os dois vêm ligados."
+              "texto": "Em “E-mails do Toqqi”, na Minha conta, você escolhe os avisos que chegam no seu e-mail sobre o painel da empresa. A seção aparece para quem pode ver o painel (o Início). Cada interruptor vale na hora, sem botão de salvar, e todos vêm ligados."
             },
             {
               "tipo": "lista",
               "itens": [
                 "Resumo semanal: toda segunda-feira de manhã, o NPS da semana, os detratores esperando tratamento, os temas em alta e o que os clientes disseram.",
-                "Alerta de pico de reclamações: quando um tema recebe muito mais reclamações que o normal nos últimos 7 dias, com as respostas que causaram o alerta."
+                "Alerta de pico de reclamações: quando um tema recebe muito mais reclamações que o normal nos últimos 7 dias, com as respostas que causaram o alerta.",
+                "Relatório mensal (PDF): no dia 1, o relatório do mês anterior em PDF, anexo ao e-mail, para encaminhar a quem precisa."
               ]
             },
             {
               "tipo": "paragrafo",
-              "texto": "O resumo sai na segunda-feira, a partir das 8h (horário de Brasília), e não é enviado se a conta não teve respostas na semana nem ações abertas. Cada tema gera no máximo um alerta a cada 7 dias. Só recebe quem está ativo, com o e-mail confirmado, e só enquanto a assinatura estiver em dia."
+              "texto": "O resumo sai na segunda-feira, a partir das 8h (horário de Brasília), e não é enviado se a conta não teve respostas na semana nem ações abertas. O relatório mensal sai no dia 1, a partir das 8h, e não é enviado se o mês não teve respostas. Cada tema gera no máximo um alerta a cada 7 dias. Só recebe quem está ativo, com o e-mail confirmado, e só enquanto a assinatura estiver em dia."
             },
             {
               "tipo": "dica",

@@ -1,10 +1,10 @@
 """Tarefas periódicas: `python -m toqqi.tarefas
-[assinaturas|riscos|robo|lembretes|pendentes|webhooks|conectores|ia|picos|resumo|erros|limpeza|tudo]` (padrão: tudo).
+[assinaturas|riscos|robo|lembretes|pendentes|webhooks|conectores|ia|picos|resumo|mensal|erros|limpeza|tudo]` (padrão: tudo).
 
 Também disponíveis em POST /api/v1/interno/tarefas (cabeçalho X-Tarefas-Token). Em produção, o Cron Job
 `toqqi-tarefas` do Render roda este comando a cada 15 minutos; cada tarefa decide por conta se é hora de agir.
-`tudo` roda na ordem: assinaturas, riscos, pendentes, robô, lembretes, webhooks, conectores, ia, picos, resumo, erros,
-limpeza (assinaturas e riscos primeiro, para a liberação dos envios e a pausa das contas Grátis suspeitas já valerem;
+`tudo` roda na ordem: assinaturas, riscos, pendentes, robô, lembretes, webhooks, conectores, ia, picos, resumo, mensal,
+erros, limpeza (assinaturas e riscos primeiro, para a liberação dos envios e a pausa das contas Grátis suspeitas já valerem;
 a IA antes dos picos, para eles já usarem as análises novas; a limpeza por último, depois de tudo o que manda e-mails).
 
 Plano Grátis (docs/api-plano-gratis.md): a tarefa `riscos` grava a nota de risco de cada conta (`plataforma.risco.
@@ -48,10 +48,10 @@ from toqqi.modulos.conectores import servico as conectores
 from toqqi.modulos.integracoes import webhooks
 from toqqi.modulos.plataforma import erros as aviso_erros
 from toqqi.modulos.plataforma import risco
-from toqqi.modulos.relatorios import emails
+from toqqi.modulos.relatorios import emails, mensal
 
 TAREFAS = ("assinaturas", "riscos", "robo", "lembretes", "pendentes", "webhooks", "conectores", "ia", "picos", "resumo",
-           "erros", "limpeza", "tudo")
+           "mensal", "erros", "limpeza", "tudo")
 
 log = logging.getLogger("toqqi.tarefas")
 
@@ -83,6 +83,7 @@ def _passos() -> list[tuple[str, Callable[[], object]]]:
         ("ia", _ia),
         ("picos", lambda: emails.picos()),
         ("resumo", lambda: emails.resumo()),
+        ("mensal", lambda: mensal.executar()),  # o relatório do mês em PDF, no dia 1
         ("erros", lambda: aviso_erros.aviso_diario()),
         ("limpeza", lambda: limpeza()),
     ]

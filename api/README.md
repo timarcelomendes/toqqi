@@ -147,7 +147,7 @@ Usam o banco real `toqqi_test`: o esquema é recriado e migrado com o papel dono
   que já existiam.
 
 ## Etapa 3a: envios
-- **Tarefas periódicas**: `python -m toqqi.tarefas [assinaturas|robo|lembretes|pendentes|webhooks|ia|picos|resumo|limpeza|tudo]` ou
+- **Tarefas periódicas**: `python -m toqqi.tarefas [assinaturas|riscos|robo|lembretes|pendentes|webhooks|conectores|ia|picos|resumo|mensal|erros|limpeza|tudo]` ou
   `POST /api/v1/interno/tarefas` com `X-Tarefas-Token` (comparação em tempo constante). Em produção, a rotina do GitHub
   (`.github/workflows/tarefas.yml`) chama a rota a cada 30 minutos (o Cron Job `toqqi-tarefas` do Render, que roda o
   comando direto no banco, está comentado no `render.yaml` para quando valer o custo); cada conta decide se é hora (janela, dias úteis, 6 h entre rodadas do robô, lembretes uma vez
@@ -707,6 +707,21 @@ e desvios em `../docs/api-etapa-5l-notas-api.md`; migração `0026_formularios_v
   formulário entre uma limpeza e outra (409 `limite_imagens`); imagem do banco citada num formulário fica em uso.
 - **Telas internas** (resultados, CSV, detalhe, exportação, resumo da resposta) pulam os blocos de conteúdo e mostram
   "…" no lugar das citações; a exportação da conta ganha "Finais (JSON)" em `formularios.csv`.
+
+## Relatório mensal em PDF e conectores do Pipedrive e do HubSpot (10/11/2026)
+- **Relatório mensal** (`modulos/relatorios/mensal.py`, migração 0031): `GET /relatorios/mensal.pdf?mes=AAAA-MM`
+  (`relatorios.ver`; sem `mes`, o mês anterior; o mês atual sai "até hoje") gera o PDF com reportlab (Helvetica: o
+  texto do cliente perde o que a fonte não desenha) a partir de `painel.servico.painel` com o mês como período. Tarefa
+  `mensal`: dia 1 a partir das 8h (até o dia 3), uma vez por conta e mês (`relatorios_mensais`), PDF anexo
+  (`core.email.Anexo`, ZeptoMail e Resend) a quem tem `recebe_relatorio_mensal` (Minha conta); pula o mês sem respostas.
+- **Pipedrive** (`conectores/pipedrive.py` + `crm.py`): token de API pessoal no cabeçalho `x-api-token`; sincroniza
+  organizações e pessoas (`pd:<id>`); webhook de negócio alterado (versão 2.0) em
+  `/publico/conectores/pipedrive/{segredo}`, só a passagem para ganho manda a pesquisa; a nota volta como anotação no
+  negócio (tarefa `conectores`).
+- **HubSpot** (`conectores/hubspot.py` + `crm.py`): chave de serviço (Development › Keys › Service keys; o HubSpot não
+  cria aplicativos privados novos desde 26/10/2026) com `crm.objects.contacts.read`, `companies.read` e `deals.read`.
+  Sem webhook: a tarefa `conectores` consulta os negócios ganhos desde `opcoes.desde` (10 min de folga) e guarda os
+  últimos 500 ids em `opcoes.vistos`. Não devolve a nota.
 
 ## Estrutura
 ```

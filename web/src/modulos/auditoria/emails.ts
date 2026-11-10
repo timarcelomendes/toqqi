@@ -50,6 +50,7 @@ export const TIPOS_EMAIL: { valor: TipoEmailEnviado; rotulo: string }[] = [
   { valor: 'boas_vindas', rotulo: 'Boas-vindas' },
   { valor: 'alerta_risco', rotulo: 'Alerta de risco' },
   { valor: 'resumo_semanal', rotulo: 'Resumo semanal' },
+  { valor: 'relatorio_mensal', rotulo: 'Relatório mensal' },
   { valor: 'pico', rotulo: 'Pico de reclamações' },
   { valor: 'indicacao', rotulo: 'Nova indicação' },
   { valor: 'aviso', rotulo: 'Aviso aos administradores' },

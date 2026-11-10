@@ -463,7 +463,7 @@ def alterar_eu(ctx: Contexto, dados) -> dict:
             u.nome = dados.nome
         if "cargo" in dados.model_fields_set:
             u.cargo = dados.cargo or None
-        for campo in ("recebe_resumo_semanal", "recebe_alertas"):  # e-mails do Toqqi (Minha conta)
+        for campo in ("recebe_resumo_semanal", "recebe_alertas", "recebe_relatorio_mensal"):  # e-mails do Toqqi (Minha conta)
             if campo in dados.model_fields_set and getattr(dados, campo) is not None:
                 setattr(u, campo, getattr(dados, campo))
         s.flush()

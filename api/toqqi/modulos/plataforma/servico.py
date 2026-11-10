@@ -59,6 +59,7 @@ from toqqi.modelos import (
     PerfilPermissao,
     Responsavel,
     Resposta,
+    RelatorioMensal,
     ResumoSemanal,
     Segmento,
     Sessao,
@@ -221,7 +222,7 @@ def cortesia(ctx: Contexto, conta_id: int) -> dict:
 
 
 # Ordem de exclusão: quem aponta para outras tabelas da conta sai antes.
-_ORDEM_EXCLUSAO = (Cobranca, Assinatura, AlertaPico, ResumoSemanal, IaUsoMensal, IaParecer, Indicacao, Oferta,
+_ORDEM_EXCLUSAO = (Cobranca, Assinatura, AlertaPico, ResumoSemanal, RelatorioMensal, IaUsoMensal, IaParecer, Indicacao, Oferta,
                    ConfigCrescimento, Acao, ConfigAcoes, Envio, Descadastro, ConfigEnvios, EventoIdempotencia,
                    EmailEnviado, WebhookEntrega, Webhook, IntegracaoChave, WhatsappUso, WhatsappConta, EnvioUso, Resposta,
                    Convite, Importacao, Contato, Empresa, Responsavel, Grupo, Segmento, PerfilContato, Cargo, Imagem,

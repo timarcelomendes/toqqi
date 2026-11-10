@@ -291,6 +291,7 @@ def test_tipos_e_rotulos():
         "convite": "Convite de pesquisa", "lembrete": "Lembrete", "agradecimento": "Agradecimento",
         "teste": "E-mail de teste", "confirmacao": "Confirmação de e-mail", "senha": "Redefinição de senha",
         "boas_vindas": "Boas-vindas", "alerta_risco": "Alerta de risco", "resumo_semanal": "Resumo semanal",
+        "relatorio_mensal": "Relatório mensal",  # relatório mensal em PDF
         "pico": "Pico de reclamações", "indicacao": "Nova indicação", "aviso": "Aviso aos administradores",
         "cobranca": "Cobrança", "retorno": "Retorno ao cliente",  # melhoria 4
         "feedback": "Resposta da equipe Toqqi",  # feedback: a equipe respondeu

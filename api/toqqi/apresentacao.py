@@ -23,7 +23,8 @@ def usuario_json(u: Usuario, preferencias: bool = False) -> dict:
         "superadmin": eh_superadmin(u.email),
     }
     if preferencias:
-        dados.update(recebe_resumo_semanal=u.recebe_resumo_semanal, recebe_alertas=u.recebe_alertas)
+        dados.update(recebe_resumo_semanal=u.recebe_resumo_semanal, recebe_alertas=u.recebe_alertas,
+                     recebe_relatorio_mensal=u.recebe_relatorio_mensal)
     return dados
 
 

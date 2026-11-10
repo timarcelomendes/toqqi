@@ -1,4 +1,4 @@
-// Etapa 5j: conectores (RD Station CRM).
+// Etapa 5j: conectores (RD Station CRM, Omie, Bling; Pipedrive e HubSpot em 10/11/2026).
 import { api } from './cliente'
 
 export interface ResumoSincronizacao {
@@ -19,6 +19,13 @@ export interface ConectorRd {
   resumo?: ResumoSincronizacao | null
   erro?: string | null
   conectado_em?: string
+}
+
+export type ChaveCrm = 'pipedrive' | 'hubspot'
+
+/** Pipedrive e HubSpot. `aviso_cadastrado` só no Pipedrive; `consultado_em` (última consulta da tarefa) só no HubSpot. */
+export interface ConectorCrm extends ConectorRd {
+  consultado_em?: string | null
 }
 
 export interface ConectorOmie {
@@ -45,7 +52,8 @@ export interface ConectorBling {
 }
 
 export const conectoresApi = {
-  ver: () => api.get<{ rdstation_crm: ConectorRd; omie: ConectorOmie; bling: ConectorBling }>('/integracoes/conectores'),
+  ver: () =>
+    api.get<{ rdstation_crm: ConectorRd; omie: ConectorOmie; bling: ConectorBling; pipedrive: ConectorCrm; hubspot: ConectorCrm }>('/integracoes/conectores'),
   autorizarBling: () => api.post<{ url: string }>('/integracoes/conectores/bling/autorizar'),
   alterarBling: (pesquisar_ao_faturar: boolean) => api.patch<ConectorBling>('/integracoes/conectores/bling', { pesquisar_ao_faturar }),
   sincronizarBling: () => api.post<ConectorBling>('/integracoes/conectores/bling/sincronizar'),
@@ -60,4 +68,9 @@ export const conectoresApi = {
   alterarRd: (pesquisar_ao_ganhar: boolean) => api.patch<ConectorRd>('/integracoes/conectores/rdstation-crm', { pesquisar_ao_ganhar }),
   sincronizarRd: () => api.post<ResumoSincronizacao>('/integracoes/conectores/rdstation-crm/sincronizar'),
   desconectarRd: () => api.delete('/integracoes/conectores/rdstation-crm'),
+  conectarCrm: (chave: ChaveCrm, token: string, pesquisar_ao_ganhar: boolean) =>
+    api.put<ConectorCrm>(`/integracoes/conectores/${chave}`, { token, pesquisar_ao_ganhar }),
+  alterarCrm: (chave: ChaveCrm, pesquisar_ao_ganhar: boolean) => api.patch<ConectorCrm>(`/integracoes/conectores/${chave}`, { pesquisar_ao_ganhar }),
+  sincronizarCrm: (chave: ChaveCrm) => api.post<ResumoSincronizacao>(`/integracoes/conectores/${chave}/sincronizar`),
+  desconectarCrm: (chave: ChaveCrm) => api.delete(`/integracoes/conectores/${chave}`),
 }

@@ -320,11 +320,12 @@ def test_rota_interna_de_tarefas(client, monkeypatch):
                         "pendentes": 0, "robo": {"contas": 0, "agendados": 0, "ignorados": 0},
                         "lembretes": {"contas": 0, "enviados": 0, "ignorados": 0},
                         "webhooks": {"entregues": 0, "falharam": 0},
-                        "conectores": {"anotadas": 0, "falharam": 0},
+                        "conectores": {"anotadas": 0, "falharam": 0, "negocios_hubspot": 0},
                         "ia": {"analisadas": 0, "falharam": 0, "limite": 0,
                                "passos": {"prontas": 0, "falharam": 0, "limite": 0}},  # etapa 5d
                         "picos": {"picos": 0, "emails": 0},
                         "resumo": {"contas": 0, "emails": 0},
+                        "mensal": {"contas": 0, "emails": 0},  # relatório mensal em PDF
                         "erros": r.json()["erros"],  # 5h: e-mail diário de erros, depende da hora
                         "limpeza": {"emails_apagados": 0, "acessos_apagados": 0,  # etapa 5e: por último
                                     "encerradas": r.json()["limpeza"]["encerradas"],  # 5f: depende da hora

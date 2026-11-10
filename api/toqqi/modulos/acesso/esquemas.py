@@ -75,6 +75,7 @@ class EuAlterarIn(BaseModel):
     cargo: Annotated[Texto, Field(max_length=80)] | None = None
     recebe_resumo_semanal: bool | None = None
     recebe_alertas: bool | None = None
+    recebe_relatorio_mensal: bool | None = None
 
 
 class TrocarSenhaIn(BaseModel):

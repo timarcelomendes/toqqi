@@ -11,6 +11,7 @@ import Etiqueta from '@/components/ui/Etiqueta.vue'
 import PainelLateral from '@/components/ui/PainelLateral.vue'
 import LogoParceiro from './LogoParceiro.vue'
 import SecaoBling from './SecaoBling.vue'
+import SecaoCrm from './SecaoCrm.vue'
 import SecaoOmie from './SecaoOmie.vue'
 import SecaoRdStation from './SecaoRdStation.vue'
 
@@ -21,13 +22,15 @@ interface Item {
   iniciais: string
   resumo: string
   componente?: Component
+  /** Props do componente (o Pipedrive e o HubSpot usam a mesma tela, pela chave). */
+  props?: Record<string, unknown>
 }
 
 const ITENS: Item[] = [
   { chave: 'rdstation', nome: 'RD Station CRM', tipo: 'CRM', iniciais: 'RD', resumo: 'Empresas e contatos do CRM; pesquisa no negócio ganho e a nota de volta na negociação.', componente: SecaoRdStation },
   { chave: 'omie', nome: 'Omie', tipo: 'ERP', iniciais: 'OM', resumo: 'Clientes do ERP; pesquisa no pedido faturado.', componente: SecaoOmie },
-  { chave: 'pipedrive', nome: 'Pipedrive', tipo: 'CRM', iniciais: 'PD', resumo: '' },
-  { chave: 'hubspot', nome: 'HubSpot', tipo: 'CRM', iniciais: 'HS', resumo: '' },
+  { chave: 'pipedrive', nome: 'Pipedrive', tipo: 'CRM', iniciais: 'PD', resumo: 'Empresas e contatos do CRM; pesquisa no negócio ganho e a nota de volta no negócio.', componente: SecaoCrm, props: { chave: 'pipedrive' } },
+  { chave: 'hubspot', nome: 'HubSpot', tipo: 'CRM', iniciais: 'HS', resumo: 'Empresas e contatos do CRM; pesquisa no negócio ganho.', componente: SecaoCrm, props: { chave: 'hubspot' } },
   { chave: 'bling', nome: 'Bling', tipo: 'ERP', iniciais: 'BL', resumo: 'Clientes do ERP; pesquisa na nota emitida.', componente: SecaoBling },
 ]
 
@@ -43,7 +46,10 @@ const atual = ref<Item | null>(null)
 async function carregar() {
   try {
     const r = await conectoresApi.ver()
-    conectados.value = { rdstation: r.rdstation_crm.conectado, omie: r.omie.conectado, bling: r.bling.conectado }
+    conectados.value = {
+      rdstation: r.rdstation_crm.conectado, omie: r.omie.conectado, bling: r.bling.conectado,
+      pipedrive: r.pipedrive?.conectado ?? false, hubspot: r.hubspot?.conectado ?? false,
+    }
     indisponiveis.value = new Set(r.bling.disponivel ? [] : ['bling'])
     erro.value = null
   } catch (e) {
@@ -110,7 +116,7 @@ onMounted(() => {
       <button type="button" class="link" @click="emit('irParaApi')">Ver como</button>
     </p>
     <PainelLateral v-model:aberto="aberto" :titulo="atual?.nome ?? ''" :descricao="atual ? `${atual.tipo} · ${atual.resumo}` : undefined" largura="lg">
-      <component :is="atual.componente" v-if="atual?.componente" embutido @mudou="carregar" />
+      <component :is="atual.componente" v-if="atual?.componente" v-bind="atual.props ?? {}" embutido @mudou="carregar" />
     </PainelLateral>
   </section>
 </template>

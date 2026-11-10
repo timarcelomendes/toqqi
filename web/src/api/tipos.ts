@@ -44,6 +44,8 @@ export interface Usuario {
   /** Etapa 4b (só no próprio usuário, em /eu e no login): e-mails do Toqqi que ele recebe. */
   recebe_resumo_semanal?: boolean
   recebe_alertas?: boolean
+  /** Relatório mensal em PDF por e-mail, no dia 1. */
+  recebe_relatorio_mensal?: boolean
   /** Aceite dos Termos de uso e da Política de privacidade (GET /eu e login). Ver docs/api-aceite-lgpd.md §2. */
   aceite?: Aceite
 }
@@ -2588,6 +2590,7 @@ export type TipoEmailEnviado =
   | 'boas_vindas'
   | 'alerta_risco'
   | 'resumo_semanal'
+  | 'relatorio_mensal'
   | 'pico'
   | 'indicacao'
   | 'aviso'

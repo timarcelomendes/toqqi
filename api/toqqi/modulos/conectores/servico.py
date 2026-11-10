@@ -294,18 +294,27 @@ def texto_nota(nota: int | None, tipo: str | None, grupo: str | None, nome: str 
 
 
 def devolver_notas() -> dict:
-    """Anota no RD Station CRM, na negociação que mandou a pesquisa, as respostas dos últimos 7 dias ainda não
-    anotadas (até 100 por vez; a que falhar tenta de novo na próxima rodada, dentro dos 7 dias)."""
+    """Tarefa `conectores`. Anota no CRM (RD Station CRM e Pipedrive), no negócio que mandou a pesquisa, as respostas dos
+    últimos 7 dias ainda não anotadas (até 100 por CRM e rodada; a que falhar tenta de novo na próxima, dentro dos 7
+    dias). Depois consulta os negócios ganhos do HubSpot (`crm.consultar_hubspot`)."""
+    from toqqi.modulos.conectores import crm, pipedrive
+
+    rd = _devolver("rd", PROVEDOR, rdstation.anotar, rdstation.ErroRd)
+    pd = _devolver("pd", crm.PIPEDRIVE.chave, pipedrive.anotar, pipedrive.ErroPipedrive)
+    return {"anotadas": rd[0] + pd[0], "falharam": rd[1] + pd[1], "negocios_hubspot": crm.consultar_hubspot()}
+
+
+def _devolver(prefixo: str, provedor: str, anotar, erro: type[Exception]) -> tuple[int, int]:
     desde = relogio.agora() - timedelta(days=DIAS_DEVOLVER)
     with modo_sistema() as s:
         linhas = s.execute(
             select(Convite.id, Convite.conta_id, Convite.origem_externa, Conector.token_cifrado, Resposta.nota,
                    Resposta.tipo_nota, Resposta.grupo, Resposta.comentario_cliente, Contato.nome)
-            .join(Conector, (Conector.conta_id == Convite.conta_id) & (Conector.provedor == "rdstation_crm"))
+            .join(Conector, (Conector.conta_id == Convite.conta_id) & (Conector.provedor == provedor))
             .join(Conta, (Conta.id == Convite.conta_id) & (Conta.situacao != "gratis"))  # Plano Grátis: desligado
             .join(Resposta, Resposta.convite_id == Convite.id)
             .outerjoin(Contato, Contato.id == Resposta.contato_id)
-            .where(Convite.origem_externa.like("rd:%"), Convite.devolvida_em.is_(None),
+            .where(Convite.origem_externa.like(f"{prefixo}:%"), Convite.devolvida_em.is_(None),
                    Convite.respondido_em >= desde, Resposta.nota.is_not(None))
             .order_by(Convite.respondido_em, Convite.id).limit(MAX_DEVOLVER)).all()
     anotadas = falharam = 0
@@ -315,11 +324,11 @@ def devolver_notas() -> dict:
             continue
         vistos.add(convite_id)
         try:
-            rdstation.anotar(decifrar(token_cifrado), origem.split(":", 1)[1], texto_nota(nota, tipo, grupo, nome, comentario))
-        except rdstation.ErroRd:
+            anotar(decifrar(token_cifrado), origem.split(":", 1)[1], texto_nota(nota, tipo, grupo, nome, comentario))
+        except erro:
             falharam += 1
             continue
         with modo_sistema() as s:
             s.execute(update(Convite).where(Convite.id == convite_id).values(devolvida_em=relogio.agora()))
         anotadas += 1
-    return {"anotadas": anotadas, "falharam": falharam}
+    return anotadas, falharam

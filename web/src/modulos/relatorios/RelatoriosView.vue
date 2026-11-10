@@ -27,6 +27,7 @@ import AbaOperacao from './AbaOperacao.vue'
 import AbaResponsaveis from './AbaResponsaveis.vue'
 import AbaTemas from './AbaTemas.vue'
 import ParecerIa from './ParecerIa.vue'
+import RelatorioMensal from './RelatorioMensal.vue'
 import { TEXTOS_PARECER, descreverFiltrosIa, falarParecer, normalizarParecer } from '@/modulos/ia/logica'
 import { usarGeracaoIa } from '@/modulos/ia/usarGeracaoIa'
 import {
@@ -218,7 +219,8 @@ onMounted(() => {
 
 <template>
   <CabecalhoPagina titulo="Relatórios" :descricao="descricao">
-    <template v-if="csv || mostrarParecer" #acoes>
+    <template #acoes>
+      <RelatorioMensal :hoje="hoje" />
       <ParecerIa v-if="mostrarParecer" v-model:aberto="parecerAberto" :geracao="parecer" :descricao="descricaoParecer" :desabilitado="!!erroDatas" />
       <Botao v-if="csv" variante="secundario" :carregando="baixando" :desabilitado="!!erroDatas" @click="exportar">
         <Download v-if="!baixando" class="size-4" aria-hidden="true" /> {{ csv.rotulo }}

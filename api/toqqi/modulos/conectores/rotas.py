@@ -1,13 +1,13 @@
-"""Etapa 5j: conectores (Integrações › RD Station CRM). Configurar é do administrador da conta; o aviso do RD chega
-sem login, pelo segredo no endereço."""
-from typing import Annotated
+"""Etapa 5j: conectores (Integrações › CRM e ERP: RD Station CRM, Omie, Bling, Pipedrive e HubSpot). Configurar é do
+administrador da conta; os avisos do RD, do Omie e do Pipedrive chegam sem login, pelo segredo no endereço."""
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from toqqi.core.deps import Contexto, requer_admin
-from toqqi.modulos.conectores import servico, servico_bling, servico_omie
+from toqqi.modulos.conectores import crm, servico, servico_bling, servico_omie
 from toqqi.modulos.envios.processamento import processar_lista
 
 router = APIRouter(prefix="/integracoes/conectores", tags=["conectores"])
@@ -25,7 +25,8 @@ class AlterarIn(BaseModel):
 
 @router.get("")
 def ver(ctx: Contexto = Depends(requer_admin)):
-    return servico.ver(ctx) | {"omie": servico_omie.ver(ctx), "bling": servico_bling.ver(ctx)}
+    return servico.ver(ctx) | {"omie": servico_omie.ver(ctx), "bling": servico_bling.ver(ctx),
+                               "pipedrive": crm.ver(ctx, crm.PIPEDRIVE), "hubspot": crm.ver(ctx, crm.HUBSPOT)}
 
 
 @router.put("/rdstation-crm")
@@ -150,6 +151,48 @@ def retorno_bling(code: str | None = None, state: str | None = None):
 async def aviso_bling(request: Request, tarefas: BackgroundTasks):
     """Avisos do aplicativo do Toqqi no Bling (assinados). Sempre 200."""
     envios = servico_bling.receber_aviso(await request.body(), request.headers.get("X-Bling-Signature-256"))
+    if envios:
+        tarefas.add_task(processar_lista, envios)
+    return {"ok": True}
+
+
+# ---- Pipedrive e HubSpot (CRM, token do cliente) ------------------------------------------------
+
+def _provedor(chave: str) -> crm.Provedor:
+    return crm.PROVEDORES[chave]
+
+
+@router.put("/{chave}", include_in_schema=True)
+def conectar_crm(chave: Literal["pipedrive", "hubspot"], dados: ConectarIn, ctx: Contexto = Depends(requer_admin)):
+    """Confere o token no CRM e guarda cifrado; com `pesquisar_ao_ganhar`, o Pipedrive ganha o aviso de negócio
+    alterado e o HubSpot passa a ser consultado pela tarefa `conectores`."""
+    return crm.conectar(ctx, _provedor(chave), dados.token, dados.pesquisar_ao_ganhar)
+
+
+@router.patch("/{chave}")
+def alterar_crm(chave: Literal["pipedrive", "hubspot"], dados: AlterarIn, ctx: Contexto = Depends(requer_admin)):
+    return crm.alterar(ctx, _provedor(chave), dados.pesquisar_ao_ganhar)
+
+
+@router.post("/{chave}/sincronizar")
+def sincronizar_crm(chave: Literal["pipedrive", "hubspot"], ctx: Contexto = Depends(requer_admin)):
+    """Traz empresas e contatos do CRM (cria o que falta; não apaga nem sobrescreve)."""
+    return crm.sincronizar(ctx, _provedor(chave))
+
+
+@router.delete("/{chave}", status_code=204)
+def desconectar_crm(chave: Literal["pipedrive", "hubspot"], ctx: Contexto = Depends(requer_admin)):
+    crm.desconectar(ctx, _provedor(chave))
+
+
+@router_publico.post("/pipedrive/{segredo}")
+async def aviso_pipedrive(segredo: str, request: Request, tarefas: BackgroundTasks):
+    """Aviso do Pipedrive (negócio alterado, versão 2.0): a passagem para ganho manda a pesquisa. Sempre 200."""
+    try:
+        corpo = await request.json()
+    except ValueError:
+        corpo = {}
+    envios = crm.receber_aviso_pipedrive(segredo, corpo)
     if envios:
         tarefas.add_task(processar_lista, envios)
     return {"ok": True}

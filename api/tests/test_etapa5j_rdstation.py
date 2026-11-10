@@ -157,13 +157,13 @@ def test_nota_volta_para_a_negociacao(client, dono, admin, rd, monkeypatch):
 
     anotadas = []
     monkeypatch.setattr(rdstation, "anotar", lambda token, deal, texto: anotadas.append((token, deal, texto)))
-    assert servico.devolver_notas() == {"anotadas": 0, "falharam": 0}  # sem resposta ainda
+    assert servico.devolver_notas() == {"anotadas": 0, "falharam": 0, "negocios_hubspot": 0}  # sem resposta ainda
     r = client.post(f"{API}/publico/convites/{token_do_convite(m)}/responder",
                     json={"respostas": {form["perguntas"][0]["id"]: 9}, "comentario": "Tudo certo"})
     assert r.status_code == 201, r.text
-    assert servico.devolver_notas() == {"anotadas": 1, "falharam": 0}
+    assert servico.devolver_notas() == {"anotadas": 1, "falharam": 0, "negocios_hubspot": 0}
     assert anotadas[0][:2] == (TOKEN, "d9") and "deu nota 9 (promotor)" in anotadas[0][2]
-    assert servico.devolver_notas() == {"anotadas": 0, "falharam": 0}  # uma vez só
+    assert servico.devolver_notas() == {"anotadas": 0, "falharam": 0, "negocios_hubspot": 0}  # uma vez só
 
 
 def test_texto_da_nota():
