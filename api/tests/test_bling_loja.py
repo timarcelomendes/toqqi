@@ -51,21 +51,30 @@ def test_negou_ou_falhou_na_loja(client, dono, falso, monkeypatch):  # noqa: F81
     assert sql(dono, "select count(*) from bling_instalacoes")[0][0] == 0
 
 
-def test_a_mesma_empresa_do_bling_nao_liga_em_duas_contas(client, dono, admin, falso):  # noqa: F811
+def test_a_mesma_empresa_do_bling_passa_para_a_conta_que_autorizou(client, dono, admin, falso):  # noqa: F811
     _, q = _da_loja(client, code="c1")
     assert client.post(f"{API}/integracoes/conectores/bling/instalacao", headers=admin["h"],
-                       json={"instalacao": q["instalacao"][0]}).status_code == 200
+                       json={"instalacao": q["instalacao"][0]}).json()["movido"] is False
     beto = conta_pronta(client, "beto@beta.com.br", empresa="Beta")
     _, q = _da_loja(client, code="c2")
     r = client.post(f"{API}/integracoes/conectores/bling/instalacao", headers=beto["h"],
                     json={"instalacao": q["instalacao"][0]})
-    assert r.status_code == 409 and r.json()["erro"]["codigo"] == "bling_em_outra_conta"
-    # pelo Toqqi (com state) também: volta com resultado=outra_conta
-    url = client.post(f"{API}/integracoes/conectores/bling/autorizar", headers=beto["h"]).json()["url"]
+    assert r.status_code == 200 and r.json()["conectado"] and r.json()["movido"] is True
+    assert sql(dono, "select conta_id from conectores where provedor = 'bling'") == [(beto["conta"]["id"],)]
+    (motivo,), = sql(dono, "select detalhe->>'motivo' from auditoria where evento = 'conector_desligado' "
+                           "and conta_id = :c", c=admin["conta"]["id"])
+    assert motivo == "A empresa do Bling foi conectada a outra conta do Toqqi."
+    assert client.get(f"{API}/integracoes/conectores", headers=admin["h"]).json()["bling"]["conectado"] is False
+    # pelo Toqqi (com state): volta com resultado=movido e a conexão vai para a conta que autorizou
+    url = client.post(f"{API}/integracoes/conectores/bling/autorizar", headers=admin["h"]).json()["url"]
     state = parse_qs(urlparse(url).query)["state"][0]
     caminho, q = _da_loja(client, code="c3", state=state)
-    assert caminho == "/integracoes" and q["resultado"] == ["outra_conta"]
-    assert sql(dono, "select count(*) from conectores where provedor = 'bling'")[0][0] == 1
+    assert caminho == "/integracoes" and q["resultado"] == ["movido"]
+    assert sql(dono, "select conta_id from conectores where provedor = 'bling'") == [(admin["conta"]["id"],)]
+    # de novo na mesma conta: só "ok"
+    url = client.post(f"{API}/integracoes/conectores/bling/autorizar", headers=admin["h"]).json()["url"]
+    state = parse_qs(urlparse(url).query)["state"][0]
+    assert _da_loja(client, code="c4", state=state)[1]["resultado"] == ["ok"]
 
 
 def test_plano_gratis_nao_liga(client, dono, admin, falso):  # noqa: F811

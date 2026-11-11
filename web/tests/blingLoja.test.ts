@@ -71,16 +71,24 @@ describe('/conectar/bling', () => {
     expect(avisos.at(-1)?.tipo).toBe('sucesso')
   })
 
-  it('empresa do Bling em outra conta: mostra o motivo e deixa tentar de novo', async () => {
+  it('empresa do Bling que estava em outra conta: liga aqui e avisa que passou para esta', async () => {
+    guardarInstalacao(CODIGO)
+    logar('admin')
+    apiFalsa({ 'POST /integracoes/conectores/bling/instalacao': () => ({ conectado: true, movido: true }) })
+    await abrir()
+    expect(avisos.at(-1)?.mensagem).toBe('Bling conectado. Ele estava ligado a outra conta do Toqqi e passou para esta.')
+  })
+
+  it('erro ao ligar: mostra o motivo e deixa tentar de novo', async () => {
     guardarInstalacao(CODIGO)
     logar('admin')
     apiFalsa({
       'POST /integracoes/conectores/bling/instalacao': () =>
-        new Response(JSON.stringify({ erro: { codigo: 'bling_em_outra_conta', mensagem: 'Esta empresa do Bling já está conectada a outra conta do Toqqi.' } }), { status: 409 }),
+        new Response(JSON.stringify({ erro: { codigo: 'conector_falhou', mensagem: 'Não conseguimos falar com o Bling.' } }), { status: 502 }),
     })
     const { w } = await abrir()
-    expect(w.get('[data-situacao="erro"]').text()).toContain('já está conectada a outra conta')
-    expect(instalacaoGuardada()).toBe(CODIGO) // pode entrar com a conta certa e tentar de novo
+    expect(w.get('[data-situacao="erro"]').text()).toContain('Não conseguimos falar com o Bling.')
+    expect(instalacaoGuardada()).toBe(CODIGO)
   })
 
   it('quem não é administrador vê o aviso, sem chamar a API', async () => {

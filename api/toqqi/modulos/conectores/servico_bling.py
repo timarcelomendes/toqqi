@@ -87,16 +87,23 @@ def _volta_loja(**params: str) -> str:
     return str(httpx.URL(f"{config().FRONTEND_URL.rstrip('/')}/conectar/bling", params=params))
 
 
-def _em_outra_conta(empresa_bling: str | None, conta_id: int | None) -> bool:
-    """A mesma empresa do Bling já ligada a outra conta do Toqqi (os avisos de nota acham a conta pelo `companyId`)."""
+def _tirar_de_outras_contas(empresa_bling: str | None, conta_id: int) -> int:
+    """A mesma empresa do Bling ligada a outra conta do Toqqi passa para esta: quem acabou de autorizar no Bling provou
+    que controla a empresa, e os avisos de nota acham a conta pelo `companyId` (duas contas com a mesma empresa ficariam
+    ambíguas). A conexão antiga é apagada, com registro na auditoria daquela conta. Devolve quantas foram tiradas."""
     if not empresa_bling:
-        return False
+        return 0
     with modo_sistema() as s:
-        q = select(Conector.conta_id).where(Conector.provedor == PROVEDOR,
-                                            Conector.opcoes["empresa_bling"].astext == empresa_bling)
-        if conta_id is not None:
-            q = q.where(Conector.conta_id != conta_id)
-        return s.scalar(q.limit(1)) is not None
+        antigas = s.scalars(select(Conector).where(Conector.provedor == PROVEDOR, Conector.conta_id != conta_id,
+                                                   Conector.opcoes["empresa_bling"].astext == empresa_bling)).all()
+        contas = [c.conta_id for c in antigas]
+        for c in antigas:
+            s.delete(c)
+    for outra in contas:
+        with em_conta(outra) as s:
+            registrar(s, "conector_desligado", "atencao",
+                      {"provedor": PROVEDOR, "motivo": "A empresa do Bling foi conectada a outra conta do Toqqi."})
+    return len(contas)
 
 
 def _gravar_conector(conta_id: int, usuario_id: int | None, tokens: dict, empresa_bling: str | None,
@@ -115,7 +122,7 @@ def _gravar_conector(conta_id: int, usuario_id: int | None, tokens: dict, empres
 
 def retorno(codigo: str | None, state: str | None) -> str:
     """Endereço do site para onde o navegador volta. Começou no Toqqi (com `state`): Integrações com
-    `resultado=ok|erro|negado|plano|outra_conta`. Começou na loja do Bling (sem `state` do Toqqi): /conectar/bling com
+    `resultado=ok|movido|erro|negado|plano` (movido: a empresa do Bling estava em outra conta e passou para esta). Começou na loja do Bling (sem `state` do Toqqi): /conectar/bling com
     o código da instalação (`instalacao=`) ou `resultado=erro|negado`."""
     try:
         dados = jwt.decode(state or "", config().JWT_SECRET, algorithms=["HS256"])
@@ -133,10 +140,9 @@ def retorno(codigo: str | None, state: str | None) -> str:
         empresa_bling = bling.empresa(tokens)
     except bling.ErroBling:
         return _volta("erro")
-    if _em_outra_conta(empresa_bling, int(dados["c"])):
-        return _volta("outra_conta")
+    movidas = _tirar_de_outras_contas(empresa_bling, int(dados["c"]))
     _gravar_conector(int(dados["c"]), dados.get("u"), tokens, empresa_bling, "toqqi")
-    return _volta("ok")
+    return _volta("movido" if movidas else "ok")
 
 
 def _instalacao_da_loja(codigo: str | None) -> str:
@@ -166,13 +172,11 @@ def ligar_instalacao(ctx: Contexto, instalacao: str) -> dict:
         tokens, empresa_bling = _tokens_texto(pendente.tokens_cifrado), pendente.empresa_bling
     if tokens is None:
         raise AppError(404, "instalacao_vencida", "Esta instalação não pode mais ser lida. Instale o Toqqi de novo.")
-    if _em_outra_conta(empresa_bling, ctx.conta_id):
-        raise AppError(409, "bling_em_outra_conta", "Esta empresa do Bling já está conectada a outra conta do Toqqi. "
-                       "Desconecte lá antes, ou entre com a conta certa.")
+    movidas = _tirar_de_outras_contas(empresa_bling, ctx.conta_id)
     _gravar_conector(ctx.conta_id, ctx.usuario_id, tokens, empresa_bling, "loja")
     with modo_sistema() as s:
         s.execute(delete(BlingInstalacao).where(BlingInstalacao.codigo_hash == _hash(instalacao.strip())))
-    return ver(ctx)
+    return ver(ctx) | {"movido": bool(movidas)}
 
 
 def _tokens_texto(cifrado: str) -> dict | None:

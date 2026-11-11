@@ -76,7 +76,7 @@ export const conectoresApi = {
   sincronizarBling: () => api.post<ConectorBling>('/integracoes/conectores/bling/sincronizar'),
   desconectarBling: () => api.delete('/integracoes/conectores/bling'),
   /** Liga à conta a instalação feita pela loja do Bling (/conectar/bling?instalacao=). */
-  ligarInstalacaoBling: (instalacao: string) => api.post<ConectorBling>('/integracoes/conectores/bling/instalacao', { instalacao }),
+  ligarInstalacaoBling: (instalacao: string) => api.post<ConectorBling & { movido?: boolean }>('/integracoes/conectores/bling/instalacao', { instalacao }),
   conectarOmie: (app_key: string, app_secret: string, pesquisar_ao_faturar: boolean) =>
     api.put<ConectorOmie>('/integracoes/conectores/omie', { app_key, app_secret, pesquisar_ao_faturar }),
   alterarOmie: (pesquisar_ao_faturar: boolean) => api.patch<ConectorOmie>('/integracoes/conectores/omie', { pesquisar_ao_faturar }),

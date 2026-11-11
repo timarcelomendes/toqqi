@@ -36,9 +36,9 @@ async function ligar() {
   ligando.value = true
   erro.value = null
   try {
-    await conectoresApi.ligarInstalacaoBling(codigo.value)
+    const r = await conectoresApi.ligarInstalacaoBling(codigo.value)
     esquecerInstalacao()
-    avisar.sucesso('Bling conectado. Traga os clientes com “Sincronizar agora”.')
+    avisar.sucesso(r.movido ? 'Bling conectado. Ele estava ligado a outra conta do Toqqi e passou para esta.' : 'Bling conectado. Traga os clientes com “Sincronizar agora”.')
     await router.replace({ path: '/integracoes', query: { aba: 'crm', conector: 'bling' } })
   } catch (e) {
     erro.value = mensagemDoErro(e)

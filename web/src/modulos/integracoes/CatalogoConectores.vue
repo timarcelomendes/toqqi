@@ -37,7 +37,6 @@ const ITENS: Item[] = [
 const MENSAGENS_BLING: Record<string, string> = {
   negado: 'A autorização no Bling foi cancelada.',
   plano: 'O Plano Grátis não inclui os conectores. Assine um plano para conectar o Bling.',
-  outra_conta: 'Esta empresa do Bling já está conectada a outra conta do Toqqi. Desconecte lá antes.',
 }
 
 const emit = defineEmits<{ irParaApi: [] }>()
@@ -78,6 +77,7 @@ onMounted(() => {
   const { conector, resultado, ...resto } = rota.query
   if (conector === 'bling' && resultado) {
     if (resultado === 'ok') avisar.sucesso('Bling conectado. Traga os clientes com “Sincronizar agora”.')
+    else if (resultado === 'movido') avisar.sucesso('Bling conectado. Ele estava ligado a outra conta do Toqqi e passou para esta.')
     else avisar.erro(MENSAGENS_BLING[String(resultado)] ?? 'Não conseguimos conectar o Bling. Tente de novo.')
     router.replace({ query: resto })
     const item = ITENS.find((i) => i.chave === 'bling')
